@@ -34,15 +34,13 @@ def load_device_config() -> dict:
     return settings
 
 
-def main() -> int:
-    settings = load_device_config()
-    from powerglove_vision.matrix import MatrixStatus, UnoQMatrix
-    matrix = UnoQMatrix()
-    matrix.set_status(MatrixStatus.LOADING)
-    matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
+def camera_connected() -> bool:
+    return bool(list(Path("/dev/v4l/by-id").glob("*-video-index0")) or list(Path("/dev").glob("video*")))
 
+
+def worker_command(settings: dict) -> list[str]:
     wheel = next((APP_ROOT / "python" / "worker-wheels").glob("mediapipe-0.10.18-*.whl"))
-    command = [
+    return [
         "uv", "run", "--python", "3.12", "--with", str(wheel),
         "python", "-m", "powerglove_vision.vision_app",
         "--receiver", str(settings["receiver"]),
@@ -51,8 +49,19 @@ def main() -> int:
         "--profile", str(settings.get("profile", "bad_street_brawler")),
         "--glove-color", str(settings.get("glove_color", "none")),
         "--camera", str(settings.get("camera", "auto")),
-        "--no-matrix",
+        "--web-host", "127.0.0.1", "--web-port", "8089", "--no-matrix",
     ]
+
+
+def main() -> int:
+    settings = load_device_config()
+    from powerglove_vision.control_server import start_control_server
+    from powerglove_vision.matrix import MatrixStatus, UnoQMatrix
+    control_server, control = start_control_server(CONFIG_PATH)
+    matrix = UnoQMatrix()
+    matrix.set_status(MatrixStatus.LOADING)
+    matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
+
     environment = dict(os.environ)
     environment.update({
         "PYTHONPATH": str(APP_ROOT / "src"),
@@ -63,16 +72,31 @@ def main() -> int:
     # Keep App Lab alive without a camera. The worker is retried so plugging a
     # UVC camera in later is enough; no reboot or terminal command is needed.
     while True:
-        if not list(Path("/dev/v4l/by-id").glob("*-video-index0")):
+        settings = load_device_config()
+        matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
+        if not camera_connected():
+            control.update_supervisor(camera=False, running=False, error="No UVC camera detected")
             matrix.set_status(MatrixStatus.ERROR)
-            time.sleep(2)
+            time.sleep(1)
             continue
         matrix.set_status(MatrixStatus.LOADING)
-        process = subprocess.Popen(command, cwd=APP_ROOT, env=environment)
+        revision = control.revision
+        process = subprocess.Popen(worker_command(settings), cwd=APP_ROOT, env=environment)
+        control.update_supervisor(camera=True, running=True)
+        configuration_changed = False
         while process.poll() is None:
+            if revision != control.revision:
+                configuration_changed = True
+                process.terminate()
+                try:
+                    process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                break
             try:
-                with urllib.request.urlopen("http://127.0.0.1:8088/status", timeout=0.3) as response:
+                with urllib.request.urlopen("http://127.0.0.1:8089/status", timeout=0.3) as response:
                     status = json.load(response)
+                control.update_worker(status)
                 active_profile = status.get("active_profile")
                 matrix.set_profile(None if active_profile == "off" else active_profile)
                 matrix.set_status(
@@ -83,7 +107,12 @@ def main() -> int:
             except (OSError, ValueError, TimeoutError):
                 pass
             time.sleep(0.25)
+        if configuration_changed:
+            matrix.set_status(MatrixStatus.LOADING)
+            control.update_supervisor(camera=camera_connected(), running=False)
+            continue
         matrix.set_status(MatrixStatus.ERROR)
+        control.update_supervisor(camera=camera_connected(), running=False, error="Tracker stopped")
         time.sleep(5)
 
 

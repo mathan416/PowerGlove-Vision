@@ -139,8 +139,20 @@ Its shape is:
 }
 ```
 
-Use App Lab's file view to open the app's `data/device.json`. If needed, open
-an App Lab shell and locate it with:
+From a phone or computer on the same network, open:
+
+```text
+http://UNO-Q-HOSTNAME.local:8088/setup
+```
+
+Enter the RetroPie console hostname, controller port, startup profile, camera,
+and optional glove colour, then choose **Save & restart tracker**. Use **Test
+console name** to confirm that the name resolves on the local network. The setup
+page stays available when the camera is disconnected.
+
+The page never displays the private token. For the initial RetroPie pairing,
+use App Lab's file view to open the app's `data/device.json`. If needed, open an
+App Lab shell and locate it with:
 
 ```sh
 find /home/arduino/ArduinoApps -path '*/data/device.json' -print
@@ -150,14 +162,14 @@ Copy the value of `token` somewhere private; it must be installed on RetroPie
 in Part 2. Do not commit `data/device.json`, paste its token into an issue, or
 include it in a shared application export.
 
-Change `receiver` if the console is not named `retropieconsole.local`.
-Supported `glove_color` values are `none`, `white`, and `black`. Leave
-`camera` as `auto` unless troubleshooting a system with several USB cameras.
-Stop and restart the app after editing this file.
+You can edit this JSON file directly as a recovery option. Supported
+`glove_color` values are `none`, `white`, and `black`. Leave `camera` as `auto`
+unless troubleshooting a system with several USB cameras. Browser changes
+restart the tracker automatically; manual JSON changes require an app restart.
 
-The planned `/setup` pairing wizard is not implemented yet. For the current
-release, `data/device.json` and `/etc/powerglove/token` are the authoritative
-pairing settings.
+If you select **Generate a new private pairing token** in the browser, copy the
+new value from `data/device.json` into `/etc/powerglove/token` on RetroPie and
+restart `powerglove-receiver.service` before playing.
 
 ## Part 2: Install the RetroPie receiver
 
@@ -428,11 +440,12 @@ Once the camera and tracker are active, open this page from another device on
 the same network:
 
 ```text
-http://UNO-Q-HOSTNAME.local:8088/
+http://UNO-Q-HOSTNAME.local:8088/debug
 ```
 
-The page displays the camera overlay, game, active profile, hand-tracking
-state, and profile source.
+The dashboard displays the camera overlay, game, active profile, tracking
+confidence, controller buttons, axes, finger curl, recent gesture events, and
+profile source. The root URL redirects here.
 
 1. Stand where the player will normally stand.
 2. Keep one hand fully visible with some space around it.
@@ -444,9 +457,9 @@ For a white glove, use a darker background. For a black glove, use a lighter
 background. Strong front lighting and a simple background are more important
 than glove color.
 
-The status page is started by the camera worker. It is therefore unavailable
-while no usable camera is connected; the blinking matrix X is the no-camera
-indicator in that state.
+The setup and dashboard service starts before the camera worker, so both pages
+remain available while no usable camera is connected. The dashboard reports
+the missing camera and the matrix blinks X until one is attached.
 
 ## Firewall rules
 

@@ -84,15 +84,18 @@ fixed addresses: the default console name is `retropieconsole.local`, and the
 console can address the board by its `.local` name even if the router later
 assigns a different IP address.
 
-For the first public release, add a setup page at `/setup` that edits the
-persistent `data/device.json`: console hostname, controller port, camera,
-white/black/no-glove hint, and a **Test connection** button. A **Pair console**
-action should generate a one-time code or QR payload containing the two local
-hostnames and a fresh shared token; the RetroPie installer can consume it and
-write its protected token file. The existing status page should then show
-`Searching`, `Paired`, `Console online`, or `Packets acknowledged` without ever
-displaying the saved token. This keeps normal setup in a browser while leaving
-the JSON file as a recoverable expert option.
+Open `http://<uno-q-name>.local:8088/setup` for the friendly setup page. It edits
+the persistent `data/device.json` and can change the console hostname,
+controller port, startup profile, camera, and white/black/no-glove tracking
+hint. **Test console name** verifies local DNS/mDNS resolution. **Save & restart
+tracker** applies the new settings without rebooting the UNO Q.
+
+The pairing token is deliberately write-only in the browser. The page reports
+whether a token exists but never sends its value to the browser or includes it
+in dashboard status. Advanced users can still copy it from `data/device.json`
+to the protected `/etc/powerglove/token` file on RetroPie. Selecting **Generate
+a new private pairing token** invalidates the old pairing, so update RetroPie
+immediately afterward.
 
 ```sh
 python3 -m venv .venv
@@ -116,9 +119,12 @@ RetroPie on UDP port 55356. A change first releases every virtual control,
 starts a new packet session, changes the mapping, begins neutral-position
 calibration, and acknowledges the selected profile.
 
-Open `http://<uno-q-address>:8088` from another machine. The page shows the
-camera overlay, current output, tracking confidence, and a **Center hand**
-button. Calibration also begins automatically at startup.
+Open `http://<uno-q-name>.local:8088/debug` from another machine. The live
+dashboard shows the camera overlay, active game/profile, tracking confidence,
+D-pad and button output, axes, finger curl, recent gesture events, and a
+**Center hand** button. It remains available even when the camera is unplugged.
+Calibration also begins automatically at tracker startup. The shorter root URL
+redirects to this dashboard.
 
 Start and Select use poses held for about 0.7 seconds, then emit a short button
 pulse. While either menu pose is forming, ordinary attack controls are
