@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Iain Bennett. All rights reserved.
 from __future__ import annotations
 
 import math

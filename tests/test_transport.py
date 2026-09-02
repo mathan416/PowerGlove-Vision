@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Iain Bennett. All rights reserved.
 import unittest
 
 from powerglove_vision.model import ControllerState

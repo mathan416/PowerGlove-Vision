@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Iain Bennett. All rights reserved.
 import json
 import tempfile
 import unittest
