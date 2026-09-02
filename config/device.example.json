@@ -1,0 +1,7 @@
+{
+  "receiver": "retropieconsole.local",
+  "token": "replace-with-the-same-long-random-value-used-by-the-receiver",
+  "profile": "bad_street_brawler",
+  "glove_color": "none",
+  "camera": "auto"
+}

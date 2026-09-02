@@ -1,0 +1,16 @@
+{
+  "games": {
+    "Bad Street Brawler (USA).nes": "bad_street_brawler",
+    "Bad Street Brawler (USA).zip": "bad_street_brawler",
+    "Bad Street Brawler (USA).7z": "bad_street_brawler",
+    "Super Glove Ball (USA).nes": "super_glove_ball",
+    "Super Glove Ball (USA).zip": "super_glove_ball",
+    "Super Glove Ball (USA).7z": "super_glove_ball",
+    "Joust (USA).nes": "program_b",
+    "Gyruss (USA).nes": "program_c",
+    "Defender II (USA).nes": "program_e",
+    "Sesame Street 1-2-3 (USA).nes": "program_f",
+    "Gun.Smoke (USA).nes": "program_g",
+    "Knight Rider (USA).nes": "program_i"
+  }
+}

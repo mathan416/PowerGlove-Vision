@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "powerglove-vision"
+version = "0.1.0"
+description = "Camera-only Power Glove-inspired controller for UNO Q and RetroPie"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+vision = [
+  "mediapipe>=1.0.1,<2",
+  "numpy>=1.24",
+  "opencv-python-headless>=4.8",
+]
+receiver = ["evdev>=1.7"]
+dev = []
+
+[project.scripts]
+powerglove-vision = "powerglove_vision.vision_app:main"
+powerglove-receiver = "powerglove_vision.receiver:main"
+powerglove-profile = "powerglove_vision.profile_control:main"
+powerglove-retropie-hook = "powerglove_vision.retropie_hook:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
