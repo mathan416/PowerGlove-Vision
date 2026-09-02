@@ -1,13 +1,13 @@
 # Copyright (c) 2026 Iain Bennett. All rights reserved.
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "powerglove-vision"
 version = "0.1.0"
 description = "Camera-only Power Glove-inspired controller for UNO Q and RetroPie"
-requires-python = ">=3.10"
+requires-python = ">=3.7"
 
 [project.optional-dependencies]
 vision = [

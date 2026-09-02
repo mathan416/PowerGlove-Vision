@@ -1,0 +1,15 @@
+# Copyright (c) 2026 Iain Bennett. All rights reserved.
+[Unit]
+Description=PowerGlove Vision virtual gamepad receiver
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/powerglove/bin/powerglove-receiver --listen 0.0.0.0 --token-file /etc/powerglove/token
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

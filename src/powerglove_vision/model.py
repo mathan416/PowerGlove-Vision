@@ -9,7 +9,7 @@ AXIS_MIN = -32767
 AXIS_MAX = 32767
 
 
-@dataclass(slots=True)
+@dataclass
 class HandObservation:
     """Normalized measurements from one video frame."""
 
@@ -37,7 +37,7 @@ class HandObservation:
         }
 
 
-@dataclass(slots=True)
+@dataclass
 class Calibration:
     palm_x: float
     palm_y: float
@@ -45,7 +45,7 @@ class Calibration:
     roll: float
 
 
-@dataclass(slots=True)
+@dataclass
 class ControllerState:
     sequence: int
     timestamp: float
@@ -89,4 +89,3 @@ class ControllerState:
             buttons={"a": False, "b": False, "start": False, "select": False},
             fingers={name: 0 for name in ("thumb", "index", "middle", "ring", "pinky")},
         )
-

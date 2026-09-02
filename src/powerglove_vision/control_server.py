@@ -252,7 +252,10 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     self.send_header("Content-Type", response.headers.get("Content-Type", "multipart/x-mixed-replace; boundary=frame"))
                     self.send_header("Cache-Control", "no-store")
                     self.end_headers()
-                    while chunk := response.read(16384):
+                    while True:
+                        chunk = response.read(16384)
+                        if not chunk:
+                            break
                         self.wfile.write(chunk)
             except (OSError, urllib.error.URLError, BrokenPipeError, ConnectionResetError):
                 if not self.wfile.closed:

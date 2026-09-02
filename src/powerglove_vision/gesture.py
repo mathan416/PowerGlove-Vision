@@ -13,7 +13,7 @@ GAME_PROFILES = ("bad_street_brawler", "super_glove_ball")
 SUPPORTED_PROFILES = PROGRAM_PROFILES + GAME_PROFILES
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class GestureConfig:
     move_on: float = 0.38
     move_off: float = 0.24

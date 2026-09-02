@@ -21,6 +21,7 @@ optional tracking aid and contains no electronics.
 
 - An Arduino UNO Q. The 4 GB model is recommended.
 - A Raspberry Pi running RetroPie and RetroArch.
+- Python 3.7 or newer on the RetroPie console.
 - A UVC-compatible USB camera. A Razer Kiyo should appear as a standard UVC
   camera.
 - An externally powered USB-C hub or dock for the UNO Q and camera.
@@ -217,6 +218,15 @@ sudo /opt/powerglove/bin/python -m pip install -e '/opt/powerglove-src[receiver]
 If the repository is private or was copied to the Pi another way, substitute
 its local path for `/opt/powerglove-src` in the last command.
 
+On older RetroPie releases that still use Python 3.7, the packaged `evdev`
+module and compatibility launchers avoid relying on an obsolete PyPI toolchain:
+
+```sh
+sudo apt install -y python3-evdev
+sudo install -d -m 0755 /opt/powerglove/bin
+sudo install -m 0755 /opt/powerglove-src/retropie/bin/* /opt/powerglove/bin/
+```
+
 ### 3. Install the pairing token and configuration
 
 Create the protected configuration directory:
@@ -225,11 +235,13 @@ Create the protected configuration directory:
 sudo install -d -m 0755 /etc/powerglove
 sudo install -m 0644 /opt/powerglove-src/config/games.json /etc/powerglove/games.json
 sudo install -m 0644 /opt/powerglove-src/config/launcher.example.json /etc/powerglove/launcher.json
-sudo install -m 0600 /dev/null /etc/powerglove/token
+sudo install -o root -g input -m 0640 /dev/null /etc/powerglove/token
 sudo nano /etc/powerglove/token
 ```
 
-Paste only the UNO Q token value into the final file, save it, and exit. There
+Paste only the UNO Q token value into the final file, save it, and exit. The
+`input` group permits RetroPie's unprivileged game-launch hooks to read the
+token while keeping it unavailable to other users. There
 must be no quotation marks. A trailing newline is harmless.
 
 Edit the launcher settings:
@@ -260,7 +272,7 @@ Stop any already-running receiver, then start the diagnostic receiver:
 ```sh
 sudo /opt/powerglove/bin/powerglove-receiver \
   --listen 0.0.0.0 \
-  --token "$(sudo cat /etc/powerglove/token)" \
+  --token-file /etc/powerglove/token \
   --dry-run
 ```
 
@@ -283,7 +295,7 @@ After=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/bin/sh -c 'exec /opt/powerglove/bin/powerglove-receiver --listen 0.0.0.0 --token "$(cat /etc/powerglove/token)"'
+ExecStart=/opt/powerglove/bin/powerglove-receiver --listen 0.0.0.0 --token-file /etc/powerglove/token
 Restart=on-failure
 RestartSec=2
 
@@ -324,6 +336,15 @@ The receiver creates a Linux gamepad named `PowerGlove Vision`.
 The extra `BTN_TR2` input carries the Bad Street Brawler glove-zap event. A
 standard NES core cannot necessarily use that native glove-only action; it is
 retained for the planned native Nestopia integration.
+
+The repository also includes a ready-made udev autoconfiguration file at
+`retropie/retroarch/PowerGlove Vision.cfg`. Install it when automatic mapping
+is preferred:
+
+```sh
+sudo install -m 0644 '/opt/powerglove-src/retropie/retroarch/PowerGlove Vision.cfg' \
+  '/opt/retropie/configs/all/retroarch/autoconfig/PowerGlove Vision.cfg'
+```
 
 If an arcade cabinet already combines several controllers, add PowerGlove
 Vision to the existing input merger instead of replacing the cabinet's primary

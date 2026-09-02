@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hmac
 import socket
+from pathlib import Path
 
 from .transport import MAX_PACKET_BYTES, decode_state
 
@@ -77,7 +78,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Receive PowerGlove Vision as a Linux gamepad")
     parser.add_argument("--listen", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=55355)
-    parser.add_argument("--token", required=True)
+    tokens = parser.add_mutually_exclusive_group(required=True)
+    tokens.add_argument("--token")
+    tokens.add_argument("--token-file", type=Path)
     parser.add_argument("--timeout-ms", type=int, default=250)
     parser.add_argument("--dry-run", action="store_true")
     return parser
@@ -85,6 +88,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    token = args.token if args.token is not None else args.token_file.read_text().strip()
+    if len(token) < 16:
+        raise ValueError("receiver token must contain at least 16 characters")
     device = DryRunDevice() if args.dry_run else UInputDevice()
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
@@ -101,7 +107,7 @@ def main() -> int:
                 except (ValueError, UnicodeError):
                     continue
                 supplied_token = state.get("token")
-                if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, args.token):
+                if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, token):
                     continue
                 session = state.get("session")
                 if isinstance(session, str) and session != last_session:

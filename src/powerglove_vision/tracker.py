@@ -38,13 +38,13 @@ def _curl(a: Any, b: Any, c: Any) -> float:
     return max(0.0, min(1.0, (math.pi - _angle(a, b, c)) / (2 * math.pi / 3)))
 
 
-@dataclass(slots=True)
+@dataclass
 class TrackingResult:
     observation: HandObservation
     frame: Any
 
 
-@dataclass(slots=True)
+@dataclass
 class _Point:
     x: float
     y: float

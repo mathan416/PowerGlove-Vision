@@ -46,7 +46,7 @@ def read_token(token: str | None, token_file: Path | None) -> str:
     return value
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class ProfileRequest:
     request_id: str
     profile: str | None
