@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="760">
+</p>
+
 # PowerGlove Vision
 
 Camera-only hand tracking for an Arduino UNO Q and a RetroPie arcade cabinet.

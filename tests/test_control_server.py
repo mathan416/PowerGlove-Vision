@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from powerglove_vision.control_server import ControlState
+from powerglove_vision.control_server import DASHBOARD, LOGO_PATH, SETUP, ControlState
 
 
 class ControlStateTests(unittest.TestCase):
@@ -42,6 +42,12 @@ class ControlStateTests(unittest.TestCase):
                 "receiver": "arcade.local", "port": 55355,
                 "profile": "shell_command", "glove_color": "none", "camera": "auto",
             })
+
+    def test_logo_is_available_to_both_web_pages(self):
+        self.assertTrue(LOGO_PATH.is_file())
+        logo_url = b"/assets/powerglove-vision-logo.png"
+        self.assertIn(logo_url, DASHBOARD)
+        self.assertIn(logo_url, SETUP)
 
 
 if __name__ == "__main__":

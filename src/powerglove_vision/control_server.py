@@ -16,6 +16,7 @@ from typing import Any
 
 
 WORKER_URL = "http://127.0.0.1:8089"
+LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "powerglove-vision-logo.png"
 PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
     *(f"program_{letter}" for letter in "abcdefghi"),
@@ -29,8 +30,8 @@ def _page(title: str, content: str, script: str) -> bytes:
 <style>
 :root{{--ink:#f7f8ff;--muted:#a6aec5;--panel:#161a25;--line:#303748;--blue:#3d75ff;--cyan:#36dbe8;--red:#e64047;--green:#54e389}}
 *{{box-sizing:border-box}}body{{margin:0;color:var(--ink);font:16px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:#090b11 radial-gradient(circle at 75% 0,#182449 0,transparent 38%)}}
-header,main{{width:min(1100px,calc(100% - 32px));margin:auto}}header{{display:flex;align-items:center;justify-content:space-between;padding:24px 0 18px;border-bottom:2px solid var(--line)}}
-.brand{{font:900 clamp(20px,4vw,30px)/1 system-ui;letter-spacing:-1px}}.brand b{{color:var(--red)}}nav a{{color:var(--ink);text-decoration:none;margin-left:18px}}nav a:hover{{color:var(--cyan)}}
+header,main{{width:min(1100px,calc(100% - 32px));margin:auto}}header{{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px 0 12px;border-bottom:2px solid var(--line)}}
+.brand{{display:block;width:clamp(230px,38vw,410px);max-width:70%}}.brand img{{display:block;width:100%;height:auto}}nav a{{color:var(--ink);text-decoration:none;margin-left:18px}}nav a:hover{{color:var(--cyan)}}
 main{{padding:26px 0 50px}}h1{{font:900 clamp(28px,6vw,54px)/1 system-ui;margin:0 0 8px;letter-spacing:-2px}}h2{{font:800 20px system-ui;margin:0 0 14px}}p.lead{{color:var(--muted);max-width:720px;margin:0 0 26px}}
 .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}}.card{{background:linear-gradient(145deg,#1b2030,#11141d);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 16px 40px #0005}}
 .label{{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px}}.value{{font:800 21px system-ui;margin-top:6px;overflow-wrap:anywhere}}.good{{color:var(--green)}}.warn{{color:#ffd75e}}.bad{{color:#ff6f75}}
@@ -40,8 +41,8 @@ main{{padding:26px 0 50px}}h1{{font:900 clamp(28px,6vw,54px)/1 system-ui;margin:
 .bits{{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}}.bit{{padding:6px 9px;border:1px solid var(--line);border-radius:7px;color:var(--muted)}}.bit.on{{color:#081109;background:var(--green);border-color:var(--green)}}
 .events{{height:170px;overflow:auto;background:#080a10;border-radius:9px;padding:12px;color:#c9d2ec;font-size:13px}}.events div{{padding:3px 0;border-bottom:1px solid #171b25}}
 form{{display:grid;gap:16px}}.formgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}}label{{display:grid;gap:7px;color:var(--muted);font-size:13px}}input,select{{width:100%;background:#090b11;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;font:16px inherit}}input:focus,select:focus{{outline:2px solid var(--blue);border-color:transparent}}.check{{display:flex;align-items:center;gap:10px}}.check input{{width:auto}}.notice{{min-height:24px;color:var(--cyan)}}code{{color:var(--cyan)}}
-@media(max-width:600px){{header{{align-items:flex-start}}nav{{display:grid;gap:7px}}nav a{{margin:0}}}}
-</style></head><body><header><div class=brand><b>POWER</b>GLOVE VISION</div><nav><a href=/debug>Dashboard</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
+@media(max-width:600px){{header{{align-items:center}}.brand{{max-width:68%}}nav{{display:grid;gap:7px}}nav a{{margin:0}}}}
+</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
 
 
 DASHBOARD = _page(
@@ -208,6 +209,11 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 _send(self, 200, DASHBOARD, "text/html; charset=utf-8")
             elif path == "/setup":
                 _send(self, 200, SETUP, "text/html; charset=utf-8")
+            elif path == "/assets/powerglove-vision-logo.png":
+                try:
+                    _send(self, 200, LOGO_PATH.read_bytes(), "image/png")
+                except OSError:
+                    self.send_error(404)
             elif path == "/status":
                 _send(self, 200, json.dumps(state.snapshot()).encode(), "application/json")
             elif path == "/api/config":

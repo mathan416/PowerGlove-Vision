@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="620">
+</p>
+
 # Bad Street Brawler's Power Glove Programs
 
 Bad Street Brawler does more than map its own controls. Its cartridge contains

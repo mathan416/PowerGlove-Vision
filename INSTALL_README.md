@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
+</p>
+
 # PowerGlove Vision installation
 
 This guide installs every part of PowerGlove Vision:
