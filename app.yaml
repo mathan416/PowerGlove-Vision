@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Iain Bennett. All rights reserved.
+# Copyright (c) 2026 Iain Bennett
 name: PowerGlove Vision
 description: Camera-only Power Glove controller for UNO Q and RetroPie
 ports:

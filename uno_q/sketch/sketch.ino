@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Iain Bennett. All rights reserved.
+// Copyright (c) 2026 Iain Bennett
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
 

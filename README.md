@@ -234,3 +234,11 @@ python -m unittest discover -s tests -v
 The code intentionally separates observations, gesture mapping, transport, and
 Linux input output. Recorded-camera replay and a native Nestopia adapter can be
 added without changing the gesture engine.
+
+## License
+
+PowerGlove Vision is open source under the [MIT License](LICENSE). You may use,
+modify, and distribute it subject to the license terms. Nintendo, NES, Mattel,
+Power Glove, and other referenced product names and marks belong to their
+respective owners; this independent project is not affiliated with or endorsed
+by them.

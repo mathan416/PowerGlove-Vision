@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Iain Bennett. All rights reserved.
+# Copyright (c) 2026 Iain Bennett
 import unittest
 
 from powerglove_vision.gesture import GestureConfig, GestureEngine

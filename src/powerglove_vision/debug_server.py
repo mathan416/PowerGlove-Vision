@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Iain Bennett. All rights reserved.
+# Copyright (c) 2026 Iain Bennett
 from __future__ import annotations
 
 import json

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Iain Bennett. All rights reserved.
+# Copyright (c) 2026 Iain Bennett
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
@@ -7,7 +7,9 @@ build-backend = "setuptools.build_meta"
 name = "powerglove-vision"
 version = "0.1.0"
 description = "Camera-only Power Glove-inspired controller for UNO Q and RetroPie"
+license = {file = "LICENSE"}
 requires-python = ">=3.7"
+classifiers = ["License :: OSI Approved :: MIT License"]
 
 [project.optional-dependencies]
 vision = [

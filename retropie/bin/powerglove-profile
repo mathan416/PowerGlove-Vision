@@ -1,4 +1,4 @@
 #!/bin/sh
-# Copyright (c) 2026 Iain Bennett. All rights reserved.
+# Copyright (c) 2026 Iain Bennett
 export PYTHONPATH=/opt/powerglove-src/src
 exec /usr/bin/python3 -m powerglove_vision.profile_control "$@"
