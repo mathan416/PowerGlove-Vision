@@ -17,6 +17,8 @@ APP_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = APP_ROOT / "data" / "device.json"
 sys.path.insert(0, str(APP_ROOT / "src"))
 
+from powerglove_vision.camera import camera_connected
+
 
 def load_device_config() -> dict:
     if CONFIG_PATH.exists():
@@ -33,10 +35,6 @@ def load_device_config() -> dict:
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(settings, indent=2) + "\n")
     return settings
-
-
-def camera_connected() -> bool:
-    return bool(list(Path("/dev/v4l/by-id").glob("*-video-index0")) or list(Path("/dev").glob("video*")))
 
 
 def worker_command(settings: dict) -> list[str]:
@@ -64,6 +62,9 @@ def main() -> int:
     matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
 
     environment = dict(os.environ)
+    # App Lab uses a bootstrap virtual environment. The vision worker manages
+    # its own Python runtime with uv, so inheriting this emits a false warning.
+    environment.pop("VIRTUAL_ENV", None)
     environment.update({
         "PYTHONPATH": str(APP_ROOT / "src"),
         "UV_CACHE_DIR": str(APP_ROOT / "data" / "uv-cache"),
@@ -75,7 +76,8 @@ def main() -> int:
     while True:
         settings = load_device_config()
         matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
-        if not camera_connected():
+        camera_setting = str(settings.get("camera", "auto"))
+        if not camera_connected(camera_setting):
             control.update_supervisor(camera=False, running=False, error="No UVC camera detected")
             matrix.set_status(MatrixStatus.ERROR)
             time.sleep(1)
@@ -110,10 +112,12 @@ def main() -> int:
             time.sleep(0.25)
         if configuration_changed:
             matrix.set_status(MatrixStatus.LOADING)
-            control.update_supervisor(camera=camera_connected(), running=False)
+            control.update_supervisor(camera=camera_connected(camera_setting), running=False)
             continue
         matrix.set_status(MatrixStatus.ERROR)
-        control.update_supervisor(camera=camera_connected(), running=False, error="Tracker stopped")
+        available = camera_connected(camera_setting)
+        error = "Camera disconnected; waiting for it to return" if not available else "Camera stopped responding; retrying"
+        control.update_supervisor(camera=available, running=False, error=error)
         time.sleep(5)
 
 

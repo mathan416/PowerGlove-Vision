@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from pathlib import Path
 
+from .camera import CameraUnavailableError, camera_candidates
 from .debug_server import SharedDebugState, start_debug_server
 from .gesture import GestureConfig, GestureEngine
 from .matrix import MatrixStatus, UnoQMatrix
@@ -59,10 +61,10 @@ def main() -> int:
         engine: GestureEngine | None = GestureEngine(args.profile, _load_config(args.profile, args.config))
         current_profile: str | None = args.profile
         current_game = "Startup default"
-        candidates = range(10) if args.camera == "auto" else (int(args.camera),)
+        candidates = camera_candidates(args.camera)
         capture = None
-        for camera_index in candidates:
-            candidate = cv2.VideoCapture(camera_index)
+        for camera_device in candidates:
+            candidate = cv2.VideoCapture(camera_device)
             candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
             candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
             candidate.set(cv2.CAP_PROP_FPS, args.fps)
@@ -72,12 +74,16 @@ def main() -> int:
                 break
             candidate.release()
         if capture is None:
-            raise RuntimeError(f"cannot find a usable camera ({args.camera})")
+            raise CameraUnavailableError(f"camera '{args.camera}' is unavailable; waiting for a USB camera")
         tracker = MediaPipeTracker(args.glove_color, mirror=not args.no_mirror, model_path=args.model)
         sender = UdpSender(args.receiver, args.port, args.token)
         profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
         shared = SharedDebugState()
         server = start_debug_server(shared, args.web_host, args.web_port)
+    except CameraUnavailableError as exc:
+        matrix.set_status(MatrixStatus.ERROR)
+        print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
+        return 2
     except Exception:
         matrix.set_status(MatrixStatus.ERROR)
         raise
@@ -86,11 +92,16 @@ def main() -> int:
     matrix.set_profile(current_profile)
 
     try:
+        read_failures = 0
         while True:
             ok, frame = capture.read()
             if not ok:
-                time.sleep(0.02)
+                read_failures += 1
+                if read_failures >= max(10, args.fps * 2):
+                    raise CameraUnavailableError("camera stopped delivering frames; reconnecting")
+                time.sleep(0.05)
                 continue
+            read_failures = 0
             request = profile_server.take()
             if request is not None:
                 if engine is not None:
@@ -142,6 +153,10 @@ def main() -> int:
     except KeyboardInterrupt:
         matrix.set_status(MatrixStatus.OFF)
         return 0
+    except CameraUnavailableError as exc:
+        matrix.set_status(MatrixStatus.ERROR)
+        print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
+        return 2
     except Exception:
         matrix.set_status(MatrixStatus.ERROR)
         raise
