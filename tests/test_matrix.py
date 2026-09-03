@@ -47,6 +47,15 @@ class MatrixTests(unittest.TestCase):
             ("set_powerglove_profile", 0),
         ])
 
+    def test_pairing_identity_and_pin_are_sent_to_physical_matrix(self):
+        calls = []
+        matrix = UnoQMatrix(call=lambda *args: calls.append(args))
+        self.assertTrue(matrix.show_pairing("1A2B3C4", "001234"))
+        self.assertEqual(calls[-1], ("set_powerglove_pairing", 0x1A2B3C4, 1234))
+        self.assertEqual(matrix.last_status, MatrixStatus.PAIRING)
+        matrix.set_status(MatrixStatus.ERROR)
+        self.assertEqual(len(calls), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

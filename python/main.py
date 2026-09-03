@@ -62,10 +62,10 @@ def worker_command(settings: dict, controller_enabled: bool = False) -> list[str
 
 def main() -> int:
     settings = load_device_config()
-    from powerglove_vision.control_server import start_control_server
     from powerglove_vision.matrix import MatrixStatus, UnoQMatrix
-    control_server, control = start_control_server(CONFIG_PATH)
     matrix = UnoQMatrix()
+    from powerglove_vision.control_server import start_control_server
+    control_server, control = start_control_server(CONFIG_PATH, pairing_display=matrix.show_pairing)
     matrix.set_status(MatrixStatus.LOADING)
     matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
 

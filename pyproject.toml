@@ -25,6 +25,7 @@ powerglove-vision = "powerglove_vision.vision_app:main"
 powerglove-receiver = "powerglove_vision.receiver:main"
 powerglove-profile = "powerglove_vision.profile_control:main"
 powerglove-retropie-hook = "powerglove_vision.retropie_hook:main"
+powerglove-pair = "powerglove_vision.pairing:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

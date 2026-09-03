@@ -94,6 +94,26 @@ controller port, startup profile, camera, and white/black/no-glove tracking
 hint. **Test console name** verifies local DNS/mDNS resolution. **Save & restart
 tracker** applies the new settings without rebooting the UNO Q.
 
+PowerGlove Vision always boots with controller transmission stopped. Use
+**Start controller** or **Stop controller** on either the setup page or debug
+dashboard. Vision remains active while stopped, and stopping releases every
+virtual input without restarting the camera.
+
+Secure pairing is available at
+`https://<uno-q-name>.local:8443/setup`. The UNO Q creates a local certificate
+on first boot. Preparing either pairing method makes the physical LED matrix
+scroll an `ID` (the first seven characters of the certificate's SHA-256
+fingerprint) followed by a six-digit `PIN`. Compare the `ID` with the
+certificate details shown by the browser, then enter the `PIN`. This provides
+physical confirmation before the controller secret can leave the UNO Q.
+Username/password pairing uses the credentials for one SSH operation and never
+stores them. The password field remains disabled until confirmation begins.
+Alternatively, run `sudo /opt/powerglove/bin/powerglove-pair` on RetroPie and
+enter its 20-character, two-minute code on the secure setup page. That code
+authenticates an ephemeral RetroPie certificate, carries the token through
+pinned TLS, expires after one use, and stops accepting attempts after five
+failures.
+
 The pairing token is deliberately write-only in the browser. The page reports
 whether a token exists but never sends its value to the browser or includes it
 in dashboard status. Advanced users can still copy it from `data/device.json`
@@ -129,6 +149,11 @@ D-pad and button output, axes, finger curl, recent gesture events, and a
 **Center hand** button. It remains available even when the camera is unplugged.
 Calibration also begins automatically at tracker startup. The shorter root URL
 redirects to this dashboard.
+
+Open `http://<uno-q-name>.local:8088/learn` for offline practice. The page
+automatically stops controller transmission, keeps vision active without a
+RetroPie connection, and guides you through hand detection, neutral position,
+directions, finger curl, Start, Select, and the forward-push gesture.
 
 Start and Select use poses held for about 0.7 seconds, then emit a short button
 pulse. While either menu pose is forming, ordinary attack controls are

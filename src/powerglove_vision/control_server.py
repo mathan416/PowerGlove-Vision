@@ -6,17 +6,23 @@ import json
 import os
 import secrets
 import socket
+import ssl
+import subprocess
 import threading
 import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from .pairing import PAIRING_PORT, certificate_identity, generate_certificate, pair_over_ssh, pair_with_code
 
 
 WORKER_URL = "http://127.0.0.1:8089"
+HTTPS_PORT = 8443
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "powerglove-vision-logo.png"
+ASKPASS_PATH = Path(__file__).resolve().parents[2] / "python" / "ssh-askpass"
 PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
     *(f"program_{letter}" for letter in "abcdefghi"),
@@ -43,10 +49,11 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .meter{{height:8px;background:#080a10;border-radius:9px;margin-top:10px;overflow:hidden}}.meter i{{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .15s}}
 .bits{{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}}.bit{{padding:6px 9px;border:1px solid var(--line);border-radius:7px;color:var(--muted)}}.bit.on{{color:#081109;background:var(--green);border-color:var(--green)}}
 .events{{height:170px;overflow:auto;background:#080a10;border-radius:9px;padding:12px;color:#c9d2ec;font-size:13px}}.events div{{padding:3px 0;border-bottom:1px solid #171b25}}
+.learn-grid{{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:14px;align-items:start}}.learn-camera{{position:relative}}.learn-camera .camera{{height:min(55vh,500px);aspect-ratio:auto;margin:0}}.practice-badge{{position:absolute;left:12px;top:12px;padding:7px 10px;border-radius:999px;background:#090b11dc;border:1px solid var(--green);color:var(--green);font-size:12px}}.lesson-number{{color:var(--cyan);font-size:12px;letter-spacing:1.5px;text-transform:uppercase}}.lesson-title{{font:900 clamp(26px,4vw,40px)/1.05 system-ui;margin:8px 0}}.lesson-cue{{color:var(--muted);min-height:72px}}.lesson-result{{border:1px solid var(--line);border-radius:10px;padding:12px;margin:14px 0;background:#090b11}}.lesson-result.ready{{border-color:var(--green);color:var(--green)}}.lesson-progress{{display:flex;gap:5px;margin:14px 0}}.lesson-progress i{{height:7px;flex:1;border-radius:9px;background:#303748}}.lesson-progress i.done{{background:var(--green)}}.lesson-progress i.current{{background:var(--cyan)}}.live-readout{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}}.live-readout>div{{padding:10px;border-radius:9px;background:#090b11;text-align:center}}.live-readout strong{{display:block;font:800 18px system-ui;margin-top:4px}}
 form{{display:grid;gap:16px}}.formgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}}label{{display:grid;gap:7px;color:var(--muted);font-size:13px}}input,select{{width:100%;background:#090b11;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;font:16px inherit}}input:focus,select:focus{{outline:2px solid var(--blue);border-color:transparent}}.check{{display:flex;align-items:center;gap:10px}}.check input{{width:auto}}.notice{{min-height:24px;color:var(--cyan)}}code{{color:var(--cyan)}}
-@media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace{{grid-template-columns:1fr}}.dashboard-workspace .camera{{height:auto;aspect-ratio:4/3}}}}
+@media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera{{height:auto;aspect-ratio:4/3}}}}
 @media(max-width:600px){{header{{align-items:center}}.brand{{max-width:68%}}nav{{display:grid;gap:7px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}}}
-</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
+</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/learn>Learn</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
 
 
 DASHBOARD = _page(
@@ -85,6 +92,36 @@ $('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=
 )
 
 
+LEARN = _page(
+    "Learn gestures",
+    """<h1>Train your hand.</h1><p class='lead dashboard-lead'>Practice gesture recognition without a RetroPie connection. Controller transmission is stopped while this page is open.</p>
+<div class=learn-grid><div class=learn-camera><img class=camera src=/stream alt='Live camera view for gesture practice'><div class=practice-badge>● PRACTICE ONLY</div></div>
+<section class=card><div class=lesson-number id=lesson-number>Lesson 1 of 10</div><div class=lesson-title id=lesson-title>Show your hand</div><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
+<div class=lesson-result id=lesson-result>Waiting for your hand…</div><div class=lesson-progress id=lesson-progress></div>
+<div class=controls><button class=secondary id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button class=secondary id=center type=button>Re-center</button></div>
+<div class=live-readout><div><span class=label>Tracking</span><strong id=tracking>—</strong></div><div><span class=label>Recognized</span><strong id=recognized>None</strong></div><div><span class=label>Confidence</span><strong id=confidence>0%</strong></div></div></section></div>""",
+    r"""const $=id=>document.getElementById(id);
+const lessons=[
+ {title:'Show your hand',cue:'Hold one hand inside the camera frame with your palm facing the camera.',ok:s=>s.detected,result:'Hand found — great!' },
+ {title:'Find neutral',cue:'Keep your palm centered and relaxed. Select Re-center if the direction stays active.',ok:s=>s.detected&&s.calibrated&&!Object.values(s.dpad||{}).some(Boolean),result:'Neutral position learned.'},
+ {title:'Move left',cue:'Move your whole hand left from the centered position.',ok:s=>s.dpad?.left,result:'LEFT recognized.'},
+ {title:'Move right',cue:'Move your whole hand right from the centered position.',ok:s=>s.dpad?.right,result:'RIGHT recognized.'},
+ {title:'Move up',cue:'Raise your whole hand above the centered position.',ok:s=>s.dpad?.up,result:'UP recognized.'},
+ {title:'Move down',cue:'Lower your whole hand below the centered position.',ok:s=>s.dpad?.down,result:'DOWN recognized.'},
+ {title:'Curl your index finger',cue:'Keep your palm visible and curl your index finger toward it.',ok:s=>(s.fingers?.index||0)>=2,result:'Index curl recognized.'},
+ {title:'Make the V sign',cue:'Extend index and middle fingers, close ring and pinky, then hold for a moment. This is START.',ok:s=>s.buttons?.start,result:'START recognized.'},
+ {title:'Give a thumbs-up',cue:'Extend your thumb and close all four fingers, then hold. This is SELECT.',ok:s=>s.buttons?.select,result:'SELECT recognized.'},
+ {title:'Push toward the camera',cue:'Move your open hand closer to the camera in one deliberate push.',ok:s=>s.buttons?.glove_zap||(s.events||[]).includes('glove_zap'),result:'Push recognized — training complete!'}
+];
+let index=0,completed=new Set(),holdStarted=0,lastSequence=-1,advancing=false;
+function action(s){const d=Object.entries(s.dpad||{}).find(([,v])=>v);if(d)return d[0].toUpperCase();const b=Object.entries(s.buttons||{}).find(([,v])=>v);if(b)return b[0].replace('_',' ').toUpperCase();const f=Object.entries(s.fingers||{}).filter(([,v])=>v>=2).map(([k])=>k);return f.length?f.join(' + '):'None'}
+function draw(s={}){const lesson=lessons[index];$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=index===0;$('next').textContent=index===lessons.length-1?'Start again':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
+async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();if(s.sequence===lastSequence)return;lastSequence=s.sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);setTimeout(()=>{if(index<lessons.length-1)index++;holdStarted=0;advancing=false;draw(s)},700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?'Try the gesture shown above.':'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
+$('previous').onclick=()=>{index=Math.max(0,index-1);holdStarted=0;advancing=false;draw()};$('next').onclick=()=>{index=index===lessons.length-1?0:index+1;if(index===0)completed.clear();holdStarted=0;advancing=false;draw()};$('center').onclick=()=>fetch('/calibrate',{method:'POST'});
+fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})}).catch(()=>{});draw();setInterval(update,150);update();""",
+)
+
+
 SETUP = _page(
     "Setup",
     """<h1>Let's get connected.</h1><p class=lead>Tell PowerGlove Vision where your RetroPie console lives. Settings are saved on this UNO Q and the private pairing token is never shown.</p>
@@ -96,16 +133,32 @@ SETUP = _page(
 <label>Camera<input id=camera name=camera placeholder=auto></label></div>
 <label class=check><input id=rotate_token type=checkbox> Generate a new private pairing token</label>
 <div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button><button type=button id=controller-toggle>Start controller</button></div><div class=notice id=notice></div></form></section>
-<div class=grid style='margin-top:14px'><div class=card><div class=label>Pairing</div><div class=value id=paired>Checking…</div><p>Your matching token remains in <code>data/device.json</code> and must also be installed at <code>/etc/powerglove/token</code> on RetroPie.</p></div><div class=card><div class=label>Address</div><div class=value><code>/setup</code></div><p>Bookmark this page at your UNO Q's <code>.local:8088</code> address.</p></div></div>""",
-    r"""const $=id=>document.getElementById(id);async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('paired').textContent=c.paired?'Private token configured':'Not paired';$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
+<div class=grid style='margin-top:14px'><div class=card><div class=label>Pairing</div><div class=value id=paired>Checking…</div><p>Your matching token remains in <code>data/device.json</code> and must also be installed at <code>/etc/powerglove/token</code> on RetroPie.</p></div><div class=card><div class=label>Address</div><div class=value><code>/setup</code></div><p>Bookmark this page at your UNO Q's <code>.local:8088</code> address.</p></div></div>
+<section class=card style='margin-top:14px'><h2>Pair with RetroPie</h2><p id=secure-note></p><div id=pairing-fields class=formgrid>
+<label>RetroPie address<input id=pair-host placeholder=retropieconsole.local autocomplete=off></label>
+<label>RetroPie username<input id=pair-user value=pi autocomplete=username></label>
+<label>RetroPie password<input id=pair-password type=password autocomplete=current-password></label>
+<label>RetroPie one-time code<input id=pair-code placeholder=ABCDE-FGHIJ-23456-7ABCD autocomplete=one-time-code></label>
+<label>UNO Q approval PIN<input id=device-code inputmode=numeric maxlength=6 placeholder='Shown on the LED matrix' autocomplete=one-time-code></label></div>
+<label class=check><input id=verified type=checkbox disabled> I compared the browser certificate fingerprint with the matrix ID</label>
+<div class=controls><button type=button id=pair-ssh>Prepare password pairing</button><button class=secondary type=button id=pair-code-button>Prepare one-time-code pairing</button></div><div class=notice id=pair-notice></div></section>""",
+    r"""const $=id=>document.getElementById(id),secure=location.protocol==='https:';let prepared='';async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('pair-host').value=$('pair-host').value||c.receiver;$('paired').textContent=c.paired?'Private token configured':'Not paired';$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
+$('secure-note').innerHTML=secure?'Pairing requires physical confirmation on the UNO Q. For password pairing, compare the matrix ID with the beginning of the certificate SHA-256 fingerprint shown by your browser before entering the password.':`Pairing is disabled over HTTP. Open <a href="https://${location.hostname}:8443/setup">the secure setup page</a>.`;
+for(const id of ['pair-host','pair-user','pair-code','pair-ssh','pair-code-button'])$(id).disabled=!secure;for(const id of ['pair-password','device-code'])$(id).disabled=true;
 $('form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;$('notice').textContent='Saving…';const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),rotate_token:$('rotate_token').checked};const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const x=await r.json();$('notice').textContent=r.ok?'Saved. The tracker is restarting with the new settings.':x.error||'Could not save.';$('rotate_token').checked=false;b.disabled=false;load()};
 $('test').onclick=async()=>{$('notice').textContent='Testing name…';const r=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver:$('receiver').value.trim()})});const x=await r.json();$('notice').textContent=x.ok?`Found ${x.receiver} at ${x.address}. UDP controller delivery can now be attempted.`:x.error};
-$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;const r=await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});const x=await r.json();$('notice').textContent=r.ok?(enabled?'Controller started.':'Controller stopped and controls released.'):(x.error||'Could not change controller state.');b.disabled=false;load()};""",
+$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;const r=await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});const x=await r.json();$('notice').textContent=r.ok?(enabled?'Controller started.':'Controller stopped and controls released.'):(x.error||'Could not change controller state.');b.disabled=false;load()};
+async function prepare(method,button){button.disabled=true;$('pair-notice').textContent='Showing verification on the UNO Q…';try{const r=await fetch('/api/pair/begin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host:$('pair-host').value.trim(),method})}),x=await r.json();if(!r.ok){$('pair-notice').textContent=x.error||'Could not begin pairing.';return}prepared=method;$('device-code').disabled=false;$('verified').disabled=false;$('pair-notice').textContent=`Matrix: ID ${x.certificate_id}, then PIN. Verify the browser certificate SHA-256 begins ${x.certificate_id}; check the confirmation, enter the PIN, and select Complete pairing.`;button.textContent='Complete pairing';}finally{button.disabled=false;}}
+function resetPairing(){prepared='';$('verified').checked=false;$('verified').disabled=true;$('pair-password').disabled=true;$('device-code').disabled=true;$('pair-ssh').textContent='Prepare password pairing';$('pair-code-button').textContent='Prepare one-time-code pairing';}
+$('verified').onchange=()=>{$('pair-password').disabled=!(prepared==='ssh'&&$('verified').checked);if($('verified').checked)$('device-code').focus();};
+async function pair(method,path,payload,button){if(prepared!==method){await prepare(method,button);return}if(!$('verified').checked){$('pair-notice').textContent='Compare the browser certificate fingerprint with the matrix ID first.';return}button.disabled=true;$('pair-notice').textContent='Pairing…';payload.device_code=$('device-code').value;try{const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),x=await r.json();$('pair-notice').textContent=r.ok?'Paired. RetroPie receiver restarted with the new private token.':x.error||'Pairing failed.';resetPairing();}finally{$('pair-password').value='';$('device-code').value='';button.disabled=false;}}
+$('pair-ssh').onclick=()=>pair('ssh','/api/pair/ssh',{host:$('pair-host').value.trim(),username:$('pair-user').value.trim(),password:$('pair-password').value},$('pair-ssh'));
+$('pair-code-button').onclick=()=>pair('code','/api/pair/code',{host:$('pair-host').value.trim(),code:$('pair-code').value.trim()},$('pair-code-button'));""",
 )
 
 
 class ControlState:
-    def __init__(self, config_path: Path) -> None:
+    def __init__(self, config_path: Path, pairing_display: Callable[[str, str], None] | None = None) -> None:
         self.config_path = config_path
         self.lock = threading.Lock()
         self.revision = 0
@@ -114,7 +167,63 @@ class ControlState:
         self.worker_running = False
         self.last_error: str | None = None
         self._controller_enabled = False
+        self._pairing_display = pairing_display
+        self._pairing_identity = ""
+        self._pairing_session: dict[str, Any] | None = None
+        self._pairing_locked_until = 0.0
         self.started_at = time.time()
+
+    def configure_pairing_identity(self, identity: str) -> None:
+        self._pairing_identity = identity
+
+    def begin_pairing(self, host: str, method: str) -> dict[str, Any]:
+        if not host or len(host) > 253 or any(character.isspace() for character in host):
+            raise ValueError("enter a valid RetroPie hostname or IP address")
+        if method not in {"ssh", "code"}:
+            raise ValueError("choose a supported pairing method")
+        now = time.monotonic()
+        with self.lock:
+            if now < self._pairing_locked_until:
+                raise ValueError("pairing is temporarily locked; wait for the current window to expire")
+            if self._pairing_session and now < self._pairing_session["expires"]:
+                session = self._pairing_session
+                if session["host"] != host or session["method"] != method:
+                    raise ValueError("another pairing window is already active")
+            else:
+                pin = f"{secrets.randbelow(1_000_000):06d}"
+                session = {
+                    "host": host, "method": method, "pin": pin,
+                    "expires": now + 120, "attempts": 0,
+                }
+                self._pairing_session = session
+        if self._pairing_display is not None:
+            displayed = self._pairing_display(self._pairing_identity, str(session["pin"]))
+            if displayed is False:
+                with self.lock:
+                    self._pairing_session = None
+                raise ValueError("the UNO Q matrix is unavailable; physical pairing confirmation is required")
+        else:
+            with self.lock:
+                self._pairing_session = None
+            raise ValueError("the UNO Q matrix is unavailable; physical pairing confirmation is required")
+        return {"certificate_id": self._pairing_identity, "expires_in": max(0, round(session["expires"] - now))}
+
+    def authorize_pairing(self, host: str, method: str, pin: str) -> None:
+        now = time.monotonic()
+        with self.lock:
+            session = self._pairing_session
+            if session is None or now >= session["expires"]:
+                self._pairing_session = None
+                raise ValueError("pairing window expired; prepare pairing again")
+            if session["host"] != host or session["method"] != method:
+                raise ValueError("pairing request does not match the prepared device and method")
+            session["attempts"] += 1
+            if not secrets.compare_digest(str(session["pin"]), pin):
+                if session["attempts"] >= 5:
+                    self._pairing_session = None
+                    self._pairing_locked_until = session["expires"]
+                raise ValueError("UNO Q approval PIN was rejected")
+            self._pairing_session = None
 
     def controller_enabled(self) -> bool:
         with self.lock:
@@ -215,7 +324,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
         def log_message(self, _format: str, *_args: object) -> None:
             return
 
-        def json_body(self) -> dict[str, Any]:
+        def json_body(self, require_json: bool = False) -> dict[str, Any]:
+            if require_json and self.headers.get_content_type() != "application/json":
+                raise ValueError("Content-Type must be application/json")
             length = int(self.headers.get("Content-Length", "0"))
             if length > 8192:
                 raise ValueError("Request is too large.")
@@ -227,6 +338,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 self.send_response(302); self.send_header("Location", "/debug"); self.end_headers()
             elif path == "/debug":
                 _send(self, 200, DASHBOARD, "text/html; charset=utf-8")
+            elif path == "/learn":
+                _send(self, 200, LEARN, "text/html; charset=utf-8")
             elif path == "/setup":
                 _send(self, 200, SETUP, "text/html; charset=utf-8")
             elif path == "/assets/powerglove-vision-logo.png":
@@ -270,6 +383,40 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     except (OSError, urllib.error.URLError):
                         pass
                     _send(self, 200, json.dumps({"controller_enabled": enabled}).encode(), "application/json")
+                elif path == "/api/pair/code":
+                    self.require_secure_pairing()
+                    incoming = self.json_body(require_json=True)
+                    host = str(incoming.get("host", "")).strip()
+                    state.authorize_pairing(host, "code", str(incoming.get("device_code", "")))
+                    pair_with_code(
+                        host, PAIRING_PORT,
+                        str(incoming.get("code", "")), str(state.load_config()["token"]),
+                    )
+                    _send(self, 200, b'{"paired":true}', "application/json")
+                elif path == "/api/pair/ssh":
+                    self.require_secure_pairing()
+                    incoming = self.json_body(require_json=True)
+                    host = str(incoming.get("host", "")).strip()
+                    state.authorize_pairing(host, "ssh", str(incoming.get("device_code", "")))
+                    password = str(incoming.get("password", ""))
+                    try:
+                        pair_over_ssh(
+                            host,
+                            str(incoming.get("username", "")).strip(), password,
+                            str(state.load_config()["token"]),
+                            state.config_path.parent / "ssh" / "known_hosts", ASKPASS_PATH,
+                        )
+                    finally:
+                        password = ""
+                        incoming["password"] = ""
+                    _send(self, 200, b'{"paired":true}', "application/json")
+                elif path == "/api/pair/begin":
+                    self.require_secure_pairing()
+                    incoming = self.json_body(require_json=True)
+                    result = state.begin_pairing(
+                        str(incoming.get("host", "")).strip(), str(incoming.get("method", ""))
+                    )
+                    _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/calibrate":
                     request = urllib.request.Request(WORKER_URL + "/calibrate", method="POST", data=b"")
                     with urllib.request.urlopen(request, timeout=1):
@@ -279,8 +426,14 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     self.send_error(404)
             except (ValueError, json.JSONDecodeError) as exc:
                 _send(self, 400, json.dumps({"error": str(exc)}).encode(), "application/json")
-            except (OSError, urllib.error.URLError) as exc:
+            except PermissionError as exc:
+                _send(self, 426, json.dumps({"error": str(exc)}).encode(), "application/json")
+            except (OSError, urllib.error.URLError, subprocess.SubprocessError) as exc:
                 _send(self, 503, json.dumps({"error": f"Not reachable: {exc}"}).encode(), "application/json")
+
+        def require_secure_pairing(self) -> None:
+            if not isinstance(self.connection, ssl.SSLSocket):
+                raise PermissionError(f"Pairing credentials require HTTPS on port {HTTPS_PORT}.")
 
         def proxy_stream(self) -> None:
             try:
@@ -304,8 +457,42 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
-def start_control_server(config_path: Path, host: str = "0.0.0.0", port: int = 8088) -> tuple[ThreadingHTTPServer, ControlState]:
-    state = ControlState(config_path)
+class ControlServerGroup:
+    def __init__(self, servers: list[ThreadingHTTPServer]) -> None:
+        self.servers = servers
+
+    def shutdown(self) -> None:
+        for server in self.servers:
+            server.shutdown()
+            server.server_close()
+
+
+def start_control_server(
+    config_path: Path,
+    host: str = "0.0.0.0",
+    port: int = 8088,
+    https_port: int = HTTPS_PORT,
+    pairing_display: Callable[[str, str], None] | None = None,
+) -> tuple[ControlServerGroup, ControlState]:
+    state = ControlState(config_path, pairing_display)
     server = ThreadingHTTPServer((host, port), make_handler(state))
     threading.Thread(target=server.serve_forever, name="control-web", daemon=True).start()
-    return server, state
+    servers = [server]
+    try:
+        tls_directory = config_path.parent / "tls"
+        certificate = tls_directory / "pairing-cert.pem"
+        private_key = tls_directory / "pairing-key.pem"
+        if not certificate.exists() or not private_key.exists():
+            hostname = socket.gethostname().split(".", 1)[0] + ".local"
+            certificate, private_key, _pem = generate_certificate(tls_directory, hostname, days=3650)
+        pem = certificate.read_text()
+        state.configure_pairing_identity(certificate_identity(pem))
+        secure_server = ThreadingHTTPServer((host, https_port), make_handler(state))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certificate, private_key)
+        secure_server.socket = context.wrap_socket(secure_server.socket, server_side=True)
+        threading.Thread(target=secure_server.serve_forever, name="control-https", daemon=True).start()
+        servers.append(secure_server)
+    except (OSError, subprocess.CalledProcessError, ssl.SSLError) as exc:
+        print(f"PowerGlove Vision: secure setup unavailable: {exc}", flush=True)
+    return ControlServerGroup(servers), state

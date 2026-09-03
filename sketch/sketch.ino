@@ -10,11 +10,14 @@ enum PowerGloveStatus {
   PG_READY = 2,
   PG_TRACKING = 3,
   PG_ERROR = 4,
+  PG_PAIRING = 5,
 };
 
 Arduino_LED_Matrix matrix;
 volatile int requestedStatus = PG_LOADING;
 volatile int requestedProfile = 0;
+volatile uint32_t requestedPairingId = 0;
+volatile int requestedPairingPin = 0;
 int drawnStatus = -1;
 int drawnProfile = -1;
 unsigned long nextFrameAt = 0;
@@ -114,6 +117,15 @@ const uint8_t programGlyphs[9][7] = {
 const uint8_t glyphB[7] = {30,17,17,30,17,17,30};
 const uint8_t glyphS[7] = {15,16,16,14,1,1,30};
 const uint8_t glyphG[7] = {14,17,16,23,17,17,14};
+const uint8_t digitGlyphs[10][7] = {
+  {14,17,19,21,25,17,14}, {4,12,4,4,4,4,14},
+  {14,17,1,2,4,8,31}, {30,1,1,14,1,1,30},
+  {2,6,10,18,31,2,2}, {31,16,16,30,1,1,30},
+  {14,16,16,30,17,17,14}, {31,1,2,4,8,8,8},
+  {14,17,17,14,17,17,14}, {14,17,17,15,1,1,14},
+};
+const uint8_t glyphN[7] = {17,25,25,21,19,19,17};
+const uint8_t glyphP[7] = {30,17,17,30,16,16,16};
 
 void drawRows(const char* const rows[8]);
 
@@ -125,6 +137,36 @@ void placeGlyph(uint8_t* pixels, const uint8_t glyph[7], int left, uint8_t brigh
       }
     }
   }
+}
+
+void placeHexGlyph(uint8_t* pixels, uint8_t value, int left) {
+  if (value < 10) {
+    placeGlyph(pixels, digitGlyphs[value], left, 7);
+  } else {
+    placeGlyph(pixels, programGlyphs[value - 10], left, 7);
+  }
+}
+
+void drawPairing(uint8_t frame) {
+  uint8_t pixels[104] = {0};
+  if (frame == 0) {
+    placeGlyph(pixels, programGlyphs[8], 1, 7);  // I
+    placeGlyph(pixels, programGlyphs[3], 7, 7);  // D
+  } else if (frame <= 4) {
+    const int first = (frame - 1) * 2;
+    if (first < 7) placeHexGlyph(pixels, (requestedPairingId >> ((6 - first) * 4)) & 0xF, 1);
+    if (first + 1 < 7) placeHexGlyph(pixels, (requestedPairingId >> ((5 - first) * 4)) & 0xF, 7);
+  } else if (frame == 5) {
+    placeGlyph(pixels, glyphP, 1, 7);
+    placeGlyph(pixels, glyphN, 7, 7);
+  } else {
+    const int first = (frame - 6) * 2;
+    int divisor = 1;
+    for (int i = 0; i < 5 - first; ++i) divisor *= 10;
+    placeGlyph(pixels, digitGlyphs[(requestedPairingPin / divisor) % 10], 1, 7);
+    placeGlyph(pixels, digitGlyphs[(requestedPairingPin / (divisor / 10)) % 10], 7, 7);
+  }
+  matrix.draw(pixels);
 }
 
 void drawProfile(int profile, bool pulse) {
@@ -157,10 +199,16 @@ void drawRows(const char* const rows[8]) {
 }
 
 void set_powerglove_status(int status) {
-  if (status < PG_OFF || status > PG_ERROR) {
+  if (status < PG_OFF || status > PG_PAIRING) {
     status = PG_ERROR;
   }
   requestedStatus = status;
+}
+
+void set_powerglove_pairing(int pairingId, int pairingPin) {
+  requestedPairingId = (uint32_t)pairingId & 0x0FFFFFFF;
+  requestedPairingPin = pairingPin >= 0 && pairingPin <= 999999 ? pairingPin : 0;
+  requestedStatus = PG_PAIRING;
 }
 
 void set_powerglove_profile(int profile) {
@@ -175,6 +223,7 @@ void setup() {
   Bridge.begin();
   Bridge.provide("set_powerglove_status", set_powerglove_status);
   Bridge.provide("set_powerglove_profile", set_powerglove_profile);
+  Bridge.provide("set_powerglove_pairing", set_powerglove_pairing);
 }
 
 void loop() {
@@ -218,5 +267,9 @@ void loop() {
     }
     animationFrame = (animationFrame + 1) % 2;
     nextFrameAt = now + 420;
+  } else if (status == PG_PAIRING) {
+    drawPairing(animationFrame);
+    animationFrame = (animationFrame + 1) % 9;
+    nextFrameAt = now + 650;
   }
 }

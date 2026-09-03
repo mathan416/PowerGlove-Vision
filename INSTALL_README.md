@@ -155,6 +155,27 @@ and optional glove colour, then choose **Save & restart tracker**. Use **Test
 console name** to confirm that the name resolves on the local network. The setup
 page stays available when the camera is disconnected.
 
+Controller delivery starts in the safe **Stopped** state after every app
+launch. The **Start controller** and **Stop controller** buttons on both web
+pages arm or release the virtual gamepad without restarting the camera.
+
+Pairing credentials are never accepted over this HTTP address. Open the secure
+page instead:
+
+```text
+https://UNO-Q-HOSTNAME.local:8443/setup
+```
+
+Before entering a reusable password, choose **Prepare password pairing**. The
+UNO Q matrix repeatedly shows `ID`, the seven-character certificate fingerprint
+prefix, `PN`, and the six digits of a temporary approval PIN. Open the browser's
+certificate details and confirm that its SHA-256 fingerprint starts with the
+same `ID`; do not continue if it differs. Enter the matrix PIN to authorize one
+attempt. The username/password option then uses the credentials for one
+encrypted SSH operation, installs the existing private token, restarts the
+RetroPie receiver, clears the password field, and never writes the password to
+disk or logs.
+
 The page never displays the private token. For the initial RetroPie pairing,
 use App Lab's file view to open the app's `data/device.json`. If needed, open an
 App Lab shell and locate it with:
@@ -227,6 +248,9 @@ sudo install -d -m 0755 /opt/powerglove/bin
 sudo install -m 0755 /opt/powerglove-src/retropie/bin/* /opt/powerglove/bin/
 ```
 
+This also installs `/opt/powerglove/bin/powerglove-pair`, used for password-free
+one-time-code pairing.
+
 ### 3. Install the pairing token and configuration
 
 Create the protected configuration directory:
@@ -264,6 +288,26 @@ example:
 ```
 
 Do not change `port` unless the UNO Q profile port is changed at the same time.
+
+### Optional: pair with a one-time code
+
+After the receiver files are installed, open a terminal on RetroPie and run:
+
+```sh
+sudo /opt/powerglove/bin/powerglove-pair
+```
+
+RetroPie displays a 20-character code valid for two minutes. On the UNO Q's
+HTTPS setup page, enter the RetroPie address and code, then choose **Prepare
+one-time-code pairing**. Verify the matrix certificate ID, enter its six-digit
+approval PIN, and complete pairing. The helper presents an
+ephemeral TLS certificate authenticated by part of the code, accepts the token
+through that pinned encrypted connection, restarts the receiver, and exits.
+The code works once and the helper stops after five rejected attempts.
+
+Allow TCP port `55357` between the UNO Q and RetroPie if the local firewall
+blocks it. The helper is not a permanent network service and listens only while
+the command above is running.
 
 ### 4. Test packets before creating a gamepad
 
@@ -472,6 +516,16 @@ The dashboard displays the camera overlay, game, active profile, tracking
 confidence, controller buttons, axes, finger curl, recent gesture events, and
 profile source. The root URL redirects here.
 
+For guided practice without RetroPie, open:
+
+```text
+http://UNO-Q-HOSTNAME.local:8088/learn
+```
+
+Opening Learn mode automatically stops controller transmission. The camera and
+gesture engine stay active and lead you through ten exercises with live
+recognition and confidence feedback.
+
 1. Stand where the player will normally stand.
 2. Keep one hand fully visible with some space around it.
 3. Press **Center hand**.
@@ -494,6 +548,8 @@ allow the following only from the trusted local subnet:
 - UDP 55355 inbound to RetroPie;
 - UDP 55356 inbound to the UNO Q;
 - TCP 8088 inbound to the UNO Q for the status page.
+- TCP 8443 inbound to the UNO Q for secure pairing.
+- TCP 55357 inbound to RetroPie only while the one-time pairing helper runs.
 
 The UNO Q must also be allowed to download packages during its first run.
 

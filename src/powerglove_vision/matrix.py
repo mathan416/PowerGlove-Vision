@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Iain Bennett
 from __future__ import annotations
 
+import time
 from enum import IntEnum
 from typing import Any, Callable
 
@@ -11,6 +12,7 @@ class MatrixStatus(IntEnum):
     READY = 2
     TRACKING = 3
     ERROR = 4
+    PAIRING = 5
 
 
 class UnoQMatrix:
@@ -25,6 +27,7 @@ class UnoQMatrix:
         self.last_status: MatrixStatus | None = None
         self.last_error: str | None = None
         self.last_profile: str | None = None
+        self.pairing_until = 0.0
         self._call = call
         if enabled and self._call is None:
             try:
@@ -41,6 +44,8 @@ class UnoQMatrix:
         return self.enabled and self._call is not None
 
     def set_status(self, status: MatrixStatus) -> bool:
+        if status not in {MatrixStatus.OFF, MatrixStatus.PAIRING} and time.monotonic() < self.pairing_until:
+            return self.available
         if status == self.last_status:
             return self.available
         self.last_status = status
@@ -52,6 +57,25 @@ class UnoQMatrix:
             self.last_error = None
             return True
         except Exception as exc:  # Bridge errors vary by App Lab release.
+            self.last_error = str(exc)
+            return False
+
+    def show_pairing(self, certificate_id: str, pin: str, seconds: int = 120) -> bool:
+        """Show a certificate prefix and one-time approval PIN on the physical matrix."""
+        if len(certificate_id) != 7 or any(character not in "0123456789ABCDEF" for character in certificate_id):
+            raise ValueError("invalid certificate identity")
+        if len(pin) != 6 or not pin.isdigit():
+            raise ValueError("invalid pairing PIN")
+        self.pairing_until = time.monotonic() + seconds
+        self.last_status = MatrixStatus.PAIRING
+        if not self.available:
+            return False
+        try:
+            assert self._call is not None
+            self._call("set_powerglove_pairing", int(certificate_id, 16), int(pin))
+            self.last_error = None
+            return True
+        except Exception as exc:
             self.last_error = str(exc)
             return False
 

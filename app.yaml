@@ -3,5 +3,6 @@ name: PowerGlove Vision
 description: Camera-only Power Glove controller for UNO Q and RetroPie
 ports:
   - 8088
+  - 8443
 bricks: []
 icon: "✋"
