@@ -8,6 +8,7 @@
 #   2026-09-03 - Added automated tests, audits, syntax checks, and package verification.
 #   2026-09-03 - Aligned the test matrix with the declared Python 3.7 minimum.
 #   2026-09-03 - Used Ubuntu 22.04 for the archived Python 3.7 toolchain.
+#   2026-09-03 - Updated official actions to their Node 24 releases.
 # Full history: docs/CHANGELOG.md and Git history.
 
 name: Quality and package verification
@@ -40,9 +41,9 @@ jobs:
             os: ubuntu-latest
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Check Python syntax
@@ -58,9 +59,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install audit and build dependencies

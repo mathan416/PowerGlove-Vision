@@ -27,6 +27,13 @@ authoritative record for line-level and file-level history.
   generated artifacts, commits, and pull requests.
 - Added reusable documentation and App Lab package verification tools.
 
+### Fixed
+
+- Published the host shutdown request atomically so a filesystem observer cannot
+  consume the request between file creation and the final content write.
+- Updated the GitHub Actions workflow to use the current Node 24 action releases
+  and run the Python 3.7 compatibility job on Ubuntu 22.04.
+
 ## 0.1.0 - 2026-09-03
 
 ### Added

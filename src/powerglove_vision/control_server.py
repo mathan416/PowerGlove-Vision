@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Published shutdown requests atomically for reliable host handoff.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -271,15 +272,22 @@ class ControlState:
             self._shutdown_scheduled = True
 
         def trigger() -> None:
-            """Create the fixed request file after allowing the HTTP response to complete."""
+            """Publish a complete fixed request after allowing the HTTP response to finish."""
             path = data_directory / "shutdown-request"
+            temporary = data_directory / f".shutdown-request.{secrets.token_hex(8)}.tmp"
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
             try:
-                descriptor = os.open(path, flags, 0o600)
+                descriptor = os.open(temporary, flags, 0o600)
                 with os.fdopen(descriptor, "w") as request:
                     request.write("shutdown\n")
-            except FileExistsError:
-                pass
+                    request.flush()
+                    os.fsync(request.fileno())
+                os.replace(temporary, path)
+            finally:
+                try:
+                    temporary.unlink()
+                except FileNotFoundError:
+                    pass
 
         timer = threading.Timer(delay_seconds, trigger)
         timer.daemon = True

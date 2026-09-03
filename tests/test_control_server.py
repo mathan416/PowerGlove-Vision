@@ -7,12 +7,14 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Verified atomic publication of host shutdown requests.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
 
 import json
 import http.client
+import os
 import ssl
 import tempfile
 import time
@@ -103,12 +105,15 @@ class ControlStateTests(unittest.TestCase):
     def test_shutdown_uses_only_the_fixed_host_trigger(self):
         marker = self.path.parent / ".shutdown-enabled"
         marker.touch()
-        self.state.schedule_system_shutdown(delay_seconds=0)
-        trigger = self.path.parent / "shutdown-request"
-        for _attempt in range(50):
-            if trigger.exists():
-                break
-            time.sleep(0.01)
+        with mock.patch("powerglove_vision.control_server.os.replace", wraps=os.replace) as replace:
+            self.state.schedule_system_shutdown(delay_seconds=0)
+            trigger = self.path.parent / "shutdown-request"
+            for _attempt in range(50):
+                if trigger.exists():
+                    break
+                time.sleep(0.01)
+        replace.assert_called_once()
+        self.assertEqual(Path(replace.call_args.args[1]), trigger)
         self.assertEqual(trigger.read_text(), "shutdown\n")
         self.assertEqual(trigger.stat().st_mode & 0o777, 0o600)
 
