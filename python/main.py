@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import signal
 import subprocess
 import sys
 import time
@@ -18,6 +19,10 @@ CONFIG_PATH = APP_ROOT / "data" / "device.json"
 sys.path.insert(0, str(APP_ROOT / "src"))
 
 from powerglove_vision.camera import camera_connected
+
+
+def _shutdown_on_signal(_signum: int, _frame: object) -> None:
+    raise KeyboardInterrupt
 
 
 def load_device_config() -> dict:
@@ -71,54 +76,69 @@ def main() -> int:
         "UV_PYTHON_INSTALL_DIR": str(APP_ROOT / "data" / "uv-python"),
     })
 
-    # Keep App Lab alive without a camera. The worker is retried so plugging a
-    # UVC camera in later is enough; no reboot or terminal command is needed.
-    while True:
-        settings = load_device_config()
-        matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
-        camera_setting = str(settings.get("camera", "auto"))
-        if not camera_connected(camera_setting):
-            control.update_supervisor(camera=False, running=False, error="No UVC camera detected")
-            matrix.set_status(MatrixStatus.ERROR)
-            time.sleep(1)
-            continue
-        matrix.set_status(MatrixStatus.LOADING)
-        revision = control.revision
-        process = subprocess.Popen(worker_command(settings), cwd=APP_ROOT, env=environment)
-        control.update_supervisor(camera=True, running=True)
-        configuration_changed = False
-        while process.poll() is None:
-            if revision != control.revision:
-                configuration_changed = True
-                process.terminate()
-                try:
-                    process.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                break
-            try:
-                with urllib.request.urlopen("http://127.0.0.1:8089/status", timeout=0.3) as response:
-                    status = json.load(response)
-                control.update_worker(status)
-                active_profile = status.get("active_profile")
-                matrix.set_profile(None if active_profile == "off" else active_profile)
-                matrix.set_status(
-                    MatrixStatus.TRACKING
-                    if status.get("detected") and status.get("calibrated")
-                    else MatrixStatus.READY
-                )
-            except (OSError, ValueError, TimeoutError):
-                pass
-            time.sleep(0.25)
-        if configuration_changed:
+    process: subprocess.Popen | None = None
+    signal.signal(signal.SIGTERM, _shutdown_on_signal)
+    try:
+        # Keep App Lab alive without a camera. The worker is retried so plugging
+        # a UVC camera in later is enough; no reboot or command is needed.
+        while True:
+            settings = load_device_config()
+            matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
+            camera_setting = str(settings.get("camera", "auto"))
+            if not camera_connected(camera_setting):
+                control.update_supervisor(camera=False, running=False, error="No UVC camera detected")
+                matrix.set_status(MatrixStatus.ERROR)
+                time.sleep(1)
+                continue
             matrix.set_status(MatrixStatus.LOADING)
-            control.update_supervisor(camera=camera_connected(camera_setting), running=False)
-            continue
-        matrix.set_status(MatrixStatus.ERROR)
-        available = camera_connected(camera_setting)
-        error = "Camera disconnected; waiting for it to return" if not available else "Camera stopped responding; retrying"
-        control.update_supervisor(camera=available, running=False, error=error)
-        time.sleep(5)
+            revision = control.revision
+            process = subprocess.Popen(worker_command(settings), cwd=APP_ROOT, env=environment)
+            control.update_supervisor(camera=True, running=True)
+            configuration_changed = False
+            while process.poll() is None:
+                if revision != control.revision:
+                    configuration_changed = True
+                    process.terminate()
+                    try:
+                        process.wait(timeout=7)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    break
+                try:
+                    with urllib.request.urlopen("http://127.0.0.1:8089/status", timeout=0.3) as response:
+                        status = json.load(response)
+                    control.update_worker(status)
+                    active_profile = status.get("active_profile")
+                    matrix.set_profile(None if active_profile == "off" else active_profile)
+                    matrix.set_status(
+                        MatrixStatus.TRACKING
+                        if status.get("detected") and status.get("calibrated")
+                        else MatrixStatus.READY
+                    )
+                except (OSError, ValueError, TimeoutError):
+                    pass
+                time.sleep(0.25)
+            process = None
+            if configuration_changed:
+                matrix.set_status(MatrixStatus.LOADING)
+                control.update_supervisor(camera=camera_connected(camera_setting), running=False)
+                continue
+            matrix.set_status(MatrixStatus.ERROR)
+            available = camera_connected(camera_setting)
+            error = "Camera disconnected; waiting for it to return" if not available else "Camera stopped responding; retrying"
+            control.update_supervisor(camera=available, running=False, error=error)
+            time.sleep(5)
+    except KeyboardInterrupt:
+        matrix.set_status(MatrixStatus.OFF)
+        if process is not None and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=7)
+            except subprocess.TimeoutExpired:
+                process.kill()
+        return 0
+    finally:
+        control_server.shutdown()
 
 
 if __name__ == "__main__":

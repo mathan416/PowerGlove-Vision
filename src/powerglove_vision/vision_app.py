@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import signal
 import sys
 import time
 from pathlib import Path
@@ -15,6 +16,10 @@ from .model import ControllerState
 from .profile_control import ProfileCommandServer, read_token
 from .tracker import MediaPipeTracker
 from .transport import UdpSender
+
+
+def _shutdown_on_signal(_signum: int, _frame: object) -> None:
+    raise KeyboardInterrupt
 
 
 def _load_config(profile: str, path: Path | None) -> GestureConfig:
@@ -64,13 +69,23 @@ def main() -> int:
         candidates = camera_candidates(args.camera)
         capture = None
         for camera_device in candidates:
-            candidate = cv2.VideoCapture(camera_device)
+            backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
+            candidate = cv2.VideoCapture(camera_device, backend)
+            candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
             candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
             candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
             candidate.set(cv2.CAP_PROP_FPS, args.fps)
-            ok, _frame = candidate.read()
-            if candidate.isOpened() and ok:
-                capture = candidate
+            candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            # UVC cameras such as the Razer Kiyo can need several seconds to
+            # wake and negotiate a stream after boot or an application restart.
+            warmup_deadline = time.monotonic() + 5.0
+            while candidate.isOpened() and time.monotonic() < warmup_deadline:
+                ok, _frame = candidate.read()
+                if ok:
+                    capture = candidate
+                    break
+                time.sleep(0.1)
+            if capture is not None:
                 break
             candidate.release()
         if capture is None:
@@ -90,6 +105,7 @@ def main() -> int:
 
     matrix.set_status(MatrixStatus.READY)
     matrix.set_profile(current_profile)
+    signal.signal(signal.SIGTERM, _shutdown_on_signal)
 
     try:
         read_failures = 0
