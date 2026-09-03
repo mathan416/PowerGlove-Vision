@@ -9,6 +9,11 @@ impractical way to rediscover a game library.**
 
 ## Before you throw your first virtual punch
 
+Select a profile on Dashboard, or open Learn for practice. If you see
+**Starting camera and gesture tracking**, wait for the camera view to appear.
+First startup can take longer; the elapsed-seconds display confirms that the
+page is still updating. **Center hand** becomes available when vision is active.
+
 1. Stand where the camera can see your whole hand with a little room on every side.
 2. Open your hand, face your palm toward the camera, and select **Center hand**.
 3. Wait for tracking to settle, then select **Start controller**.

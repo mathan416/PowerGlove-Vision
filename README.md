@@ -258,9 +258,15 @@ Open `http://<uno-q-name>.local:8088/debug` from another machine. The live
 dashboard shows the camera overlay, an active-profile selector, active game,
 tracking confidence,
 D-pad and button output, axes, finger curl, recent gesture events, and a
-**Center hand** button. It remains available even when the camera is unplugged.
+**Center hand** button. The Dashboard remains available even when the camera
+is unplugged; centering is disabled until vision is active.
 Calibration also begins automatically at tracker startup. The shorter root URL
 redirects to this dashboard.
+
+Dashboard and Learn show **Starting camera and gesture tracking** with elapsed
+seconds while vision initializes. First activation can take longer than later
+profile switches because the camera and tracker must be initialized. This is
+a startup state, not an error. Gestures off does not pre-warm the camera.
 
 Open `http://<uno-q-name>.local:8088/learn` for offline practice. The page
 automatically stops controller transmission, keeps vision active without a

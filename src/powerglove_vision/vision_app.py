@@ -9,6 +9,7 @@
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added lazy vision activation and a persistent camera-free idle state.
 #   2026-09-03 - Added temporary Learn-page vision with automatic state restoration.
+#   2026-09-03 - Published startup timing for browser elapsed-time feedback.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output."""

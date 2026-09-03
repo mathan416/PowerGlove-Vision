@@ -191,6 +191,11 @@ cycle through camera indexes when no UVC device exists.
 
 ## Profiles
 
+Dashboard and Learn display **Starting camera and gesture tracking** with elapsed
+seconds during initialization. First startup may take longer than later profile
+switches. Wait for the camera view before centering. Gestures off leaves the
+camera off until a profile or Learn needs it.
+
 The Dashboard can change the active profile for the current session, and Setup
 can choose the profile used at startup:
 

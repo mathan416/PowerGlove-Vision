@@ -204,8 +204,8 @@ endobj
 endobj
 25 0 obj
 <<
-/Author (Iain Bennett) /CreationDate (D:20260903144920-04'00') /Creator (Power Glove Vision documentation builder) /Keywords () /ModDate (D:20260903144920-04'00') /Producer (ReportLab PDF Library - \(opensource\)) 
-  /Subject (Technical configuration for installation, operation, and maintenance.) /Title (Power Glove Vision Configuration Reference) /Trapped /False
+/Author (Iain Bennett) /CreationDate (D:20260903145342-04'00') /Creator (Power Glove Vision documentation builder) /Keywords () /ModDate (D:20260903145342-04'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+  /Subject (Active files, installed copies, fields, secrets, and generated state.) /Title (Power Glove Vision Configuration Reference) /Trapped /False
 >>
 endobj
 26 0 obj
@@ -216,10 +216,10 @@ endobj
 endobj
 27 0 obj
 <<
-/Filter [ /ASCII85Decode /FlateDecode ] /Length 626
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 634
 >>
 stream
-Gat$t?#Q2t&:EYBlsh!BkM,mr0l_/cP`jP0<dh[>,Gh]>->r_T]3n<(dR5QUk[8W&Ap+@]:,`[/EX-RB@Bi-a!PSV79S's5bU<:@EFG,%@,0+?JY>>G;X!P4Aq1g%fi13QTfPhKWXu;+p3ttN*RTqZ&Xf6eEU7nlEh*8)%C]*'!68-:3&:me1F)00&]7It2T4/RA:g%.W`W$RZr0T_^9g\#7G;3!>/QjOjX5sdg[2_`G79*]6AVWM&NQ-r*fpUJn$ph/'iMhY9.)h`?$!udIX:og;CRX&rG,SNr]"%)_=,GT)AF:[OM)OqpqY^(i6Chi=QNVVfB5?4.:A^KZ?92!Za\l-K0P"_ZX34l++tBoM&!Q2pmct#P)pf&:I8Md66_UuO">2'hm%g7D>Pj#QhmCn)d'OC<T!iC_L^Q=FAPU;OZ:2.Z&2h'auH.h((%$K@k=2H4%Er[<71VWRYi;WC?(8#U-Wc92,(Qh]`sVIr(iOKZ2E2&A_9=0V[c_]6/=XC_KJ"gGR*VsfT")$Cg\(Ejq+"I3nP]g^@_jhnAV1o0)n!^K'?37>e_PDK28F&RsYiR(s"?$+Y4#Bcgq2jZD,E&rUfS&pMcZVZf9Fb5;W)5"-Pm5l18?~>endstream
+Gat$t?#Q2t&:EYBlsh!BkM,mrd;a,`jHA(W7=?KWYc)B:Z.o9V/f9D.1m%hP*4NPh1HP[?V]5MGYm7f40O#`o!+,dWVSKAXn^/Lh>Zdg7(cQP>?mnj@(trh+pZ7-eCb24g:gQRA<f#='HFIk/cIIu]&Xf6]EQE@HEZG7?%C])l"m8j]3&:me1IK\O!epd\D$[6Ya945C'X=2%Zr0T_/p)o6767.R>/QjOkXVsje*_]BpC)+YKFh^W#NT!'G`FoLiLW-U@j)$21t:JeGKgl/qJ#gjUgb<1LY'&ar,IlfK&;b31aq5(+ZhD4(-QiUJTj:\I*U0ZHj/hHRB2TgOh:r!'DrSm]Z;>rrW?2pSe.%DJC",Y1B7`uFoWe2!$j>Aomkt9o/F&GC"N7hE*"'\VM7N<QdteRS"Jn[KS*HkJ]([!%V9<@?%`HmNoUdQ^P5iOo.WOE3_.TaBTe8>(i//jI)80h(cY3\[QOl9d#Cto(T3/KQdm].5<r3j:\elE2Gc6FWc"`9_JVa0@jp&MU.&C,?lSAr'If$i:Ou5./rtI4#/9:6alT!t,+'F"ijpFUlubXkfqahi_E`.*qXc[u)5Qj\KBjf+&l1_SHq?K&dRB=I^[TQ<q7m*,J&&,Smf~>endstream
 endobj
 28 0 obj
 <<
@@ -342,23 +342,23 @@ xref
 0002063632 00000 n 
 0002064020 00000 n 
 0002064175 00000 n 
-0002064892 00000 n 
-0002067640 00000 n 
-0002070833 00000 n 
-0002073206 00000 n 
-0002075619 00000 n 
-0002078032 00000 n 
-0002080003 00000 n 
-0002082079 00000 n 
-0002084657 00000 n 
-0002087303 00000 n 
-0002090021 00000 n 
-0002092950 00000 n 
-0002095837 00000 n 
+0002064900 00000 n 
+0002067648 00000 n 
+0002070841 00000 n 
+0002073214 00000 n 
+0002075627 00000 n 
+0002078040 00000 n 
+0002080011 00000 n 
+0002082087 00000 n 
+0002084665 00000 n 
+0002087311 00000 n 
+0002090029 00000 n 
+0002092958 00000 n 
+0002095845 00000 n 
 trailer
 <<
 /ID 
-[<6eaae7e69cc05a38c191af2332ab96a5><6eaae7e69cc05a38c191af2332ab96a5>]
+[<b6fd5e213de59eb97b2c737e109712a5><b6fd5e213de59eb97b2c737e109712a5>]
 % ReportLab generated PDF document -- digest (opensource)
 
 /Info 25 0 R
@@ -366,5 +366,5 @@ trailer
 /Size 41
 >>
 startxref
-2098109
+2098117
 %%EOF

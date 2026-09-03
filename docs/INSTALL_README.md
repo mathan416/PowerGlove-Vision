@@ -494,6 +494,12 @@ cycling power is required to start it again.
 
 ### Learn before you launch
 
+Dashboard and Learn show **Starting camera and gesture tracking** with elapsed
+seconds during initialization. The first activation can take longer while the
+camera and tracker load. Wait for vision to become active before centering;
+the centering button is disabled during startup. Gestures off keeps the camera
+off rather than briefly activating it at boot.
+
 Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
 controller transmission, starts the camera when necessary, and walks through
 ten exercises with live recognition feedback. RetroPie does not need to be
