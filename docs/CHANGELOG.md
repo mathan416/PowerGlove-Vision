@@ -22,6 +22,11 @@ authoritative record for line-level and file-level history.
 - Made camera and model initialization lazy so idle mode performs no capture or
   vision processing and can return to an active profile without restarting the
   website.
+- Reworked the matrix attract sequence into distinct pinball-style beats: a
+  three-frame energy sweep, a travelling cuff, open and clenched glove poses,
+  a six-position high-contrast spark, one clean pulse, and a readable hold.
+- Used the UNO Q matrix's full eight-level grayscale range to separate the dim
+  glove body, spark halo, bright spark, and whole-glove pulse.
 
 ### Documentation
 

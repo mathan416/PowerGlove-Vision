@@ -8,6 +8,7 @@
 //   2026-09-02 - Added to PowerGlove Vision.
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
 //   2026-09-03 - Added the gestures-idle Power Glove attract animation.
+//   2026-09-03 - Refined the attract animation with cuff travel, spark motion, and grayscale pulsing.
 // Full history: docs/CHANGELOG.md and Git history.
 
 #include "Arduino_RouterBridge.h"
@@ -36,7 +37,8 @@ unsigned long nextFrameAt = 0;
 uint8_t animationFrame = 0;
 
 // Original 8-bit artwork sized for the UNO Q's 8x13 blue matrix. Characters
-// encode brightness: '.' is off, 'o' is dim, 'O' is full brightness.
+// encode brightness: '.' is off, '1' through '7' select exact grayscale
+// levels, 'o' is legacy dim, and 'O' is full brightness.
 const char* const loadingFrames[][8] = {
   {
     "..O.O.O.O....",
@@ -118,41 +120,89 @@ const char* const errorFrame[8] = {
 };
 
 // Pinball-display-inspired attract sequence for the healthy gestures-paused
-// state. An energy spark sweeps in, reveals the glove, makes it clench, and
-// leaves the open glove gently glowing before the sequence repeats.
+// state. The frames deliberately separate the streak, travelling cuff, open
+// hand, clench, spark path, and pulse so each beat reads on the 13x8 display.
 const char* const idleFrames[][8] = {
   {
-    "O.o..........", ".O.o.........", "..O.o........", "...O.o.......",
-    "....O.o......", "...O.o.......", "..O.o........", ".O.o.........",
+    "17...........", ".173.........", ".173.........", "..173........",
+    "..173........", ".173.........", ".173.........", "17...........",
   },
   {
-    "..O.o........", "...O.o.......", "....O.o......", ".....O.o.....",
-    "......O.o....", ".....O.o.....", "....O.o......", "...O.o.......",
+    "....17.......", ".....173.....", ".....173.....", "......173....",
+    "......173....", ".....173.....", ".....173.....", "....17.......",
   },
   {
-    "....O.o......", ".....O.o.....", "......O.o....", ".......O.o...",
-    "........O.o..", ".......O.o...", "......O.o....", ".....O.o.....",
+    "........17...", ".........173.", ".........173.", "..........173",
+    "..........173", ".........173.", ".........173.", "........17...",
   },
   {
-    "..o.o.o.o..O.", "..o.o.o.o.O..", "..oooooooo...", "..ooooooo....",
-    "..oooooo.....", "...oooo......", "...oooo......", "...oooo......",
+    ".............", ".............", ".............", ".............",
+    ".............", ".............", "47...........", "47...........",
   },
   {
-    "..O.O.O.O....", "..o.o.o.o....", "..OOOOOOOO...", "..OoooooO....",
-    "..OOOOOO.....", "...OooO......", "...OOOO......", "...OOOO......",
+    ".............", ".............", ".............", ".............",
+    ".............", ".............", "4447.........", "4447.........",
   },
   {
-    ".............", "...OOOOOO....", "..OOOOOOOO...", "..OOooooOO...",
-    "..OOOOOOOO...", "...OOOOOO....", "....OOOO.....", "....OOOO.....",
+    ".............", ".............", ".............", ".............",
+    ".............", ".............", "...4447......", "...4447......",
   },
   {
-    "O.O.O.O.O.O.O", "..O.O.O.O....", "..OOOOOOOO...", "..OOOOOOO....",
-    "..OOOOOO.....", "...OOOO......", "...OOOO......", "...OOOO......",
+    "....4.4.4.4..", "....4.4.4.4..", "...44444444..", "..444444444..",
+    "..44444444...", "...444444....", "...4444......", "...4444......",
   },
   {
-    "..o.o.o.o....", "..O.O.O.O....", "..oooooooo...", "..ooooooo....",
-    "..oooooo.....", "...oooo......", "...oooo......", "...oooo......",
+    ".............", "...555555....", "..55555555...", "..55333355...",
+    "..55555555...", "...555555....", "...5555......", "...5555......",
   },
+  {
+    "....3.3.3.3..", "....3.3.3.3..", "...33333333..", "..333333333..",
+    "..33333333...", "...333333....", "...3333......", "...3333......",
+  },
+  {
+    "....2.2.2.2..", "....2.2.2.2..", "...22222222..", "..222222222..",
+    "..22222222...", "...242222....", "...4742......", "...2422......",
+  },
+  {
+    "....2.2.2.2..", "....2.2.2.2..", "...22222222..", "..222222222..",
+    "..22422222...", "...474222....", "...2422......", "...2222......",
+  },
+  {
+    "....2.2.2.2..", "....2.2.2.2..", "...22422222..", "..224742222..",
+    "..24742222...", "...242222....", "...2222......", "...2222......",
+  },
+  {
+    "....2.2.2.2..", "....2.4.2.2..", "...22474222..", "..222474222..",
+    "..22242222...", "...222222....", "...2222......", "...2222......",
+  },
+  {
+    "....2.2.4.2..", "....2.2.4.2..", "...22224742..", "..222222422..",
+    "..22222222...", "...222222....", "...2222......", "...2222......",
+  },
+  {
+    "....2.2.2.4..", "....2.2.4.7..", "...22222242..", "..222222222..",
+    "..22222222...", "...222222....", "...2222......", "...2222......",
+  },
+  {
+    "....3.3.3.3..", "....3.3.3.3..", "...33333333..", "..333333333..",
+    "..33333333...", "...333333....", "...3333......", "...3333......",
+  },
+  {
+    "....7.7.7.7..", "....7.7.7.7..", "...77777777..", "..777777777..",
+    "..77777777...", "...777777....", "...7777......", "...7777......",
+  },
+  {
+    "....4.4.4.4..", "....4.4.4.4..", "...44444444..", "..444444444..",
+    "..44444444...", "...444444....", "...4444......", "...4444......",
+  },
+};
+
+// Per-frame timing makes the action beats crisp while preserving a readable
+// final hold. Short spark frames imply speed; the bright pulse is intentionally
+// brief so it reads as one flash instead of a second glove design.
+const uint16_t idleFrameDurations[] = {
+  90, 90, 110, 110, 110, 130, 190, 140, 150,
+  85, 85, 85, 85, 85, 85, 100, 110, 900,
 };
 
 // Five-pixel-wide glyphs A-I, B, S, and G. Program profiles use a large
@@ -247,7 +297,11 @@ void drawRows(const char* const rows[8]) {
   for (int y = 0; y < 8; ++y) {
     for (int x = 0; x < 13; ++x) {
       const char value = rows[y][x];
-      pixels[y * 13 + x] = value == 'O' ? 7 : (value == 'o' ? 2 : 0);
+      if (value >= '1' && value <= '7') {
+        pixels[y * 13 + x] = value - '0';
+      } else {
+        pixels[y * 13 + x] = value == 'O' ? 7 : (value == 'o' ? 2 : 0);
+      }
     }
   }
   matrix.draw(pixels);
@@ -333,7 +387,8 @@ void loop() {
     nextFrameAt = now + 650;
   } else if (status == PG_GESTURES_IDLE) {
     drawRows(idleFrames[animationFrame]);
-    nextFrameAt = now + (animationFrame == 6 ? 800 : (animationFrame == 7 ? 520 : 125));
-    animationFrame = (animationFrame + 1) % 8;
+    nextFrameAt = now + idleFrameDurations[animationFrame];
+    animationFrame = (animationFrame + 1) %
+      (sizeof(idleFrames) / sizeof(idleFrames[0]));
   }
 }
