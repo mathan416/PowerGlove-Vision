@@ -101,6 +101,12 @@ reload Learn to begin a new practice session.
 More than one Learn tab may be open. Vision remains active until the last tab
 closes or its lease expires.
 
+Camera finger curl uses MediaPipe 3D world landmarks when available. If those
+are absent, normalized depth is used with image aspect-ratio correction. Palm
+movement remains based on image coordinates. The legacy Arduino landmark
+bridge retains its existing 2D interpretation because its depth units are not
+assumed to match MediaPipe. Gesture thresholds are unchanged.
+
 Each Learn lesson shows a gesture illustration. Start uses a V sign; Select
 uses a thumbs-up with the other four fingers closed. Both must remain steady
 for about 0.7 seconds. The lesson accepts the confirmed pose even after its

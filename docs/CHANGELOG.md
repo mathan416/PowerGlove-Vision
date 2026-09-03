@@ -7,7 +7,7 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
-Development version: **0.2.0.dev1**. Release candidates will use `0.2.0rc1`
+Development version: **0.2.0.dev2**. Release candidates will use `0.2.0rc1`
 and the tested release will use `0.2.0`.
 
 ### Added
@@ -28,6 +28,9 @@ and the tested release will use `0.2.0`.
   after reboot or App Lab application replacement.
 
 ### Changed
+
+- Camera finger curl now uses 3D world landmarks, with an aspect-corrected
+  normalized-depth fallback. Movement and gesture thresholds are unchanged.
 
 - Made Dashboard and Learn show camera/tracker startup with elapsed time and
   a first-start explanation, without enabling the camera in Gestures off.
