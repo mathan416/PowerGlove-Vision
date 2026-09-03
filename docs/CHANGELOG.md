@@ -7,8 +7,9 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
-Development version: **0.2.0.dev3**. Release candidates will use `0.2.0rc1`
-and the tested release will use `0.2.0`.
+No changes yet.
+
+## [0.2.0] - 2026-09-03
 
 ### Added
 
