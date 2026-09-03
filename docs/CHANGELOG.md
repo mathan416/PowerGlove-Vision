@@ -42,6 +42,8 @@ authoritative record for line-level and file-level history.
   alias, and aligned its summaries with the Play Checklist terminology.
 - Extended the documentation audit to require Help-library coverage and a
   gameplay section for every title in the shipped game registry.
+- Expanded Wi-Fi deployment verification to confirm the current installation
+  and gameplay guides, raw Markdown, and gesture artwork on the UNO Q.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
 - Added an offline Help library that renders the maintained public Markdown

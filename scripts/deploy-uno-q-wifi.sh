@@ -10,6 +10,7 @@
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added deployment verification for the Help library.
 #   2026-09-03 - Added an IP fallback when mDNS pauses during container restart.
+#   2026-09-03 - Verified deployed Help guides, Markdown, and gesture artwork.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -109,6 +110,15 @@ curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/learn" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/help" >/dev/null
+curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help/installation" >/dev/null
+curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help/gameplay" >/dev/null
+curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help-assets/gestures/actions/v-sign.png" >/dev/null
+curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help/gameplay.md" | \
+  grep --fixed-strings --quiet "Take Power Glove Vision off-script"
 curl --insecure --fail --silent --show-error --max-time 5 \
   "https://${UNO_HEALTH_HOST}:8443/setup" >/dev/null
 
