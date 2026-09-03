@@ -319,6 +319,17 @@ Core tests do not require a camera or MediaPipe:
 python -m unittest discover -s tests -v
 ```
 
+Rebuild the two PDF guides after changing Markdown, then rebuild the importable
+App Lab ZIP:
+
+```sh
+python3 scripts/build-docs-pdf.py
+scripts/build-app-lab-package.sh
+```
+
+The packaging script excludes private `data/`, the local cheat sheet, caches,
+tests and Git history while retaining the public instructions and screenshots.
+
 The code intentionally separates observations, gesture mapping, transport, and
 Linux input output. Recorded-camera replay and a native Nestopia adapter can be
 added without changing the gesture engine.
