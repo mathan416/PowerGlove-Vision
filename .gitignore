@@ -4,6 +4,6 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
-data/device.json
+data/
 models/hand_landmarker.task
 output/app-lab/*.zip

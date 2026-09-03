@@ -106,10 +106,12 @@ cd PowerGlove-Vision
 scripts/build-app-lab-package.sh
 ```
 
-The build downloads the official Google Hand Landmarker model and verifies its
-pinned SHA-256 checksum before placing it in the ZIP. The generated ZIP and
-downloaded model are build artifacts and are not stored in Git. A published
-GitHub release may provide the same prebuilt ZIP.
+The generated ZIP is not stored in Git. It deliberately excludes Google's Hand
+Landmarker model. On first launch, the UNO Q downloads the model directly from
+Google into the app's persistent private `data/models/` directory and verifies
+its pinned SHA-256 checksum before starting the vision worker. Later launches
+reuse that verified copy. A published GitHub release may provide the same
+model-free ZIP.
 
 The repository retains a custom MediaPipe 0.10.18 ARM64 wheel because its
 dependency metadata is tailored for the headless UNO Q runtime. Do not replace
@@ -122,8 +124,9 @@ In Arduino App Lab:
 
 1. Import an Arduino App from the ZIP file.
 2. Open **PowerGlove Vision** and select **Run**.
-3. Allow several minutes for the first launch. The app prepares an isolated
-   Python 3.12 vision environment and downloads its ARM64 dependencies once.
+3. Allow several minutes for the first launch. The app downloads and verifies
+   the Hand Landmarker model, prepares an isolated Python 3.12 vision
+   environment, and downloads its ARM64 dependencies once.
 4. When the app is healthy, enable **Run at startup**.
 
 The package contains the Linux vision service and the matrix sketch. Arduino's

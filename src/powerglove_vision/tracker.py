@@ -110,7 +110,10 @@ class MediaPipeTracker:
         self._tasks = not hasattr(mp, "solutions")
         if self._tasks:
             if model_path is None:
-                model_path = Path(__file__).resolve().parents[2] / "models" / "hand_landmarker.task"
+                model_path = (
+                    Path(__file__).resolve().parents[2]
+                    / "data" / "models" / "hand_landmarker.task"
+                )
             model_path = Path(model_path)
             if not model_path.is_file():
                 raise RuntimeError(f"MediaPipe hand model not found: {model_path}")

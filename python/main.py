@@ -19,6 +19,7 @@ CONFIG_PATH = APP_ROOT / "data" / "device.json"
 sys.path.insert(0, str(APP_ROOT / "src"))
 
 from powerglove_vision.camera import camera_connected
+from powerglove_vision.runtime_assets import ensure_hand_landmarker_model
 
 
 def _shutdown_on_signal(_signum: int, _frame: object) -> None:
@@ -42,7 +43,7 @@ def load_device_config() -> dict:
     return settings
 
 
-def worker_command(settings: dict, controller_enabled: bool = False) -> list[str]:
+def worker_command(settings: dict, model_path: Path, controller_enabled: bool = False) -> list[str]:
     wheel = next((APP_ROOT / "python" / "worker-wheels").glob("mediapipe-0.10.18-*.whl"))
     command = [
         # The repository supports the RetroPie receiver on Python 3.7, while
@@ -56,6 +57,7 @@ def worker_command(settings: dict, controller_enabled: bool = False) -> list[str
         "--profile", str(settings.get("profile", "bad_street_brawler")),
         "--glove-color", str(settings.get("glove_color", "none")),
         "--camera", str(settings.get("camera", "auto")),
+        "--model", str(model_path),
         "--web-host", "127.0.0.1", "--web-port", "8089", "--no-matrix",
     ]
     if controller_enabled:
@@ -83,6 +85,7 @@ def main() -> int:
     })
 
     process: subprocess.Popen | None = None
+    model_path: Path | None = None
     signal.signal(signal.SIGTERM, _shutdown_on_signal)
     try:
         # Keep App Lab alive without a camera. The worker is retried so plugging
@@ -91,6 +94,17 @@ def main() -> int:
             settings = load_device_config()
             matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
             camera_setting = str(settings.get("camera", "auto"))
+            if model_path is None:
+                try:
+                    model_path = ensure_hand_landmarker_model(APP_ROOT / "data")
+                except (OSError, RuntimeError) as exc:
+                    control.update_supervisor(
+                        camera=camera_connected(camera_setting), running=False,
+                        error=f"Hand model download failed; retrying: {exc}",
+                    )
+                    matrix.set_status(MatrixStatus.ERROR)
+                    time.sleep(5)
+                    continue
             if not camera_connected(camera_setting):
                 control.update_supervisor(camera=False, running=False, error="No UVC camera detected")
                 matrix.set_status(MatrixStatus.ERROR)
@@ -99,7 +113,7 @@ def main() -> int:
             matrix.set_status(MatrixStatus.LOADING)
             revision = control.revision
             process = subprocess.Popen(
-                worker_command(settings, control.controller_enabled()), cwd=APP_ROOT, env=environment
+                worker_command(settings, model_path, control.controller_enabled()), cwd=APP_ROOT, env=environment
             )
             control.update_supervisor(camera=True, running=True)
             configuration_changed = False

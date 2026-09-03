@@ -44,24 +44,31 @@ PowerGlove Vision uses Google's float16 Hand Landmarker task bundle.
 
 | Property | Value |
 | --- | --- |
-| Runtime path | `models/hand_landmarker.task` |
+| UNO Q runtime path | `data/models/hand_landmarker.task` |
 | Official download | <https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task> |
 | SHA-256 | `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1` |
 | Size | 7,819,105 bytes |
 
-The model is not tracked in Git. Both `scripts/build-app-lab-package.sh` and
-`scripts/deploy-uno-q-wifi.sh` call `scripts/fetch-runtime-assets.sh`. That
-script downloads the model from Google's versioned URL and refuses to install
-it if the SHA-256 checksum differs. The generated App Lab ZIP contains the
-verified model so the installed application has a fixed runtime asset.
+The model is not tracked in Git and is not included in the public App Lab ZIP.
+On first launch, the application downloads it from Google's versioned URL into
+the private, persistent `data/models/` directory. It refuses to start the
+vision worker if the SHA-256 checksum differs, reports the problem on the
+dashboard, and retries without taking the web interface offline. Later launches
+reuse the verified cached model. Wi-Fi deployments preserve `data/`, so an
+application update does not download the model again.
+
+`scripts/fetch-runtime-assets.sh` provides an optional manual prefetch using
+the same URL and checksum. It writes to the same private `data/models/` path and
+is useful for development or for preparing the app before an offline session.
 
 Google's MediaPipe repository is Apache-2.0 licensed and its official examples
 direct applications to this model URL. The model download does not place a
 separate model-specific license file in this repository. The PowerGlove Vision
 MIT License therefore should not be interpreted as licensing the Google model.
-Anyone publishing a prebuilt ZIP or otherwise redistributing the model should
-confirm that the intended distribution complies with Google's applicable
-model terms.
+The project avoids redistributing the model by having each installation fetch
+it directly from Google. Anyone who independently bundles or redistributes the
+model should confirm that the intended distribution complies with Google's
+applicable model terms.
 
 ## Updating either component
 
@@ -72,7 +79,8 @@ Treat a wheel or model update as a tested dependency change:
    the model.
 3. If repackaging another wheel, record every difference from upstream and
    retain its license files.
-4. Build the App Lab ZIP and confirm it contains one wheel, one model, and only
-   the root `sketch/` application sketch.
-5. Test camera initialization, tracking, the Learn and Debug pages, and
-   controller output on the UNO Q before publishing the package.
+4. Build the App Lab ZIP and confirm it contains one wheel, no model file, and
+   only the root `sketch/` application sketch.
+5. Test first-launch download and checksum verification, camera initialization,
+   tracking, the Learn and Debug pages, and controller output on the UNO Q
+   before publishing the package.

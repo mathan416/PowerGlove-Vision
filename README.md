@@ -371,9 +371,9 @@ python -m unittest discover -s tests -v
 ```
 
 Rebuild the five PDF guides after changing Markdown, then rebuild the importable
-App Lab ZIP. The packaging script downloads Google's Hand Landmarker model,
-verifies its pinned SHA-256 checksum, and includes it in the ZIP without storing
-the generated package or downloaded model in Git:
+App Lab ZIP. The public package deliberately omits Google's Hand Landmarker
+model. On first launch, the UNO Q downloads the model into its persistent
+private `data/` directory and verifies its pinned SHA-256 checksum before use:
 
 ```sh
 python3 scripts/build-docs-pdf.py
