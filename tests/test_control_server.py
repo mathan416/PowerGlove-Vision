@@ -14,6 +14,7 @@
 #   2026-09-03 - Verified Dashboard profile switching and healthy idle status.
 #   2026-09-03 - Verified Learn-page practice leases and Dashboard restoration.
 #   2026-09-03 - Verified shared descriptive profile labels and stable IDs.
+#   2026-09-03 - Used Python 3.7-compatible mock argument access.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -326,7 +327,7 @@ class ControlStateTests(unittest.TestCase):
                 body = json.loads(response.read())
                 self.assertEqual(response.status, 202)
                 self.assertEqual(body["active_profile"], "program_h")
-                forwarded = open_worker.call_args.args[0]
+                forwarded = open_worker.call_args[0][0]
                 self.assertEqual(forwarded.full_url, "http://127.0.0.1:8089/profile")
                 self.assertEqual(json.loads(forwarded.data), {"profile": "program_h"})
                 connection.close()
@@ -357,8 +358,8 @@ class ControlStateTests(unittest.TestCase):
                     self.assertEqual(response.status, 200)
                     connection.close()
 
-                first = open_worker.call_args_list[0].args[0]
-                second = open_worker.call_args_list[1].args[0]
+                first = open_worker.call_args_list[0][0][0]
+                second = open_worker.call_args_list[1][0][0]
                 self.assertEqual(first.full_url, "http://127.0.0.1:8089/practice")
                 self.assertEqual(json.loads(first.data), {
                     "session": "learn-session-1", "enabled": True, "reset": False,
