@@ -7,8 +7,14 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+Development version: **0.2.0.dev1**. Release candidates will use `0.2.0rc1`
+and the tested release will use `0.2.0`.
+
 ### Added
 
+- Added hand illustrations to every Learn lesson and finger/pose feedback for
+  Start and Select. Learn accepts confirmed menu poses after their short button
+  pulse ends, rather than requiring a second hold longer than the pulse.
 - Added a live active-profile selector to the Dashboard without changing the
   startup profile saved on Setup.
 - Added temporary Learn sessions that start vision while preserving the

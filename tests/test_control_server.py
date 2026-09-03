@@ -278,6 +278,14 @@ class ControlStateTests(unittest.TestCase):
         self.assertLess(LEARN.index(b"startupMessage(s),starting="),
                         LEARN.index(b"if(s.sequence===lastSequence)return"))
 
+    def test_learn_has_gesture_images_and_accepts_held_menu_recognition(self):
+        self.assertIn(b"id=lesson-image", LEARN)
+        self.assertIn(b"/help-assets/gestures/actions/", LEARN)
+        self.assertIn(b"image:'v-sign.png'", LEARN)
+        self.assertIn(b"image:'thumbs-up.png'", LEARN)
+        self.assertIn(b"s.menu_gesture?.recognized", LEARN)
+        self.assertIn(b"lessons[index].instant?0", LEARN)
+
     def test_profile_selectors_use_descriptive_names_and_stable_ids(self):
         expected = {
             b"program_a": b"A: Pinball",

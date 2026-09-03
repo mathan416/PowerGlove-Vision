@@ -130,6 +130,10 @@ class GestureTests(unittest.TestCase):
         self.assertTrue(pulse.buttons["start"])
         self.assertFalse(pulse.buttons["a"])
         self.assertFalse(held.buttons["start"])
+        self.assertEqual(engine.menu_feedback()["pose"], "start")
+        self.assertTrue(engine.menu_feedback()["recognized"])
+        engine.update(hand(1.5))
+        self.assertIsNone(engine.menu_feedback()["pose"])
 
     def test_held_thumbs_up_pulses_select_without_attacking(self):
         engine = calibrated_engine()
@@ -139,6 +143,9 @@ class GestureTests(unittest.TestCase):
         self.assertTrue(pulse.buttons["select"])
         self.assertFalse(pulse.buttons["a"])
         self.assertFalse(pulse.buttons["b"])
+        engine.update(hand(1.10, **pose))
+        self.assertEqual(engine.menu_feedback()["pose"], "select")
+        self.assertTrue(engine.menu_feedback()["recognized"])
 
 
 if __name__ == "__main__":

@@ -166,6 +166,17 @@ class GestureEngine:
         )
         self._calibrating = False
 
+    def menu_feedback(self) -> dict:
+        """Expose held menu recognition to Learn independently of short button pulses."""
+        state = self._last_state
+        if not self.calibrated or state is None or not state.detected:
+            return {"pose": None, "recognized": False, "held_seconds": 0.0}
+        for name, gesture in (("start", self._start_gesture), ("select", self._select_gesture)):
+            if gesture.started_at is not None:
+                return {"pose": name, "recognized": gesture.fired,
+                        "held_seconds": max(0.0, state.timestamp - gesture.started_at)}
+        return {"pose": None, "recognized": False, "held_seconds": 0.0}
+
     def update(self, observation: HandObservation) -> ControllerState:
         """Map one observation to a debounced controller state with safe tracking-loss release."""
         self._sequence += 1

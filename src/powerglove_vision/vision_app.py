@@ -338,6 +338,7 @@ def main() -> int:
             status["controller_enabled"] = controller_enabled
             status["camera_available"] = True
             status["vision_state"] = "active"
+            status["menu_gesture"] = engine.menu_feedback()
             cv2.putText(
                 result.frame,
                 "PRACTICE" if practice_mode else (

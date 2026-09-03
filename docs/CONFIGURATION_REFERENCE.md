@@ -101,6 +101,13 @@ reload Learn to begin a new practice session.
 More than one Learn tab may be open. Vision remains active until the last tab
 closes or its lease expires.
 
+Each Learn lesson shows a gesture illustration. Start uses a V sign; Select
+uses a thumbs-up with the other four fingers closed. Both must remain steady
+for about 0.7 seconds. The lesson accepts the confirmed pose even after its
+short controller pulse ends. Finger feedback uses 0 for straight and 3 for
+closed. If directions appear instead, keep the palm near center and check the
+finger readings; direction output alone does not establish a model bias.
+
 **Start controller** and **Stop controller** change live output only. The
 controller deliberately starts stopped after an application or system restart;
 this prevents hand motion from navigating menus before you are ready.
