@@ -14,6 +14,7 @@
 #   2026-09-03 - Served allowlisted PDF editions from the Help Center.
 #   2026-09-03 - Added automatic Learn-page practice activation and restoration.
 #   2026-09-03 - Added descriptive names to the shared profile selectors.
+#   2026-09-03 - Made cold vision startup visible on Dashboard and Learn.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -93,7 +94,7 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .label{{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px}}.value{{font:800 21px system-ui;margin-top:6px;overflow-wrap:anywhere}}.good{{color:var(--green)}}.warn{{color:#ffd75e}}.bad{{color:#ff6f75}}
 .camera{{width:100%;aspect-ratio:4/3;object-fit:contain;background:#050608;border:1px solid var(--line);border-radius:14px;margin-top:14px}}
 .dashboard-workspace{{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(430px,.95fr);gap:14px;align-items:start;margin-top:14px}}.dashboard-workspace .camera{{height:min(38vh,340px);aspect-ratio:auto;margin:0}}.dashboard-controls{{margin:10px 0 0}}
-.camera-stage{{position:relative}}.camera-idle{{display:none;height:min(38vh,340px);align-items:center;justify-content:center;text-align:center;padding:30px;background:radial-gradient(circle,#17284b,#050608 62%);border:1px solid var(--line);border-radius:14px;color:var(--cyan);font:900 24px/1.25 system-ui}}.camera-idle small{{display:block;margin-top:10px;color:var(--muted);font:14px/1.45 ui-monospace,monospace}}.profile-select{{margin-top:6px;padding:7px 9px;font:800 15px system-ui}}
+.camera-stage{{position:relative}}.camera-idle{{display:none;height:min(38vh,340px);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:30px;background:radial-gradient(circle,#17284b,#050608 62%);border:1px solid var(--line);border-radius:14px;color:var(--cyan);font:900 24px/1.25 system-ui}}.camera-idle small{{display:block;margin-top:10px;color:var(--muted);font:14px/1.45 ui-monospace,monospace}}.profile-select{{margin-top:6px;padding:7px 9px;font:800 15px system-ui}}
 .diagnostic-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.diagnostic-grid .card{{padding:10px}}.diagnostic-grid h2{{font-size:15px;margin-bottom:6px}}.diagnostic-grid .label{{font-size:9px}}.diagnostic-grid .bits{{gap:5px;margin-top:6px}}.diagnostic-grid .bit{{padding:3px 5px;font-size:12px}}.diagnostic-grid .meter{{height:6px;margin-top:4px}}.diagnostic-grid .events{{height:110px}}
 .controls{{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}}button,.button{{border:0;border-radius:8px;padding:12px 16px;background:var(--blue);color:white;font:800 15px system-ui;cursor:pointer;text-decoration:none}}button.secondary{{background:#272d3c}}button.danger{{background:var(--red)}}button:disabled{{opacity:.5;cursor:wait}}
 .meter{{height:8px;background:#080a10;border-radius:9px;margin-top:10px;overflow:hidden}}.meter i{{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .15s}}
@@ -114,6 +115,18 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 </style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/learn>Learn</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
 
 
+VISION_STARTUP_SCRIPT = r"""
+let startupObservedAt=null;
+function startupMessage(s){
+ if(s.vision_state!=='starting'){startupObservedAt=null;return ''}
+ if(startupObservedAt===null)startupObservedAt=Date.now();
+ const since=Number(s.vision_started_at)*1000||startupObservedAt;
+ const seconds=Math.max(0,Math.floor((Date.now()-since)/1000));
+ return `Starting camera and gesture tracking… First startup can take longer. ${seconds}s elapsed.`;
+}
+"""
+
+
 DASHBOARD = _page(
     "Dashboard",
     """<h1>I love the Power Glove. It’s so bad.</h1><p class='lead dashboard-lead'>Live vision, gesture and controller diagnostics from your camera-only Power Glove.</p>
@@ -124,7 +137,7 @@ DASHBOARD = _page(
  <div class=card><div class=label>Hand tracking</div><div class=value id=tracking>—</div><div class=meter><i id=confidence></i></div></div>
  <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
 </div>
-<div class=dashboard-workspace><div><div class=camera-stage><img class=camera id=camera data-src=/stream alt='Live camera view'><div class=camera-idle id=camera-idle>POWER GLOVE VISION<small>Gestures are paused. Select a profile to resume.</small></div></div>
+<div class=dashboard-workspace><div><div class=camera-stage><img class=camera id=camera data-src=/stream alt='Live camera view'><div class=camera-idle id=camera-idle role=status>POWER GLOVE VISION<small>Gestures are paused. Select a profile to resume.</small></div></div>
 <div class='controls dashboard-controls'><button id=center>Center hand</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection setup</a><button class=danger id=shutdown-system>Shutdown system</button></div></div>
 <div class=diagnostic-grid>
  <section class=card><h2>Controller output</h2><div class=label>Directions</div><div class=bits id=dpad></div><div class=label style='margin-top:14px'>Buttons</div><div class=bits id=buttons></div></section>
@@ -132,22 +145,22 @@ DASHBOARD = _page(
  <section class=card><h2>Finger curl</h2><div id=fingers></div></section>
  <section class='card events-card'><h2>Recent events</h2><div class=events id=events><div>Waiting for tracker…</div></div></section>
 </div></div><div class=notice id=dashboard-notice></div>""",
-    r"""const $=id=>document.getElementById(id);
+    VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
 const bits=(id,obj)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<span class="bit ${v?'on':''}">${k.toUpperCase()}</span>`).join('')||'<span class=bit>None</span>'};
 const bars=(id,obj,max=32767)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<div class=label>${k}: ${v}</div><div class=meter><i style="width:${Math.min(100,Math.abs(v)/max*100)}%"></i></div>`).join('')||'—'};
-let seen=[],switching=false,desiredProfile=''; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off';
-$('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||s.worker_running?'good':'warn'));
+let seen=[],switching=false,desiredProfile=''; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
+$('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||ready?'good':'warn'));
 if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
-$('camera').style.display=idle?'none':'block';$('camera-idle').style.display=idle?'flex':'none';if(idle){$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){$('camera').src=$('camera').dataset.src+'?t='+Date.now()}$('center').disabled=idle;
-$('receiver').textContent=s.controller_enabled?(idle?'Ready when gestures resume':(s.receiver_available===true?'Sending controls':'Waiting for console')):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle?'good':'warn');
+$('camera').style.display=idle||starting?'none':'block';$('camera-idle').style.display=idle||starting?'flex':'none';$('camera-idle').textContent=starting?startup:'POWER GLOVE VISION — Gestures are paused. Select a profile to resume.';if(idle||starting){$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){$('camera').src=$('camera').dataset.src+'?t='+Date.now()}$('center').disabled=!ready;
+$('receiver').textContent=s.controller_enabled?(starting?'Waiting for vision':idle?'Ready when gestures resume':(s.receiver_available===true?'Sending controls':'Waiting for console')):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle?'good':'warn');
 $('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start controller'; $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false';
-$('tracking').textContent=idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
+$('tracking').textContent=starting?'Starting…':idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);
 for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');
 }catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}}
 fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false,reset:true})}).finally(update);setInterval(update,250);
 $('center').onclick=async()=>{await fetch('/calibrate',{method:'POST'});};
-$('profile-selector').onchange=async()=>{const p=$('profile-selector'),notice=$('dashboard-notice');desiredProfile=p.value;switching=true;p.disabled=true;notice.textContent='Switching profile…';try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:desiredProfile})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Could not change profile.');notice.textContent=desiredProfile==='off'?'Gestures paused. Camera capture is stopping.':'Profile selected. Vision is starting and will ask you to center your hand.';}catch(e){switching=false;p.disabled=false;notice.textContent=e.message;update()}};
+$('profile-selector').onchange=async()=>{const p=$('profile-selector'),notice=$('dashboard-notice');desiredProfile=p.value;switching=true;p.disabled=true;notice.textContent='Switching profile…';try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:desiredProfile})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Could not change profile.');notice.textContent=desiredProfile==='off'?'Gestures paused. Camera capture is stopping.':'Profile selected.';}catch(e){switching=false;p.disabled=false;notice.textContent=e.message;update()}};
 $('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};
 $('shutdown-system').onclick=()=>shutdownSystem($('shutdown-system'));
 async function shutdownSystem(button){if(!confirm('Shut down the entire UNO Q system? Controller input will stop and Linux will shut down safely. To start it again, restore or cycle power.'))return;button.disabled=true;button.textContent='Shutting down…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('system').textContent='Shutting down safely';$('system').className='value warn';}catch(e){button.disabled=false;button.textContent='Shutdown system';alert(e.message);}}""",
@@ -157,12 +170,12 @@ async function shutdownSystem(button){if(!confirm('Shut down the entire UNO Q sy
 LEARN = _page(
     "Learn gestures",
     """<h1>Train your hand.</h1><p class='lead dashboard-lead'>Practice gesture recognition without a RetroPie connection. Controller transmission is stopped while this page is open.</p>
-<div class=learn-grid><div class=learn-camera><img class=camera id=learn-camera data-src=/stream alt='Live camera view for gesture practice'><div class=practice-badge>● PRACTICE ONLY</div></div>
+<div class=learn-grid><div class=learn-camera><img class=camera id=learn-camera data-src=/stream alt='Live camera view for gesture practice'><div class=camera-idle id=learn-startup role=status aria-live=polite></div><div class=practice-badge>● PRACTICE ONLY</div></div>
 <section class=card><div class=lesson-number id=lesson-number>Lesson 1 of 10</div><div class=lesson-title id=lesson-title>Show your hand</div><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
 <div class=lesson-result id=lesson-result>Waiting for your hand…</div><div class=lesson-progress id=lesson-progress></div>
 <div class=controls><button class=secondary id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button class=secondary id=center type=button>Re-center</button></div>
 <div class=live-readout><div><span class=label>Tracking</span><strong id=tracking>—</strong></div><div><span class=label>Recognized</span><strong id=recognized>None</strong></div><div><span class=label>Confidence</span><strong id=confidence>0%</strong></div></div></section></div>""",
-    r"""const $=id=>document.getElementById(id);
+    VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
 const lessons=[
  {title:'Show your hand',cue:'Hold one hand inside the camera frame with your palm facing the camera.',ok:s=>s.detected,result:'Hand found — great!' },
  {title:'Find neutral',cue:'Keep your palm centered and relaxed. Select Re-center if the direction stays active.',ok:s=>s.detected&&s.calibrated&&!Object.values(s.dpad||{}).some(Boolean),result:'Neutral position learned.'},
@@ -182,7 +195,10 @@ async function startPractice(){try{await practice(true);$('learn-camera').src=$(
 function stopPractice(){if(!practiceActive)return;practiceActive=false;fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:practiceSession,enabled:false}),keepalive:true}).catch(()=>{})}
 function action(s){const d=Object.entries(s.dpad||{}).find(([,v])=>v);if(d)return d[0].toUpperCase();const b=Object.entries(s.buttons||{}).find(([,v])=>v);if(b)return b[0].replace('_',' ').toUpperCase();const f=Object.entries(s.fingers||{}).filter(([,v])=>v>=2).map(([k])=>k);return f.length?f.join(' + '):'None'}
 function draw(s={}){const lesson=lessons[index];$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=index===0;$('next').textContent=index===lessons.length-1?'Start again':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
-async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();if(s.sequence===lastSequence)return;lastSequence=s.sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);setTimeout(()=>{if(index<lessons.length-1)index++;holdStarted=0;advancing=false;draw(s)},700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?'Try the gesture shown above.':'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
+async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();const startup=startupMessage(s),starting=s.vision_state==='starting',ready=s.vision_state==='active'&&s.practice_mode;
+$('learn-startup').style.display=starting?'flex':'none';$('learn-startup').textContent=startup;$('learn-camera').style.display=starting?'none':'block';$('center').disabled=!ready;
+if(!ready){holdStarted=0;$('lesson-result').textContent=s.vision_state==='error'?(s.vision_error||'Vision unavailable; retrying.'):startup||'Starting practice camera…';$('lesson-result').className='lesson-result';$('tracking').textContent=starting?'Starting…':'Waiting';$('recognized').textContent='None';$('confidence').textContent='—';return}
+if(s.sequence===lastSequence)return;lastSequence=s.sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);setTimeout(()=>{if(index<lessons.length-1)index++;holdStarted=0;advancing=false;draw(s)},700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?'Try the gesture shown above.':'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
 $('previous').onclick=()=>{index=Math.max(0,index-1);holdStarted=0;advancing=false;draw()};$('next').onclick=()=>{index=index===lessons.length-1?0:index+1;if(index===0)completed.clear();holdStarted=0;advancing=false;draw()};$('center').onclick=()=>fetch('/calibrate',{method:'POST'});
 window.addEventListener('pagehide',stopPractice);draw();startPractice();setInterval(()=>{if(practiceActive)practice(true).catch(()=>{})},2000);setInterval(update,150);update();""",
 )

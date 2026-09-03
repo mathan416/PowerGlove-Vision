@@ -82,6 +82,12 @@ The Dashboard profile selector changes only the current active profile. It does
 not rewrite `device.json` or change the Setup page's startup profile. RetroPie
 may replace a Dashboard selection when a game starts or ends.
 
+The first vision activation opens the camera and loads the gesture tracker,
+so it can take longer than switching between active profiles. Dashboard and
+Learn show **Starting camera and gesture tracking** with elapsed time until
+vision is active. Centering is disabled during initialization. The camera is
+not pre-warmed at boot when **Gestures off** is selected.
+
 The Learn page uses a temporary practice session. Entering Learn starts camera
 capture and recognition even if the selected profile is **Gestures off**; the
 practice engine uses Program H internally without changing the selected

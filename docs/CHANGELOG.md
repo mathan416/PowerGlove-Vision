@@ -23,6 +23,10 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Made Dashboard and Learn show camera/tracker startup with elapsed time and
+  a first-start explanation, without enabling the camera in Gestures off.
+- Kept Learn startup feedback updating before camera frames arrive and disabled
+  centering until vision is active.
 - Replaced generic Program A–I labels on Dashboard and Setup with the program
   letter and its intended game or use, while retaining the existing profile IDs.
 - Standardized the reader-facing game name “Gun Smoke” throughout Help and the

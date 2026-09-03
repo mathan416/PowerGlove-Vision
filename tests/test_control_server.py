@@ -268,6 +268,15 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"/api/profile", DASHBOARD)
         self.assertNotIn(b"/api/profile", SETUP)
 
+    def test_startup_feedback_is_shared_by_dashboard_and_learn(self):
+        for page in (DASHBOARD, LEARN):
+            self.assertIn(b"First startup can take longer.", page)
+            self.assertIn(b"s.vision_started_at", page)
+            self.assertIn(b"seconds}s elapsed", page)
+            self.assertIn(b"$('center').disabled=!ready", page)
+        self.assertLess(LEARN.index(b"startupMessage(s),starting="),
+                        LEARN.index(b"if(s.sequence===lastSequence)return"))
+
     def test_profile_selectors_use_descriptive_names_and_stable_ids(self):
         expected = {
             b"program_a": b"A: Pinball",

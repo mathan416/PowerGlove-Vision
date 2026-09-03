@@ -258,6 +258,7 @@ def main() -> int:
                     time.sleep(0.1)
                     continue
                 status["vision_state"] = "starting"
+                status["vision_started_at"] = time.time()
                 shared.update_status(status, clear_frame=True)
                 matrix.set_status(
                     MatrixStatus.LEARNING if practice_mode else MatrixStatus.LOADING
