@@ -91,7 +91,25 @@ python3 scripts/build-docs-pdf.py
 scripts/check-documentation.py --require-pdfs
 ```
 
-Commit the updated Markdown and PDFs together.
+Treat Markdown as the documentation source of truth. Commit the updated
+Markdown and regenerated PDFs together, even when the edit appears small.
+Inspect the affected PDF pages for clipped text, broken tables, missing images,
+and unintended page breaks before committing.
+
+The public `README.md`, guides under `docs/`, and documentation images also
+drive the Help Center hosted by the UNO Q. After a documentation change is
+merged or otherwise ready to deploy, synchronize and verify that copy with:
+
+```sh
+scripts/deploy-uno-q-wifi.sh arduino@arduiain.local
+```
+
+That deployment restarts the Power Glove Vision application and checks every
+Help route plus representative gesture artwork. Confirm the affected page in a
+browser after deployment. The cabinet-specific `docs/cheatsheet.md` and PDF
+editions are intentionally excluded from the public UNO Q Help deployment. If
+the UNO Q is unavailable, state clearly that device synchronization and live
+Help verification remain outstanding.
 
 ## App Lab installation package changes
 

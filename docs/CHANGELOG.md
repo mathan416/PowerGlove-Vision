@@ -48,6 +48,8 @@ authoritative record for line-level and file-level history.
   tables appear alongside their actions, while unsafe raw HTML remains escaped.
 - Extended UNO Q deployment checks across every Help guide and representative
   gameplay and Programs A-I illustrations.
+- Documented the required Markdown-to-PDF workflow and UNO Q Help
+  synchronization steps for documentation contributions.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
 - Added an offline Help library that renders the maintained public Markdown
