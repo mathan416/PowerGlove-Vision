@@ -30,6 +30,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Callable, Optional
 
+from .resolver import resolve_ipv4
+
 
 PAIRING_PORT = 55357
 CODE_PART_LENGTH = 10
@@ -201,7 +203,7 @@ def pair_with_code(host: str, port: int, code: str, token: str, timeout: float =
     """Verify a pinned certificate and transfer the shared token over TLS."""
     expected_certificate, authorization = normalize_pairing_code(code)
     discovery_context = ssl._create_unverified_context()
-    with socket.create_connection((host, port), timeout=timeout) as raw_connection:
+    with socket.create_connection((resolve_ipv4(host), port), timeout=timeout) as raw_connection:
         with discovery_context.wrap_socket(raw_connection, server_hostname=host) as tls_connection:
             der = tls_connection.getpeercert(binary_form=True)
     pem = ssl.DER_cert_to_PEM_cert(der)
@@ -209,7 +211,7 @@ def pair_with_code(host: str, port: int, code: str, token: str, timeout: float =
         raise ValueError("pairing code does not match the RetroPie certificate")
     context = ssl.create_default_context(cadata=pem)
     context.check_hostname = False
-    connection = http.client.HTTPSConnection(host, port, timeout=timeout, context=context)
+    connection = http.client.HTTPSConnection(resolve_ipv4(host), port, timeout=timeout, context=context)
     payload = json.dumps({"authorization": authorization, "token": token}).encode()
     connection.request("POST", "/pair", body=payload, headers={"Content-Type": "application/json"})
     response = connection.getresponse()
@@ -246,6 +248,26 @@ def pair_over_ssh(
         "uv", "run", "--no-project", "--python", "3.12",
         "--with", "paramiko>=3.4,<5", "python", str(helper),
     ]
+    # The web process does not inherit the vision worker's uv environment.
+    # Persist pairing dependencies alongside that runtime across app restarts.
+    environment = dict(os.environ)
+    environment.pop("VIRTUAL_ENV", None)
+    environment["PYTHONPATH"] = str(helper.parents[1] / "src")
+    data_dir = helper.parents[1] / "data"
+    environment["UV_CACHE_DIR"] = str(data_dir / "uv-cache")
+    environment["UV_PYTHON_INSTALL_DIR"] = str(data_dir / "uv-python")
+    try:
+        prepared = subprocess.run(
+            command[:-1] + ["-c", "import paramiko"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+            env=environment, timeout=120,
+        )
+    except subprocess.TimeoutExpired:
+        raise ValueError("Preparing the SSH pairing runtime timed out; check UNO Q internet access and retry") from None
+    if prepared.returncode:
+        raise ValueError("Could not prepare the SSH pairing runtime; check UNO Q internet access and retry")
+    # With dependencies prepared, do not spend the SSH deadline querying PyPI.
+    command.insert(2, "--offline")
     payload = json.dumps({
         "host": host,
         "username": username,
@@ -261,7 +283,10 @@ def pair_over_ssh(
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             timeout=timeout + 15,
+            env=environment,
         )
+    except subprocess.TimeoutExpired:
+        raise ValueError("SSH pairing timed out connecting to or configuring RetroPie; check its hostname and SSH access") from None
     finally:
         payload = b""
         password = ""

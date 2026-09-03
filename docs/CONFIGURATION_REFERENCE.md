@@ -67,7 +67,7 @@ the UNO Q matrix before entering the one-time PIN.
 
 | Setting | Default | Meaning and recommendation |
 | --- | --- | --- |
-| Console hostname or IP | `retropieconsole.local` | Destination for controller packets. Use your RetroPie `.local` name or a reserved LAN address. |
+| Console hostname or IP | Empty (not configured) | Set your RetroPie hostname (`RETROPIE-NAME.local` in examples) or a reserved LAN address and pair through Connection before starting controls. Learn and local settings work without a destination. Existing saved destinations are preserved. |
 | Controller port | `55355` | UNO Q to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
 | Startup profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
 | Tracking aid | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
@@ -100,6 +100,47 @@ reload Learn to begin a new practice session.
 
 More than one Learn tab may be open. Vision remains active until the last tab
 closes or its lease expires.
+
+The supplied profiles activate curl at 0.50 and release below 0.35. Learn uses
+the same held finger state as gameplay, so small changes during a hold do not
+reset the lesson. Bending the middle knuckle alone can qualify; bending the
+base knuckle is not required. Menu poses have separate thresholds. V/Start requires index and middle curl
+below 0.28, with ring and pinky above 0.42, held for about 0.7 seconds.
+Thumbs-up/Select requires thumb curl below 0.32 and all four fingers above
+0.42, with the same deliberate hold.
+
+Camera finger curl uses the strongest joint bend rather than averaging bends,
+including the base knuckle for the four fingers. The thumb uses its two outer
+joints. **Live hand measurements** in Learn displays exact curl values,
+the action threshold, magnified landmarks, and forward movement relative to
+the centered hand size. Push recognition stays active while forward movement
+exceeds its hysteresis threshold; Learn does not rely on a one-frame event.
+
+Camera finger curl uses MediaPipe 3D world landmarks when available. If those
+are absent, normalized depth is used with image aspect-ratio correction. Palm
+movement remains based on image coordinates. The legacy Arduino landmark
+bridge retains its existing 2D interpretation because its depth units are not
+assumed to match MediaPipe. Gesture thresholds are unchanged.
+
+Learn teaches A (index curl), B (thumb curl), and GLOVE ZAP (forward push),
+with live practice indicators. Game-specific mappings remain separate.
+Learn awards a Glove Master achievement once all eleven lessons are completed;
+skipped lessons must be revisited. Start again clears session progress.
+The Calibrate button turns red while calibration is active, then blue with a
+brief completion confirmation. Browser preview encoding is capped at 15 fps;
+controller status continues at inference rate. Status fields `inference_ms` and
+`send_ms` measure processing and local send time, not full camera-to-game latency.
+Centering happens when a new vision engine starts. Learn uses the general
+practice profile; changing into or out of a different profile starts a fresh
+engine and centers again. Use Calibrate with a relaxed hand if needed.
+
+Each Learn lesson shows a gesture illustration. Start uses a V sign; Select
+uses a thumbs-up with the other four fingers closed. Both must remain steady
+for about 0.7 seconds. The lesson accepts the confirmed pose even after its
+short controller pulse ends. Learn shows precise curl values from 0 to 1;
+the Dashboard's compact finger display uses 0 to 3. If directions appear
+instead, keep the palm near center and check the
+finger readings; direction output alone does not establish a model bias.
 
 **Start controller** and **Stop controller** change live output only. The
 controller deliberately starts stopped after an application or system restart;
@@ -339,8 +380,8 @@ The supplied defaults are:
 {
   "move_on": 0.38,
   "move_off": 0.24,
-  "curl_on": 0.68,
-  "curl_off": 0.48,
+  "curl_on": 0.50,
+  "curl_off": 0.35,
   "roll_on": 0.58,
   "roll_off": 0.40,
   "push_on": 0.34,
@@ -424,13 +465,13 @@ that override before diagnosing the supplied autoconfiguration.
 ## UNO Q shutdown helper
 
 The standard installation includes the host shutdown helper so Dashboard and
-Setup can power Linux off cleanly. It consists of two systemd units and one
+Setup can halt Linux cleanly. It consists of two systemd units and one
 boot-time readiness rule:
 
 | Repository file | Installed path | Purpose |
 | --- | --- | --- |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/powerglove-system-shutdown.path` | Watches for one fixed shutdown request in the application's private data directory |
-| `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/powerglove-system-shutdown.service` | Removes that request and asks systemd to power off Linux cleanly |
+| `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/powerglove-system-shutdown.service` | Removes that request and asks systemd to halt Linux cleanly |
 | `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/powerglove-system-shutdown.conf` | Recreates the unprivileged readiness marker at boot or after application replacement |
 
 Install them with `scripts/install-uno-q-shutdown-helper.sh`. The installer also
@@ -585,3 +626,26 @@ When a change goes wrong, restore the last known-good active file rather than
 copying every repository template over the installation. Validate JSON, restart
 only the affected service or application, and test packet delivery before
 changing controller mappings.
+
+## Local hostname resolution inside App Lab
+
+The app resolves `.local` IPv4 names through the UNO Q host's Avahi socket.
+The deployment script mounts `/run/avahi-daemon` read-only into the container;
+this is a directory mount so daemon restarts can replace the socket safely.
+Answers are cached for five seconds, then refreshed, allowing DHCP changes.
+Gameplay, connection testing, and both pairing methods use this resolver.
+Ordinary DNS names and IP addresses continue to use the normal system resolver.
+No fixed RetroPie address is written to `/etc/hosts`. Generic container tools
+such as `getent` may still lack mDNS; test through the app's Connection page.
+
+If App Lab regenerates its Compose file during a fresh import, rerun deployment
+or the installation step below to restore the mount. Restarting or rebooting an
+existing configured container retains it.
+
+## Known limitation: UNO Q restarts after Shutdown
+
+On the tested UNO Q, a graceful `halt` still leads to an automatic restart,
+including when connected directly to a Mac without the powered hub. The helper
+requests halt correctly, but remaining stopped is not verified. Do not use loss
+of the website or a fixed delay as confirmation that power can safely be removed.
+See the installation guide for the investigation status and Arduino guidance.

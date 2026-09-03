@@ -20,6 +20,21 @@ from powerglove_vision.transport import UdpSender, decode_state, encode_state
 
 
 class TransportTests(unittest.TestCase):
+    def setUp(self):
+        resolver = patch("powerglove_vision.transport.resolve_ipv4", return_value="192.0.2.1")
+        resolver.start()
+        self.addCleanup(resolver.stop)
+
+    @patch("powerglove_vision.transport.resolve_ipv4")
+    @patch("powerglove_vision.transport.socket.socket")
+    def test_blank_destination_never_resolves_or_sends(self, socket_factory, resolver):
+        """Local practice cannot accidentally send to an implicit network destination."""
+        sender = UdpSender("", 55355, "secret")
+        self.assertFalse(sender.send(ControllerState.released(1, 1.0, "off", False)))
+        resolver.assert_not_called()
+        socket_factory.return_value.sendto.assert_not_called()
+        self.assertIn("Connection", sender.last_error)
+
     def test_round_trip(self):
         state = ControllerState.released(7, 1.5, "bad_street_brawler", True)
         decoded = decode_state(encode_state(state, "secret", "session-one"))

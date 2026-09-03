@@ -109,7 +109,7 @@ def _close_vision(capture, tracker) -> None:
 
 def _effective_profile(profile: str | None, practice_mode: bool) -> str | None:
     """Choose a tracking profile while preserving an intentionally selected off state."""
-    return profile or (PRACTICE_PROFILE if practice_mode else None)
+    return PRACTICE_PROFILE if practice_mode else profile
 
 
 def _base_status(
@@ -159,6 +159,7 @@ def main() -> int:
     capture = tracker = engine = cv2 = None
     retry_at = 0.0
     read_failures = 0
+    preview_at = 0.0
     vision_error: str | None = None
 
     matrix.set_status(MatrixStatus.GESTURES_IDLE if current_profile is None else MatrixStatus.LOADING)
@@ -310,8 +311,13 @@ def main() -> int:
                     time.sleep(0.05)
                 continue
             read_failures = 0
+            inference_started = time.monotonic()
             result = tracker.process(frame)
             state = engine.update(result.observation)
+            inference_finished = time.monotonic()
+            # Gameplay output takes priority over matrix RPC and browser preview work.
+            receiver_available = sender.send(state) if controller_enabled and not practice_mode else False
+            sent_at = time.monotonic()
             matrix.set_status(
                 MatrixStatus.LEARNING
                 if practice_mode
@@ -321,8 +327,9 @@ def main() -> int:
                     else MatrixStatus.READY
                 )
             )
-            receiver_available = sender.send(state) if controller_enabled and not practice_mode else False
             status = state.to_dict()
+            status["inference_ms"] = round((inference_finished - inference_started) * 1000, 1)
+            status["send_ms"] = round((sent_at - inference_finished) * 1000, 1)
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
             status["game"] = current_game
             status["active_profile"] = current_profile or "off"
@@ -338,6 +345,17 @@ def main() -> int:
             status["controller_enabled"] = controller_enabled
             status["camera_available"] = True
             status["vision_state"] = "active"
+            status["menu_gesture"] = engine.menu_feedback()
+            status["push_gesture"] = engine.push_feedback(result.observation)
+            status["finger_active"] = engine.curl_feedback(result.observation)
+            status["finger_curls"] = result.observation.fingers
+            status["curl_threshold"] = engine.config.curl_on
+            status.update(result.diagnostics)
+            # Publish control feedback every inference; encode video at most 15 fps.
+            shared.update_status(status)
+            if time.monotonic() < preview_at:
+                continue
+            preview_at = time.monotonic() + 1.0 / 15.0
             cv2.putText(
                 result.frame,
                 "PRACTICE" if practice_mode else (

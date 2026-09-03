@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Encode bounded controller packets and send them to RetroPie without blocking vision recovery."""
@@ -47,6 +48,9 @@ def decode_state(payload: bytes) -> dict:
     return data
 
 
+from .resolver import resolve_ipv4
+
+
 class UdpSender:
     """Send controller states in recoverable sessions over connectionless UDP."""
     def __init__(self, host: str, port: int, token: str | None) -> None:
@@ -64,12 +68,16 @@ class UdpSender:
         fail while Wi-Fi, mDNS, or the RetroPie console is starting. Throttle
         retries after an error so tracking and the dashboard remain responsive.
         """
+        if not self.destination[0].strip():
+            self.last_error = "Configure your RetroPie destination in Connection before starting controls."
+            return False
         now = time.monotonic()
         if now < self._retry_at:
             return False
         try:
             self.socket.sendto(
-                encode_state(state, self.token, self.session), self.destination
+                encode_state(state, self.token, self.session),
+                (resolve_ipv4(self.destination[0]), self.destination[1])
             )
         except OSError as exc:
             self.last_error = str(exc)

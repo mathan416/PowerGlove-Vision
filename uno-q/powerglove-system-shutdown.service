@@ -1,11 +1,12 @@
 # Project: PowerGlove Vision
 # File: uno-q/powerglove-system-shutdown.service
-# Purpose: Consume an authorized shutdown request and initiate a non-blocking UNO Q poweroff.
+# Purpose: Consume an authorized shutdown request and initiate a non-blocking UNO Q halt.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added with standardized source documentation.
+#   2026-09-03 - Request halt to avoid UNO Q rebooting after poweroff.
 # Full history: docs/CHANGELOG.md and Git history.
 
 [Unit]
@@ -14,4 +15,4 @@ Description=Shut down the UNO Q for PowerGlove Vision
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/rm -f /home/arduino/ArduinoApps/powerglove-vision/data/shutdown-request
-ExecStart=/usr/bin/systemctl --no-block poweroff
+ExecStart=/usr/bin/systemctl --no-block halt

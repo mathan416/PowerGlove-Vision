@@ -9,6 +9,7 @@
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Delegated idle and active vision lifecycle to the persistent worker.
 #   2026-09-03 - Displayed a dedicated matrix state during Learn sessions.
+#   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Arduino App Lab entry point for PowerGlove Vision."""
@@ -42,7 +43,7 @@ def load_device_config() -> dict:
     # A useful, portable first-run default. The same token must be copied to
     # the RetroPie receiver before controller packets will be accepted.
     settings = {
-        "receiver": "retropieconsole.local",
+        "receiver": "",
         "token": secrets.token_urlsafe(24),
         "profile": "bad_street_brawler",
         "glove_color": "none",
@@ -62,7 +63,7 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
         # independent of project-wide Python compatibility metadata.
         "uv", "run", "--no-project", "--python", "3.12", "--with", str(wheel),
         "python", "-m", "powerglove_vision.vision_app",
-        "--receiver", str(settings["receiver"]),
+        "--receiver", str(settings.get("receiver", "")),
         "--port", str(settings.get("port", 55355)),
         "--token", str(settings["token"]),
         "--profile", str(settings.get("profile", "bad_street_brawler")),

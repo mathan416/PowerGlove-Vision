@@ -10,6 +10,7 @@
 #   2026-09-03 - Renamed the installation route while preserving its original alias.
 #   2026-09-03 - Rendered allowlisted inline gesture images used in guide tables.
 #   2026-09-03 - Added allowlisted PDF downloads for every public guide.
+#   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Render the bundled public Markdown guides as safe, offline Help pages."""
@@ -241,7 +242,7 @@ def request_browser_address(host_header: str) -> str:
 def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple[str, str]:
     """Build a non-secret cabinet reference from the request address and public settings."""
     board = request_browser_address(host_header)
-    receiver = str(config.get("receiver", "retropieconsole.local"))
+    receiver = str(config.get("receiver", "")) or "Not configured"
     port = str(config.get("port", 55355))
     profile = str(config.get("profile", "off"))
     profile_names = {

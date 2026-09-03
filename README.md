@@ -75,7 +75,7 @@ and the status pages remain available while the camera is disconnected.
   active public configuration.
 - `/setup` configures the receiver, profile, camera and controller state. Pairing
   credentials are accepted only by the HTTPS version on port 8443.
-- **Shutdown system** on Dashboard or Setup safely powers off Linux after a
+- **Shutdown** on Dashboard or Setup safely halts Linux after a
   confirmation. Restoring or cycling power is required to start the UNO Q again.
 
 The screenshots show the intentionally recoverable camera-offline state: the
@@ -151,8 +151,10 @@ unit. Because
 the UNO Q's system Python is newer than the compatible hand-tracking build, the
 App Lab supervisor maintains an isolated Python 3.12 worker with MediaPipe
 0.10.18 and headless OpenCV. On first launch it creates
-`data/device.json`, defaults the receiver to `retropieconsole.local`, and
-generates a private random pairing token. Keep `data/device.json` out of Git;
+`data/device.json` with no RetroPie destination and generates a private random
+pairing token. Configure your RetroPie hostname and pairing in Connection before
+starting controller output. The website, Learn mode, and matrix animations work
+without a paired console. Existing saved destinations are preserved. Keep `data/device.json` out of Git;
 copy its token to `/etc/powerglove/token` on the console.
 
 The camera setting defaults to `auto`. If an active profile cannot use the
@@ -165,9 +167,9 @@ MediaPipe stop while the website and profile-command listener remain online.
 
 Controller packets and profile changes travel over the local Wi-Fi network.
 The camera remains connected directly to the UNO Q. Hostnames are preferred to
-fixed addresses: the default console name is `retropieconsole.local`, and the
-console can address the board by its `.local` name even if the router later
-assigns a different IP address.
+fixed addresses: use your console hostname (`RETROPIE-NAME.local` in these
+examples). The console can address the board by its `.local` name even if the
+router later assigns a different IP address.
 
 Open `http://<uno-q-name>.local:8088/setup` for the friendly setup page. It edits
 the persistent `data/device.json` and can change the console hostname,
@@ -191,17 +193,17 @@ state. Loading or refreshing the Dashboard also clears any abandoned Learn
 session and reapplies the selected mode. The matrix shows a softly scanning
 `L` throughout the Learn session.
 
-**Shutdown system** appears on both pages after the fixed-purpose host helper
-is installed. It stops controller output and asks Linux to power off cleanly.
-The confirmation warns that the UNO Q must have power restored or cycled to
-start again. The helper watches one fixed trigger file and cannot run commands
+**Shutdown** appears on both pages after the fixed-purpose host helper
+is installed. It stops controller output and asks Linux to halt cleanly.
+The tested UNO Q restarts after halt. Do not rely on the restart warning or
+website disconnection as confirmation that the board will remain stopped. The helper watches one fixed trigger file and cannot run commands
 provided by the browser.
 
 The cabinet installation was validated on September 3, 2026: the host watcher
 reported `enabled` and `active`, its readiness marker was present, both live
-pages displayed **Shutdown system**, and rejected test requests created no
-shutdown trigger. The destructive, fully confirmed path was deliberately not
-invoked during validation.
+pages displayed **Shutdown**, and rejected test requests created no
+shutdown trigger. Subsequent user-triggered tests reached the halt target but
+restarted on both hub power and direct Mac USB power.
 
 Secure pairing is available at
 `https://<uno-q-name>.local:8443/setup`. The UNO Q creates a local certificate
@@ -258,7 +260,7 @@ Open `http://<uno-q-name>.local:8088/debug` from another machine. The live
 dashboard shows the camera overlay, an active-profile selector, active game,
 tracking confidence,
 D-pad and button output, axes, finger curl, recent gesture events, and a
-**Center hand** button. The Dashboard remains available even when the camera
+**Calibrate** button. The Dashboard remains available even when the camera
 is unplugged; centering is disabled until vision is active.
 Calibration also begins automatically at tracker startup. The shorter root URL
 redirects to this dashboard.
@@ -294,7 +296,7 @@ boot display. Once the PowerGlove Vision app starts, it shows:
 - a gently pulsing version of that acknowledgement while tracking is active;
 - a blinking X if camera or runtime initialization fails.
 
-A true system shutdown clears the matrix. The glove attract animation therefore
+The Linux shutdown request does not guarantee that the MCU matrix turns off. The glove attract animation therefore
 means that Linux and the website are healthy while only gesture capture is idle.
 
 Copy `sketch/` into the sketch portion of the PowerGlove Vision App Lab
@@ -312,7 +314,7 @@ After installing an SSH public key for the UNO Q's `arduino` account, update a
 running App Lab installation without reconnecting USB:
 
 ```sh
-scripts/deploy-uno-q-wifi.sh arduino@arduiain.local
+scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
 ```
 
 The target can be any UNO Q `.local` hostname. Device settings and private
@@ -330,7 +332,7 @@ certificate and cached vision runtime are preserved.
 Install the host shutdown helper once from a terminal on the development Mac:
 
 ```sh
-scripts/install-uno-q-shutdown-helper.sh arduino@arduiain.local
+scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
 ```
 
 This is a required host-integration step for the standard installation. The
@@ -467,3 +469,29 @@ Power Glove, and other referenced product names and marks belong to their
 respective owners; this independent project is not affiliated with or endorsed
 by them. Bundled and downloaded runtime components retain their own terms; see
 [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md).
+
+### Host setup commands
+
+After downloading the project on RetroPie and importing/running the app once
+in App Lab on the UNO Q, run one command on each target machine:
+
+```sh
+# On RetroPie, from the project checkout:
+sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local
+# On UNO Q, from /home/arduino/ArduinoApps/powerglove-vision:
+sudo python3 scripts/setup-machine.py uno-q
+```
+
+Replace the example UNO Q hostname for your installation. Setup preserves
+existing private settings and finishes with PASS/FAIL/ACTION checks. Pairing
+approval and gameplay confirmation remain user steps. See
+[installation instructions](docs/INSTALL_README.md) for prerequisites and
+read-only checks.
+
+## Known limitation: UNO Q restarts after Shutdown
+
+On the tested UNO Q, a graceful `halt` still leads to an automatic restart,
+including when connected directly to a Mac without the powered hub. The helper
+requests halt correctly, but remaining stopped is not verified. Do not use loss
+of the website or a fixed delay as confirmation that power can safely be removed.
+See the installation guide for the investigation status and Arduino guidance.

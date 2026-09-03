@@ -110,7 +110,7 @@ passwords, private files, or arbitrary Host-header content.
 The web process does not receive general `sudo` permission. A root-owned
 systemd path unit watches one fixed file in the application data directory. A
 matching oneshot service deletes that file and requests a non-blocking Linux
-poweroff.
+halt.
 
 The dashboard route requires an explicit confirmation header and only creates
 the fixed request when the host installer has placed the private

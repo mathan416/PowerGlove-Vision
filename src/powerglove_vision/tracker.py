@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Used 3D world landmarks for camera finger curl.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Convert MediaPipe or Arduino hand landmarks into normalized observations and annotated frames."""
@@ -15,7 +16,7 @@ from __future__ import annotations
 
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -36,21 +37,21 @@ def _distance(a: Any, b: Any) -> float:
     return math.hypot(a.x - b.x, a.y - b.y)
 
 
-def _angle(a: Any, b: Any, c: Any) -> float:
+def _angle(a: Any, b: Any, c: Any, use_depth: bool = False) -> float:
     """Return the stable interior angle formed by three landmarks."""
-    ab = (a.x - b.x, a.y - b.y)
-    cb = (c.x - b.x, c.y - b.y)
-    denominator = math.hypot(*ab) * math.hypot(*cb)
+    ab = (a.x - b.x, a.y - b.y, (a.z - b.z) if use_depth else 0.0)
+    cb = (c.x - b.x, c.y - b.y, (c.z - b.z) if use_depth else 0.0)
+    denominator = math.sqrt(sum(v*v for v in ab) * sum(v*v for v in cb))
     if denominator < 1e-8:
         return math.pi
-    cosine = max(-1.0, min(1.0, (ab[0] * cb[0] + ab[1] * cb[1]) / denominator))
+    cosine = max(-1.0, min(1.0, sum(x*y for x, y in zip(ab, cb)) / denominator))
     return math.acos(cosine)
 
 
-def _curl(a: Any, b: Any, c: Any) -> float:
+def _curl(a: Any, b: Any, c: Any, use_depth: bool = False) -> float:
     # Straight is approximately pi radians; tightly bent is near pi/3.
     """Convert two finger-joint angles into a normalized curl amount."""
-    return max(0.0, min(1.0, (math.pi - _angle(a, b, c)) / (2 * math.pi / 3)))
+    return max(0.0, min(1.0, (math.pi - _angle(a, b, c, use_depth)) / (2 * math.pi / 3)))
 
 
 @dataclass
@@ -58,6 +59,7 @@ class TrackingResult:
     """Bundle one normalized observation with its annotated video frame."""
     observation: HandObservation
     frame: Any
+    diagnostics: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -66,6 +68,39 @@ class _Point:
     x: float
     y: float
     z: float = 0.0
+
+
+def _camera_curl_points(result: Any, landmarks: list, tasks: bool,
+                        width: int, height: int) -> list:
+    """Prefer metric world geometry; correct image aspect ratio in the fallback."""
+    worlds = getattr(result, "hand_world_landmarks" if tasks else "multi_hand_world_landmarks", None)
+    if worlds:
+        points = worlds[0] if tasks else worlds[0].landmark
+        if len(points) == 21:
+            return points
+    # MediaPipe normalized z uses approximately the same scale as normalized x.
+    return [_Point(p.x, p.y * height / width, p.z) for p in landmarks]
+
+
+def _finger_bends(points: list) -> dict:
+    """Measure each joint separately so one deliberate bend is not averaged away."""
+    result = {}
+    for name, (a, b, c, d) in zip(
+        ("thumb", "index", "middle", "ring", "pinky"),
+        ((1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12),
+         (13, 14, 15, 16), (17, 18, 19, 20)),
+    ):
+        bends = [_curl(points[a], points[b], points[c], True),
+                 _curl(points[b], points[c], points[d], True)]
+        if name != "thumb":
+            bends.insert(0, _curl(points[0], points[a], points[b], True))
+        result[name] = bends
+    return result
+
+
+def _finger_curls(points: list) -> dict:
+    """Use the strongest joint bend, including the fingers' base knuckles."""
+    return {name + "_curl": max(bends) for name, bends in _finger_bends(points).items()}
 
 
 def observation_from_landmarks(
@@ -200,13 +235,9 @@ class MediaPipeTracker:
             landmarks[5].x - landmarks[17].x,
         )
 
-        curls = {
-            "thumb_curl": (_curl(landmarks[1], landmarks[2], landmarks[3]) + _curl(landmarks[2], landmarks[3], landmarks[4])) / 2,
-            "index_curl": (_curl(landmarks[5], landmarks[6], landmarks[7]) + _curl(landmarks[6], landmarks[7], landmarks[8])) / 2,
-            "middle_curl": (_curl(landmarks[9], landmarks[10], landmarks[11]) + _curl(landmarks[10], landmarks[11], landmarks[12])) / 2,
-            "ring_curl": (_curl(landmarks[13], landmarks[14], landmarks[15]) + _curl(landmarks[14], landmarks[15], landmarks[16])) / 2,
-            "pinky_curl": (_curl(landmarks[17], landmarks[18], landmarks[19]) + _curl(landmarks[18], landmarks[19], landmarks[20])) / 2,
-        }
+        height, width = frame.shape[:2]
+        curl_points = _camera_curl_points(result, landmarks, self._tasks, width, height)
+        curls = _finger_curls(curl_points)
         observation = HandObservation(
             timestamp=now,
             detected=True,
@@ -226,4 +257,7 @@ class MediaPipeTracker:
             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (20, 255, 120), -1)
         label = f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}"
         cv2.putText(frame, label, (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 240, 100), 2)
-        return TrackingResult(observation, frame)
+        return TrackingResult(observation, frame, {
+            "finger_bends": _finger_bends(curl_points),
+            "hand_landmarks": [[p.x, p.y] for p in landmarks],
+        })

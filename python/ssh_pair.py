@@ -23,6 +23,9 @@ import sys
 from pathlib import Path
 
 import paramiko
+import socket
+
+from powerglove_vision.resolver import resolve_ipv4
 
 
 REMOTE_PROGRAM = """\
@@ -70,6 +73,7 @@ def main() -> int:
         timeout = float(request.get("timeout", 30.0))
         client.connect(
             hostname=str(request["host"]),
+            sock=socket.create_connection((resolve_ipv4(str(request["host"])), 22), timeout=timeout),
             username=str(request["username"]),
             password=str(request["password"]),
             timeout=timeout,

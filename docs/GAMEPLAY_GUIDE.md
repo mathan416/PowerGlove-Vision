@@ -12,10 +12,10 @@ impractical way to rediscover a game library.**
 Select a profile on Dashboard, or open Learn for practice. If you see
 **Starting camera and gesture tracking**, wait for the camera view to appear.
 First startup can take longer; the elapsed-seconds display confirms that the
-page is still updating. **Center hand** becomes available when vision is active.
+page is still updating. **Calibrate** becomes available when vision is active.
 
 1. Stand where the camera can see your whole hand with a little room on every side.
-2. Open your hand, face your palm toward the camera, and select **Center hand**.
+2. Open your hand, face your palm toward the camera, and select **Calibrate**.
 3. Wait for tracking to settle, then select **Start controller**.
 4. Move your whole hand away from center for directions. Return to center to stop.
 5. Make one gesture at a time. Clean poses beat frantic motion.
@@ -257,7 +257,7 @@ changing the ROM or emulator.
 2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**,
    **H: General**, or another Program
    A-I profile from **Active profile**.
-3. Return to the game, select **Center hand**, and then **Start controller**.
+3. Return to the game, select **Calibrate**, and then **Start controller**.
 4. Test movement, both action gestures, Start, and Select before committing to a
    long session. Stop the controller immediately if a gesture remains active.
 
