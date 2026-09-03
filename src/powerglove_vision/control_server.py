@@ -22,7 +22,6 @@ from .pairing import PAIRING_PORT, certificate_identity, generate_certificate, p
 WORKER_URL = "http://127.0.0.1:8089"
 HTTPS_PORT = 8443
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "powerglove-vision-logo.png"
-ASKPASS_PATH = Path(__file__).resolve().parents[2] / "python" / "ssh-askpass"
 PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
     *(f"program_{letter}" for letter in "abcdefghi"),
@@ -404,7 +403,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                             host,
                             str(incoming.get("username", "")).strip(), password,
                             str(state.load_config()["token"]),
-                            state.config_path.parent / "ssh" / "known_hosts", ASKPASS_PATH,
+                            state.config_path.parent / "ssh" / "known_hosts",
                         )
                     finally:
                         password = ""

@@ -1,10 +1,12 @@
 # Copyright (c) 2026 Iain Bennett
+import json
 import tempfile
 import threading
 import socket
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from powerglove_vision.pairing import (
     certificate_code,
@@ -13,6 +15,7 @@ from powerglove_vision.pairing import (
     generate_certificate,
     install_token,
     normalize_pairing_code,
+    pair_over_ssh,
     pair_with_code,
     serve_pairing,
 )
@@ -41,6 +44,24 @@ class PairingTests(unittest.TestCase):
             install_token(token_file, "a-secure-controller-token")
             self.assertEqual(token_file.read_text(), "a-secure-controller-token\n")
             self.assertEqual(token_file.stat().st_mode & 0o777, 0o640)
+
+    @mock.patch("powerglove_vision.pairing.subprocess.run")
+    def test_password_pairing_uses_python_ssh_without_command_line_secrets(self, run):
+        run.return_value.returncode = 0
+        run.return_value.stderr = b""
+        with tempfile.TemporaryDirectory() as temporary_name:
+            pair_over_ssh(
+                "retropie.local", "pi", "private-password", "paired-controller-token",
+                Path(temporary_name) / "known_hosts", timeout=2,
+            )
+        command = run.call_args.args[0]
+        self.assertEqual(command[:3], ["uv", "run", "--no-project"])
+        self.assertNotIn("ssh", command)
+        self.assertNotIn("private-password", command)
+        self.assertNotIn("paired-controller-token", command)
+        payload = json.loads(run.call_args.kwargs["input"])
+        self.assertEqual(payload["password"], "private-password")
+        self.assertEqual(payload["token"], "paired-controller-token")
 
     def test_one_time_code_pairs_over_pinned_https(self):
         with tempfile.TemporaryDirectory() as temporary_name:

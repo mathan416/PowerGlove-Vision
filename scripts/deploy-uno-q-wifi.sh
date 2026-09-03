@@ -55,6 +55,7 @@ COPYFILE_DISABLE=1 tar \
   --exclude './tmp' \
   --exclude '__pycache__' \
   --exclude '*.pyc' \
+  --exclude '*.pdf' \
   --exclude '.DS_Store' \
   --exclude './cheatsheet.md' \
   -C "${PROJECT_DIR}" -cf - . | \

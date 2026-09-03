@@ -1,3 +1,0 @@
-#!/bin/sh
-# Copyright (c) 2026 Iain Bennett
-printf '%s\n' "$POWERGLOVE_PAIR_PASSWORD"

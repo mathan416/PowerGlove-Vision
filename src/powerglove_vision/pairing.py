@@ -11,7 +11,6 @@ import http.client
 import json
 import os
 import secrets
-import shlex
 import socket
 import ssl
 import subprocess
@@ -208,14 +207,9 @@ def pair_over_ssh(
     password: str,
     token: str,
     known_hosts: Path,
-    askpass: Path,
     timeout: float = 30.0,
 ) -> None:
-    """Install the shared token through password-authenticated SSH.
-
-    The password is provided to OpenSSH only through its process environment
-    and encrypted stdin. It is never included in arguments, files, or logs.
-    """
+    """Install the token with an isolated Python SSH client and private stdin."""
     allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
     if not host or len(host) > 253 or any(character.isspace() for character in host):
         raise ValueError("enter a valid RetroPie hostname or IP address")
@@ -225,43 +219,30 @@ def pair_over_ssh(
         raise ValueError("enter a valid RetroPie password")
     if not 16 <= len(token) <= 256:
         raise ValueError("invalid controller token")
-    known_hosts.parent.mkdir(parents=True, exist_ok=True)
-    known_hosts.touch(mode=0o600, exist_ok=True)
-    os.chmod(known_hosts, 0o600)
-    environment = dict(os.environ)
-    environment.update({
-        "DISPLAY": environment.get("DISPLAY", ":0"),
-        "SSH_ASKPASS": str(askpass),
-        "SSH_ASKPASS_REQUIRE": "force",
-        "POWERGLOVE_PAIR_PASSWORD": password,
-    })
-    remote_program = (
-        "import grp,os,subprocess,sys;"
-        "p='/etc/powerglove/token';t=sys.stdin.readline().strip();"
-        "assert 16<=len(t)<=256 and not any(c.isspace() for c in t);"
-        "os.makedirs('/etc/powerglove',exist_ok=True);q=p+'.pairing-tmp';"
-        "open(q,'w').write(t+'\\n');os.chmod(q,0o640);"
-        "os.chown(q,0,grp.getgrnam('input').gr_gid);os.replace(q,p);"
-        "subprocess.check_call(['systemctl','restart','powerglove-receiver.service'])"
-    )
+    helper = Path(__file__).resolve().parents[2] / "python" / "ssh_pair.py"
     command = [
-        "ssh", "-o", "BatchMode=no", "-o", "NumberOfPasswordPrompts=1",
-        "-o", "PreferredAuthentications=password,keyboard-interactive",
-        "-o", "PubkeyAuthentication=no", "-o", "StrictHostKeyChecking=accept-new",
-        "-o", f"UserKnownHostsFile={known_hosts}", f"{username}@{host}",
-        "sudo -k -S -p '' /usr/bin/python3 -c " + shlex.quote(remote_program),
+        "uv", "run", "--no-project", "--python", "3.12",
+        "--with", "paramiko>=3.4,<5", "python", str(helper),
     ]
+    payload = json.dumps({
+        "host": host,
+        "username": username,
+        "password": password,
+        "token": token,
+        "known_hosts": str(known_hosts),
+        "timeout": timeout,
+    }).encode()
     try:
         completed = subprocess.run(
             command,
-            input=(password + "\n" + token + "\n").encode(),
+            input=payload,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
-            env=environment,
-            timeout=timeout,
+            timeout=timeout + 15,
         )
     finally:
-        environment["POWERGLOVE_PAIR_PASSWORD"] = ""
+        payload = b""
+        password = ""
     if completed.returncode:
         error = completed.stderr.decode("utf-8", "replace").strip().splitlines()
         message = error[-1] if error else "SSH pairing failed"

@@ -26,6 +26,7 @@ rsync -a \
   --exclude 'tmp/' \
   --exclude '__pycache__/' \
   --exclude '*.pyc' \
+  --exclude '*.pdf' \
   --exclude '.DS_Store' \
   --exclude 'cheatsheet.md' \
   "${PROJECT_DIR}/" "${PACKAGE_TMP}/PowerGlove-Vision/"
