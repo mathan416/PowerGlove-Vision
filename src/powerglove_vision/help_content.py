@@ -8,6 +8,7 @@
 #   2026-09-03 - Added the built-in Help library and Markdown reading view.
 #   2026-09-03 - Added a live, non-secret cabinet connection reference.
 #   2026-09-03 - Renamed the installation route while preserving its original alias.
+#   2026-09-03 - Rendered allowlisted inline gesture images used in guide tables.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Render the bundled public Markdown guides as safe, offline Help pages."""
@@ -97,7 +98,12 @@ SLUG_BY_FILE = {
     if guide["file"] is not None
 }
 
-_INLINE_TOKEN = re.compile(r"(!?\[[^\]]*\]\([^)]*\)|`[^`]*`|\*\*[^*]+\*\*|(?<!\*)\*[^*]+\*(?!\*))")
+_HTML_IMAGE_PATTERN = r'<img\s+src="([^"]+)"\s+alt="([^"]*)"\s+width="([0-9]{1,3})"\s*/?>'
+_HTML_IMAGE = re.compile(_HTML_IMAGE_PATTERN, re.IGNORECASE)
+_INLINE_TOKEN = re.compile(
+    r"(" + _HTML_IMAGE_PATTERN + r"|!?\[[^\]]*\]\([^)]*\)|`[^`]*`|\*\*[^*]+\*\*|(?<!\*)\*[^*]+\*(?!\*))",
+    re.IGNORECASE,
+)
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 _BULLET = re.compile(r"^\s*[-+*]\s+(.+)$")
 _NUMBERED = re.compile(r"^\s*\d+[.)]\s+(.+)$")
@@ -325,7 +331,23 @@ def _inline(text: str) -> str:
     for match in _INLINE_TOKEN.finditer(text):
         output.append(html.escape(text[position:match.start()]))
         token = match.group(0)
-        if token.startswith("!["):
+        if token.lower().startswith("<img"):
+            image_match = _HTML_IMAGE.fullmatch(token)
+            if image_match:
+                target, alt, width_text = image_match.groups()
+                safe_target = _safe_target(target, image=True)
+                width = int(width_text)
+                if safe_target != "#" and 24 <= width <= 320:
+                    output.append(
+                        "<img loading=lazy src='{src}' alt='{alt}' width='{width}'>".format(
+                            src=html.escape(safe_target, quote=True),
+                            alt=html.escape(alt, quote=True),
+                            width=width,
+                        )
+                    )
+                else:
+                    output.append(html.escape(token))
+        elif token.startswith("!["):
             image_match = re.match(r"!\[([^]]*)\]\(([^)]*)\)", token)
             if image_match:
                 alt, target = image_match.groups()

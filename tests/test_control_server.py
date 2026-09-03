@@ -110,6 +110,9 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Play with Power Glove Vision", page)
         self.assertIn(b"On this page", page)
         self.assertIn(b"/help-assets/gestures/actions/whole-hand-movement.png", page)
+        self.assertIn(b"/help-assets/gestures/actions/v-sign.png", page)
+        self.assertIn(b"/help-assets/gestures/actions/thumbs-up.png", page)
+        self.assertGreaterEqual(page.count(b"<img loading=lazy"), 46)
         self.assertIn(b"/help/gameplay.md", page)
 
     def test_help_renderer_escapes_html_and_unsafe_links(self):
@@ -117,6 +120,18 @@ class ControlStateTests(unittest.TestCase):
         self.assertNotIn("<script>", rendered)
         self.assertNotIn("javascript:", rendered)
         self.assertIn("href='#'", rendered)
+
+        table, _headings = render_markdown(
+            '| Pose |\n| --- |\n| <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72"> |'
+        )
+        self.assertIn("<img loading=lazy", table)
+        self.assertIn("/help-assets/gestures/actions/v-sign.png", table)
+
+        unsafe_table, _headings = render_markdown(
+            '| Pose |\n| --- |\n| <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72" onerror="alert(1)"> |'
+        )
+        self.assertNotIn("<img loading=lazy", unsafe_table)
+        self.assertIn("&lt;img", unsafe_table)
 
     def test_help_assets_are_limited_to_documentation_images(self):
         asset = help_asset("gestures/directional-movement.png")

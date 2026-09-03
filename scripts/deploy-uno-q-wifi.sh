@@ -12,6 +12,7 @@
 #   2026-09-03 - Added an IP fallback when mDNS pauses during container restart.
 #   2026-09-03 - Verified deployed Help guides, Markdown, and gesture artwork.
 #   2026-09-03 - Used staged SFTP uploads and terminal-backed UNO Q commands.
+#   2026-09-03 - Verified every Help guide and all gameplay table illustrations.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -57,7 +58,7 @@ readonly -a SSH_OPTIONS=(
   -o BatchMode=yes
   -o ConnectTimeout=30
   -o ServerAliveInterval=10
-  -o ServerAliveCountMax=3
+  -o ServerAliveCountMax=12
 )
 
 # Always remove the local staging archive, including after an interrupted upload.
@@ -125,16 +126,30 @@ curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/learn" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/help" >/dev/null
-curl --fail --silent --show-error --max-time 5 \
-  "http://${UNO_HEALTH_HOST}:8088/help/installation" >/dev/null
-curl --fail --silent --show-error --max-time 5 \
-  "http://${UNO_HEALTH_HOST}:8088/help/gameplay" >/dev/null
+for HELP_SLUG in cabinet installation gameplay programs configuration security components contributing changelog; do
+  curl --fail --silent --show-error --max-time 5 \
+    "http://${UNO_HEALTH_HOST}:8088/help/${HELP_SLUG}" >/dev/null
+done
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/help-assets/gestures/actions/v-sign.png" >/dev/null
 GAMEPLAY_MARKDOWN="$(curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/help/gameplay.md")"
 if [[ "${GAMEPLAY_MARKDOWN}" != *"Take Power Glove Vision off-script"* ]]; then
   echo "error: deployed gameplay Help is not the current edition" >&2
+  exit 1
+fi
+GAMEPLAY_HTML="$(curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help/gameplay")"
+PROGRAMS_HTML="$(curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help/programs")"
+for EXPECTED_IMAGE in v-sign.png thumbs-up.png finger-curl.png wrist-roll.png push-toward-camera.png; do
+  if [[ "${GAMEPLAY_HTML}" != *"/help-assets/gestures/actions/${EXPECTED_IMAGE}"* ]]; then
+    echo "error: gameplay Help is missing ${EXPECTED_IMAGE}" >&2
+    exit 1
+  fi
+done
+if [[ "${GAMEPLAY_HTML}" != *"<img loading=lazy"* || "${PROGRAMS_HTML}" != *"<img loading=lazy"* ]]; then
+  echo "error: Help table illustrations were not rendered" >&2
   exit 1
 fi
 curl --insecure --fail --silent --show-error --max-time 5 \

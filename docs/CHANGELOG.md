@@ -44,6 +44,10 @@ authoritative record for line-level and file-level history.
   gameplay section for every title in the shipped game registry.
 - Expanded Wi-Fi deployment verification to confirm the current installation
   and gameplay guides, raw Markdown, and gesture artwork on the UNO Q.
+- Fixed the Help renderer so the allowlisted gesture images embedded in control
+  tables appear alongside their actions, while unsafe raw HTML remains escaped.
+- Extended UNO Q deployment checks across every Help guide and representative
+  gameplay and Programs A-I illustrations.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
 - Added an offline Help library that renders the maintained public Markdown
