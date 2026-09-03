@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import os
+import posixpath
+import secrets
 import shlex
 import sys
 from pathlib import Path
@@ -14,15 +16,32 @@ from pathlib import Path
 import paramiko
 
 
-REMOTE_PROGRAM = (
-    "import grp,os,subprocess,sys;"
-    "p='/etc/powerglove/token';t=sys.stdin.readline().strip();"
-    "assert 16<=len(t)<=256 and not any(c.isspace() for c in t);"
-    "os.makedirs('/etc/powerglove',exist_ok=True);q=p+'.pairing-tmp';"
-    "open(q,'w').write(t+'\\n');os.chmod(q,0o640);"
-    "os.chown(q,0,grp.getgrnam('input').gr_gid);os.replace(q,p);"
-    "subprocess.check_call(['systemctl','restart','powerglove-receiver.service'])"
-)
+REMOTE_PROGRAM = """\
+import grp
+import os
+import subprocess
+import sys
+
+source = sys.argv[1]
+destination = "/etc/powerglove/token"
+try:
+    with open(source, encoding="utf-8") as token_file:
+        token = token_file.readline().strip()
+    assert 16 <= len(token) <= 256 and not any(character.isspace() for character in token)
+    os.makedirs("/etc/powerglove", exist_ok=True)
+    temporary = destination + ".pairing-tmp"
+    with open(temporary, "w", encoding="utf-8") as token_file:
+        token_file.write(token + "\\n")
+    os.chmod(temporary, 0o640)
+    os.chown(temporary, 0, grp.getgrnam("input").gr_gid)
+    os.replace(temporary, destination)
+    subprocess.check_call(["systemctl", "restart", "powerglove-receiver.service"])
+finally:
+    try:
+        os.unlink(source)
+    except FileNotFoundError:
+        pass
+"""
 
 
 def main() -> int:
@@ -35,6 +54,8 @@ def main() -> int:
     client = paramiko.SSHClient()
     client.load_host_keys(str(known_hosts))
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    sftp = None
+    remote_token = None
     try:
         timeout = float(request.get("timeout", 30.0))
         client.connect(
@@ -47,9 +68,21 @@ def main() -> int:
             allow_agent=False,
             look_for_keys=False,
         )
-        command = "sudo -k -S -p '' /usr/bin/python3 -c " + shlex.quote(REMOTE_PROGRAM)
+        sftp = client.open_sftp()
+        remote_token = posixpath.join(
+            sftp.normalize("."), ".powerglove-pairing-" + secrets.token_hex(16)
+        )
+        with sftp.file(remote_token, "x") as token_file:
+            token_file.write(str(request["token"]) + "\n")
+        sftp.chmod(remote_token, 0o600)
+        command = (
+            "sudo -k -S -p '' /usr/bin/python3 -c "
+            + shlex.quote(REMOTE_PROGRAM)
+            + " "
+            + shlex.quote(remote_token)
+        )
         stdin, stdout, stderr = client.exec_command(command, timeout=timeout)
-        stdin.write(str(request["password"]) + "\n" + str(request["token"]) + "\n")
+        stdin.write(str(request["password"]) + "\n")
         stdin.flush()
         stdin.channel.shutdown_write()
         status = stdout.channel.recv_exit_status()
@@ -60,6 +93,12 @@ def main() -> int:
         os.chmod(known_hosts, 0o600)
         return 0
     finally:
+        if sftp is not None and remote_token is not None:
+            try:
+                sftp.remove(remote_token)
+            except OSError:
+                pass
+            sftp.close()
         client.close()
         request["password"] = ""
         request["token"] = ""
