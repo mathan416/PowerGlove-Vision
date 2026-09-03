@@ -82,10 +82,10 @@ class PairingTests(unittest.TestCase):
                 except TimeoutError:
                     expired.append(True)
 
-            started = time.monotonic()
             worker = threading.Thread(target=run_server, daemon=True)
             worker.start()
             self.assertTrue(ready.wait(5))
+            started = time.monotonic()
             stalled = socket.create_connection(("127.0.0.1", details["port"]), timeout=2)
             worker.join(3)
             stalled.close()

@@ -179,7 +179,11 @@ def serve_pairing(
 
 def pair_with_code(host: str, port: int, code: str, token: str, timeout: float = 8.0) -> None:
     expected_certificate, authorization = normalize_pairing_code(code)
-    pem = ssl.get_server_certificate((host, port), timeout=timeout)
+    discovery_context = ssl._create_unverified_context()
+    with socket.create_connection((host, port), timeout=timeout) as raw_connection:
+        with discovery_context.wrap_socket(raw_connection, server_hostname=host) as tls_connection:
+            der = tls_connection.getpeercert(binary_form=True)
+    pem = ssl.DER_cert_to_PEM_cert(der)
     if not hmac.compare_digest(certificate_code(pem), expected_certificate):
         raise ValueError("pairing code does not match the RetroPie certificate")
     context = ssl.create_default_context(cadata=pem)
