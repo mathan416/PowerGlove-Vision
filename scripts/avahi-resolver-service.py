@@ -3,6 +3,7 @@
 # File: scripts/avahi-resolver-service.py
 # Purpose: Expose only Avahi IPv4 .local lookups over an app-private Unix socket.
 # Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Add app-owned resolver to survive App Lab Compose regeneration.
