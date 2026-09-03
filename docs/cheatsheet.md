@@ -73,7 +73,7 @@ logs or this cheat sheet.
 | Purpose | Path |
 | --- | --- |
 | Git working copy | `/Users/mathan/Developer/PowerGlove` |
-| Installation guide | `/Users/mathan/Developer/PowerGlove/INSTALL_README.md` |
+| Installation guide | `/Users/mathan/Developer/PowerGlove/docs/INSTALL_README.md` |
 | UNO Q App Lab package | `/Users/mathan/Developer/PowerGlove/output/app-lab/PowerGlove-Vision-Uno-Q.zip` |
 | Gesture profiles | `/Users/mathan/Developer/PowerGlove/config/profiles.json` |
 | Automatic game mapping | `/Users/mathan/Developer/PowerGlove/config/games.json` |

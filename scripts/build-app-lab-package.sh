@@ -28,7 +28,7 @@ rsync -a \
   --exclude '*.pyc' \
   --exclude '*.pdf' \
   --exclude '.DS_Store' \
-  --exclude 'cheatsheet.md' \
+  --exclude 'docs/cheatsheet.md' \
   "${PROJECT_DIR}/" "${PACKAGE_TMP}/PowerGlove-Vision/"
 
 rm -f "${OUTPUT_ZIP}"

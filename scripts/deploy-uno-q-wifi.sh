@@ -57,7 +57,7 @@ COPYFILE_DISABLE=1 tar \
   --exclude '*.pyc' \
   --exclude '*.pdf' \
   --exclude '.DS_Store' \
-  --exclude './cheatsheet.md' \
+  --exclude './docs/cheatsheet.md' \
   -C "${PROJECT_DIR}" -cf - . | \
   ssh -o BatchMode=yes "${UNO_TARGET}" \
     "tar --warning=no-unknown-keyword -C '${REMOTE_APP_DIR}' -xf -"

@@ -25,7 +25,7 @@ virtual joystick.
 | Configure automatic profiles | Stage 6 |
 | Update over Wi-Fi | Workshop: updates and maintenance |
 | Fix a camera, network, or controller problem | Troubleshooting |
-| Understand Programs A-I | `docs/bad-street-brawler-programs.md` |
+| Understand Programs A-I | `bad-street-brawler-programs.md` |
 
 ## What you are building
 
@@ -150,7 +150,7 @@ https://UNO-Q-NAME.local:8443/setup
 The browser may warn about the locally generated certificate on port 8443.
 That is expected; verify its fingerprint against the matrix during pairing.
 
-![PowerGlove Vision Setup page](docs/images/setup-page.png)
+![PowerGlove Vision Setup page](images/setup-page.png)
 
 ## Stage 3 - Install the RetroPie receiver
 
@@ -426,7 +426,7 @@ Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
 controller transmission and walks through ten exercises with live recognition
 feedback. RetroPie does not need to be online.
 
-![PowerGlove Vision Learn page](docs/images/learn-page.png)
+![PowerGlove Vision Learn page](images/learn-page.png)
 
 For a white glove, use a darker background. For a black glove, use a lighter
 background. Even lighting, a simple scene, and keeping the whole hand in frame
@@ -437,7 +437,7 @@ matter more than glove color.
 Debug shows the camera overlay, active profile, tracking confidence, generated
 D-pad/buttons, analogue axes, finger curl, and recent gesture events.
 
-![PowerGlove Vision Debug dashboard](docs/images/debug-dashboard.png)
+![PowerGlove Vision Debug dashboard](images/debug-dashboard.png)
 
 ## Workshop - Updates and maintenance
 

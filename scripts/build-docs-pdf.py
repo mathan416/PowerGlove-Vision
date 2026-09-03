@@ -59,15 +59,33 @@ def normalize(text: str) -> str:
 
 
 def inline(text: str) -> str:
-    text = html.escape(normalize(text.strip()))
+    tokens: list[str] = []
+
+    def hold(markup: str) -> str:
+        tokens.append(markup)
+        return f"@@TOKEN{len(tokens) - 1}@@"
+
+    text = normalize(text.strip())
     text = re.sub(
-        r"\[([^]]+)\]\(([^)]+)\)",
-        r'<link href="\2" color="#087EBD"><u>\1</u></link>',
+        r"`([^`]+)`",
+        lambda match: hold(
+            f'<font name="Courier" color="#087EBD">{html.escape(match.group(1))}</font>'
+        ),
         text,
     )
-    text = re.sub(r"`([^`]+)`", r'<font name="Courier" color="#087EBD">\1</font>', text)
+    text = re.sub(
+        r"\[([^]]+)\]\(([^)]+)\)",
+        lambda match: hold(
+            f'<link href="{html.escape(match.group(2), quote=True)}" color="#087EBD">'
+            f'<u>{html.escape(match.group(1))}</u></link>'
+        ),
+        text,
+    )
+    text = html.escape(text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)
     text = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<i>\1</i>", text)
+    for index, markup in enumerate(tokens):
+        text = text.replace(f"@@TOKEN{index}@@", markup)
     return text
 
 
@@ -350,8 +368,17 @@ def build(source: Path, destination: Path, title: str, subtitle: str, kind: str)
 
 
 def main():
-    install = ROOT / "INSTALL_README.md"
-    programs = ROOT / "docs" / "bad-street-brawler-programs.md"
+    docs = ROOT / "docs"
+    overview = docs / "README.md"
+    install = docs / "INSTALL_README.md"
+    cheatsheet = docs / "cheatsheet.md"
+    programs = docs / "bad-street-brawler-programs.md"
+    build(
+        overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
+        "PowerGlove Vision Project Overview",
+        "Architecture, controls, security, deployment, and project status.",
+        "Project overview",
+    )
     build(
         install, OUTPUT / "PowerGlove-Vision-Guide.pdf",
         "PowerGlove Vision Field Guide",
@@ -359,12 +386,18 @@ def main():
         "Maker's field guide",
     )
     build(
+        cheatsheet, OUTPUT / "PowerGlove-Vision-Quick-Reference.pdf",
+        "PowerGlove Vision Quick Reference",
+        "Current cabinet addresses, services, controls, and maintenance commands.",
+        "Cabinet cheat sheet",
+    )
+    build(
         programs, OUTPUT / "Bad-Street-Brawler-Power-Glove-Programs.pdf",
         "Programs A-I",
         "The cartridge-free field manual for PowerGlove Vision profiles.",
         "Profile handbook",
     )
-    print(f"Built 2 PDF guides on {date.today().isoformat()}")
+    print(f"Built 4 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":
