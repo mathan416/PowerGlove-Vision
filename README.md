@@ -26,6 +26,19 @@ Bad Street Brawler's unusual cartridge-resident Programs A-I and their direct
 camera equivalents are documented in
 [`docs/bad-street-brawler-programs.md`](docs/bad-street-brawler-programs.md).
 
+## Pick up the right guide
+
+| Guide | Best for |
+| --- | --- |
+| [PowerGlove Vision Field Guide](INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
+| [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
+| `cheatsheet.md` | Private, machine-specific URLs and maintenance notes; intentionally excluded from Git |
+
+The Field Guide is organized as a six-stage build. New makers can follow it in
+order; returning builders can jump directly to the daily checklist, workshop,
+or symptom-based troubleshooting sections. Print-ready editions live in
+`output/pdf/`.
+
 ## Current web interface
 
 The UNO Q hosts three pages. They remain available even when RetroPie is off,
@@ -60,8 +73,8 @@ web interface and pairing controls continue working while the Kiyo is absent.
 5. Start the controller from Setup or Debug, configure the `PowerGlove Vision`
    virtual gamepad in RetroArch, and use `/learn` before playing.
 
-Detailed installation, both pairing methods, automatic game profiles and
-recovery procedures are in [`INSTALL_README.md`](INSTALL_README.md).
+Detailed installation, both pairing methods, automatic game profiles, and
+recovery procedures are in the [Field Guide](INSTALL_README.md).
 
 ## Controls
 

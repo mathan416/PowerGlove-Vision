@@ -2,170 +2,99 @@
   <img src="assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
 </p>
 
-# PowerGlove Vision installation
+# PowerGlove Vision Field Guide
 
-This guide installs every part of PowerGlove Vision:
+**Build, pair, and play with camera-based hand controls on an Arduino UNO Q and RetroPie.**
 
-1. the camera and vision application on an Arduino UNO Q;
-2. the virtual gamepad receiver on a Raspberry Pi/RetroPie console;
-3. automatic per-game profile selection for Programs A-I, Bad Street Brawler,
-   and Super Glove Ball;
-4. the shared Wi-Fi connection and pairing token;
-5. optional RetroArch controller mapping and startup configuration.
+PowerGlove Vision turns a bare hand - or a plain tracking glove - into a real
+Linux gamepad. The UNO Q handles the camera and gesture recognition. RetroPie
+receives authenticated controller packets and presents them to RetroArch as a
+virtual joystick.
 
-PowerGlove Vision does not require an original Power Glove or the Bad Street
-Brawler cartridge menu. A bare hand works. A plain white or black glove is an
-optional tracking aid and contains no electronics.
+> **THE SHORT VERSION**  Camera into UNO Q. UNO Q and RetroPie on the same
+> trusted network. Pair once. Map the virtual controller once. Then practise at
+> `/learn` and play.
 
-## What you need
+## Choose your route
 
-- An Arduino UNO Q. The 4 GB model is recommended.
-- A Raspberry Pi running RetroPie and RetroArch.
-- Python 3.7 or newer on the RetroPie console.
-- A UVC-compatible USB camera. A Razer Kiyo should appear as a standard UVC
-  camera.
-- An externally powered USB-C hub or dock for the UNO Q and camera.
-- A 5 V/3 A supply suitable for the UNO Q.
-- A computer running Arduino App Lab.
-- A trusted local Wi-Fi or Ethernet network shared by the UNO Q and RetroPie.
-- Internet access during the UNO Q's first application start. Its isolated
-  Python 3.12 vision environment is downloaded once and then retained in the
-  app's persistent `data` directory.
+| If you want to... | Go to... |
+| --- | --- |
+| Build the complete system for the first time | Stages 1-6, in order |
+| Reconnect an existing build | Daily play checklist |
+| Pair the UNO Q and RetroPie | Stage 4 |
+| Configure automatic profiles | Stage 6 |
+| Update over Wi-Fi | Workshop: updates and maintenance |
+| Fix a camera, network, or controller problem | Troubleshooting |
+| Understand Programs A-I | `docs/bad-street-brawler-programs.md` |
 
-Do not expose ports 55355, 55356, 55357, 8088, or 8443 to the public internet.
-Controller traffic is intended for a trusted local network; it is authenticated
-but not encrypted. Pairing traffic uses TLS.
-
-## Network layout
-
-The normal data paths are:
+## What you are building
 
 ```text
-Razer Kiyo --USB--> UNO Q --UDP 55355/Wi-Fi--> RetroPie virtual gamepad
-                         <--UDP 55356/Wi-Fi-- RetroPie game profile hook
+                    trusted local network
 
-Browser --TCP 8088/Wi-Fi--> UNO Q Learn, Debug and ordinary Setup pages
-Browser --TCP 8443/TLS----> UNO Q secure pairing page
-UNO Q --TCP 55357/TLS-----> temporary RetroPie one-time pairing helper
+Razer Kiyo --USB--> UNO Q ===== authenticated UDP =====> RetroPie
+                     |                                    |
+                     | hand tracking                      | virtual gamepad
+                     | profiles + matrix                  | RetroArch / NES
+                     |
+                     +-- web workshop: Setup / Debug / Learn
 ```
 
-The defaults assume:
+The system does not require an original Power Glove or the Bad Street Brawler
+cartridge menu. A bare hand works. A plain white or black glove may improve
+contrast, but it contains no electronics.
 
-- RetroPie hostname: `retropieconsole.local`
-- controller-state port on RetroPie: UDP `55355`
-- profile-control port on the UNO Q: UDP `55356`
-- UNO Q status page: TCP `8088`
-- UNO Q secure pairing page: TCP `8443`
-- temporary one-time pairing helper on RetroPie: TCP `55357`
+### Hardware bench
 
-Using `.local` hostnames is preferable to fixed IP addresses. If mDNS is not
-available on the network, reserve addresses in the router and use those
-addresses in the two configuration files instead.
+- Arduino UNO Q; the 4 GB model is recommended.
+- Raspberry Pi running RetroPie and RetroArch.
+- Razer Kiyo or another UVC-compatible USB camera.
+- Externally powered USB-C hub or dock for the UNO Q and camera.
+- Suitable 5 V/3 A UNO Q power supply.
+- Computer with Arduino App Lab and a USB data cable.
+- Shared trusted Wi-Fi or Ethernet network.
+- Internet access during the UNO Q's first application start.
 
-## Part 1: Prepare the UNO Q
+### Network bench
 
-### 1. Install and connect Arduino App Lab
+| Service | Direction | Port | Purpose |
+| --- | --- | --- | --- |
+| Controller state | UNO Q -> RetroPie | UDP 55355 | Virtual gamepad input |
+| Profile control | RetroPie -> UNO Q | UDP 55356 | Per-game profile changes |
+| Web workshop | Browser -> UNO Q | TCP 8088 | Learn, Debug, ordinary Setup |
+| Secure Setup | Browser -> UNO Q | TCP 8443 | Password and code pairing |
+| One-time pairing helper | UNO Q -> RetroPie | TCP 55357 | Temporary code exchange |
 
-1. Install the current Arduino App Lab release from Arduino.
-2. Connect the UNO Q to the computer with a USB data cable.
-3. In App Lab, select the UNO Q and complete its initial setup.
-4. Give the board a recognizable name.
-5. Open the board's network settings in App Lab, choose the trusted Wi-Fi
-   network, enter its Wi-Fi password locally, and wait for the board to report
-   an address. Neither the Wi-Fi password nor the board password belongs in
-   PowerGlove Vision configuration.
-6. Confirm the computer can resolve the board name with
-   `ping UNO-Q-HOSTNAME.local`. Record the displayed IP as a temporary fallback;
-   the `.local` name is preferred because DHCP addresses can change.
-7. Apply any board-system or App Lab updates offered before importing
-   PowerGlove Vision.
+> **NETWORK SAFETY**  Keep these ports on a trusted home network. Do not expose
+> them through router port forwarding. Controller packets are authenticated;
+> secure pairing traffic is encrypted with TLS.
 
-Initial provisioning should be done over USB. Once configured, the UNO Q can
-normally be selected and managed over Wi-Fi from App Lab.
+## Stage 1 - Put the UNO Q on Wi-Fi
 
-### 1a. Enable repeatable Wi-Fi application deployments
+1. Connect the UNO Q to the computer with a USB data cable.
+2. Open Arduino App Lab and complete the board's initial setup.
+3. Give the board a short, memorable name.
+4. Join the same trusted Wi-Fi network used by RetroPie.
+5. Apply available UNO Q and App Lab updates.
+6. Record both the `.local` name and current IP address.
 
-After the first USB setup, install your computer's SSH public key for the
-`arduino` account on the UNO Q. This is a one-time maintenance step; keep the
-private key on your computer and never commit it to the repository.
-
-First, check for an existing key on the computer:
+Test the friendly name from your computer:
 
 ```sh
-ls ~/.ssh/*.pub
+ping UNO-Q-NAME.local
 ```
 
-If none exists, create one with `ssh-keygen -t ed25519` and accept its protected
-default location. Do not overwrite an existing key. The public file ending in
-`.pub` may be copied; the matching private file must never leave the computer.
+Use the IP address as a fallback if `.local` discovery is unavailable. A router
+DHCP reservation makes that fallback stable.
 
-With USB still connected, use Arduino App Lab's Linux terminal to create
-`/home/arduino/.ssh/authorized_keys`, paste the single public-key line into it,
-and set these permissions:
+> **KEEP IT PRIVATE**  Wi-Fi passwords and board passwords belong in App Lab,
+> never in `device.json`, a shell command, Git, or a screenshot.
 
-```sh
-install -d -m 0700 /home/arduino/.ssh
-chmod 0600 /home/arduino/.ssh/authorized_keys
-```
+## Stage 2 - Install PowerGlove Vision on the UNO Q
 
-Alternatively, advanced users can use App Lab's bundled `adb` command to push
-the public file over USB and append it to the same authorized-keys file. Never
-push the private-key file.
+### Import and start the app
 
-Confirm the maintenance connection from the computer, replacing the hostname:
-
-```sh
-ssh -o BatchMode=yes arduino@UNO-Q-HOSTNAME.local hostname
-```
-
-The command should print the board name without asking for a password. SSH is
-only the maintenance channel; the controller itself continues to use the
-authenticated UDP protocol.
-
-Once key-based access works, deploy a development checkout from the repository
-root with:
-
-```sh
-scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-HOSTNAME.local
-```
-
-The script copies only application source, preserves the board's private
-`data/device.json`, publishes both web ports, restarts the App Lab container,
-and verifies `/learn`, `/debug`, and the secure setup page. Set
-`UNO_Q_SSH_TARGET` or `UNO_Q_APP_DIR` if the board name or App Lab directory is
-different.
-
-The Linux application can therefore be updated entirely over Wi-Fi. The blue
-matrix sketch is separate microcontroller firmware. Arduino's UNO Q OTA tool
-currently requires the board password as an upload field, so use App Lab's
-credential prompt for wireless sketch updates or connect USB for a passwordless
-recovery upload. Never place that password in this script, a shell-history
-command, or GitHub.
-
-From any development checkout, the complete command is:
-
-```sh
-cd /path/to/PowerGlove-Vision
-scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-HOSTNAME.local
-```
-
-Successful output ends with the Learn, Debug and secure Setup URLs. A failed
-camera does not make deployment fail because the web supervisor is designed to
-remain available while it waits for a UVC camera.
-
-### 2. Connect the camera
-
-Connect the powered hub or dock to the UNO Q, then connect the Razer Kiyo to
-the hub. An externally powered hub is strongly recommended because a camera
-can draw substantially more power than a small passive adapter should supply.
-
-PowerGlove Vision uses automatic camera discovery. It ignores the UNO Q's
-internal video-codec devices and waits for a USB camera identifier. The camera
-may therefore be connected before or after the app starts.
-
-### 3. Import the App Lab package
-
-Use the release package:
+Build or download this release package:
 
 ```text
 output/app-lab/PowerGlove-Vision-Uno-Q.zip
@@ -173,202 +102,100 @@ output/app-lab/PowerGlove-Vision-Uno-Q.zip
 
 In Arduino App Lab:
 
-1. Choose the option to import an Arduino App from a ZIP file.
-2. Select `PowerGlove-Vision-Uno-Q.zip`.
-3. Open the imported **PowerGlove Vision** app.
-4. Click **Run**.
-5. Allow several minutes for the first run. The board installs a private
-   Python 3.12 runtime, MediaPipe 0.10.18, and headless OpenCV.
-6. Enable **Run at startup** after the first successful initialization.
-7. Disconnect USB temporarily and confirm
-   `http://UNO-Q-HOSTNAME.local:8088/debug` opens over Wi-Fi. Reconnect USB only
-   if the one-time SSH-key bootstrap or firmware recovery is needed.
+1. Import an Arduino App from the ZIP file.
+2. Open **PowerGlove Vision** and select **Run**.
+3. Allow several minutes for the first launch. The app prepares an isolated
+   Python 3.12 vision environment and downloads its ARM64 dependencies once.
+4. When the app is healthy, enable **Run at startup**.
 
-The package contains both sides of the UNO Q application:
+The package contains the Linux vision service and the matrix sketch. Arduino's
+protected early boot display remains intact; PowerGlove Vision takes over the
+matrix after its application starts.
 
-- the Linux vision and networking process;
-- the STM32 sketch that drives the 8x13 blue LED matrix.
+### Connect the camera
 
-The first protected Arduino boot display is not replaced. When PowerGlove
-Vision takes over, the matrix shows its own loading animation and status.
+Connect the powered hub to the UNO Q, then connect the Kiyo to the hub. The app
+automatically ignores the UNO Q's internal codec nodes and waits for a real USB
+camera. It is safe to connect the camera before or after the app starts.
 
-### 4. Understand the matrix states
+> **POWER MATTERS**  Webcam dropouts that look like software problems are often
+> caused by an underpowered passive adapter. Use a powered hub and a solid cable.
 
-- Animated hand: application or hand model is loading.
-- `PG`: ready before a specific profile is selected.
-- `A` through `I`: cartridge-free Power Glove Program A-I selected.
-- `BS`: Bad Street Brawler profile selected.
-- `GB`: Super Glove Ball profile selected.
-- Pulsing profile: a calibrated hand is actively being tracked.
-- Blinking X: no usable camera is connected or the vision worker needs
-  attention.
+### Read the blue matrix
 
-It is normal to see the blinking X if the app is installed without the Kiyo.
-The App Lab supervisor remains running and starts the tracker after a camera is
-plugged in.
+| Display | Meaning |
+| --- | --- |
+| Animated hand | Application or model is loading |
+| `PG` | Ready; no specific profile selected yet |
+| `A`-`I` | One of the cartridge-free Programs A-I is active |
+| `BS` | Bad Street Brawler profile |
+| `GB` | Super Glove Ball profile |
+| Pulsing code | A calibrated hand is being tracked |
+| Blinking X | Camera missing or vision worker needs attention |
 
-### 5. Locate the UNO Q configuration and pairing token
+The web service remains available during a camera fault, so a blinking X is
+recoverable without reinstalling the app.
 
-On first start, the app creates persistent settings at:
+### Confirm the web workshop
 
-```text
-data/device.json
-```
-
-Its shape is:
-
-```json
-{
-  "receiver": "retropieconsole.local",
-  "token": "a-random-token-created-on-first-start",
-  "profile": "bad_street_brawler",
-  "glove_color": "none",
-  "camera": "auto"
-}
-```
-
-From a phone or computer on the same network, open:
+Open these pages from another device on the same network:
 
 ```text
-http://UNO-Q-HOSTNAME.local:8088/setup
+http://UNO-Q-NAME.local:8088/learn
+http://UNO-Q-NAME.local:8088/debug
+http://UNO-Q-NAME.local:8088/setup
+https://UNO-Q-NAME.local:8443/setup
 ```
 
-Enter the RetroPie console hostname, controller port, startup profile, camera,
-and optional glove colour, then choose **Save & restart tracker**. Use **Test
-console name** to confirm that the name resolves on the local network. The setup
-page stays available when the camera is disconnected.
-
-Controller delivery starts in the safe **Stopped** state after every app
-launch. The **Start controller** and **Stop controller** buttons on both web
-pages arm or release the virtual gamepad without restarting the camera.
-
-Pairing credentials are never accepted over this HTTP address. Open the secure
-page instead:
-
-```text
-https://UNO-Q-HOSTNAME.local:8443/setup
-```
-
-Before entering a reusable password, choose **Prepare password pairing**. The
-UNO Q matrix repeatedly shows `ID`, the seven-character certificate fingerprint
-prefix, `PN`, and the six digits of a temporary approval PIN. Open the browser's
-certificate details and confirm that its SHA-256 fingerprint starts with the
-same `ID`; do not continue if it differs. Enter the matrix PIN to authorize one
-attempt. The username/password option then uses the credentials for one
-encrypted SSH operation, installs the existing private token, restarts the
-RetroPie receiver, clears the password field, and never writes the password to
-disk or logs.
-
-The page never displays the private token. For the initial RetroPie pairing,
-use App Lab's file view to open the app's `data/device.json`. If needed, open an
-App Lab shell and locate it with:
-
-```sh
-find /home/arduino/ArduinoApps -path '*/data/device.json' -print
-```
-
-Copy the value of `token` somewhere private; it must be installed on RetroPie
-in Part 2. Do not commit `data/device.json`, paste its token into an issue, or
-include it in a shared application export.
-
-You can edit this JSON file directly as a recovery option. Supported
-`glove_color` values are `none`, `white`, and `black`. Leave `camera` as `auto`
-unless troubleshooting a system with several USB cameras. Browser changes
-restart the tracker automatically; manual JSON changes require an app restart.
-
-If you select **Generate a new private pairing token** in the browser, copy the
-new value from `data/device.json` into `/etc/powerglove/token` on RetroPie and
-restart `powerglove-receiver.service` before playing.
-
-The setup page looks like this over ordinary HTTP. Pairing controls beneath the
-visible area remain disabled until the page is opened through HTTPS:
+The browser may warn about the locally generated certificate on port 8443.
+That is expected; verify its fingerprint against the matrix during pairing.
 
 ![PowerGlove Vision Setup page](docs/images/setup-page.png)
 
-## Part 2: Install the RetroPie receiver
+## Stage 3 - Install the RetroPie receiver
 
-The examples below keep the repository in `/opt/powerglove-src` and put its
-Python virtual environment in `/opt/powerglove`. This matches the paths used by
-the supplied launch-hook scripts.
+Open a terminal on RetroPie, locally or through SSH.
 
-### 1. Install system requirements
-
-Open a terminal on RetroPie, locally or over SSH:
+### Install system support
 
 ```sh
 sudo apt update
-sudo apt install -y git python3 python3-venv python3-pip python3-dev build-essential
+sudo apt install -y git python3 python3-venv python3-pip python3-dev \
+  build-essential python3-evdev
 sudo modprobe uinput
-```
-
-Confirm that the virtual-input device exists:
-
-```sh
+printf '%s\n' uinput | sudo tee /etc/modules-load.d/powerglove.conf
 ls -l /dev/uinput
 ```
 
-To load it automatically after reboot:
-
-```sh
-printf '%s\n' uinput | sudo tee /etc/modules-load.d/powerglove.conf
-```
-
-### 2. Install the repository and Python package
-
-Clone the public GitHub repository:
+### Install the project
 
 ```sh
 sudo git clone https://github.com/mathan416/PowerGlove-Vision.git /opt/powerglove-src
 sudo python3 -m venv /opt/powerglove
 sudo /opt/powerglove/bin/python -m pip install --upgrade pip
 sudo /opt/powerglove/bin/python -m pip install -e '/opt/powerglove-src[receiver]'
-```
-
-If the repository is private or was copied to the Pi another way, substitute
-its local path for `/opt/powerglove-src` in the last command.
-
-On older RetroPie releases that still use Python 3.7, the packaged `evdev`
-module and compatibility launchers avoid relying on an obsolete PyPI toolchain:
-
-```sh
-sudo apt install -y python3-evdev
 sudo install -d -m 0755 /opt/powerglove/bin
 sudo install -m 0755 /opt/powerglove-src/retropie/bin/* /opt/powerglove/bin/
 ```
 
-This also installs `/opt/powerglove/bin/powerglove-pair`, used for password-free
-one-time-code pairing.
+On older RetroPie images, the system `python3-evdev` package avoids an obsolete
+PyPI build toolchain. The compatibility launchers above will use it.
 
-### 3. Install configuration and choose a pairing method
-
-Create the protected configuration directory:
+### Install configuration
 
 ```sh
 sudo install -d -m 0755 /etc/powerglove
 sudo install -m 0644 /opt/powerglove-src/config/games.json /etc/powerglove/games.json
 sudo install -m 0644 /opt/powerglove-src/config/launcher.example.json /etc/powerglove/launcher.json
 sudo install -o root -g input -m 0640 /dev/null /etc/powerglove/token
-sudo nano /etc/powerglove/token
-```
-
-Do not paste a token into the file yet when using either friendly pairing
-method below. The pairing process fills it securely. The empty file is retained
-as a recovery target and has restricted permissions. The `input` group permits
-RetroPie's unprivileged game-launch hooks to read it while keeping it
-unavailable to other users.
-
-Edit the launcher settings:
-
-```sh
 sudo nano /etc/powerglove/launcher.json
 ```
 
-Set `uno_q` to the board's `.local` hostname or reserved IP address. For
-example:
+Set `uno_q` to the board's hostname or reserved address:
 
 ```json
 {
-  "uno_q": "arduiain.local",
+  "uno_q": "UNO-Q-NAME.local",
   "port": 55356,
   "token_file": "/etc/powerglove/token",
   "registry": "/etc/powerglove/games.json",
@@ -376,73 +203,72 @@ example:
 }
 ```
 
-Do not change `port` unless the UNO Q profile port is changed at the same time.
+Leave `/etc/powerglove/token` empty for now. Stage 4 fills it securely.
 
-#### Recommended: pair with a one-time code
+## Stage 4 - Pair the two machines
 
-After the receiver files are installed, open a terminal on RetroPie and run:
+Pairing gives the UNO Q and RetroPie the same private controller token. It is a
+one-time setup unless you regenerate the token or reinstall either machine.
+
+### Option A - One-time code (recommended)
+
+On RetroPie:
 
 ```sh
 sudo /opt/powerglove/bin/powerglove-pair
 ```
 
-RetroPie displays a 20-character code valid for two minutes. Leave this command
-running and then:
+Leave it running. It prints a single-use code valid for two minutes.
 
-1. Open `https://UNO-Q-HOSTNAME.local:8443/setup`.
-2. A browser may warn about the board's locally generated certificate. Continue
-   only on your trusted local network; do not enter credentials yet.
-3. Enter the RetroPie hostname and the 20-character code.
-4. Choose **Prepare one-time-code pairing**.
-5. The UNO Q matrix cycles through `ID`, seven fingerprint characters, `PN`,
-   and a six-digit PIN. Compare the matrix `ID` with the beginning of the
-   certificate's SHA-256 fingerprint shown by the browser.
-6. If they match, enter the six-digit matrix PIN and finish pairing. If they do
-   not match, stop and investigate the network before sending anything.
+1. Open `https://UNO-Q-NAME.local:8443/setup`.
+2. Enter the RetroPie hostname and its one-time code.
+3. Select **Prepare one-time-code pairing**.
+4. Watch the UNO Q matrix cycle through `ID`, fingerprint characters, `PN`,
+   and a six-digit PIN.
+5. Compare the matrix `ID` with the beginning of the browser certificate's
+   SHA-256 fingerprint.
+6. If they match, enter the matrix PIN and complete pairing.
 
-The helper presents an ephemeral TLS certificate authenticated by part of the
-code, accepts the private controller token through that pinned encrypted
-connection, restarts the receiver, and exits. The code works once, expires
-after two minutes and stops accepting attempts after five failures.
+The helper exits after success. It also expires after two minutes or five
+failed attempts.
 
-Allow TCP port `55357` between the UNO Q and RetroPie if the local firewall
-blocks it. The helper is not a permanent network service and listens only while
-the command above is running.
+### Option B - RetroPie username and password
 
-#### Alternative: pair with a RetroPie username and password
+Use this when SSH password login is already enabled on RetroPie.
 
-This option is useful when SSH password login is already enabled on RetroPie:
-
-1. Open the same HTTPS setup page.
+1. Open `https://UNO-Q-NAME.local:8443/setup`.
 2. Enter the RetroPie hostname and username.
-3. Choose **Prepare password pairing** before entering the password.
+3. Select **Prepare password pairing**.
 4. Compare the matrix `ID` with the browser certificate fingerprint.
-5. Enter the matrix PIN, confirm the fingerprint checkbox, and enter the
+5. Enter the fresh matrix PIN, confirm the fingerprint checkbox, and enter the
    RetroPie password.
-6. Complete pairing.
+6. Select **Pair RetroPie**.
 
-The UNO Q uses the credentials for one encrypted SSH operation. The password
-field is cleared immediately and the password is not written to configuration
-or logs. Prefer the one-time code when the console does not otherwise need
-password-based SSH.
+The credentials are used for one encrypted SSH operation. The UNO Q does not
+store the password or place it in process arguments or logs. A private temporary
+token file is removed immediately after installation.
 
-#### Recovery: install the token manually
+> **PAIRING PIN**  Every prepared attempt receives a new PIN. If an attempt
+> fails, prepare pairing again and use the new digits shown on the matrix.
 
-If neither friendly method is available, open the UNO Q app's private
-`data/device.json` through App Lab and copy only its `token` value into
-`/etc/powerglove/token` on RetroPie. Use no quotation marks. Then run:
+### Recovery - Manual token installation
+
+Use this only when neither friendly pairing method is available. In App Lab,
+open the active app's private `data/device.json` and copy only its `token` value
+into `/etc/powerglove/token` on RetroPie, without quotation marks.
 
 ```sh
 sudo chmod 0640 /etc/powerglove/token
 sudo systemctl restart powerglove-receiver.service
 ```
 
-Never place the token in Git, documentation, screenshots, shell history or an
-issue report.
+Never place the token in Git, documentation, screenshots, shell history, or an
+issue report. Selecting **Generate a new private pairing token** invalidates the
+old pairing; pair again immediately afterward.
 
-### 4. Test packets before creating a gamepad
+## Stage 5 - Start the virtual gamepad
 
-Stop any already-running receiver, then start the diagnostic receiver:
+### Test packet delivery
 
 ```sh
 sudo /opt/powerglove/bin/powerglove-receiver \
@@ -451,13 +277,10 @@ sudo /opt/powerglove/bin/powerglove-receiver \
   --dry-run
 ```
 
-With the Kiyo connected and PowerGlove Vision running, show one hand to the
-camera. The console should print controller state. Press `Ctrl+C` when done.
+Show one hand to the camera, then select **Start controller** on Setup or Debug.
+Controller state should appear in the terminal. Press `Ctrl+C` when finished.
 
-If nothing arrives, verify that both machines are on the same network and that
-UDP port 55355 is not blocked.
-
-### 5. Run the receiver at boot
+### Install the startup service
 
 Create `/etc/systemd/system/powerglove-receiver.service`:
 
@@ -470,7 +293,9 @@ After=network-online.target
 [Service]
 Type=simple
 User=root
-ExecStart=/opt/powerglove/bin/powerglove-receiver --listen 0.0.0.0 --token-file /etc/powerglove/token
+ExecStart=/opt/powerglove/bin/powerglove-receiver \
+  --listen 0.0.0.0 \
+  --token-file /etc/powerglove/token
 Restart=on-failure
 RestartSec=2
 
@@ -478,121 +303,72 @@ RestartSec=2
 WantedBy=multi-user.target
 ```
 
-Then enable it:
+Enable and verify it:
 
 ```sh
 sudo chmod 0644 /etc/systemd/system/powerglove-receiver.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now powerglove-receiver.service
 sudo systemctl status powerglove-receiver.service
-```
-
-The service runs as root because creating `/dev/uinput` devices normally
-requires elevated privileges on RetroPie. An advanced installation may instead
-use a dedicated user and a narrowly scoped udev rule.
-
-Confirm that Linux can see the controller:
-
-```sh
 grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices
 ```
 
-## Part 3: Configure RetroArch
+### Bind it in RetroArch
 
-The receiver creates a Linux gamepad named `PowerGlove Vision`.
+1. Open **Settings > Input > RetroPad Binds > Port 1 Controls**.
+2. Select `PowerGlove Vision` as the device.
+3. Bind D-pad directions, A, B, Start, and Select.
+4. Save the controller profile or RetroArch configuration.
 
-1. Start the UNO Q app and connect the camera.
-2. Confirm that `powerglove-receiver.service` is active.
-3. Open RetroArch's **Settings > Input > RetroPad Binds > Port 1 Controls**.
-4. Select `PowerGlove Vision` as the device.
-5. Bind D-pad Up/Down/Left/Right, A, B, Start, and Select.
-6. Save the controller profile or current RetroArch configuration.
-
-The extra `BTN_TR2` input carries the Bad Street Brawler glove-zap event. A
-standard NES core cannot necessarily use that native glove-only action; it is
-retained for the planned native Nestopia integration.
-
-The repository also includes a ready-made udev autoconfiguration file at
-`retropie/retroarch/PowerGlove Vision.cfg`. Install it when automatic mapping
-is preferred:
+For automatic mapping:
 
 ```sh
 sudo install -m 0644 '/opt/powerglove-src/retropie/retroarch/PowerGlove Vision.cfg' \
   '/opt/retropie/configs/all/retroarch/autoconfig/PowerGlove Vision.cfg'
 ```
 
-If an arcade cabinet already combines several controllers, add PowerGlove
-Vision to the existing input merger instead of replacing the cabinet's primary
-gamepad configuration.
+The extra `BTN_TR2` input preserves Bad Street Brawler's glove-zap event for a
+future native glove-aware emulator integration.
 
-### Install the games
+## Stage 6 - Switch profiles with each game
 
-Copy legally obtained NES images to RetroPie's NES ROM directory, normally:
+RetroPie runcommand hooks can select the correct profile when a ROM starts and
+turn gestures off when it ends.
 
-```text
-~/RetroPie/roms/nes/
-```
-
-The supplied registry recognizes `.nes`, `.zip`, and `.7z` filenames for Bad
-Street Brawler and Super Glove Ball. Emulator support for archive types varies;
-an uncompressed `.nes` file is the simplest troubleshooting format.
-
-ROM images are never uploaded to the UNO Q and should not be included in the
-GitHub repository. Programs A-I are implemented as PowerGlove Vision profiles,
-so Bad Street Brawler does not need to be launched merely to configure another
-game.
-
-## Part 4: Enable automatic game profiles
-
-RetroPie calls `runcommand-onstart.sh` when a game starts and
-`runcommand-onend.sh` when it exits. PowerGlove Vision uses those hooks to
-select a profile and show its acknowledgement on the UNO Q matrix.
-
-### 1. Preserve existing hooks
-
-Do not overwrite existing cabinet scripts. They may control RGB lighting,
-trackballs, controller ordering, bezels, or other hardware.
-
-Make the supplied helper scripts executable:
+### Add the hooks without replacing existing ones
 
 ```sh
 sudo chmod 0755 /opt/powerglove-src/retropie/runcommand-onstart-powerglove.sh
 sudo chmod 0755 /opt/powerglove-src/retropie/runcommand-onend-powerglove.sh
 ```
 
-Append this line to the cabinet's existing
-`/opt/retropie/configs/all/runcommand-onstart.sh`:
+Append to `/opt/retropie/configs/all/runcommand-onstart.sh`:
 
 ```sh
 /opt/powerglove-src/retropie/runcommand-onstart-powerglove.sh "$1" "$2" "$3" "$4"
 ```
 
-Append this line to
-`/opt/retropie/configs/all/runcommand-onend.sh`:
+Append to `/opt/retropie/configs/all/runcommand-onend.sh`:
 
 ```sh
 /opt/powerglove-src/retropie/runcommand-onend-powerglove.sh
 ```
 
-Create either hook file if it does not exist, start it with `#!/bin/sh`, and
-make it executable:
+Make both cabinet hook files executable:
 
 ```sh
 sudo chmod 0755 /opt/retropie/configs/all/runcommand-onstart.sh
 sudo chmod 0755 /opt/retropie/configs/all/runcommand-onend.sh
 ```
 
-### 2. Review the game registry
+> **CABINET ETIQUETTE**  Append to existing hooks. Do not overwrite them; they
+> may also manage lighting, bezels, controller order, or other cabinet hardware.
 
-Profiles are selected using the exact, case-insensitive ROM filename in:
+### Review the game registry
 
-```text
-/etc/powerglove/games.json
-```
+`/etc/powerglove/games.json` matches exact ROM basenames case-insensitively.
 
-The supplied registry includes:
-
-| Game | Profile |
+| Game | Default profile |
 | --- | --- |
 | Bad Street Brawler | `bad_street_brawler` |
 | Super Glove Ball | `super_glove_ball` |
@@ -603,181 +379,135 @@ The supplied registry includes:
 | Gun.Smoke | `program_g` |
 | Knight Rider | `program_i` |
 
-Programs A, D, and H are available for additional games. Valid values are
-`program_a` through `program_i`, `bad_street_brawler`, and
-`super_glove_ball`.
+Programs A, D, and H are ready for custom assignments. Unknown games turn
+gesture control off instead of inheriting the previous game's profile.
 
-Add the exact ROM basename when a collection uses a different region, revision,
-archive type, or naming convention. Unknown games explicitly turn gesture
-control off rather than inheriting the previous game's profile.
-
-### 3. Test profile switching manually
-
-From RetroPie:
+Test a profile manually:
 
 ```sh
 sudo /opt/powerglove/bin/powerglove-profile \
-  --uno-q arduiain.local \
+  --uno-q UNO-Q-NAME.local \
   --token-file /etc/powerglove/token \
   --profile program_b
 ```
 
-The command should report an acknowledgement and the matrix should display
-`B`. Replace the UNO Q hostname as necessary.
+The command should acknowledge the change and the matrix should show `B`.
 
-Test gesture-off mode:
+## Daily play checklist
 
-```sh
-sudo /opt/powerglove/bin/powerglove-profile \
-  --uno-q arduiain.local \
-  --token-file /etc/powerglove/token \
-  --profile off
-```
+1. Power the RetroPie and UNO Q; leave the camera connected to the powered hub.
+2. Open `http://UNO-Q-NAME.local:8088/debug`.
+3. Confirm **Camera online**, the expected profile, and a detected hand.
+4. Select **Center hand** while holding a comfortable neutral pose.
+5. Select **Start controller** only when you are ready to play.
+6. Launch the game and confirm its profile code on the matrix.
+7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
 
-## Part 5: Calibrate and play
+PowerGlove Vision deliberately boots with controller delivery stopped. Vision
+and the dashboard keep running so setup never generates surprise game inputs.
 
-Once the camera and tracker are active, open this page from another device on
-the same network:
+### Learn before you launch
 
-```text
-http://UNO-Q-HOSTNAME.local:8088/debug
-```
-
-The dashboard displays the camera overlay, game, active profile, tracking
-confidence, controller buttons, axes, finger curl, recent gesture events, and
-profile source. The root URL redirects here.
-
-For guided practice without RetroPie, open:
-
-```text
-http://UNO-Q-HOSTNAME.local:8088/learn
-```
-
-Opening Learn mode automatically stops controller transmission. The camera and
-gesture engine stay active and lead you through ten exercises with live
-recognition and confidence feedback.
+Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
+controller transmission and walks through ten exercises with live recognition
+feedback. RetroPie does not need to be online.
 
 ![PowerGlove Vision Learn page](docs/images/learn-page.png)
 
-1. Stand where the player will normally stand.
-2. Keep one hand fully visible with some space around it.
-3. Press **Center hand**.
-4. Hold the hand still in a comfortable neutral pose during calibration.
-5. Move slowly at first and confirm the on-screen landmarks and matrix state.
-
 For a white glove, use a darker background. For a black glove, use a lighter
-background. Strong front lighting and a simple background are more important
-than glove color.
+background. Even lighting, a simple scene, and keeping the whole hand in frame
+matter more than glove color.
 
-The setup and dashboard service starts before the camera worker, so both pages
-remain available while no usable camera is connected. The dashboard reports
-the missing camera and the matrix blinks X until one is attached.
+### Read the live dashboard
+
+Debug shows the camera overlay, active profile, tracking confidence, generated
+D-pad/buttons, analogue axes, finger curl, and recent gesture events.
 
 ![PowerGlove Vision Debug dashboard](docs/images/debug-dashboard.png)
 
-## Firewall rules
+## Workshop - Updates and maintenance
 
-Most RetroPie installations do not enable a host firewall. If one is enabled,
-allow the following only from the trusted local subnet:
+### UNO Q updates over Wi-Fi
 
-- UDP 55355 inbound to RetroPie;
-- UDP 55356 inbound to the UNO Q;
-- TCP 8088 inbound to the UNO Q for the status page.
-- TCP 8443 inbound to the UNO Q for secure pairing.
-- TCP 55357 inbound to RetroPie only while the one-time pairing helper runs.
+For repeatable developer deployments, install your computer's public SSH key
+for the UNO Q `arduino` account once over USB. Never copy the private key.
 
-The UNO Q must also be allowed to download packages during its first run.
+```sh
+install -d -m 0700 /home/arduino/.ssh
+chmod 0600 /home/arduino/.ssh/authorized_keys
+```
 
-## Updating
+Confirm key access from the development computer:
 
-### RetroPie
+```sh
+ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname
+```
+
+Then deploy from the repository root:
+
+```sh
+scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
+```
+
+The script preserves private `data/`, restarts the container, and verifies the
+Learn, Debug, and secure Setup pages. If mDNS is temporarily unavailable, use
+the UNO Q's current IP address. Matrix firmware updates remain a separate App
+Lab operation; USB is the safest recovery route.
+
+### RetroPie updates
 
 ```sh
 cd /opt/powerglove-src
 sudo git pull --ff-only
 sudo /opt/powerglove/bin/python -m pip install -e '/opt/powerglove-src[receiver]'
-sudo install -m 0644 config/games.json /etc/powerglove/games.json
 sudo systemctl restart powerglove-receiver.service
 ```
 
-Back up local changes to `/etc/powerglove/games.json` before replacing it.
+Back up a customized `/etc/powerglove/games.json` before replacing it.
 
-### UNO Q
+### Duplicate App Lab entries
 
-For a development checkout with the one-time SSH key already installed:
-
-```sh
-cd /path/to/PowerGlove-Vision
-scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-HOSTNAME.local
-```
-
-This is the preferred update path because it preserves `data/`, restarts the
-container and verifies all three web pages. For a release ZIP update instead:
-
-1. Back up the imported app's `data/device.json`.
-2. Stop PowerGlove Vision in App Lab.
-3. Import the newer `PowerGlove-Vision-Uno-Q.zip` release.
-4. Restore the receiver hostname, token, glove hint, and other local settings
-   if the new import uses a new app folder.
-5. Run the app once and enable **Run at startup** for the new copy.
-6. Remove the older app only after the new copy has been verified.
-
-Never publish the backed-up `device.json` or `/etc/powerglove/token`.
+Importing a newer ZIP may create a timestamped app instead of replacing the old
+one. Verify the new app and its private settings first. Enable **Run at startup**
+for only one copy, stop the older copy, then remove it through App Lab.
 
 ## Troubleshooting
 
-### The UNO Q shows a blinking X
+### Matrix shows a blinking X
 
-- Confirm that the camera is connected through a powered hub.
-- Try a different USB cable or hub port.
-- Stop and restart PowerGlove Vision in App Lab.
-- In an App Lab shell, inspect USB video devices with
-  `v4l2-ctl --list-devices` if that utility is installed.
-- The app should remain marked running while it waits for a camera.
-- If `/sys/class/video4linux/video0/name` and `video1/name` report only
-  `qcom-venus-encoder` and `qcom-venus-decoder`, Linux cannot currently see the
-  Kiyo. Reconnect the powered hub or camera; changing Python camera indexes will
-  not fix this hardware-level state.
+- Confirm the camera is connected through the powered hub.
+- Try another hub port or USB cable.
+- Check whether Linux sees a USB camera; internal `qcom-venus-encoder` and
+  `qcom-venus-decoder` nodes are not the Kiyo.
+- Restart the app after checking power and cabling.
 
-### Wi-Fi deployment cannot connect
+### Camera appears only after reconnecting it
 
-- Confirm the UNO Q and computer are on the same trusted network.
-- Verify the name with `ping UNO-Q-HOSTNAME.local` or use its current IP.
-- Test `ssh -o BatchMode=yes arduino@UNO-Q-HOSTNAME.local hostname`.
-- If SSH asks for a password, repeat the one-time public-key installation over
-  USB. Never copy the private key to the UNO Q.
-- The deploy script preserves `data/device.json`; do not work around a failed
-  connection by replacing the board's `data` directory.
-
-### App Lab shows two PowerGlove Vision apps
-
-Importing a newer ZIP may create a timestamped app folder instead of replacing
-the existing installation. This is why two similarly named entries can appear.
-Only one copy should have **Run at startup** enabled. Verify the newer copy's
-pages and private configuration first, stop the older copy, and then remove the
-older app through App Lab. Do not delete an app folder manually until its
-`data/device.json` has been checked or backed up.
-
-Two entries do not necessarily mean two running camera processes. Confirm which
-copy is active before troubleshooting the Kiyo; a stopped older container cannot
-hold the camera.
-
-### The camera appears but the tracker keeps restarting
-
-Check the App Lab log. If dependency resolution mentions Python 3.7 and NumPy
-while the vision worker requests Python 3.12, update PowerGlove Vision to a
-version that launches the worker with an isolated `uv --no-project`
-environment. RetroPie retains Python 3.7 support, while the UNO Q vision worker
-resolves MediaPipe only for Python 3.12.
+This usually indicates USB enumeration or power trouble. Keep the powered hub
+energized before starting the UNO Q, try another cable, and avoid passive
+adapters. The app itself waits for a camera and should recover when it appears.
 
 ### First start takes several minutes
 
-This is expected. The app downloads a compatible Python 3.12 runtime and its
-ARM64 vision libraries into persistent app data. Later starts reuse them.
-Check the App Lab console for download progress and make sure the UNO Q has
-internet access and adequate free storage.
+Expected: the UNO Q downloads its private Python 3.12 runtime and vision
+libraries once. Later launches reuse the persistent cache. Keep internet access
+available and watch the App Lab log for progress.
 
-### The controller does not appear on RetroPie
+### Setup page does not open
+
+- Ordinary settings: `http://UNO-Q-NAME.local:8088/setup`
+- Secure pairing: `https://UNO-Q-NAME.local:8443/setup`
+- Try the board's IP address if `.local` does not resolve.
+- HTTPS and HTTP are not interchangeable on these ports.
+
+### Password pairing fails
+
+- Prepare a new attempt and use its new matrix PIN.
+- Confirm the RetroPie username and password can log in through SSH.
+- The account must be allowed to run `sudo` with that password.
+- Prefer the one-time-code method if password SSH is disabled.
+
+### Controller does not appear on RetroPie
 
 ```sh
 sudo systemctl status powerglove-receiver.service
@@ -785,36 +515,26 @@ sudo journalctl -u powerglove-receiver.service -n 100 --no-pager
 ls -l /dev/uinput
 ```
 
-Confirm that the receiver uses `--listen 0.0.0.0`, that the `uinput` module is
-loaded, and that the token exactly matches the UNO Q token.
+Confirm `uinput` is loaded and `/etc/powerglove/token` is not empty.
 
-### The controller appears but never moves
+### Controller exists but does not move
 
-- Confirm that the status page shows a detected and calibrated hand.
-- Re-run the receiver in `--dry-run` mode.
-- Confirm UDP 55355 connectivity from the UNO Q to RetroPie.
-- Confirm that `receiver` in `data/device.json` names the correct console.
-- Check that a physical controller merger is not filtering the new virtual
-  device.
+- Select **Start controller** on Setup or Debug.
+- Confirm a calibrated hand and controller output on Debug.
+- Verify the receiver address and UDP 55355 connectivity.
+- Check whether an existing cabinet input merger filters the virtual device.
 
-### Profiles do not change when games launch
+### Profiles do not change
 
-- Run the manual profile test above.
-- Verify UDP 55356 connectivity to the UNO Q.
+- Test `powerglove-profile` manually.
 - Check `uno_q` and `token_file` in `/etc/powerglove/launcher.json`.
-- Confirm that the existing RetroPie hooks actually call the supplied helper
-  scripts and forward all four start arguments.
+- Confirm both runcommand hooks call the supplied helper scripts.
 - Match the exact ROM basename in `/etc/powerglove/games.json`.
-
-Profile communication failures intentionally do not prevent a game from
-launching.
 
 ### `.local` names do not resolve
 
-Use router-reserved IP addresses in `data/device.json` and
-`/etc/powerglove/launcher.json`, or install/enable mDNS support on the console.
-Both devices must be on network segments that permit mDNS and the required
-UDP traffic.
+Use router-reserved IP addresses or enable mDNS on the affected machine. Both
+devices must share a network segment that permits the required traffic.
 
 ## Uninstalling
 
@@ -826,17 +546,17 @@ sudo rm /etc/systemd/system/powerglove-receiver.service
 sudo systemctl daemon-reload
 ```
 
-Remove the PowerGlove lines from the two RetroPie runcommand hooks. After
-backing up any desired custom profiles, the following directories may be
-removed manually:
+Remove only the PowerGlove lines from the runcommand hooks. After backing up
+custom profiles, `/opt/powerglove`, `/opt/powerglove-src`, and
+`/etc/powerglove` may be removed manually.
 
-```text
-/opt/powerglove
-/opt/powerglove-src
-/etc/powerglove
-```
+On the UNO Q, stop the app, disable **Run at startup**, and remove it through
+Arduino App Lab. Its private `data` directory contains the device token and
+cached runtime.
 
-On the UNO Q, stop PowerGlove Vision, disable **Run at startup**, and remove
-the imported app through Arduino App Lab. Its persistent `data` directory
-contains the local token and cached Python worker, so export anything needed
-before deleting the app.
+## Project note
+
+PowerGlove Vision is an independent MIT-licensed hobbyist project by Iain
+Bennett. Nintendo, NES, Power Glove, Bad Street Brawler, Super Glove Ball, and
+other marks belong to their respective owners. No ROM images are distributed
+with this project.
