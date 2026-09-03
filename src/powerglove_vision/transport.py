@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import socket
+import time
 import uuid
 
 from .model import ControllerState
@@ -38,11 +39,30 @@ class UdpSender:
         self.token = token
         self.session = uuid.uuid4().hex
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.last_error: str | None = None
+        self._retry_at = 0.0
 
-    def send(self, state: ControllerState) -> None:
-        self.socket.sendto(
-            encode_state(state, self.token, self.session), self.destination
-        )
+    def send(self, state: ControllerState) -> bool:
+        """Send a controller state without letting network loss stop vision.
+
+        UDP has no persistent connection, and hostname resolution can briefly
+        fail while Wi-Fi, mDNS, or the RetroPie console is starting. Throttle
+        retries after an error so tracking and the dashboard remain responsive.
+        """
+        now = time.monotonic()
+        if now < self._retry_at:
+            return False
+        try:
+            self.socket.sendto(
+                encode_state(state, self.token, self.session), self.destination
+            )
+        except OSError as exc:
+            self.last_error = str(exc)
+            self._retry_at = now + 2.0
+            return False
+        self.last_error = None
+        self._retry_at = 0.0
+        return True
 
     def new_session(self) -> None:
         """Allow sequence numbers to restart after an atomic profile change."""

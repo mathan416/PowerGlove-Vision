@@ -53,6 +53,7 @@ DASHBOARD = _page(
  <div class=card><div class=label>Active profile</div><div class=value id=profile>—</div></div>
  <div class=card><div class=label>Game</div><div class=value id=game>—</div></div>
  <div class=card><div class=label>Hand tracking</div><div class=value id=tracking>—</div><div class=meter><i id=confidence></i></div></div>
+ <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
 </div>
 <img class=camera src=/stream alt='Live camera view'>
 <div class=controls><button id=center>Center hand</button><a class=button href=/setup>Connection setup</a></div>
@@ -69,6 +70,7 @@ const bars=(id,obj,max=32767)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,
 let seen=[]; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();
 $('system').textContent=s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'); $('system').className='value '+(s.worker_running?'good':'warn');
 $('profile').textContent=pretty(s.active_profile||s.configured_profile); $('game').textContent=s.game||'Startup default';
+$('receiver').textContent=s.receiver_available===true?'Sending controls':(s.receiver_error?'Waiting for console':'Starting'); $('receiver').className='value '+(s.receiver_available===true?'good':'warn');
 $('tracking').textContent=s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand'); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);
 for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');

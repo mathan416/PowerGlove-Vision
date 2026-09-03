@@ -132,12 +132,14 @@ def main() -> int:
                 if current_profile and state.detected and state.calibrated
                 else MatrixStatus.READY
             )
-            sender.send(state)
+            receiver_available = sender.send(state)
             status = state.to_dict()
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
             status["game"] = current_game
             status["active_profile"] = current_profile or "off"
             status["profile_source"] = "RetroPie launch hook" if request is not None or current_game != "Startup default" else "startup"
+            status["receiver_available"] = receiver_available
+            status["receiver_error"] = sender.last_error
             cv2.putText(
                 result.frame,
                 "GESTURES OFF" if engine is None else (
