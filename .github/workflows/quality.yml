@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-03 - Added automated tests, audits, syntax checks, and package verification.
 #   2026-09-03 - Aligned the test matrix with the declared Python 3.7 minimum.
+#   2026-09-03 - Used Ubuntu 22.04 for the archived Python 3.7 toolchain.
 # Full history: docs/CHANGELOG.md and Git history.
 
 name: Quality and package verification
@@ -27,12 +28,16 @@ concurrency:
 jobs:
   tests:
     name: Python ${{ matrix.python-version }} tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.7", "3.12"]
+        include:
+          - python-version: "3.7"
+            os: ubuntu-22.04
+          - python-version: "3.12"
+            os: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v4
