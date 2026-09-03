@@ -101,6 +101,13 @@ reload Learn to begin a new practice session.
 More than one Learn tab may be open. Vision remains active until the last tab
 closes or its lease expires.
 
+Camera finger curl uses the strongest joint bend rather than averaging bends,
+including the base knuckle for the four fingers. The thumb uses its two outer
+joints. **Live hand measurements** in Learn displays exact curl values,
+the action threshold, magnified landmarks, and forward movement relative to
+the centered hand size. Push recognition stays active while forward movement
+exceeds its hysteresis threshold; Learn does not rely on a one-frame event.
+
 Camera finger curl uses MediaPipe 3D world landmarks when available. If those
 are absent, normalized depth is used with image aspect-ratio correction. Palm
 movement remains based on image coordinates. The legacy Arduino landmark
@@ -110,8 +117,9 @@ assumed to match MediaPipe. Gesture thresholds are unchanged.
 Each Learn lesson shows a gesture illustration. Start uses a V sign; Select
 uses a thumbs-up with the other four fingers closed. Both must remain steady
 for about 0.7 seconds. The lesson accepts the confirmed pose even after its
-short controller pulse ends. Finger feedback uses 0 for straight and 3 for
-closed. If directions appear instead, keep the palm near center and check the
+short controller pulse ends. Learn shows precise curl values from 0 to 1;
+the Dashboard's compact finger display uses 0 to 3. If directions appear
+instead, keep the palm near center and check the
 finger readings; direction output alone does not establish a model bias.
 
 **Start controller** and **Stop controller** change live output only. The

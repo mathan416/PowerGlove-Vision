@@ -339,6 +339,10 @@ def main() -> int:
             status["camera_available"] = True
             status["vision_state"] = "active"
             status["menu_gesture"] = engine.menu_feedback()
+            status["push_gesture"] = engine.push_feedback(result.observation)
+            status["finger_curls"] = result.observation.fingers
+            status["curl_threshold"] = engine.config.curl_on
+            status.update(result.diagnostics)
             cv2.putText(
                 result.frame,
                 "PRACTICE" if practice_mode else (

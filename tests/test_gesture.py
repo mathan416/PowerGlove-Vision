@@ -64,6 +64,10 @@ class GestureTests(unittest.TestCase):
         held = engine.update(hand(0.2, palm_scale=0.28))
         self.assertEqual(first.events, ["glove_zap"])
         self.assertEqual(held.events, [])
+        self.assertTrue(engine.push_feedback(hand(.2, palm_scale=.28))["active"])
+        self.assertFalse(engine.push_feedback(HandObservation(.3, False))["active"])
+        engine.begin_calibration()
+        self.assertFalse(engine.push_feedback(hand(.4, palm_scale=.28))["active"])
 
     def test_tracking_loss_releases_controls(self):
         engine = calibrated_engine()

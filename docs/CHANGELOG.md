@@ -7,7 +7,7 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
-Development version: **0.2.0.dev2**. Release candidates will use `0.2.0rc1`
+Development version: **0.2.0.dev3**. Release candidates will use `0.2.0rc1`
 and the tested release will use `0.2.0`.
 
 ### Added
@@ -29,6 +29,10 @@ and the tested release will use `0.2.0`.
 
 ### Changed
 
+- Finger curl now uses the strongest joint bend and includes the base knuckle
+  for the four fingers. Learn exposes exact curls, a magnified landmark view,
+  and forward-movement readings. Push lessons use continuous feedback so a
+  one-frame event cannot be missed by browser polling.
 - Camera finger curl now uses 3D world landmarks, with an aspect-corrected
   normalized-depth fallback. Movement and gesture thresholds are unchanged.
 

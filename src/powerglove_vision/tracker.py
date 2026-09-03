@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -59,6 +59,7 @@ class TrackingResult:
     """Bundle one normalized observation with its annotated video frame."""
     observation: HandObservation
     frame: Any
+    diagnostics: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -81,17 +82,25 @@ def _camera_curl_points(result: Any, landmarks: list, tasks: bool,
     return [_Point(p.x, p.y * height / width, p.z) for p in landmarks]
 
 
+def _finger_bends(points: list) -> dict:
+    """Measure each joint separately so one deliberate bend is not averaged away."""
+    result = {}
+    for name, (a, b, c, d) in zip(
+        ("thumb", "index", "middle", "ring", "pinky"),
+        ((1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12),
+         (13, 14, 15, 16), (17, 18, 19, 20)),
+    ):
+        bends = [_curl(points[a], points[b], points[c], True),
+                 _curl(points[b], points[c], points[d], True)]
+        if name != "thumb":
+            bends.insert(0, _curl(points[0], points[a], points[b], True))
+        result[name] = bends
+    return result
+
+
 def _finger_curls(points: list) -> dict:
-    """Measure all five finger bends in a consistent three-dimensional space."""
-    return {
-        name + "_curl": (_curl(points[a], points[b], points[c], True)
-                         + _curl(points[b], points[c], points[d], True)) / 2
-        for name, (a, b, c, d) in zip(
-            ("thumb", "index", "middle", "ring", "pinky"),
-            ((1, 2, 3, 4), (5, 6, 7, 8), (9, 10, 11, 12),
-             (13, 14, 15, 16), (17, 18, 19, 20)),
-        )
-    }
+    """Use the strongest joint bend, including the fingers' base knuckles."""
+    return {name + "_curl": max(bends) for name, bends in _finger_bends(points).items()}
 
 
 def observation_from_landmarks(
@@ -227,9 +236,8 @@ class MediaPipeTracker:
         )
 
         height, width = frame.shape[:2]
-        curls = _finger_curls(_camera_curl_points(
-            result, landmarks, self._tasks, width, height
-        ))
+        curl_points = _camera_curl_points(result, landmarks, self._tasks, width, height)
+        curls = _finger_curls(curl_points)
         observation = HandObservation(
             timestamp=now,
             detected=True,
@@ -249,4 +257,7 @@ class MediaPipeTracker:
             cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (20, 255, 120), -1)
         label = f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}"
         cv2.putText(frame, label, (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 240, 100), 2)
-        return TrackingResult(observation, frame)
+        return TrackingResult(observation, frame, {
+            "finger_bends": _finger_bends(curl_points),
+            "hand_landmarks": [[p.x, p.y] for p in landmarks],
+        })

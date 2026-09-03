@@ -144,6 +144,7 @@ class GestureEngine:
     def begin_calibration(self) -> None:
         """Clear prior samples and begin a fresh neutral-hand calibration."""
         self._samples.clear()
+        self._push_was_active = False
         self._calibrating = True
         self._push_was_active = False
         self._pull_was_active = False
@@ -165,6 +166,13 @@ class GestureEngine:
             roll=math.atan2(sin_roll, cos_roll),
         )
         self._calibrating = False
+
+    def push_feedback(self, observation: HandObservation) -> dict:
+        """Expose continuous depth state so Learn cannot miss a one-frame push event."""
+        ready = self.calibrated and observation.detected
+        depth = observation.palm_scale / self.calibration.palm_scale - 1 if ready else 0.0
+        return {"active": bool(ready and self._push_was_active),
+                "depth": depth, "threshold": self.config.push_on}
 
     def menu_feedback(self) -> dict:
         """Expose held menu recognition to Learn independently of short button pulses."""

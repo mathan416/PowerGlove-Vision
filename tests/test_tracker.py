@@ -29,6 +29,18 @@ def pose_points(closed):
 
 
 class TrackerGeometryTests(unittest.TestCase):
+    def test_base_knuckle_bend_is_detected_with_straight_outer_joints(self):
+        points = pose_points(set())
+        points[0] = _Point(0, -1, 0)
+        points[5:9] = [_Point(0, 0, -i) for i in range(4)]
+        self.assertAlmostEqual(_finger_curls(points)['index_curl'], .75)
+
+    def test_single_joint_bend_is_not_diluted(self):
+        points = pose_points(set())
+        points[5:9] = [_Point(0, 0, 0), _Point(0, 1, 0),
+                       _Point(0, 1, -1), _Point(0, 1, -2)]
+        self.assertAlmostEqual(_finger_curls(points)['index_curl'], .75)
+
     def test_depth_fold_is_not_mistaken_for_straight(self):
         points = pose_points({'ring', 'pinky'})
         self.assertEqual(_curl(*points[13:16]), 0.0)
