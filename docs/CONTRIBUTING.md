@@ -121,7 +121,7 @@ drive the Help Center hosted by the UNO Q. After a documentation change is
 merged or otherwise ready to deploy, synchronize and verify that copy with:
 
 ```sh
-scripts/deploy-uno-q-wifi.sh arduino@arduiain.local
+scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
 ```
 
 That deployment restarts the Power Glove Vision application and checks every

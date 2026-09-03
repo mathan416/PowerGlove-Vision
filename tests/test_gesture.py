@@ -47,6 +47,61 @@ class GestureTests(unittest.TestCase):
         self.assertFalse(state.calibrated)
         self.assertFalse(any(state.dpad.values()))
 
+    def test_comfortable_index_curl_uses_shared_held_state(self):
+        engine = calibrated_engine("program_h")
+        for t, curl, active in ((.1, .29, False), (.2, .54, True),
+                                (.3, .45, True), (.4, .34, False)):
+            observation = hand(t, index_curl=curl)
+            engine.update(observation)
+            self.assertEqual(engine.curl_feedback(observation)["index"], active)
+        observation = hand(.5, index_curl=.58)
+        engine.update(observation)
+        self.assertFalse(engine.curl_feedback(HandObservation(.6, False))["index"])
+        engine.begin_calibration()
+        self.assertFalse(engine.curl_feedback(observation)["index"])
+        for t in (.7, .8, .9):
+            engine.update(hand(t))
+        observation = hand(1., index_curl=.4)
+        engine.update(observation)
+        self.assertFalse(engine.curl_feedback(observation)["index"])
+
+    def test_comfortable_v_requires_both_curled_and_both_straight_fingers(self):
+        pose = dict(index_curl=.23, middle_curl=.22, ring_curl=.50, pinky_curl=.45)
+        engine = calibrated_engine("program_h")
+        for t in (.1, .5, .85):
+            state = engine.update(hand(t, palm_x=.8, **pose))
+            self.assertFalse(any(state.dpad.values()))
+        self.assertTrue(state.buttons["start"])
+        engine.update(hand(1.2, **pose))
+        self.assertTrue(engine.menu_feedback()["recognized"])
+        for changes in (dict(ring_curl=.25), dict(pinky_curl=.25),
+                        dict(index_curl=.54), dict(middle_curl=.54)):
+            candidate = dict(pose, **changes)
+            engine = calibrated_engine("program_h")
+            for t in (.1, .85):
+                state = engine.update(hand(t, **candidate))
+            self.assertFalse(state.buttons["start"])
+            self.assertFalse(engine.menu_feedback()["recognized"])
+
+    def test_comfortable_thumbs_up_requires_thumb_open_and_all_fingers_closed(self):
+        pose = dict(thumb_curl=.21, index_curl=.46, middle_curl=.58,
+                    ring_curl=.47, pinky_curl=.46)
+        engine = calibrated_engine("program_h")
+        for t in (.1, .5, .85):
+            state = engine.update(hand(t, palm_x=.8, **pose))
+            self.assertFalse(any(state.dpad.values()))
+        self.assertTrue(state.buttons["select"])
+        engine.update(hand(1.2, **pose))
+        self.assertTrue(engine.menu_feedback()["recognized"])
+        for name in pose:
+            candidate = dict(pose)
+            candidate[name] = .55 if name == "thumb_curl" else .25
+            engine = calibrated_engine("program_h")
+            for t in (.1, .85):
+                state = engine.update(hand(t, **candidate))
+            self.assertFalse(state.buttons["select"])
+            self.assertNotEqual(engine.menu_feedback()["pose"], "select")
+
     def test_direction_uses_hysteresis(self):
         engine = calibrated_engine()
         self.assertTrue(engine.update(hand(0.1, palm_x=0.60)).dpad["right"])

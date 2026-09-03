@@ -50,6 +50,37 @@ class ControlStateTests(unittest.TestCase):
         }))
         self.state = ControlState(self.path)
 
+    def test_first_run_config_is_blank_and_existing_config_is_preserved(self):
+        """A fresh install has no destination; loading again never rewrites settings."""
+        import runpy
+        namespace = runpy.run_path(str(Path(__file__).resolve().parents[1] / "python/main.py"))
+        loader = namespace["load_device_config"]
+        loader.__globals__["CONFIG_PATH"] = self.path
+        before = self.path.read_bytes()
+        self.assertEqual(loader()["receiver"], "retropieconsole.local")
+        self.assertEqual(self.path.read_bytes(), before)
+        self.path.unlink()
+        self.assertEqual(loader()["receiver"], "")
+        self.assertFalse(self.state.public_config()["connection_configured"])
+        self.assertFalse(self.state.public_config()["paired"])
+        with self.assertRaisesRegex(ValueError, "Connection"):
+            self.state.set_controller_enabled(True)
+        self.assertFalse(self.state.controller_enabled())
+        settings = self.state.public_config()
+        settings["profile"] = "off"
+        self.state.save_config(settings)
+        self.assertEqual(self.state.public_config()["profile"], "off")
+        self.assertEqual(self.state.load_config()["receiver"], "")
+
+    def test_clearing_destination_stops_controller(self):
+        """Removing the destination disables transmission without losing the token."""
+        self.state.set_controller_enabled(True)
+        settings = self.state.public_config()
+        settings["receiver"] = ""
+        self.state.save_config(settings)
+        self.assertFalse(self.state.controller_enabled())
+        self.assertEqual(self.state.load_config()["token"], "private-token")
+
     def tearDown(self):
         self.temporary.cleanup()
 
@@ -186,7 +217,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"keepalive:true", LEARN)
         self.assertIn(b"data-src=/stream", LEARN)
         self.assertNotIn(b"/api/controller", LEARN)
-        self.assertIn(b"Lesson 1 of 10", LEARN)
+        self.assertIn(b"Lesson 1 of 11", LEARN)
 
     def test_dashboard_load_clears_practice_and_restores_selected_mode(self):
         self.assertIn(b"/api/practice", DASHBOARD)
@@ -228,6 +259,8 @@ class ControlStateTests(unittest.TestCase):
     def test_practice_uses_general_tracking_without_changing_selected_off_mode(self):
         self.assertEqual(_effective_profile(None, True), "program_h")
         self.assertIsNone(_effective_profile(None, False))
+        self.assertEqual(_effective_profile("bad_street_brawler", True), "program_h")
+        self.assertEqual(_effective_profile("bad_street_brawler", False), "bad_street_brawler")
         status = _base_status(
             None, "Startup default", "startup", True, practice_mode=True,
         )
@@ -259,7 +292,7 @@ class ControlStateTests(unittest.TestCase):
 
     def test_shutdown_controls_are_on_dashboard_and_setup(self):
         for page in (DASHBOARD, SETUP):
-            self.assertIn(b"Shutdown system", page)
+            self.assertIn(b">Shutdown</button>", page)
             self.assertIn(b"/api/system/shutdown", page)
             self.assertIn(b"restore or cycle power", page.lower())
 
@@ -274,15 +307,31 @@ class ControlStateTests(unittest.TestCase):
             self.assertIn(b"First startup can take longer.", page)
             self.assertIn(b"s.vision_started_at", page)
             self.assertIn(b"seconds}s elapsed", page)
-            self.assertIn(b"$('center').disabled=!ready", page)
+            self.assertIn(b"updateCalibration(s)", page)
         self.assertLess(LEARN.index(b"startupMessage(s),starting="),
                         LEARN.index(b"if(s.sequence===lastSequence)return"))
+
+    def test_footer_version_and_application_start_metadata(self):
+        from powerglove_vision import __version__
+        for page in (DASHBOARD, LEARN, SETUP):
+            self.assertIn(("PowerGlove Vision v" + __version__).encode(), page)
+        self.assertNotIn(b"id=app-started", DASHBOARD)
+        for page in (LEARN, SETUP):
+            self.assertIn(b"id=app-started", page)
+        first = self.state.snapshot()
+        second = self.state.snapshot()
+        self.assertEqual(first["app_started_at"], self.state.started_at)
+        self.assertEqual(first["app_started_at"], second["app_started_at"])
+        self.assertEqual(first["version"], __version__)
 
     def test_learn_has_gesture_images_and_accepts_held_menu_recognition(self):
         self.assertIn(b"id=lesson-image", LEARN)
         self.assertIn(b"/help-assets/gestures/actions/", LEARN)
         self.assertIn(b"image:'v-sign.png'", LEARN)
         self.assertIn(b"image:'thumbs-up.png'", LEARN)
+        self.assertIn(b"image:'thumb-curl.png'", LEARN)
+        self.assertIn(b"GLOVE ZAP recognized!", LEARN)
+        self.assertIn(b"id=practice-actions", LEARN)
         self.assertIn(b"s.menu_gesture?.recognized", LEARN)
         self.assertIn(b"lessons[index].instant?0", LEARN)
 
@@ -343,6 +392,9 @@ class ControlStateTests(unittest.TestCase):
             servers.shutdown()
 
     def test_practice_route_forwards_session_and_dashboard_reset(self):
+        settings = self.state.public_config()
+        settings["receiver"] = ""
+        self.state.save_config(settings)
         servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
         try:
             port = servers.servers[0].server_address[1]

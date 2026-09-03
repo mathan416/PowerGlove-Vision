@@ -12,6 +12,16 @@ and the tested release will use `0.2.0`.
 
 ### Added
 
+- Added one-command host setup for RetroPie and UNO Q, with managed-file
+  backups, preserved private configuration, delayed startup, and read-only
+  PASS/FAIL/ACTION checks. Empty pairing tokens no longer cause restart loops.
+
+- Added explicit A, B, and GLOVE ZAP practice lessons and live indicators.
+  Learn consistently uses the general profile without changing the selected game.
+
+- Added a Glove Master completion achievement to Learn after all eleven lessons
+  are recognized, with Start again and Dashboard actions. Skips do not count.
+
 - Added hand illustrations to every Learn lesson and finger/pose feedback for
   Start and Select. Learn accepts confirmed menu poses after their short button
   pulse ends, rather than requiring a second hold longer than the pulse.
@@ -28,6 +38,31 @@ and the tested release will use `0.2.0`.
   after reboot or App Lab application replacement.
 
 ### Changed
+
+- Shutdown now requests a graceful system halt instead of poweroff, which was observed to reboot the UNO Q. Reinstall the host helper to apply this change; hardware tests subsequently confirmed automatic restart with both the powered hub and direct Mac USB connection. Remaining halted is a known unresolved limitation.
+
+- New installations leave the RetroPie destination blank, show generic hostname examples, and keep local practice available before pairing. Controller start requires a destination; saved destinations survive updates.
+
+
+- Added persistent host Avahi resolution for `.local` gameplay and pairing
+  destinations, with five-second address refresh and deployment mount setup.
+
+- Standardized Dashboard/Learn Calibrate actions with red busy and blue completed
+  feedback, consistent navigation buttons, and shorter Connection/Shutdown labels.
+- Prioritized controller transmission before matrix updates and limited browser
+  JPEG encoding to 15 fps; added inference_ms and send_ms diagnostics.
+- Prepared SSH pairing dependencies separately in the persistent runtime cache
+  so dependency downloads do not consume the SSH connection deadline.
+
+- Tuned thumbs-up/Select closed-finger detection to 0.42 using live pose
+  measurements, retaining the straight-thumb requirement and deliberate hold.
+
+- Tuned V/Start closed ring and pinky detection to 0.42 using live pose
+  measurements, retaining straight index/middle checks and the deliberate hold.
+
+- Tuned curl activation/release to 0.50/0.35 using live comfortable index-curl
+  measurements. Learn now follows the same hysteresis state as gameplay,
+  independent of pulsed buttons. Calibration resets held finger switches.
 
 - Finger curl now uses the strongest joint bend and includes the base knuckle
   for the four fingers. Learn exposes exact curls, a magnified landmark view,

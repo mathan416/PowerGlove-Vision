@@ -171,7 +171,7 @@ preventing a previous title's mapping from leaking into the next one.
 ## Practise safely
 
 1. Open `http://UNO-Q-NAME.local:8088/learn`.
-2. Keep the whole hand visible and select **Center hand**.
+2. Keep the whole hand visible and select **Calibrate**.
 3. Move slowly until the intended gesture is recognized consistently.
 4. Open Debug to compare hand motion with generated controller output.
 5. Start controller delivery only when ready to play.

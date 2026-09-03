@@ -31,8 +31,8 @@ class GestureConfig:
     """Hold movement, curl, roll, depth, pulse, and tracking-loss thresholds."""
     move_on: float = 0.38
     move_off: float = 0.24
-    curl_on: float = 0.68
-    curl_off: float = 0.48
+    curl_on: float = 0.50
+    curl_off: float = 0.35
     roll_on: float = 0.58
     roll_off: float = 0.40
     push_on: float = 0.34
@@ -144,7 +144,8 @@ class GestureEngine:
     def begin_calibration(self) -> None:
         """Clear prior samples and begin a fresh neutral-hand calibration."""
         self._samples.clear()
-        self._push_was_active = False
+        for switch in self._switches.values():
+            switch.active = False
         self._calibrating = True
         self._push_was_active = False
         self._pull_was_active = False
@@ -166,6 +167,12 @@ class GestureEngine:
             roll=math.atan2(sin_roll, cos_roll),
         )
         self._calibrating = False
+
+    def curl_feedback(self, observation: HandObservation) -> dict:
+        """Expose held finger switches to Learn, independent of game button pulses."""
+        ready = self.calibrated and observation.detected
+        return {name: bool(ready and self._switches[name].active)
+                for name in ("thumb", "index", "middle")}
 
     def push_feedback(self, observation: HandObservation) -> dict:
         """Expose continuous depth state so Learn cannot miss a one-frame push event."""
@@ -263,15 +270,15 @@ class GestureEngine:
         start_pose = (
             observation.index_curl < 0.28
             and observation.middle_curl < 0.28
-            and observation.ring_curl > 0.68
-            and observation.pinky_curl > 0.68
+            and observation.ring_curl > 0.42
+            and observation.pinky_curl > 0.42
         )
         select_pose = (
             observation.thumb_curl < 0.32
-            and observation.index_curl > 0.68
-            and observation.middle_curl > 0.68
-            and observation.ring_curl > 0.68
-            and observation.pinky_curl > 0.68
+            and observation.index_curl > 0.42
+            and observation.middle_curl > 0.42
+            and observation.ring_curl > 0.42
+            and observation.pinky_curl > 0.42
         )
         start = self._start_gesture.update(start_pose, observation.timestamp)
         select = self._select_gesture.update(select_pose, observation.timestamp)

@@ -15,6 +15,7 @@
 #   2026-09-03 - Added automatic Learn-page practice activation and restoration.
 #   2026-09-03 - Added descriptive names to the shared profile selectors.
 #   2026-09-03 - Made cold vision startup visible on Dashboard and Learn.
+#   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -35,6 +36,9 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
+
+from . import __version__
+from .resolver import resolve_ipv4
 
 from .help_content import (
     cabinet_reference_content, help_asset, help_document_content,
@@ -80,12 +84,15 @@ class ForbiddenActionError(Exception):
 
 def _page(title: str, content: str, script: str) -> bytes:
     """Assemble a complete branded HTML page as UTF-8 bytes."""
+    started = "<span id=app-started>Application last started: checking…</span>" if title in ("Learn gestures", "Setup") else ""
+    metadata_script = """(()=>{const el=document.getElementById('app-started');if(!el)return;async function refresh(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();const date=new Date(s.app_started_at*1000);if(!s.app_started_at||isNaN(date.getTime()))throw Error();el.textContent='Application last started: '+new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'long'}).format(date);el.title='Application start time, shown in your browser time zone';}catch(e){el.textContent='Application last started: unavailable'}}refresh();setInterval(refresh,30000)})();"""
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
 <title>{html.escape(title)} · PowerGlove Vision</title>
 <style>
 :root{{--ink:#f7f8ff;--muted:#a6aec5;--panel:#161a25;--line:#303748;--blue:#3d75ff;--cyan:#36dbe8;--red:#e64047;--green:#54e389}}
 *{{box-sizing:border-box}}body{{margin:0;color:var(--ink);font:16px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:#090b11 radial-gradient(circle at 75% 0,#182449 0,transparent 38%)}}
+body{{min-height:100vh;display:flex;flex-direction:column}}main{{flex:1}}.app-footer{{width:min(1100px,calc(100% - 32px));margin:0 auto;padding:12px 0 20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;display:flex;flex-wrap:wrap;gap:8px 24px}}
 header,main{{width:min(1100px,calc(100% - 32px));margin:auto}}header{{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:7px 0;border-bottom:2px solid var(--line)}}
 .brand{{display:block;width:clamp(230px,30vw,300px);max-width:70%}}.brand img{{display:block;width:100%;height:auto}}nav a{{color:var(--ink);text-decoration:none;margin-left:18px}}nav a:hover{{color:var(--cyan)}}
 main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:0 0 6px;letter-spacing:-2px}}h2{{font:800 20px system-ui;margin:0 0 14px}}p.lead{{color:var(--muted);max-width:720px;margin:0 0 18px}}.dashboard-lead{{max-width:none!important;margin-bottom:14px!important}}
@@ -96,7 +103,7 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .dashboard-workspace{{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(430px,.95fr);gap:14px;align-items:start;margin-top:14px}}.dashboard-workspace .camera{{height:min(38vh,340px);aspect-ratio:auto;margin:0}}.dashboard-controls{{margin:10px 0 0}}
 .camera-stage{{position:relative}}.camera-idle{{display:none;height:min(38vh,340px);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:30px;background:radial-gradient(circle,#17284b,#050608 62%);border:1px solid var(--line);border-radius:14px;color:var(--cyan);font:900 24px/1.25 system-ui}}.camera-idle small{{display:block;margin-top:10px;color:var(--muted);font:14px/1.45 ui-monospace,monospace}}.profile-select{{margin-top:6px;padding:7px 9px;font:800 15px system-ui}}
 .diagnostic-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.diagnostic-grid .card{{padding:10px}}.diagnostic-grid h2{{font-size:15px;margin-bottom:6px}}.diagnostic-grid .label{{font-size:9px}}.diagnostic-grid .bits{{gap:5px;margin-top:6px}}.diagnostic-grid .bit{{padding:3px 5px;font-size:12px}}.diagnostic-grid .meter{{height:6px;margin-top:4px}}.diagnostic-grid .events{{height:110px}}
-.controls{{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}}button,.button{{border:0;border-radius:8px;padding:12px 16px;background:var(--blue);color:white;font:800 15px system-ui;cursor:pointer;text-decoration:none}}button.secondary{{background:#272d3c}}button.danger{{background:var(--red)}}button:disabled{{opacity:.5;cursor:wait}}
+.controls{{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}}button,.button{{border:0;border-radius:8px;padding:12px 16px;background:var(--blue);color:white;font:800 15px system-ui;cursor:pointer;text-decoration:none}}button.secondary{{background:#272d3c}}button.danger{{background:var(--red)}}button:disabled{{opacity:.5;cursor:wait}}button:active,.button:active{{transform:translateY(2px);filter:brightness(.75)}}button:focus-visible,.button:focus-visible{{outline:3px solid #8edfff;outline-offset:3px}}button.danger:disabled{{opacity:1}}.dashboard-controls{{gap:8px}}.dashboard-controls button,.dashboard-controls .button{{padding:11px 12px;font-size:14px;white-space:nowrap}}
 .meter{{height:8px;background:#080a10;border-radius:9px;margin-top:10px;overflow:hidden}}.meter i{{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .15s}}
 .bits{{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}}.bit{{padding:6px 9px;border:1px solid var(--line);border-radius:7px;color:var(--muted)}}.bit.on{{color:#081109;background:var(--green);border-color:var(--green)}}
 .events{{height:170px;overflow:auto;background:#080a10;border-radius:9px;padding:12px;color:#c9d2ec;font-size:13px}}.events div{{padding:3px 0;border-bottom:1px solid #171b25}}
@@ -112,7 +119,7 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 @media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera{{height:auto;aspect-ratio:4/3}}}}
 @media(max-width:900px){{.help-layout{{grid-template-columns:1fr}}.help-sidebar{{position:static;max-height:none}}.guide-nav{{grid-template-columns:repeat(2,minmax(0,1fr))}}.toc{{display:none}}}}
 @media(max-width:600px){{header{{align-items:center}}.brand{{max-width:58%}}nav{{display:grid;grid-template-columns:repeat(2,auto);gap:5px 12px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}.guide-nav{{grid-template-columns:1fr}}.markdown-body{{padding:20px 17px}}}}
-</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/learn>Learn</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
+</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/learn>Learn</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}</footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
 
 
 VISION_STARTUP_SCRIPT = r"""
@@ -138,7 +145,7 @@ DASHBOARD = _page(
  <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
 </div>
 <div class=dashboard-workspace><div><div class=camera-stage><img class=camera id=camera data-src=/stream alt='Live camera view'><div class=camera-idle id=camera-idle role=status>POWER GLOVE VISION<small>Gestures are paused. Select a profile to resume.</small></div></div>
-<div class='controls dashboard-controls'><button id=center>Center hand</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection setup</a><button class=danger id=shutdown-system>Shutdown system</button></div></div>
+<div class='controls dashboard-controls'><button id=center>Calibrate</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection</a><button class=danger id=shutdown-system>Shutdown</button></div></div>
 <div class=diagnostic-grid>
  <section class=card><h2>Controller output</h2><div class=label>Directions</div><div class=bits id=dpad></div><div class=label style='margin-top:14px'>Buttons</div><div class=bits id=buttons></div></section>
  <section class=card><h2>Axes</h2><div id=axes></div></section>
@@ -146,61 +153,81 @@ DASHBOARD = _page(
  <section class='card events-card'><h2>Recent events</h2><div class=events id=events><div>Waiting for tracker…</div></div></section>
 </div></div><div class=notice id=dashboard-notice></div>""",
     VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
+let calibrationPending=false,calibrationSeen=false,calibrationStarted=0,calibrationDoneUntil=0;
+function updateCalibration(s){const b=$('center');if(s.calibrating){calibrationSeen=true;calibrationPending=true;if(!calibrationStarted)calibrationStarted=Date.now()}
+if(calibrationPending&&calibrationSeen&&s.calibrated&&!s.calibrating){calibrationPending=false;calibrationSeen=false;calibrationStarted=0;calibrationDoneUntil=Date.now()+1800}
+if(calibrationPending&&Date.now()-calibrationStarted>20000){calibrationPending=false;calibrationSeen=false;calibrationStarted=0;b.title='Calibration did not finish. Show a relaxed hand and try again.'}
+b.disabled=s.vision_state!=='active'||calibrationPending;b.classList.toggle('danger',calibrationPending);b.setAttribute('aria-busy',String(calibrationPending));b.textContent=calibrationPending?'Calibrating…':Date.now()<calibrationDoneUntil?'Calibrated ✓':'Calibrate';}
+async function calibrate(){calibrationPending=true;calibrationSeen=false;calibrationStarted=Date.now();calibrationDoneUntil=0;updateCalibration({vision_state:'active'});try{const r=await fetch('/calibrate',{method:'POST'});if(!r.ok)throw Error('Calibration request failed');}catch(e){calibrationPending=false;calibrationStarted=0;updateCalibration({vision_state:'active'});$('center').textContent='Retry calibration';$('center').title=e.message}}
+
 const bits=(id,obj)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<span class="bit ${v?'on':''}">${k.toUpperCase()}</span>`).join('')||'<span class=bit>None</span>'};
 const bars=(id,obj,max=32767)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<div class=label>${k}: ${v}</div><div class=meter><i style="width:${Math.min(100,Math.abs(v)/max*100)}%"></i></div>`).join('')||'—'};
 let seen=[],switching=false,desiredProfile=''; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
 $('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||ready?'good':'warn'));
 if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
-$('camera').style.display=idle||starting?'none':'block';$('camera-idle').style.display=idle||starting?'flex':'none';$('camera-idle').textContent=starting?startup:'POWER GLOVE VISION — Gestures are paused. Select a profile to resume.';if(idle||starting){$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){$('camera').src=$('camera').dataset.src+'?t='+Date.now()}$('center').disabled=!ready;
-$('receiver').textContent=s.controller_enabled?(starting?'Waiting for vision':idle?'Ready when gestures resume':(s.receiver_available===true?'Sending controls':'Waiting for console')):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle?'good':'warn');
-$('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start controller'; $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false';
+$('camera').style.display=idle||starting?'none':'block';$('camera-idle').style.display=idle||starting?'flex':'none';$('camera-idle').textContent=starting?startup:'POWER GLOVE VISION — Gestures are paused. Select a profile to resume.';if(idle||starting){$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){$('camera').src=$('camera').dataset.src+'?t='+Date.now()}updateCalibration(s);
+$('receiver').textContent=!s.connection_configured?'Set up Connection':s.controller_enabled?(starting?'Waiting for vision':idle?'Ready when gestures resume':(s.receiver_available===true?'Sending controls':'Waiting for console')):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle?'good':'warn');
+$('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start controller'; $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false'; $('controller-toggle').disabled=!s.connection_configured; $('controller-toggle').title=s.connection_configured?'':'Configure your RetroPie destination in Connection first';
 $('tracking').textContent=starting?'Starting…':idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);
 for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');
 }catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}}
 fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false,reset:true})}).finally(update);setInterval(update,250);
-$('center').onclick=async()=>{await fetch('/calibrate',{method:'POST'});};
+$('center').onclick=calibrate;
 $('profile-selector').onchange=async()=>{const p=$('profile-selector'),notice=$('dashboard-notice');desiredProfile=p.value;switching=true;p.disabled=true;notice.textContent='Switching profile…';try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:desiredProfile})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Could not change profile.');notice.textContent=desiredProfile==='off'?'Gestures paused. Camera capture is stopping.':'Profile selected.';}catch(e){switching=false;p.disabled=false;notice.textContent=e.message;update()}};
 $('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};
 $('shutdown-system').onclick=()=>shutdownSystem($('shutdown-system'));
-async function shutdownSystem(button){if(!confirm('Shut down the entire UNO Q system? Controller input will stop and Linux will shut down safely. To start it again, restore or cycle power.'))return;button.disabled=true;button.textContent='Shutting down…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('system').textContent='Shutting down safely';$('system').className='value warn';}catch(e){button.disabled=false;button.textContent='Shutdown system';alert(e.message);}}""",
+async function shutdownSystem(button){if(!confirm('Shut down the entire UNO Q system? Controller input will stop and Linux will shut down safely. To start it again, restore or cycle power.'))return;button.disabled=true;button.textContent='Shutting down…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('system').textContent='Shutting down safely';$('system').className='value warn';}catch(e){button.disabled=false;button.textContent='Shutdown';alert(e.message);}}""",
 )
 
 
 LEARN = _page(
     "Learn gestures",
-    """<h1>Train your hand.</h1><p class='lead dashboard-lead'>Practice gesture recognition without a RetroPie connection. Controller transmission is stopped while this page is open.</p>
+    """<h1>Train your hand.</h1><p class='lead dashboard-lead'>Practice gesture recognition without a RetroPie connection. General controls: index curl is A, thumb curl is B, and a forward push is GLOVE ZAP. Game profiles may map gestures differently. Controller transmission is stopped while this page is open.</p>
 <div class=learn-grid><div class=learn-camera><img class=camera id=learn-camera data-src=/stream alt='Live camera view for gesture practice'><div class=camera-idle id=learn-startup role=status aria-live=polite></div><div class=practice-badge>● PRACTICE ONLY</div></div>
-<section class=card><div class=lesson-number id=lesson-number>Lesson 1 of 10</div><div class=lesson-title id=lesson-title>Show your hand</div><img id=lesson-image alt="Gesture example" style="display:block;width:100%;height:150px;object-fit:contain;background:#f8f9fc;border-radius:10px"><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
+<section class=card><div id=achievement hidden role=status aria-live=polite style="text-align:center;padding:24px;border:2px solid #36dbe8;border-radius:16px;background:linear-gradient(135deg,#12334b,#261944)"><div style="font-size:48px" aria-hidden=true>🏆</div><h2>Glove Master!</h2><p>All lessons completed. You're ready to play.</p><button id=restart-training type=button>Start again</button><a class=button href=/debug>Go to Dashboard</a></div><div class=lesson-number id=lesson-number>Lesson 1 of 11</div><div class=lesson-title id=lesson-title>Show your hand</div><img id=lesson-image alt="Gesture example" style="display:block;width:100%;height:150px;object-fit:contain;background:#f8f9fc;border-radius:10px"><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
 <details><summary>Live hand measurements</summary><canvas id=hand-detail width=300 height=220 style="width:100%;max-width:300px;background:#090b11" aria-label="Magnified hand landmarks"></canvas><p id=finger-feedback></p><p id=depth-feedback></p></details><div class=lesson-result id=lesson-result>Waiting for your hand…</div><div class=lesson-progress id=lesson-progress></div>
-<div class=controls><button class=secondary id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button class=secondary id=center type=button>Re-center</button></div>
-<div class=live-readout><div><span class=label>Tracking</span><strong id=tracking>—</strong></div><div><span class=label>Recognized</span><strong id=recognized>None</strong></div><div><span class=label>Confidence</span><strong id=confidence>0%</strong></div></div></section></div>""",
+<div class=controls><button id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button id=center type=button>Calibrate</button></div>
+<div class=bits id=practice-actions aria-label="Practice actions"></div><div class=live-readout><div><span class=label>Tracking</span><strong id=tracking>—</strong></div><div><span class=label>Recognized</span><strong id=recognized>None</strong></div><div><span class=label>Confidence</span><strong id=confidence>0%</strong></div></div></section></div>""",
     VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
+let calibrationPending=false,calibrationSeen=false,calibrationStarted=0,calibrationDoneUntil=0;
+function updateCalibration(s){const b=$('center');if(s.calibrating){calibrationSeen=true;calibrationPending=true;if(!calibrationStarted)calibrationStarted=Date.now()}
+if(calibrationPending&&calibrationSeen&&s.calibrated&&!s.calibrating){calibrationPending=false;calibrationSeen=false;calibrationStarted=0;calibrationDoneUntil=Date.now()+1800}
+if(calibrationPending&&Date.now()-calibrationStarted>20000){calibrationPending=false;calibrationSeen=false;calibrationStarted=0;b.title='Calibration did not finish. Show a relaxed hand and try again.'}
+b.disabled=s.vision_state!=='active'||calibrationPending;b.classList.toggle('danger',calibrationPending);b.setAttribute('aria-busy',String(calibrationPending));b.textContent=calibrationPending?'Calibrating…':Date.now()<calibrationDoneUntil?'Calibrated ✓':'Calibrate';}
+async function calibrate(){calibrationPending=true;calibrationSeen=false;calibrationStarted=Date.now();calibrationDoneUntil=0;updateCalibration({vision_state:'active'});try{const r=await fetch('/calibrate',{method:'POST'});if(!r.ok)throw Error('Calibration request failed');}catch(e){calibrationPending=false;calibrationStarted=0;updateCalibration({vision_state:'active'});$('center').textContent='Retry calibration';$('center').title=e.message}}
+
 const lessons=[
  {title:'Show your hand',image:'whole-hand-movement.png',cue:'Hold one hand inside the camera frame with your palm facing the camera.',ok:s=>s.detected,result:'Hand found — great!' },
- {title:'Find neutral',image:'whole-hand-movement.png',cue:'Keep your palm centered and relaxed. Select Re-center if the direction stays active.',ok:s=>s.detected&&s.calibrated&&!Object.values(s.dpad||{}).some(Boolean),result:'Neutral position learned.'},
+ {title:'Find neutral',image:'whole-hand-movement.png',cue:'Keep your palm centered and relaxed. Select Calibrate if the direction stays active.',ok:s=>s.detected&&s.calibrated&&!Object.values(s.dpad||{}).some(Boolean),result:'Neutral position learned.'},
  {title:'Move left',image:'move-left.png',cue:'Move your whole hand left from the centered position.',ok:s=>s.dpad?.left,result:'LEFT recognized.'},
  {title:'Move right',image:'move-right.png',cue:'Move your whole hand right from the centered position.',ok:s=>s.dpad?.right,result:'RIGHT recognized.'},
  {title:'Move up',image:'move-up.png',cue:'Raise your whole hand above the centered position.',ok:s=>s.dpad?.up,result:'UP recognized.'},
  {title:'Move down',image:'move-down.png',cue:'Lower your whole hand below the centered position.',ok:s=>s.dpad?.down,result:'DOWN recognized.'},
- {title:'Curl your index finger',image:'finger-curl.png',cue:'Keep your palm visible and curl your index finger toward it.',ok:s=>(s.finger_curls?.index||0)>=(s.curl_threshold??0.68),result:'Index curl recognized.'},
+ {title:'A — curl your index finger',image:'finger-curl.png',cue:'Keep your palm visible and curl your index finger toward it.',ok:s=>!!s.finger_active?.index&&!s.menu_gesture?.pose,result:'A recognized.'},
+ {title:'B — curl your thumb',image:'thumb-curl.png',cue:'Fold your thumb toward your palm while keeping your other fingers relaxed and open. This is B.',ok:s=>!!s.finger_active?.thumb&&!s.menu_gesture?.pose,result:'B recognized.'},
  {title:'Make the V sign',image:'v-sign.png',cue:'Extend index and middle fingers, close ring and pinky, then hold for a moment. This is START.',instant:true,menu:'start',ok:s=>s.menu_gesture?.pose==='start'&&s.menu_gesture?.recognized,result:'START recognized.'},
  {title:'Give a thumbs-up',image:'thumbs-up.png',cue:'Extend your thumb and close all four fingers, then hold. This is SELECT.',instant:true,menu:'select',ok:s=>s.menu_gesture?.pose==='select'&&s.menu_gesture?.recognized,result:'SELECT recognized.'},
- {title:'Push toward the camera',image:'push-toward-camera.png',instant:true,cue:'Move your open hand closer to the camera in one deliberate push.',ok:s=>s.push_gesture?.active,result:'Push recognized — training complete!'}
+ {title:'GLOVE ZAP — push toward the camera',image:'push-toward-camera.png',instant:true,cue:'Move your open hand closer to the camera in one deliberate push.',ok:s=>s.push_gesture?.active,result:'GLOVE ZAP recognized!'}
 ];
-let index=0,completed=new Set(),holdStarted=0,lastSequence=-1,advancing=false,practiceActive=false;
+let index=0,completed=new Set(),holdStarted=0,lastSequence=-1,advancing=false,practiceActive=false,advanceTimer=null,trainingComplete=false;
 const practiceSession=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 async function practice(enabled){const r=await fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:practiceSession,enabled}),keepalive:!enabled});if(!r.ok)throw new Error('Practice camera request failed.');practiceActive=enabled;return r}
 async function startPractice(){try{await practice(true);$('learn-camera').src=$('learn-camera').dataset.src+'?t='+Date.now()}catch(e){$('lesson-result').textContent='Could not start the practice camera.';$('lesson-result').className='lesson-result'}}
 function stopPractice(){if(!practiceActive)return;practiceActive=false;fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:practiceSession,enabled:false}),keepalive:true}).catch(()=>{})}
 function action(s){if(s.menu_gesture?.pose)return s.menu_gesture.pose.toUpperCase()+(s.menu_gesture.recognized?' recognized':' — hold');const d=Object.entries(s.dpad||{}).find(([,v])=>v);if(d)return d[0].toUpperCase();const b=Object.entries(s.buttons||{}).find(([,v])=>v);if(b)return b[0].replace('_',' ').toUpperCase();const f=Object.entries(s.fingers||{}).filter(([,v])=>v>=2).map(([k])=>k);return f.length?f.join(' + '):'None'}
 function drawHand(points){const canvas=$('hand-detail'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,300,220);if(points.length!==21)return;const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]),minX=Math.min(...xs),minY=Math.min(...ys),scale=Math.min(260/Math.max(.01,Math.max(...xs)-minX),180/Math.max(.01,Math.max(...ys)-minY)),pos=p=>[20+(p[0]-minX)*scale,20+(p[1]-minY)*scale];ctx.strokeStyle='#36dbe8';ctx.lineWidth=2;for(const chain of [[0,1,2,3,4],[0,5,6,7,8],[5,9,10,11,12],[9,13,14,15,16],[13,17,18,19,20],[0,17]]){ctx.beginPath();chain.forEach((id,i)=>{const p=pos(points[id]);i?ctx.lineTo(...p):ctx.moveTo(...p)});ctx.stroke()}ctx.fillStyle='#54e389';points.forEach(p=>{ctx.beginPath();ctx.arc(...pos(p),3,0,Math.PI*2);ctx.fill()})}
-function draw(s={}){const lesson=lessons[index];$('lesson-image').src='/help-assets/gestures/actions/'+lesson.image;$('lesson-image').alt=lesson.title;$('finger-feedback').textContent='Curl / trigger '+Number(s.curl_threshold??0.68).toFixed(2)+': '+Object.entries(s.finger_curls||{}).map(([name,value])=>`${name} ${Number(value).toFixed(3)}`).join(' · ');$('depth-feedback').textContent=s.push_gesture?`Forward movement: ${Math.round(s.push_gesture.depth*100)}% / ${Math.round(s.push_gesture.threshold*100)}% required`:'';drawHand(s.hand_landmarks||[]);$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=index===0;$('next').textContent=index===lessons.length-1?'Start again':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
+// Completion requires every lesson; skipping never earns the achievement.
+function restartTraining(){clearTimeout(advanceTimer);index=0;completed.clear();holdStarted=0;lastSequence=-1;advancing=false;trainingComplete=false;$('achievement').hidden=true;$('lesson-result').textContent='Show your hand to begin.';draw()}
+function moveLesson(next){clearTimeout(advanceTimer);index=next;holdStarted=0;advancing=false;draw()}
+function finishLesson(){holdStarted=0;advancing=false;if(completed.size===lessons.length){trainingComplete=true;$('achievement').hidden=false;$('lesson-result').textContent='Training complete — achievement unlocked!';}else{index=(index+1)%lessons.length;while(completed.has(index))index=(index+1)%lessons.length;}draw()}
+function draw(s={}){const lesson=lessons[index];const menu=!!s.menu_gesture?.pose;const actions={'A':!!s.finger_active?.index&&!menu,'B':!!s.finger_active?.thumb&&!menu,'GLOVE ZAP':!!s.push_gesture?.active};$('practice-actions').innerHTML=Object.entries(actions).map(([label,active])=>`<span class="bit ${active?'on':''}">${label}</span>`).join('');$('lesson-image').src='/help-assets/gestures/actions/'+lesson.image;$('lesson-image').alt=lesson.title;$('finger-feedback').textContent='Curl / trigger '+Number(s.curl_threshold??0.50).toFixed(2)+': '+Object.entries(s.finger_curls||{}).map(([name,value])=>`${name} ${Number(value).toFixed(3)}`).join(' · ');$('depth-feedback').textContent=s.push_gesture?`Forward movement: ${Math.round(s.push_gesture.depth*100)}% / ${Math.round(s.push_gesture.threshold*100)}% required`:'';drawHand(s.hand_landmarks||[]);$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=trainingComplete||index===0;$('next').textContent=trainingComplete?'Start again':index===lessons.length-1?'Review lessons':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
 async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();const startup=startupMessage(s),starting=s.vision_state==='starting',ready=s.vision_state==='active'&&s.practice_mode;
-$('learn-startup').style.display=starting?'flex':'none';$('learn-startup').textContent=startup;$('learn-camera').style.display=starting?'none':'block';$('center').disabled=!ready;
+$('learn-startup').style.display=starting?'flex':'none';$('learn-startup').textContent=startup;$('learn-camera').style.display=starting?'none':'block';updateCalibration(s);
+if(trainingComplete){draw(s);return}
 if(!ready){holdStarted=0;$('lesson-result').textContent=s.vision_state==='error'?(s.vision_error||'Vision unavailable; retrying.'):startup||'Starting practice camera…';$('lesson-result').className='lesson-result';$('tracking').textContent=starting?'Starting…':'Waiting';$('recognized').textContent='None';$('confidence').textContent='—';return}
-if(s.sequence===lastSequence)return;lastSequence=s.sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=lessons[index].instant?0:Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);setTimeout(()=>{if(index<lessons.length-1)index++;holdStarted=0;advancing=false;draw(s)},700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?(lessons[index].menu?(s.menu_gesture?.pose===lessons[index].menu?'Pose found — keep holding…':'Match the hand image. Keep your palm near center; check which fingers read closed.'):'Try the gesture shown above.'):'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
-$('previous').onclick=()=>{index=Math.max(0,index-1);holdStarted=0;advancing=false;draw()};$('next').onclick=()=>{index=index===lessons.length-1?0:index+1;if(index===0)completed.clear();holdStarted=0;advancing=false;draw()};$('center').onclick=()=>fetch('/calibrate',{method:'POST'});
+if(s.sequence===lastSequence)return;lastSequence=s.sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=lessons[index].instant?0:Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);advanceTimer=setTimeout(finishLesson,700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?(lessons[index].menu?(s.menu_gesture?.pose===lessons[index].menu?'Pose found — keep holding…':'Match the hand image. Keep your palm near center; check which fingers read closed.'):'Try the gesture shown above.'):'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
+$('restart-training').onclick=restartTraining;$('previous').onclick=()=>moveLesson(Math.max(0,index-1));$('next').onclick=()=>{if(trainingComplete)restartTraining();else moveLesson((index+1)%lessons.length)};$('center').onclick=calibrate;
 window.addEventListener('pagehide',stopPractice);draw();startPractice();setInterval(()=>{if(practiceActive)practice(true).catch(()=>{})},2000);setInterval(update,150);update();""",
 )
 
@@ -209,23 +236,23 @@ SETUP = _page(
     "Setup",
     """<h1>Let's get connected.</h1><p class=lead>Tell PowerGlove Vision where your RetroPie console lives. Settings are saved on this UNO Q and the private pairing token is never shown.</p>
 <section class=card><form id=form><div class=formgrid>
-<label>RetroPie console name<input id=receiver name=receiver required placeholder=retropieconsole.local></label>
+<label>RetroPie console name<input id=receiver name=receiver placeholder=RETROPIE-NAME.local></label>
 <label>Controller port<input id=port name=port type=number min=1 max=65535 required></label>
 <label>Startup profile<select id=profile name=profile>""" + _profile_options() + """</select></label>
 <label>Tracking aid<select id=glove_color name=glove_color><option value=none>Bare hand</option><option value=white>White glove</option><option value=black>Black glove</option></select></label>
 <label>Camera<input id=camera name=camera placeholder=auto></label></div>
 <label class=check><input id=rotate_token type=checkbox> Generate a new private pairing token</label>
-<div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button><button type=button id=controller-toggle>Start controller</button><button class=danger type=button id=shutdown-system>Shutdown system</button></div><div class=notice id=notice></div></form></section>
+<div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button><button type=button id=controller-toggle>Start controller</button><button class=danger type=button id=shutdown-system>Shutdown</button></div><div class=notice id=notice></div></form></section>
 <div class=grid style='margin-top:14px'><div class=card><div class=label>Pairing</div><div class=value id=paired>Checking…</div><p>Your matching token remains in <code>data/device.json</code> and must also be installed at <code>/etc/powerglove/token</code> on RetroPie.</p></div><div class=card><div class=label>Address</div><div class=value><code>/setup</code></div><p>Bookmark this page at your UNO Q's <code>.local:8088</code> address.</p></div></div>
 <section class=card style='margin-top:14px'><h2>Pair with RetroPie</h2><p id=secure-note></p><div id=pairing-fields class=formgrid>
-<label>RetroPie address<input id=pair-host placeholder=retropieconsole.local autocomplete=off></label>
+<label>RetroPie address<input id=pair-host placeholder=RETROPIE-NAME.local autocomplete=off></label>
 <label>RetroPie username<input id=pair-user value=pi autocomplete=username></label>
 <label>RetroPie password<input id=pair-password type=password autocomplete=current-password></label>
 <label>UNO Q approval PIN<input id=device-code inputmode=numeric maxlength=6 placeholder='Shown on the LED matrix' autocomplete=one-time-code></label></div>
 <label class=check><input id=verified type=checkbox disabled> I compared the browser certificate fingerprint with the matrix ID</label>
 <div class=controls><button type=button id=pair-ssh>Prepare password pairing</button></div><div class=notice id=pair-notice></div>
 <details class=advanced><summary>Advanced: pair without a RetroPie password</summary><p>Run <code>sudo /opt/powerglove/bin/powerglove-pair</code> on RetroPie, then enter its temporary code here. Use this when SSH password login is disabled.</p><div class=formgrid><label>RetroPie one-time code<input id=pair-code placeholder=ABCDE-FGHIJ-23456-7ABCD autocomplete=one-time-code></label></div><div class=controls><button class=secondary type=button id=pair-code-button>Prepare one-time code</button></div></details></section>""",
-    r"""const $=id=>document.getElementById(id),secure=location.protocol==='https:';let prepared='';async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('pair-host').value=$('pair-host').value||c.receiver;$('paired').textContent=c.paired?'Private token configured':'Not paired';$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
+    r"""const $=id=>document.getElementById(id),secure=location.protocol==='https:';let prepared='';async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('pair-host').value=$('pair-host').value||c.receiver;$('paired').textContent=c.connection_configured?'Private token configured — confirm pairing on RetroPie':'Set up Connection: enter your RetroPie hostname and pair. Learn works without pairing.'; $('controller-toggle').disabled=!c.connection_configured;$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
 $('secure-note').innerHTML=secure?'Pairing requires physical confirmation on the UNO Q. For password pairing, compare the matrix ID with the beginning of the certificate SHA-256 fingerprint shown by your browser before entering the password.':`Pairing is disabled over HTTP. Open <a href="https://${location.hostname}:8443/setup">the secure setup page</a>.`;
 for(const id of ['pair-host','pair-user','pair-code','pair-ssh','pair-code-button'])$(id).disabled=!secure;for(const id of ['pair-password','device-code'])$(id).disabled=true;
 $('form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;$('notice').textContent='Saving…';const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),rotate_token:$('rotate_token').checked};const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const x=await r.json();$('notice').textContent=r.ok?'Saved. The tracker is restarting with the new settings.':x.error||'Could not save.';$('rotate_token').checked=false;b.disabled=false;load()};
@@ -341,6 +368,10 @@ class ControlState:
 
     def set_controller_enabled(self, enabled: bool) -> None:
         """Queue a controller start or stop request for the vision worker."""
+        if enabled:
+            config = self.load_config()
+            if not str(config.get("receiver", "")).strip() or not config.get("token"):
+                raise ValueError("Configure your RetroPie destination and pairing in Connection before starting controls.")
         with self.lock:
             self._controller_enabled = enabled
 
@@ -384,19 +415,20 @@ class ControlState:
         """Return browser-safe settings with all secrets removed."""
         config = self.load_config()
         return {
-            "receiver": config.get("receiver", "retropieconsole.local"),
+            "receiver": config.get("receiver", ""),
             "port": int(config.get("port", 55355)),
             "profile": config.get("profile", "bad_street_brawler"),
             "glove_color": config.get("glove_color", "none"),
             "camera": str(config.get("camera", "auto")),
-            "paired": bool(config.get("token")),
+            "paired": bool(config.get("receiver") and config.get("token")),
+            "connection_configured": bool(str(config.get("receiver", "")).strip() and config.get("token")),
             "controller_enabled": self.controller_enabled(),
         }
 
     def save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
         """Validate and persist browser-submitted non-secret device settings."""
         receiver = str(incoming.get("receiver", "")).strip()
-        if not receiver or len(receiver) > 253 or any(ch.isspace() for ch in receiver):
+        if len(receiver) > 253 or any(ch.isspace() for ch in receiver):
             raise ValueError("Enter a valid console hostname or IP address.")
         try:
             port = int(incoming.get("port", 55355))
@@ -423,6 +455,8 @@ class ControlState:
         os.chmod(temporary, 0o600)
         os.replace(temporary, self.config_path)
         with self.lock:
+            if not receiver:
+                self._controller_enabled = False
             self.revision += 1
         return self.public_config()
 
@@ -436,8 +470,12 @@ class ControlState:
                 "last_error": self.last_error,
                 "controller_enabled": self._controller_enabled,
                 "uptime_seconds": round(time.time() - self.started_at),
+                "app_started_at": self.started_at,
+                "version": __version__,
             })
-        status.setdefault("configured_profile", self.public_config()["profile"])
+        config = self.public_config()
+        status["connection_configured"] = config["connection_configured"]
+        status.setdefault("configured_profile", config["profile"])
         return status
 
     def update_supervisor(self, *, camera: bool, running: bool, error: str | None = None) -> None:
@@ -548,7 +586,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/test-connection":
                     receiver = str(self.json_body().get("receiver", "")).strip()
-                    address = socket.getaddrinfo(receiver, None, type=socket.SOCK_DGRAM)[0][4][0]
+                    if not receiver:
+                        raise ValueError("Enter your RetroPie hostname or IP address first.")
+                    address = resolve_ipv4(receiver)
                     _send(self, 200, json.dumps({"ok": True, "receiver": receiver, "address": address}).encode(), "application/json")
                 elif path == "/api/controller":
                     enabled = self.json_body().get("enabled")

@@ -15,6 +15,69 @@ virtual joystick.
 > trusted network. Pair once. Map the virtual controller once. Then practise at
 > `/learn` and play.
 
+## Recommended: one setup command per machine
+
+First download the project to RetroPie, and import/run the application once in
+Arduino App Lab on the UNO Q. Connect both machines to your network. Then run
+the appropriate command **on that machine**, from the project/app directory.
+Replace the example hostnames with your own.
+
+**On RetroPie:**
+
+```sh
+sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local
+```
+
+This installs the system Python receiver dependencies, loads uinput, installs
+the delayed receiver timer, adds launch hooks and the controller profile, and
+creates only missing configuration. Existing pairing tokens, game registries,
+launcher settings and controller profiles are preserved. If changing an existing
+UNO Q destination, edit `/etc/powerglove/launcher.json` deliberately; `--peer`
+sets the initial destination only. Existing hook commands remain in place.
+Changed managed files are backed up under `/var/backups/powerglove-vision/`.
+
+**On the UNO Q**, from `/home/arduino/ArduinoApps/powerglove-vision`:
+
+```sh
+sudo python3 scripts/setup-machine.py uno-q
+```
+
+This completes an App Lab import: Avahi, persistent resolver mount, secure web
+port, shutdown helper, and default startup app. It restarts the application.
+This first version requires the standard app directory above. It does not
+change private device settings, pair without approval, or enable gameplay output.
+Select your RetroPie destination and pair through the Connection page afterward.
+New installations leave this destination blank and block controller output until
+it is configured. Learn mode, the website, and matrix animations remain available
+without pairing. Updates preserve an existing saved destination.
+
+Both commands end with a report:
+
+| Result | Meaning |
+| --- | --- |
+| PASS | This installation check succeeded |
+| FAIL | A technical problem needs correction |
+| ACTION | A user step remains, such as pairing or verifying controls in a game |
+
+Exit codes are `0` for all checks passed, `1` for failure, and `2` for remaining
+user action. The report intentionally asks for gameplay verification; a token
+file or running process alone does not prove end-to-end control. No password or
+pairing token is printed. A missing token leaves the receiver waiting for pairing.
+
+Rerun checks without installing, restarting, or modifying settings:
+
+```sh
+sudo python3 scripts/setup-machine.py retropie --check
+```
+
+```sh
+python3 scripts/setup-machine.py uno-q --check
+```
+
+The detailed stages below remain available for manual installation and diagnosis.
+The installers do not install ROMs or BIOS files, choose a physical controller
+layout, or replace custom cabinet controller-merging software.
+
 ## Choose your route
 
 | If you want to... | Go to... |
@@ -480,17 +543,17 @@ The command should acknowledge the change and the matrix should show `B`.
 2. Open `http://UNO-Q-NAME.local:8088/debug`.
 3. Select the active profile on the Dashboard, then confirm the expected
    profile and a detected hand. The saved startup profile remains on Setup.
-4. Select **Center hand** while holding a comfortable neutral pose.
+4. Select **Calibrate** while holding a comfortable neutral pose.
 5. Select **Start controller** only when you are ready to play.
 6. Launch the game and confirm its profile code on the matrix.
 7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
-8. Before physically disconnecting UNO Q power, select **Shutdown system** on
-   Dashboard or Setup, confirm the warning, and wait for Linux to power off.
+8. Read the shutdown limitation before disconnecting power. **Shutdown** requests
+   a graceful halt, but the tested board restarts; an offline website is not proof
+   that it is safe to unplug.
 
 PowerGlove Vision deliberately boots with controller delivery stopped. Vision
 and the dashboard keep running so setup never generates surprise game inputs.
-**Shutdown system** is different: it powers off the entire UNO Q. Restoring or
-cycling power is required to start it again.
+**Shutdown** is different: it halts Linux on the UNO Q. The tested board automatically restarts; remaining halted is not guaranteed.
 
 ### Learn before you launch
 
@@ -554,7 +617,16 @@ the safest recovery route.
 
 ### Install the safe-shutdown helper (required)
 
-The App Lab container is intentionally unprivileged and cannot power off the
+The helper requests `systemctl --no-block halt`, not `poweroff`: the UNO Q
+can reboot after a power-off request. A graceful halt stops Linux without
+requesting another boot; it does not disconnect electrical power. LEDs may
+remain lit. **Known limitation, confirmed September 3, 2026:** our UNO Q
+restarted after reaching the halt target both through a powered USB-C hub and
+when connected directly to a Mac. Shutdown is therefore not a verified way to
+keep this board stopped. Do not treat the website disappearing as a safe-to-unplug
+indicator or rely on a fixed countdown. See [Arduino shutdown guidance](https://forum.arduino.cc/t/uno-q-is-abrupt-power-removal-officially-supported-or-is-clean-shutdown-required/1444069/15).
+
+The App Lab container is intentionally unprivileged and cannot halt the
 Linux host. Complete the standard installation by installing the supplied
 fixed-purpose systemd path helper once:
 
@@ -564,8 +636,8 @@ scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
 
 Enter the UNO Q `arduino` account password at the remote `sudo` prompt. The
 script does not read or store it. The helper watches only the fixed
-`data/shutdown-request` path and can perform only a system poweroff. After it is
-installed, **Shutdown system** is available on Dashboard and Setup. Each press
+`data/shutdown-request` path and can perform only a system halt. After it is
+installed, **Shutdown** is available on Dashboard and Setup. Each press
 requires browser confirmation and warns that power must be restored or cycled
 to restart the UNO Q. Its boot-time tmpfiles rule recreates the readiness
 marker if the UNO Q reboots or App Lab replaces the application directory.
@@ -720,3 +792,20 @@ other marks belong to their respective owners. No ROM images are distributed
 with this project. Third-party runtime components retain their own licenses and
 terms as documented in
 [THIRD_PARTY_COMPONENTS.md](THIRD_PARTY_COMPONENTS.md).
+
+## Enable local hostnames in the UNO Q container
+
+The Wi-Fi deployment script performs this step automatically. After a fresh
+App Lab import, run on the UNO Q (adjust the app directory if renamed):
+
+```sh
+cd /home/arduino/ArduinoApps/powerglove-vision
+test -S /run/avahi-daemon/socket
+python3 scripts/configure-uno-q-mdns.py .cache/app-compose.yaml
+docker compose -f .cache/app-compose.yaml up -d --force-recreate
+```
+
+This mounts only the host Avahi resolver directory, read-only. It does not
+expose the system D-Bus socket or Docker socket and does not pin an IP address.
+Use Connection's hostname test to verify `RETROPIE-NAME.local`. Reapply this
+step if App Lab regenerates the Compose configuration during re-import.

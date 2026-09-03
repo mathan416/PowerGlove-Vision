@@ -69,7 +69,10 @@ class PairingTests(unittest.TestCase):
             )
         positional, keywords = run.call_args
         command = positional[0]
-        self.assertEqual(command[:3], ["uv", "run", "--no-project"])
+        self.assertEqual(command[:4], ["uv", "run", "--offline", "--no-project"])
+        self.assertEqual(run.call_count, 2)
+        self.assertNotIn("input", run.call_args_list[0][1])
+        self.assertIn("UV_CACHE_DIR", keywords["env"])
         self.assertNotIn("ssh", command)
         self.assertNotIn("private-password", command)
         self.assertNotIn("paired-controller-token", command)
