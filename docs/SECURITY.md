@@ -99,6 +99,12 @@ cheat sheet, arbitrary filesystem paths, or pairing credentials. Markdown HTML
 is not executed, unsafe link schemes are rejected, and image requests are
 confined below `docs/images`.
 
+The dynamic **This cabinet** page accepts only a validated hostname or IP from
+the browser `Host` header and combines it with `public_config()`. It may show
+local network addresses, ports, profile selection, camera selection, and
+whether pairing is configured, but it must never return the token value,
+passwords, private files, or arbitrary Host-header content.
+
 ## Shutdown permissions
 
 The web process does not receive general `sudo` permission. A root-owned

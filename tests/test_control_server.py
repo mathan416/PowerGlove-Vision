@@ -9,6 +9,7 @@
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified atomic publication of host shutdown requests.
 #   2026-09-03 - Verified the bundled Help library, Markdown reader, and assets.
+#   2026-09-03 - Verified dynamic UNO Q and RetroPie cabinet details.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -29,6 +30,7 @@ from powerglove_vision.control_server import (
 )
 from powerglove_vision.debug_server import SharedDebugState
 from powerglove_vision.help_content import help_asset, render_markdown
+from powerglove_vision.help_content import cabinet_reference_content, request_browser_address
 
 
 class ControlStateTests(unittest.TestCase):
@@ -83,7 +85,22 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Help, without leaving the glove", page)
         self.assertIn(b"/help/gameplay", page)
         self.assertIn(b"/help/field-guide", page)
+        self.assertIn(b"/help/cabinet", page)
+        self.assertIn(b"This cabinet", page)
         self.assertNotIn(b"cheatsheet", page.lower())
+
+    def test_cabinet_reference_uses_request_address_and_public_config(self):
+        body, title = cabinet_reference_content("10.0.2.105:8088", self.state.public_config())
+        self.assertEqual(title, "This cabinet")
+        self.assertIn("http://10.0.2.105:8088/help", body)
+        self.assertIn("https://10.0.2.105:8443/setup", body)
+        self.assertIn("retropieconsole.local", body)
+        self.assertIn("55355", body)
+        self.assertNotIn("private-token", body)
+
+    def test_cabinet_reference_preserves_local_names_and_rejects_bad_hosts(self):
+        self.assertEqual(request_browser_address("arduiain.local:8088"), "arduiain.local")
+        self.assertEqual(request_browser_address("bad host:8088"), "UNO-Q-NAME.local")
 
     def test_help_document_renders_markdown_with_contents_and_images(self):
         page = help_document_page("gameplay")
@@ -113,6 +130,7 @@ class ControlStateTests(unittest.TestCase):
             port = servers.servers[0].server_address[1]
             for path, expected_type in (
                 ("/help", "text/html"),
+                ("/help/cabinet", "text/html"),
                 ("/help/gameplay", "text/html"),
                 ("/help/gameplay.md", "text/markdown"),
                 ("/help-assets/gestures/directional-movement.png", "image/png"),

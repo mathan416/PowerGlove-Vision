@@ -69,6 +69,9 @@ and the status pages remain available while the camera is disconnected.
 - `/help` renders the maintained Markdown manuals as an offline Help library,
   with guide navigation, contents links, illustrations, tables, code samples,
   and access to the original Markdown.
+- `/help/cabinet` generates a live, non-secret quick reference. UNO Q links use
+  the hostname or IP that opened the page, and RetroPie details come from the
+  active public configuration.
 - `/setup` configures the receiver, profile, camera and controller state. Pairing
   credentials are accepted only by the HTTPS version on port 8443.
 - **Shutdown system** on Dashboard or Setup safely powers off Linux after a

@@ -233,5 +233,10 @@ the fixed guide registry and images below `docs/images`; it does not serve
 arbitrary repository files. The machine-specific `docs/cheatsheet.md` is
 excluded from the public ZIP and therefore cannot appear in Help.
 
+`/help/cabinet` is generated at request time instead. Browser URLs use the
+validated hostname or IP from the request's `Host` header. RetroPie connection
+details come from `ControlState.public_config()`, which omits the private token
+and returns only its configured/not-configured state.
+
 For a public release, attach the verified ZIP to a tagged GitHub Release. Do
 not commit changing 33 MB ZIP binaries into the source branch.

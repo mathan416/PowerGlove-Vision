@@ -182,6 +182,12 @@ navigation, a table of contents, illustrations, tables, and code samples. Use
 `cheatsheet.md` is deliberately excluded from the public App Lab package and
 does not appear in Help.
 
+Choose **This cabinet** for a live quick reference without a static machine
+file. Its UNO Q links use the hostname or IP address that opened Help. Its
+RetroPie console, controller port, startup profile, tracking aid, camera,
+pairing readiness, and controller state come from the active public settings.
+The pairing token value and passwords are never returned.
+
 ![PowerGlove Vision Help library](images/help-page.png)
 
 ## Stage 3 - Install the RetroPie receiver

@@ -33,6 +33,9 @@ authoritative record for line-level and file-level history.
 - Added an offline Help library that renders the maintained public Markdown
   guides with responsive navigation, contents links, illustrations, tables,
   code samples, and access to the original source.
+- Added a dynamic **This cabinet** Help page whose UNO Q links follow the
+  browser's validated hostname or IP and whose non-secret RetroPie values come
+  from the active configuration.
 
 ### Fixed
 

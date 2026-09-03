@@ -9,6 +9,7 @@
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Published shutdown requests atomically for reliable host handoff.
 #   2026-09-03 - Added the offline Markdown Help library.
+#   2026-09-03 - Added the dynamic cabinet connection page.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -30,7 +31,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
 
-from .help_content import help_asset, help_document_content, help_index_content, guide_markdown
+from .help_content import (
+    cabinet_reference_content, help_asset, help_document_content,
+    help_index_content, guide_markdown,
+)
 from .pairing import PAIRING_PORT, certificate_identity, generate_certificate, pair_over_ssh, pair_with_code
 
 
@@ -198,6 +202,12 @@ def help_document_page(slug: str) -> bytes | None:
     if document is None:
         return None
     content, title = document
+    return _page(title, content, "")
+
+
+def cabinet_reference_page(host_header: str, state: "ControlState") -> bytes:
+    """Build the live, non-secret cabinet reference for the address used by this browser."""
+    content, title = cabinet_reference_content(host_header, state.public_config())
     return _page(title, content, "")
 
 
@@ -437,6 +447,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 _send(self, 200, SETUP, "text/html; charset=utf-8")
             elif path == "/help":
                 _send(self, 200, help_index_page(), "text/html; charset=utf-8")
+            elif path == "/help/cabinet":
+                _send(self, 200, cabinet_reference_page(self.headers.get("Host", ""), state), "text/html; charset=utf-8")
             elif path.startswith("/help/") and path.endswith(".md"):
                 source = guide_markdown(path[len("/help/"):-len(".md")])
                 if source is None:

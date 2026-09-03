@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added the built-in Help library and Markdown reading view.
+#   2026-09-03 - Added a live, non-secret cabinet connection reference.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Render the bundled public Markdown guides as safe, offline Help pages."""
@@ -13,14 +14,23 @@
 from __future__ import annotations
 
 import html
+import ipaddress
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_GUIDES = (
+    {
+        "slug": "cabinet",
+        "title": "This cabinet",
+        "file": None,
+        "description": "Live UNO Q links and the active RetroPie connection, generated for this cabinet.",
+        "group": "Use PowerGlove Vision",
+    },
     {
         "slug": "field-guide",
         "title": "Build and operate",
@@ -79,7 +89,11 @@ HELP_GUIDES = (
     },
 )
 GUIDES_BY_SLUG = {str(guide["slug"]): guide for guide in HELP_GUIDES}
-SLUG_BY_FILE = {str(guide["file"]): str(guide["slug"]) for guide in HELP_GUIDES}
+SLUG_BY_FILE = {
+    str(guide["file"]): str(guide["slug"])
+    for guide in HELP_GUIDES
+    if guide["file"] is not None
+}
 
 _INLINE_TOKEN = re.compile(r"(!?\[[^\]]*\]\([^)]*\)|`[^`]*`|\*\*[^*]+\*\*|(?<!\*)\*[^*]+\*(?!\*))")
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
@@ -96,7 +110,7 @@ def guide_for_slug(slug: str) -> dict[str, Any] | None:
 def guide_markdown(slug: str) -> bytes | None:
     """Read an allowlisted guide as UTF-8 bytes for the raw Markdown route."""
     guide = guide_for_slug(slug)
-    if guide is None:
+    if guide is None or guide["file"] is None:
         return None
     try:
         return (DOCS_ROOT / str(guide["file"])).read_bytes()
@@ -143,7 +157,7 @@ def help_index_content() -> str:
     return (
         "<h1>Help, without leaving the glove.</h1>"
         "<p class=lead>Read the maintained PowerGlove Vision guides directly on this UNO Q. "
-        "Everything here works offline and comes from the same Markdown files used for the printable manuals.</p>"
+        "The manuals work offline from their Markdown sources, while This cabinet fills in the live connection details.</p>"
         + "".join(sections)
     )
 
@@ -162,6 +176,101 @@ def help_document_content(slug: str) -> tuple[str, str] | None:
         for level, anchor, title in headings
         if level <= 3
     )
+    body = _reading_shell(
+        slug,
+        rendered,
+        contents,
+        f"<a href='/help/{html.escape(slug, quote=True)}.md'>View Markdown</a>",
+    )
+    return body, str(guide["title"])
+
+
+def request_browser_address(host_header: str) -> str:
+    """Return a safe hostname or IP literal derived from the browser Host header."""
+    try:
+        hostname = urlsplit("//" + host_header.strip()).hostname
+    except ValueError:
+        hostname = None
+    if not hostname or len(hostname) > 253:
+        return "UNO-Q-NAME.local"
+    try:
+        address = ipaddress.ip_address(hostname)
+        return f"[{address}]" if address.version == 6 else str(address)
+    except ValueError:
+        if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?", hostname):
+            return "UNO-Q-NAME.local"
+        return hostname
+
+
+def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple[str, str]:
+    """Build a non-secret cabinet reference from the request address and public settings."""
+    board = request_browser_address(host_header)
+    receiver = str(config.get("receiver", "retropieconsole.local"))
+    port = str(config.get("port", 55355))
+    profile = str(config.get("profile", "off"))
+    profile_names = {
+        "bad_street_brawler": "Bad Street Brawler",
+        "super_glove_ball": "Super Glove Ball",
+        "off": "Gestures off",
+    }
+    profile_name = profile_names.get(profile, "Program " + profile[-1:].upper() if profile.startswith("program_") else profile)
+    tracking_aid = {"none": "Bare hand", "white": "White glove", "black": "Black glove"}.get(
+        str(config.get("glove_color", "none")), str(config.get("glove_color", "none"))
+    )
+    paired = "Configured" if config.get("paired") else "Not configured"
+    controller = "Started" if config.get("controller_enabled") else "Stopped"
+    http_root = f"http://{board}:8088"
+    https_root = f"https://{board}:8443"
+
+    def row(label: str, value: str) -> str:
+        """Render one escaped reference-table row."""
+        return f"<tr><th>{html.escape(label)}</th><td>{html.escape(value)}</td></tr>"
+
+    url_rows = "".join(
+        "<tr><th>{label}</th><td><a href='{url}'>{url}</a></td></tr>".format(
+            label=html.escape(label), url=html.escape(url, quote=True)
+        )
+        for label, url in (
+            ("Dashboard", http_root + "/debug"),
+            ("Gesture lessons", http_root + "/learn"),
+            ("Help center", http_root + "/help"),
+            ("Connection setup", http_root + "/setup"),
+            ("Secure pairing", https_root + "/setup"),
+            ("System status", http_root + "/status"),
+        )
+    )
+    settings_rows = "".join(
+        (
+            row("RetroPie console", receiver),
+            row("Controller port", port),
+            row("Startup profile", profile_name),
+            row("Tracking aid", tracking_aid),
+            row("Camera", str(config.get("camera", "auto"))),
+            row("Pairing token", paired + " (value never shown)"),
+            row("Controller transmission", controller),
+        )
+    )
+    article = (
+        "<h1>This cabinet</h1>"
+        "<p>These values are generated from the address used to open this page and the UNO Q's active public configuration. They update without editing a guide.</p>"
+        "<h2>UNO Q</h2><div class=table-scroll><table><tbody>"
+        + row("Address used by this browser", board)
+        + row("Web workshop", http_root)
+        + row("Secure setup", https_root)
+        + "</tbody></table></div>"
+        "<h2>Browser URLs</h2><div class=table-scroll><table><tbody>"
+        + url_rows
+        + "</tbody></table></div>"
+        "<h2>Connected RetroPie</h2><div class=table-scroll><table><tbody>"
+        + settings_rows
+        + "</tbody></table></div>"
+        "<blockquote><strong>Private by design</strong> The shared token and passwords are never returned to Help. If you open this page with an IP address, its links use that IP; if you open it with a <code>.local</code> name, the links keep that name.</blockquote>"
+    )
+    return _reading_shell("cabinet", article, "", ""), "This cabinet"
+
+
+def _reading_shell(slug: str, rendered: str, contents: str, toolbar_extra: str) -> str:
+    """Wrap rendered Help content in the shared toolbar, guide navigation, and contents pane."""
     guide_links = "".join(
         "<a class='{current}' href='/help/{slug}'>{title}</a>".format(
             current="current" if item["slug"] == slug else "",
@@ -172,13 +281,13 @@ def help_document_content(slug: str) -> tuple[str, str] | None:
     )
     body = (
         "<div class=help-toolbar><a href=/help>← All help</a>"
-        f"<a href='/help/{html.escape(slug, quote=True)}.md'>View Markdown</a></div>"
+        f"{toolbar_extra}</div>"
         "<div class=help-layout><aside class=help-sidebar><div class=label>Guides</div>"
         f"<nav class=guide-nav>{guide_links}</nav>"
         + (f"<div class=toc><div class=label>On this page</div>{contents}</div>" if contents else "")
         + f"</aside><article class=markdown-body>{rendered}</article></div>"
     )
-    return body, str(guide["title"])
+    return body
 
 
 def _anchor(text: str, used: set[str]) -> str:
