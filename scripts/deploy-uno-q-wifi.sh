@@ -11,6 +11,7 @@
 #   2026-09-03 - Added deployment verification for the Help library.
 #   2026-09-03 - Added an IP fallback when mDNS pauses during container restart.
 #   2026-09-03 - Verified deployed Help guides, Markdown, and gesture artwork.
+#   2026-09-03 - Used staged SFTP uploads and terminal-backed UNO Q commands.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -50,10 +51,24 @@ fi
 readonly UNO_TARGET REMOTE_APP_DIR
 readonly UNO_HOST="${UNO_TARGET#*@}"
 readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
+readonly REMOTE_ARCHIVE="/tmp/powerglove-vision-deploy.tar"
+readonly LOCAL_ARCHIVE="$(mktemp)"
+readonly -a SSH_OPTIONS=(
+  -o BatchMode=yes
+  -o ConnectTimeout=30
+  -o ServerAliveInterval=10
+  -o ServerAliveCountMax=3
+)
+
+# Always remove the local staging archive, including after an interrupted upload.
+cleanup() {
+  rm -f "${LOCAL_ARCHIVE}"
+}
+trap cleanup EXIT
 
 echo "Checking ${UNO_TARGET}..."
-ssh -o BatchMode=yes -o ConnectTimeout=8 "${UNO_TARGET}" true
-UNO_ADDRESSES="$(ssh -o BatchMode=yes "${UNO_TARGET}" hostname -I 2>/dev/null || true)"
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" true >/dev/null
+UNO_ADDRESSES="$(ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" hostname -I 2>/dev/null | tr -d '\r' || true)"
 UNO_HEALTH_HOST="${UNO_ADDRESSES%% *}"
 if [[ -z "${UNO_HEALTH_HOST}" ]]; then
   UNO_HEALTH_HOST="${UNO_HOST}"
@@ -61,7 +76,6 @@ fi
 readonly UNO_ADDRESSES UNO_HEALTH_HOST
 
 echo "Uploading PowerGlove Vision over Wi-Fi..."
-ssh -o BatchMode=yes "${UNO_TARGET}" "mkdir -p '${REMOTE_APP_DIR}'"
 COPYFILE_DISABLE=1 tar \
   --exclude './.git' \
   --exclude './.cache' \
@@ -76,16 +90,17 @@ COPYFILE_DISABLE=1 tar \
   --exclude '*.pdf' \
   --exclude '.DS_Store' \
   --exclude './docs/cheatsheet.md' \
-  -C "${PROJECT_DIR}" -cf - . | \
-  ssh -o BatchMode=yes "${UNO_TARGET}" \
-    "tar --warning=no-unknown-keyword -C '${REMOTE_APP_DIR}' -xf -"
+  -C "${PROJECT_DIR}" -cf "${LOCAL_ARCHIVE}" .
+scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
+  "mkdir -p '${REMOTE_APP_DIR}' && tar --warning=no-unknown-keyword -C '${REMOTE_APP_DIR}' -xf '${REMOTE_ARCHIVE}' && rm -f '${REMOTE_ARCHIVE}'"
 
 echo "Ensuring the secure setup port is published..."
-ssh -o BatchMode=yes "${UNO_TARGET}" \
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "REMOTE_COMPOSE='${REMOTE_COMPOSE}' python3 -c \"import os, pathlib; p=pathlib.Path(os.environ['REMOTE_COMPOSE']); lines=p.read_text().splitlines(); found=any(line.strip() == '- 8443:8443' for line in lines); index=next((i for i, line in enumerate(lines) if line.strip() == '- 8088:8088'), None); assert found or index is not None, 'port 8088 is missing from App Lab compose file'; lines if found else lines.insert(index + 1, lines[index].replace('8088:8088', '8443:8443')); p.write_text('\\n'.join(lines) + '\\n')\""
 
 echo "Restarting the UNO Q application..."
-ssh -o BatchMode=yes "${UNO_TARGET}" \
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "docker compose -f '${REMOTE_COMPOSE}' up -d --force-recreate"
 
 echo "Waiting for the dashboard..."
@@ -116,9 +131,12 @@ curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/help/gameplay" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/help-assets/gestures/actions/v-sign.png" >/dev/null
-curl --fail --silent --show-error --max-time 5 \
-  "http://${UNO_HEALTH_HOST}:8088/help/gameplay.md" | \
-  grep --fixed-strings --quiet "Take Power Glove Vision off-script"
+GAMEPLAY_MARKDOWN="$(curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help/gameplay.md")"
+if [[ "${GAMEPLAY_MARKDOWN}" != *"Take Power Glove Vision off-script"* ]]; then
+  echo "error: deployed gameplay Help is not the current edition" >&2
+  exit 1
+fi
 curl --insecure --fail --silent --show-error --max-time 5 \
   "https://${UNO_HEALTH_HOST}:8443/setup" >/dev/null
 

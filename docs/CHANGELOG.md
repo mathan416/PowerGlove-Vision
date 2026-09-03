@@ -61,6 +61,8 @@ authoritative record for line-level and file-level history.
 
 ### Fixed
 
+- Changed Wi-Fi deployment to use SFTP staging and terminal-backed remote
+  commands for UNO Q systems that stall non-terminal SSH sessions.
 - Allowed the UNO Q deployment health check to use the board's current IP when
   its `.local` name pauses during a container restart.
 - Published the host shutdown request atomically so a filesystem observer cannot
