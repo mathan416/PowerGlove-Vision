@@ -43,6 +43,8 @@ readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
 echo "Checking ${UNO_TARGET}..."
 ssh -o BatchMode=yes -o ConnectTimeout=8 "${UNO_TARGET}" true
 
+"${PROJECT_DIR}/scripts/fetch-runtime-assets.sh"
+
 echo "Uploading PowerGlove Vision over Wi-Fi..."
 ssh -o BatchMode=yes "${UNO_TARGET}" "mkdir -p '${REMOTE_APP_DIR}'"
 COPYFILE_DISABLE=1 tar \

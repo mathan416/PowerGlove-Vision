@@ -198,6 +198,7 @@ the temporary code printed by `powerglove-pair`; username/password pairing is
 also supported and those credentials are never stored.
 
 ```sh
+scripts/fetch-runtime-assets.sh
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -U pip
@@ -241,7 +242,7 @@ cases; contrast is more useful than a specific colour.
 
 ### UNO Q blue matrix
 
-The optional App Lab sketch in `uno_q/sketch/` drives the built-in 8x13 blue
+The optional App Lab sketch in `sketch/` drives the built-in 8x13 blue
 matrix. It deliberately does not replace the UNO Q's protected early system
 boot display. Once the PowerGlove Vision app starts, it shows:
 
@@ -251,7 +252,7 @@ boot display. Once the PowerGlove Vision app starts, it shows:
 - a gently pulsing version of that acknowledgement while tracking is active;
 - a blinking X if camera or runtime initialization fails.
 
-Copy `uno_q/sketch/` into the sketch portion of the PowerGlove Vision App Lab
+Copy `sketch/` into the sketch portion of the PowerGlove Vision App Lab
 app. The Python process detects App Lab's Bridge automatically and calls the
 sketch; on a development computer it quietly runs without matrix support. Use
 `--no-matrix` to disable the integration explicitly.
@@ -369,7 +370,9 @@ python -m unittest discover -s tests -v
 ```
 
 Rebuild the four PDF guides after changing Markdown, then rebuild the importable
-App Lab ZIP:
+App Lab ZIP. The packaging script downloads Google's Hand Landmarker model,
+verifies its pinned SHA-256 checksum, and includes it in the ZIP without storing
+the generated package or downloaded model in Git:
 
 ```sh
 python3 scripts/build-docs-pdf.py

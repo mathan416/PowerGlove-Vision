@@ -16,6 +16,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "${OUTPUT_DIR}" "${PACKAGE_TMP}/PowerGlove-Vision"
+"${PROJECT_DIR}/scripts/fetch-runtime-assets.sh"
 rsync -a \
   --exclude '.git/' \
   --exclude '.cache/' \

@@ -94,11 +94,22 @@ DHCP reservation makes that fallback stable.
 
 ### Import and start the app
 
-Build or download this release package:
+Clone the repository and build this release package:
 
 ```text
 output/app-lab/PowerGlove-Vision-Uno-Q.zip
 ```
+
+```sh
+git clone https://github.com/mathan416/PowerGlove-Vision.git
+cd PowerGlove-Vision
+scripts/build-app-lab-package.sh
+```
+
+The build downloads the official Google Hand Landmarker model and verifies its
+pinned SHA-256 checksum before placing it in the ZIP. The generated ZIP and
+downloaded model are build artifacts and are not stored in Git. A published
+GitHub release may provide the same prebuilt ZIP.
 
 In Arduino App Lab:
 
