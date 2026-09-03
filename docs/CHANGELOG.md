@@ -54,6 +54,8 @@ authoritative record for line-level and file-level history.
   while keeping the cabinet-specific quick-reference PDF private.
 - Included the nine allowlisted public PDFs in UNO Q deployments and App Lab
   installation packages, with package and live-route verification.
+- Established `dev` as the integration branch, documented release and hotfix
+  promotion into `main`, and enabled CI validation for pushes to both branches.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
 - Added an offline Help library that renders the maintained public Markdown
