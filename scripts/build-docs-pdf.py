@@ -398,6 +398,7 @@ def main():
     programs = docs / "bad-street-brawler-programs.md"
     third_party = docs / "THIRD_PARTY_COMPONENTS.md"
     changelog = docs / "CHANGELOG.md"
+    configuration = docs / "CONFIGURATION_REFERENCE.md"
     build(
         overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
         "PowerGlove Vision Project Overview",
@@ -434,7 +435,13 @@ def main():
         "Versioned features, fixes, security changes, and documentation updates.",
         "Release history",
     )
-    print(f"Built 6 PDF guides on {date.today().isoformat()}")
+    build(
+        configuration, OUTPUT / "PowerGlove-Vision-Configuration-Reference.pdf",
+        "PowerGlove Vision Configuration Reference",
+        "Active files, installed copies, fields, secrets, and generated state.",
+        "Technical reference",
+    )
+    print(f"Built 7 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

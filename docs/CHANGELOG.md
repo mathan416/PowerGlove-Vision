@@ -16,6 +16,9 @@ authoritative record for line-level and file-level history.
 - Added this centralized project changelog and its print-ready PDF edition.
 - Added an automated audit for required source headers, module descriptions,
   and production Python interface docstrings.
+- Added a complete configuration reference covering JSON templates and active
+  copies, gesture thresholds, manifests, RetroArch mapping, systemd units,
+  generated state, secret handling, and the public ZIP location.
 
 ## 0.1.0 - 2026-09-03
 

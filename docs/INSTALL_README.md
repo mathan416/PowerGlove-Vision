@@ -23,6 +23,7 @@ virtual joystick.
 | Reconnect an existing build | Daily play checklist |
 | Pair the UNO Q and RetroPie | Stage 4 |
 | Configure automatic profiles | Stage 6 |
+| Understand every configuration file and field | `CONFIGURATION_REFERENCE.md` |
 | Update over Wi-Fi | Workshop: updates and maintenance |
 | Fix a camera, network, or controller problem | Troubleshooting |
 | Understand Programs A-I | `bad-street-brawler-programs.md` |

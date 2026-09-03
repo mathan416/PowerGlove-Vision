@@ -36,6 +36,7 @@ camera equivalents are documented in
 | --- | --- |
 | [PowerGlove Vision Field Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
 | [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
+| [Configuration reference](docs/CONFIGURATION_REFERENCE.md) | Every repository, installed, private, and generated configuration file and field |
 | [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md) | MediaPipe repackaging, model provenance, checksums, licenses, and update procedure |
 | [Changelog](docs/CHANGELOG.md) | Versioned features, fixes, security changes, and documentation updates |
 | [docs/cheatsheet.md](docs/cheatsheet.md) | Machine-specific URLs and maintenance notes; contains no private pairing token |
@@ -372,7 +373,7 @@ python -m unittest discover -s tests -v
 python3 scripts/check-source-docs.py
 ```
 
-Rebuild the six PDF guides after changing Markdown, then rebuild the importable
+Rebuild the seven PDF guides after changing Markdown, then rebuild the importable
 App Lab ZIP. The public package deliberately omits Google's Hand Landmarker
 model. On first launch, the UNO Q downloads the model into its persistent
 private `data/` directory and verifies its pinned SHA-256 checksum before use:
@@ -384,6 +385,11 @@ scripts/build-app-lab-package.sh
 
 The packaging script excludes private `data/`, the local cheat sheet, caches,
 tests and Git history while retaining the public instructions and screenshots.
+It writes the generated public package to
+`output/app-lab/PowerGlove-Vision-Uno-Q.zip`. The ZIP is ignored by Git and is
+intended for a tagged GitHub Release rather than normal source commits. See the
+[configuration reference](docs/CONFIGURATION_REFERENCE.md) for its exact
+contents and exclusions.
 
 The code intentionally separates observations, gesture mapping, transport, and
 Linux input output. Recorded-camera replay and a native Nestopia adapter can be
