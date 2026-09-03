@@ -28,7 +28,7 @@ directional movement, finger-curl actions, and the held V-sign Start gesture.
 
 Bad Street Brawler's unusual cartridge-resident Programs A-I and their direct
 camera equivalents are documented in
-[`bad-street-brawler-programs.md`](docs/bad-street-brawler-programs.md).
+[bad-street-brawler-programs.md](docs/bad-street-brawler-programs.md).
 
 ## Pick up the right guide
 
@@ -37,12 +37,13 @@ camera equivalents are documented in
 | [PowerGlove Vision Field Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
 | [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
 | [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md) | MediaPipe repackaging, model provenance, checksums, licenses, and update procedure |
-| [`docs/cheatsheet.md`](docs/cheatsheet.md) | Machine-specific URLs and maintenance notes; contains no private pairing token |
+| [Changelog](docs/CHANGELOG.md) | Versioned features, fixes, security changes, and documentation updates |
+| [docs/cheatsheet.md](docs/cheatsheet.md) | Machine-specific URLs and maintenance notes; contains no private pairing token |
 
 The Field Guide is organized as a six-stage build. New makers can follow it in
 order; returning builders can jump directly to the daily checklist, workshop,
 or symptom-based troubleshooting sections. Print-ready editions live in
-[`output/pdf/`](output/pdf/).
+[output/pdf/](output/pdf/).
 
 ## Current web interface
 
@@ -194,7 +195,7 @@ immediately afterward.
 
 For a complete first-install sequence, including the two secure pairing
 methods and USB-to-Wi-Fi bootstrap, follow
-[`docs/INSTALL_README.md`](docs/INSTALL_README.md). The recommended pairing method uses
+[docs/INSTALL_README.md](docs/INSTALL_README.md). The recommended pairing method uses
 the temporary code printed by `powerglove-pair`; username/password pairing is
 also supported and those credentials are never stored.
 
@@ -368,9 +369,10 @@ Core tests do not require a camera or MediaPipe:
 
 ```sh
 python -m unittest discover -s tests -v
+python3 scripts/check-source-docs.py
 ```
 
-Rebuild the five PDF guides after changing Markdown, then rebuild the importable
+Rebuild the six PDF guides after changing Markdown, then rebuild the importable
 App Lab ZIP. The public package deliberately omits Google's Hand Landmarker
 model. On first launch, the UNO Q downloads the model into its persistent
 private `data/` directory and verifies its pinned SHA-256 checksum before use:
@@ -386,6 +388,16 @@ tests and Git history while retaining the public instructions and screenshots.
 The code intentionally separates observations, gesture mapping, transport, and
 Linux input output. Recorded-camera replay and a native Nestopia adapter can be
 added without changing the gesture engine.
+
+Every source, executable script, service unit, and commented application
+configuration starts with a standard project header. The header states the
+file's purpose, ownership, MIT SPDX identifier, and local maintenance history.
+Public interfaces and non-obvious safety or protocol functions carry focused
+docstrings or comments. Keep user-visible release history in
+[docs/CHANGELOG.md](docs/CHANGELOG.md) and exact implementation history in
+Git instead of copying an ever-growing log into every source file.
+The source-documentation audit enforces that convention for new tracked files
+and is suitable for a future continuous-integration check.
 
 ## License
 

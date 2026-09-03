@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: tests/test_gesture.py
+# Purpose: Verify calibration, hysteresis, safety release, menu poses, and supported gesture profiles.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify calibration, hysteresis, safety release, menu poses, and supported gesture profiles."""
+
 import unittest
 
 from powerglove_vision.gesture import GestureConfig, GestureEngine

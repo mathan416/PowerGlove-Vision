@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/tracker.py
+# Purpose: Convert MediaPipe or Arduino hand landmarks into normalized observations and annotated frames.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Convert MediaPipe or Arduino hand landmarks into normalized observations and annotated frames."""
+
 from __future__ import annotations
 
 import math
@@ -20,10 +32,12 @@ CONNECTIONS = (
 
 
 def _distance(a: Any, b: Any) -> float:
+    """Return the two-dimensional Euclidean distance between landmarks."""
     return math.hypot(a.x - b.x, a.y - b.y)
 
 
 def _angle(a: Any, b: Any, c: Any) -> float:
+    """Return the stable interior angle formed by three landmarks."""
     ab = (a.x - b.x, a.y - b.y)
     cb = (c.x - b.x, c.y - b.y)
     denominator = math.hypot(*ab) * math.hypot(*cb)
@@ -35,17 +49,20 @@ def _angle(a: Any, b: Any, c: Any) -> float:
 
 def _curl(a: Any, b: Any, c: Any) -> float:
     # Straight is approximately pi radians; tightly bent is near pi/3.
+    """Convert two finger-joint angles into a normalized curl amount."""
     return max(0.0, min(1.0, (math.pi - _angle(a, b, c)) / (2 * math.pi / 3)))
 
 
 @dataclass
 class TrackingResult:
+    """Bundle one normalized observation with its annotated video frame."""
     observation: HandObservation
     frame: Any
 
 
 @dataclass
 class _Point:
+    """Provide a minimal normalized landmark representation for Arduino bridge data."""
     x: float
     y: float
     z: float = 0.0
@@ -88,6 +105,7 @@ def observation_from_landmarks(
 
 
 class MediaPipeTracker:
+    """Run single-hand tracking and produce normalized controller observations."""
     def __init__(
         self,
         glove_color: str = "none",
@@ -136,9 +154,11 @@ class MediaPipeTracker:
             )
 
     def close(self) -> None:
+        """Release the underlying MediaPipe hand tracker."""
         self.hands.close()
 
     def process(self, frame: Any, timestamp: float | None = None) -> TrackingResult:
+        """Track and annotate one frame, returning a neutral observation when no hand is found."""
         cv2 = self.cv2
         now = time.monotonic() if timestamp is None else timestamp
         if self.mirror:

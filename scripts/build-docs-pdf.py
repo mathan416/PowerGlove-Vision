@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
+# Project: PowerGlove Vision
+# File: scripts/build-docs-pdf.py
+# Purpose: Render the maintained Markdown manuals into branded, print-ready PDF editions.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Build polished, distributable PowerGlove Vision PDF field guides."""
 
 from __future__ import annotations
@@ -47,6 +56,7 @@ PALE_BLUE = colors.HexColor("#E7F7FC")
 
 
 def normalize(text: str) -> str:
+    """Replace typography and symbols that are unreliable in the bundled PDF fonts."""
     replacements = {
         "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-",
         "\u2014": "-", "\u2018": "'", "\u2019": "'", "\u201c": '"',
@@ -59,9 +69,11 @@ def normalize(text: str) -> str:
 
 
 def inline(text: str) -> str:
+    """Convert supported Markdown inline markup to ReportLab paragraph markup."""
     tokens: list[str] = []
 
     def hold(markup: str) -> str:
+        """Temporarily protect generated ReportLab markup from later HTML escaping."""
         tokens.append(markup)
         return f"@@TOKEN{len(tokens) - 1}@@"
 
@@ -90,10 +102,12 @@ def inline(text: str) -> str:
 
 
 def paragraph(text: str, style: ParagraphStyle) -> Paragraph:
+    """Create a styled paragraph from normalized Markdown text."""
     return Paragraph(inline(text), style)
 
 
 def image_flowable(path: Path, max_width: float, max_height: float) -> Image:
+    """Load and proportionally scale an image within the requested bounds."""
     reader = ImageReader(str(path))
     width, height = reader.getSize()
     scale = min(max_width / width, max_height / height)
@@ -101,6 +115,7 @@ def image_flowable(path: Path, max_width: float, max_height: float) -> Image:
 
 
 def parse_table(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
+    """Parse one Markdown table and return its flowable plus the next source line."""
     rows: list[list[str]] = []
     index = start
     while index < len(lines) and lines[index].strip().startswith("|"):
@@ -137,6 +152,7 @@ def parse_table(lines: list[str], start: int, styles: dict[str, ParagraphStyle])
 
 
 def parse_list(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
+    """Parse one contiguous Markdown list and return its flowable plus the next source line."""
     first = re.match(r"^\s*(?:[-*]|\d+\.)\s+(.+)$", lines[start])
     ordered = bool(re.match(r"^\s*\d+\.", lines[start]))
     items: list[ListItem] = []
@@ -175,6 +191,7 @@ def parse_list(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
 
 
 def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
+    """Convert the supported Markdown subset into a sequence of PDF flowables."""
     lines = source.read_text(encoding="utf-8").splitlines()
     story = []
     index = 0
@@ -293,6 +310,7 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
 
 
 def style_sheet():
+    """Create the branded typography and layout styles used by every guide."""
     base = getSampleStyleSheet()
     return {
         "cover_kicker": ParagraphStyle("CoverKicker", fontName="Courier-Bold", fontSize=10, leading=13, textColor=CYAN, alignment=TA_CENTER, spaceAfter=14),
@@ -313,6 +331,7 @@ def style_sheet():
 
 
 def cover_story(title: str, subtitle: str, kind: str, styles: dict[str, ParagraphStyle]):
+    """Build the title-page flowables for one guide."""
     logo = image_flowable(LOGO, 6.55 * inch, 2.5 * inch)
     return [
         Spacer(1, 0.35 * inch), logo, Spacer(1, 0.55 * inch),
@@ -326,6 +345,7 @@ def cover_story(title: str, subtitle: str, kind: str, styles: dict[str, Paragrap
 
 
 def cover_page(canvas, document):
+    """Draw the full-bleed branded cover background and metadata."""
     canvas.saveState()
     width, height = letter
     canvas.setFillColor(NIGHT)
@@ -338,6 +358,7 @@ def cover_page(canvas, document):
 
 
 def page_decor(canvas, document):
+    """Draw the repeating header, footer, and page number on content pages."""
     canvas.saveState()
     width, height = letter
     canvas.setFillColor(NIGHT)
@@ -354,6 +375,7 @@ def page_decor(canvas, document):
 
 
 def build(source: Path, destination: Path, title: str, subtitle: str, kind: str):
+    """Render one Markdown source into a complete PDF guide."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     styles = style_sheet()
     document = SimpleDocTemplate(
@@ -368,12 +390,14 @@ def build(source: Path, destination: Path, title: str, subtitle: str, kind: str)
 
 
 def main():
+    """Build every maintained PDF edition and report the generation date."""
     docs = ROOT / "docs"
     overview = ROOT / "README.md"
     install = docs / "INSTALL_README.md"
     cheatsheet = docs / "cheatsheet.md"
     programs = docs / "bad-street-brawler-programs.md"
     third_party = docs / "THIRD_PARTY_COMPONENTS.md"
+    changelog = docs / "CHANGELOG.md"
     build(
         overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
         "PowerGlove Vision Project Overview",
@@ -404,7 +428,13 @@ def main():
         "MediaPipe provenance, modifications, checksums, licensing, and update procedure.",
         "Technical notice",
     )
-    print(f"Built 5 PDF guides on {date.today().isoformat()}")
+    build(
+        changelog, OUTPUT / "PowerGlove-Vision-Changelog.pdf",
+        "PowerGlove Vision Changelog",
+        "Versioned features, fixes, security changes, and documentation updates.",
+        "Release history",
+    )
+    print(f"Built 6 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: tests/test_control_server.py
+# Purpose: Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
+
 import json
 import http.client
 import ssl

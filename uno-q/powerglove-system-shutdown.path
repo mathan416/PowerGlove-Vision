@@ -1,5 +1,12 @@
+# Project: PowerGlove Vision
+# File: uno-q/powerglove-system-shutdown.path
+# Purpose: Watch for the fixed PowerGlove Vision shutdown-request file on the UNO Q host.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-03 - Added with standardized source documentation.
+# Full history: docs/CHANGELOG.md and Git history.
 
 [Unit]
 Description=Watch for a PowerGlove Vision system shutdown request

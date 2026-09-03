@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/vision_app.py
+# Purpose: Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output."""
+
 from __future__ import annotations
 
 import argparse
@@ -19,10 +31,12 @@ from .transport import UdpSender
 
 
 def _shutdown_on_signal(_signum: int, _frame: object) -> None:
+    """Convert process termination into the vision loop's normal cleanup path."""
     raise KeyboardInterrupt
 
 
 def _load_config(profile: str, path: Path | None) -> GestureConfig:
+    """Load profile thresholds from an explicit or default configuration file."""
     if path is None:
         candidate = Path(__file__).resolve().parents[2] / "config" / "profiles.json"
         path = candidate if candidate.exists() else None
@@ -33,6 +47,7 @@ def _load_config(profile: str, path: Path | None) -> GestureConfig:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the vision worker command-line parser."""
     parser = argparse.ArgumentParser(description="Camera-only Power Glove controller")
     parser.add_argument("--receiver", required=True, help="Raspberry Pi hostname or address")
     parser.add_argument("--port", type=int, default=55355)
@@ -56,6 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Run the complete vision-to-controller worker until shutdown or camera loss."""
     args = build_parser().parse_args()
     matrix = UnoQMatrix(enabled=not args.no_matrix)
     matrix.set_status(MatrixStatus.LOADING)

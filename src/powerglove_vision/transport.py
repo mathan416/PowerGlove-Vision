@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/transport.py
+# Purpose: Encode bounded controller packets and send them to RetroPie without blocking vision recovery.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Encode bounded controller packets and send them to RetroPie without blocking vision recovery."""
+
 from __future__ import annotations
 
 import json
@@ -15,6 +27,7 @@ MAX_PACKET_BYTES = 4096
 def encode_state(
     state: ControllerState, token: str | None = None, session: str | None = None
 ) -> bytes:
+    """Serialize one controller state into a size-bounded protocol packet."""
     data = state.to_dict(token)
     if session:
         data["session"] = session
@@ -25,6 +38,7 @@ def encode_state(
 
 
 def decode_state(payload: bytes) -> dict:
+    """Parse and validate one size-bounded controller protocol packet."""
     if len(payload) > MAX_PACKET_BYTES:
         raise ValueError("controller packet exceeds size limit")
     data = json.loads(payload.decode("utf-8"))
@@ -34,6 +48,7 @@ def decode_state(payload: bytes) -> dict:
 
 
 class UdpSender:
+    """Send controller states in recoverable sessions over connectionless UDP."""
     def __init__(self, host: str, port: int, token: str | None) -> None:
         self.destination = (host, port)
         self.token = token
@@ -69,4 +84,5 @@ class UdpSender:
         self.session = uuid.uuid4().hex
 
     def close(self) -> None:
+        """Close the sender socket."""
         self.socket.close()

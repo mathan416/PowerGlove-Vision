@@ -1,4 +1,14 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/pairing.py
+# Purpose: Provision the shared controller token through bounded TLS pairing or authenticated SSH.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Short-lived HTTPS pairing for PowerGlove Vision and RetroPie."""
 
 from __future__ import annotations
@@ -26,7 +36,9 @@ CODE_PART_LENGTH = 10
 
 
 class QuietHTTPServer(HTTPServer):
+    """Suppress expected request errors during short-lived pairing sessions."""
     def handle_error(self, _request: object, _client_address: object) -> None:
+        """Ignore malformed or disconnected pairing clients without noisy tracebacks."""
         return
 
 
@@ -42,6 +54,7 @@ class BoundedTLSServer(QuietHTTPServer):
         super().__init__(server_address, handler)
 
     def get_request(self) -> tuple[socket.socket, tuple[str, int]]:
+        """Wrap one accepted socket in TLS while enforcing the session deadline."""
         connection, address = super().get_request()
         connection.settimeout(max(0.05, min(1.0, self.deadline - time.monotonic())))
         try:
@@ -52,10 +65,12 @@ class BoundedTLSServer(QuietHTTPServer):
 
 
 def _code_part(value: bytes) -> str:
+    """Encode bytes as a short human-readable Base32 verification component."""
     return base64.b32encode(value).decode("ascii").rstrip("=")[:CODE_PART_LENGTH]
 
 
 def certificate_code(pem: str) -> str:
+    """Derive the certificate component of a physical pairing code."""
     der = ssl.PEM_cert_to_DER_cert(pem)
     return _code_part(hashlib.sha256(der).digest())
 
@@ -67,6 +82,7 @@ def certificate_identity(pem: str) -> str:
 
 
 def normalize_pairing_code(code: str) -> tuple[str, str]:
+    """Normalize user formatting and split a complete physical pairing code."""
     normalized = "".join(character for character in code.upper() if character.isalnum())
     if len(normalized) != CODE_PART_LENGTH * 2:
         raise ValueError("pairing code must contain 20 letters or numbers")
@@ -74,11 +90,13 @@ def normalize_pairing_code(code: str) -> tuple[str, str]:
 
 
 def display_pairing_code(certificate_part: str, authorization_part: str) -> str:
+    """Format certificate and authorization components into readable groups."""
     combined = certificate_part + authorization_part
     return "-".join(combined[index:index + 5] for index in range(0, len(combined), 5))
 
 
 def generate_certificate(directory: Path, hostname: str, days: int = 1) -> tuple[Path, Path, str]:
+    """Create a temporary self-signed pairing certificate and return its verification code."""
     directory.mkdir(parents=True, exist_ok=True)
     certificate = directory / "pairing-cert.pem"
     private_key = directory / "pairing-key.pem"
@@ -94,6 +112,7 @@ def generate_certificate(directory: Path, hostname: str, days: int = 1) -> tuple
 
 
 def install_token(token_file: Path, token: str) -> None:
+    """Atomically install a validated shared token with restricted permissions."""
     if not 16 <= len(token) <= 256 or any(character.isspace() for character in token):
         raise ValueError("invalid controller token")
     token_file.parent.mkdir(parents=True, exist_ok=True)
@@ -116,6 +135,7 @@ def serve_pairing(
     on_paired: Callable[[], None],
     on_ready: Optional[Callable[[str, int], None]] = None,
 ) -> str:
+    """Serve one bounded, physically authorized token request over TLS."""
     authorization = _code_part(secrets.token_bytes(16))
     paired = False
     rejected_attempts = 0
@@ -125,6 +145,7 @@ def serve_pairing(
         code = display_pairing_code(certificate_code(pem), authorization)
 
         class PairingHandler(BaseHTTPRequestHandler):
+            """Accept one authenticated token transfer during the bounded pairing window."""
             def log_message(self, _format: str, *_args: object) -> None:
                 return
 
@@ -177,6 +198,7 @@ def serve_pairing(
 
 
 def pair_with_code(host: str, port: int, code: str, token: str, timeout: float = 8.0) -> None:
+    """Verify a pinned certificate and transfer the shared token over TLS."""
     expected_certificate, authorization = normalize_pairing_code(code)
     discovery_context = ssl._create_unverified_context()
     with socket.create_connection((host, port), timeout=timeout) as raw_connection:
@@ -250,6 +272,7 @@ def pair_over_ssh(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the command-line parser for serving or initiating pairing."""
     parser = argparse.ArgumentParser(description="Pair PowerGlove Vision with RetroPie")
     parser.add_argument("--listen", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=PAIRING_PORT)
@@ -260,9 +283,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Run the selected pairing role and return a process exit status."""
     args = build_parser().parse_args()
 
     def restart_receiver() -> None:
+        """Restart the installed receiver after accepting a new shared token."""
         subprocess.run(["systemctl", "restart", args.receiver_service], check=True)
 
     try:

@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/debug_server.py
+# Purpose: Expose live worker status, camera frames, calibration, and controller state to the supervisor.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Expose live worker status, camera frames, calibration, and controller state to the supervisor."""
+
 from __future__ import annotations
 
 import json
@@ -30,6 +42,7 @@ source.textContent=s.profile_source||'Startup';}catch(e){}},250)</script></body>
 
 
 class SharedDebugState:
+    """Share the latest frame, diagnostics, and one-shot operator requests across threads."""
     def __init__(self, controller_enabled: bool = False) -> None:
         self.lock = threading.Lock()
         self.jpeg: bytes | None = None
@@ -39,25 +52,30 @@ class SharedDebugState:
         self.controller_request: bool | None = None
 
     def update(self, jpeg: bytes, status: dict) -> None:
+        """Atomically replace the current JPEG frame and worker status."""
         with self.lock:
             self.jpeg = jpeg
             self.status = status
 
     def request_calibration(self) -> None:
+        """Queue one hand-centering request."""
         with self.lock:
             self.calibrate_requested = True
 
     def take_calibration_request(self) -> bool:
+        """Consume and clear the pending calibration request."""
         with self.lock:
             requested = self.calibrate_requested
             self.calibrate_requested = False
             return requested
 
     def request_controller(self, enabled: bool) -> None:
+        """Queue the requested controller transmission state."""
         with self.lock:
             self.controller_request = enabled
 
     def take_controller_request(self) -> bool | None:
+        """Consume and clear a pending controller state change."""
         with self.lock:
             requested = self.controller_request
             self.controller_request = None
@@ -65,7 +83,9 @@ class SharedDebugState:
 
 
 def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
+    """Build a local diagnostics handler bound to the supplied shared state."""
     class Handler(BaseHTTPRequestHandler):
+        """Serve the worker status, MJPEG stream, and one-shot control requests."""
         def log_message(self, _format: str, *_args: object) -> None:
             return
 
@@ -121,6 +141,7 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
 
 
 def start_debug_server(shared: SharedDebugState, host: str, port: int) -> ThreadingHTTPServer:
+    """Start the worker diagnostics server in a daemon thread."""
     server = ThreadingHTTPServer((host, port), make_handler(shared))
     threading.Thread(target=server.serve_forever, name="debug-web", daemon=True).start()
     return server

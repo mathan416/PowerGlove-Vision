@@ -1,4 +1,14 @@
+// Project: PowerGlove Vision
+// File: sketch/sketch.ino
+// Purpose: Render protected status, pairing, and gesture-profile feedback on the UNO Q LED matrix.
+// Author: Iain Bennett
 // Copyright (c) 2026 Iain Bennett
+// SPDX-License-Identifier: MIT
+// Change log:
+//   2026-09-02 - Added to PowerGlove Vision.
+//   2026-09-03 - Standardized source documentation and maintenance metadata.
+// Full history: docs/CHANGELOG.md and Git history.
+
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
 
@@ -129,6 +139,7 @@ const uint8_t glyphP[7] = {30,17,17,30,16,16,16};
 
 void drawRows(const char* const rows[8]);
 
+// Blend one five-column glyph into the 8x13 matrix framebuffer.
 void placeGlyph(uint8_t* pixels, const uint8_t glyph[7], int left, uint8_t brightness) {
   for (int y = 0; y < 7; ++y) {
     for (int x = 0; x < 5; ++x) {
@@ -139,6 +150,7 @@ void placeGlyph(uint8_t* pixels, const uint8_t glyph[7], int left, uint8_t brigh
   }
 }
 
+// Draw one hexadecimal digit used by the physical certificate identity.
 void placeHexGlyph(uint8_t* pixels, uint8_t value, int left) {
   if (value < 10) {
     placeGlyph(pixels, digitGlyphs[value], left, 7);
@@ -147,6 +159,7 @@ void placeHexGlyph(uint8_t* pixels, uint8_t value, int left) {
   }
 }
 
+// Alternate the certificate identity and one-time PIN during secure pairing.
 void drawPairing(uint8_t frame) {
   uint8_t pixels[104] = {0};
   if (frame == 0) {
@@ -169,6 +182,7 @@ void drawPairing(uint8_t frame) {
   matrix.draw(pixels);
 }
 
+// Render a compact program or game-profile identifier.
 void drawProfile(int profile, bool pulse) {
   uint8_t pixels[104] = {0};
   const uint8_t brightness = pulse ? 4 : 7;
@@ -187,6 +201,7 @@ void drawProfile(int profile, bool pulse) {
   matrix.draw(pixels);
 }
 
+// Convert character-based artwork into matrix brightness values and display it.
 void drawRows(const char* const rows[8]) {
   uint8_t pixels[104];
   for (int y = 0; y < 8; ++y) {
@@ -198,6 +213,7 @@ void drawRows(const char* const rows[8]) {
   matrix.draw(pixels);
 }
 
+// Router Bridge endpoint: request a bounded status code from the Linux app.
 void set_powerglove_status(int status) {
   if (status < PG_OFF || status > PG_PAIRING) {
     status = PG_ERROR;
@@ -205,16 +221,19 @@ void set_powerglove_status(int status) {
   requestedStatus = status;
 }
 
+// Router Bridge endpoint: show the certificate identity and one-time PIN.
 void set_powerglove_pairing(int pairingId, int pairingPin) {
   requestedPairingId = (uint32_t)pairingId & 0x0FFFFFFF;
   requestedPairingPin = pairingPin >= 0 && pairingPin <= 999999 ? pairingPin : 0;
   requestedStatus = PG_PAIRING;
 }
 
+// Router Bridge endpoint: select the active gesture-profile display.
 void set_powerglove_profile(int profile) {
   requestedProfile = (profile >= 0 && profile <= 11) ? profile : 0;
 }
 
+// Initialize the matrix, register bridge endpoints, and show loading state.
 void setup() {
   matrix.begin();
   matrix.setGrayscaleBits(3);
@@ -226,6 +245,7 @@ void setup() {
   Bridge.provide("set_powerglove_pairing", set_powerglove_pairing);
 }
 
+// Refresh animations only when their frame or requested state changes.
 void loop() {
   const int status = requestedStatus;
   const int profile = requestedProfile;

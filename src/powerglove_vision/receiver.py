@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/receiver.py
+# Purpose: Validate controller datagrams and publish them as a Linux virtual gamepad through uinput.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Validate controller datagrams and publish them as a Linux virtual gamepad through uinput."""
+
 from __future__ import annotations
 
 import argparse
@@ -10,7 +22,9 @@ from .transport import MAX_PACKET_BYTES, decode_state
 
 
 class DryRunDevice:
+    """Print received state changes without creating a kernel input device."""
     def write_state(self, state: dict) -> None:
+        """Print the meaningful controls in one accepted packet."""
         print(
             f"seq={state.get('sequence')} detected={state.get('detected')} "
             f"dpad={state.get('dpad')} buttons={state.get('buttons')} axes={state.get('axes')}",
@@ -18,13 +32,16 @@ class DryRunDevice:
         )
 
     def release(self) -> None:
+        """Report a timeout-driven neutral-controller release."""
         print("released", flush=True)
 
     def close(self) -> None:
+        """Complete the no-resource dry-run device interface."""
         pass
 
 
 class UInputDevice:
+    """Expose authenticated PowerGlove state as a standard Linux gamepad."""
     def __init__(self) -> None:
         try:
             from evdev import AbsInfo, UInput, ecodes
@@ -47,6 +64,7 @@ class UInputDevice:
         self.device = UInput(capabilities, name="PowerGlove Vision", version=0x0100)
 
     def write_state(self, state: dict) -> None:
+        """Write all buttons and axes, then synchronize the uinput frame."""
         e = self.ecodes
         dpad = state.get("dpad", {})
         buttons = state.get("buttons", {})
@@ -68,13 +86,16 @@ class UInputDevice:
         self.device.syn()
 
     def release(self) -> None:
+        """Emit a neutral frame so no control remains held after loss or shutdown."""
         self.write_state({"dpad": {}, "buttons": {}, "axes": {}})
 
     def close(self) -> None:
+        """Close and remove the virtual input device."""
         self.device.close()
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the virtual-controller receiver command-line parser."""
     parser = argparse.ArgumentParser(description="Receive PowerGlove Vision as a Linux gamepad")
     parser.add_argument("--listen", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=55355)
@@ -87,6 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Authenticate sequenced datagrams, drive uinput, and release controls on timeout."""
     args = build_parser().parse_args()
     token = args.token if args.token is not None else args.token_file.read_text().strip()
     if len(token) < 16:

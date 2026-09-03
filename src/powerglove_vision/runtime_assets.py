@@ -1,4 +1,13 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/runtime_assets.py
+# Purpose: Download, verify, cache, and atomically install third-party runtime model assets.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-03 - Added with standardized source documentation.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Verified first-run retrieval of third-party runtime assets."""
 
 from __future__ import annotations
@@ -19,6 +28,7 @@ HAND_LANDMARKER_SHA256 = "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8b
 
 
 def sha256_file(path: Path) -> str:
+    """Return the lowercase SHA-256 digest of a file read in bounded blocks."""
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):

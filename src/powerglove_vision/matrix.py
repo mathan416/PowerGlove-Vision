@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/matrix.py
+# Purpose: Drive UNO Q LED matrix status, pairing, and active-profile displays through Router Bridge.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Drive UNO Q LED matrix status, pairing, and active-profile displays through Router Bridge."""
+
 from __future__ import annotations
 
 import time
@@ -7,6 +19,7 @@ from typing import Any, Callable
 
 
 class MatrixStatus(IntEnum):
+    """Enumerate the display states understood by the UNO Q sketch."""
     OFF = 0
     LOADING = 1
     READY = 2
@@ -41,9 +54,11 @@ class UnoQMatrix:
 
     @property
     def available(self) -> bool:
+        """Return whether Router Bridge matrix calls can currently be attempted."""
         return self.enabled and self._call is not None
 
     def set_status(self, status: MatrixStatus) -> bool:
+        """Display a new status unless a temporary pairing display owns the matrix."""
         if status not in {MatrixStatus.OFF, MatrixStatus.PAIRING} and time.monotonic() < self.pairing_until:
             return self.available
         if status == self.last_status:
@@ -80,6 +95,7 @@ class UnoQMatrix:
             return False
 
     def set_profile(self, profile: str | None) -> bool:
+        """Display the compact numeric code for the active gesture profile."""
         codes = {
             **{f"program_{letter}": index for index, letter in enumerate("abcdefghi", 1)},
             "bad_street_brawler": 10,

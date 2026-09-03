@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/profile_control.py
+# Purpose: Authenticate profile commands and coordinate per-game profile selection between RetroPie and UNO Q.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Authenticate profile commands and coordinate per-game profile selection between RetroPie and UNO Q."""
+
 from __future__ import annotations
 
 import argparse
@@ -21,17 +33,20 @@ MAX_PACKET_BYTES = 4096
 
 
 def _canonical(data: dict[str, Any]) -> bytes:
+    """Serialize a message without its signature for stable HMAC calculation."""
     unsigned = {key: value for key, value in data.items() if key != "signature"}
     return json.dumps(unsigned, separators=(",", ":"), sort_keys=True).encode()
 
 
 def sign_message(data: dict[str, Any], token: str) -> dict[str, Any]:
+    """Return a copy of a profile message carrying its SHA-256 HMAC."""
     result = dict(data)
     result["signature"] = hmac.new(token.encode(), _canonical(result), hashlib.sha256).hexdigest()
     return result
 
 
 def verify_message(data: dict[str, Any], token: str) -> bool:
+    """Verify a profile message signature using constant-time comparison."""
     supplied = data.get("signature")
     if not isinstance(supplied, str):
         return False
@@ -40,6 +55,7 @@ def verify_message(data: dict[str, Any], token: str) -> bool:
 
 
 def read_token(token: str | None, token_file: Path | None) -> str:
+    """Load and validate a token supplied directly or through a protected file."""
     value = token if token is not None else token_file.read_text().strip() if token_file else ""
     if len(value) < 16:
         raise ValueError("profile token must contain at least 16 characters")
@@ -48,6 +64,7 @@ def read_token(token: str | None, token_file: Path | None) -> str:
 
 @dataclass(frozen=True)
 class ProfileRequest:
+    """Represent one validated profile request and its reply address."""
     request_id: str
     profile: str | None
     system: str
@@ -75,6 +92,7 @@ class ProfileCommandServer:
         self._thread.start()
 
     def _run(self) -> None:
+        """Receive, authenticate, deduplicate, and queue profile requests."""
         while not self._closed.is_set():
             try:
                 payload, peer = self.socket.recvfrom(MAX_PACKET_BYTES + 1)
@@ -113,12 +131,14 @@ class ProfileCommandServer:
                 continue
 
     def take(self) -> ProfileRequest | None:
+        """Return the next queued request without blocking the vision loop."""
         try:
             return self.requests.get_nowait()
         except queue.Empty:
             return None
 
     def acknowledge(self, request: ProfileRequest, accepted: bool, profile: str | None) -> None:
+        """Sign, cache, and send an explicit response to a profile request."""
         data = sign_message({
             "protocol": PROTOCOL,
             "kind": "ack",
@@ -131,12 +151,14 @@ class ProfileCommandServer:
         self.socket.sendto(payload, request.peer)
 
     def close(self) -> None:
+        """Stop the receiver thread and close its socket."""
         self._closed.set()
         self.socket.close()
         self._thread.join(timeout=1)
 
 
 def load_registry(path: Path) -> dict[str, str]:
+    """Load and validate case-insensitive ROM-to-profile mappings."""
     data = json.loads(path.read_text())
     games = data.get("games")
     if not isinstance(games, dict):
@@ -150,6 +172,7 @@ def load_registry(path: Path) -> dict[str, str]:
 
 
 def select_profile(registry: dict[str, str], system: str, rom: str) -> str | None:
+    """Select a registered NES or Famicom profile for one ROM path."""
     if system.casefold() not in {"nes", "famicom"}:
         return None
     return registry.get(Path(rom).name.casefold())
@@ -157,6 +180,7 @@ def select_profile(registry: dict[str, str], system: str, rom: str) -> str | Non
 
 def send_request(host: str, port: int, token: str, profile: str | None,
                  system: str, rom: str, timeout: float) -> dict[str, Any]:
+    """Send a signed profile request with bounded retries and require a valid acknowledgement."""
     request_id = uuid.uuid4().hex
     message = sign_message({
         "protocol": PROTOCOL,
@@ -183,6 +207,7 @@ def send_request(host: str, port: int, token: str, profile: str | None,
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the profile-control command-line parser."""
     parser = argparse.ArgumentParser(description="Select the UNO Q gesture profile for a launched ROM")
     parser.add_argument("--uno-q", required=True, help="UNO Q hostname or address")
     parser.add_argument("--port", type=int, default=55356)
@@ -199,6 +224,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Resolve a profile, request the change, and return a meaningful exit status."""
     args = build_parser().parse_args()
     token = read_token(args.token, args.token_file)
     profile = (None if args.profile == "off" else args.profile) if args.profile else select_profile(

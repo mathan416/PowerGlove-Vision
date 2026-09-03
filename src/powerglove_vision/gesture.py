@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/gesture.py
+# Purpose: Convert calibrated hand observations into stable gamepad states for supported gesture profiles.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Convert calibrated hand observations into stable gamepad states for supported gesture profiles."""
+
 from __future__ import annotations
 
 import math
@@ -15,6 +27,7 @@ SUPPORTED_PROFILES = PROGRAM_PROFILES + GAME_PROFILES
 
 @dataclass(frozen=True)
 class GestureConfig:
+    """Hold movement, curl, roll, depth, pulse, and tracking-loss thresholds."""
     move_on: float = 0.38
     move_off: float = 0.24
     curl_on: float = 0.68
@@ -28,26 +41,32 @@ class GestureConfig:
 
 
 def _clamp(value: float, low: float, high: float) -> float:
+    """Limit a floating-point value to an inclusive range."""
     return max(low, min(high, value))
 
 
 def _axis(value: float) -> int:
+    """Convert a normalized signed value to the virtual gamepad axis range."""
     return round(_clamp(value, -1.0, 1.0) * AXIS_MAX)
 
 
 def _circular_delta(value: float, origin: float) -> float:
+    """Return the shortest signed angular difference in radians."""
     return math.atan2(math.sin(value - origin), math.cos(value - origin))
 
 
 class Hysteresis:
+    """Track one threshold with separate activation and release points."""
     def __init__(self) -> None:
         self.active = False
 
     def positive(self, value: float, on: float, off: float) -> bool:
+        """Update and return the positive-direction threshold state."""
         self.active = value >= (off if self.active else on)
         return self.active
 
     def negative(self, value: float, on: float, off: float) -> bool:
+        """Update and return the negative-direction threshold state."""
         self.active = value <= -(off if self.active else on)
         return self.active
 
@@ -63,6 +82,7 @@ class HeldGesture:
         self.fired = False
 
     def update(self, matches: bool, now: float) -> bool:
+        """Return a short pulse after a pose remains stable for the configured hold time."""
         if not matches:
             self.started_at = None
             self.fired = False
@@ -117,9 +137,11 @@ class GestureEngine:
 
     @property
     def calibrated(self) -> bool:
+        """Return whether a complete neutral-hand calibration is active."""
         return self.calibration is not None and not self._calibrating
 
     def begin_calibration(self) -> None:
+        """Clear prior samples and begin a fresh neutral-hand calibration."""
         self._samples.clear()
         self._calibrating = True
         self._push_was_active = False
@@ -127,6 +149,7 @@ class GestureEngine:
         self._program_toggle = False
 
     def _collect_calibration(self, observation: HandObservation) -> None:
+        """Accumulate valid frames and derive a stable neutral-hand reference."""
         if observation.detected and observation.palm_scale > 0.01:
             self._samples.append(observation)
         if len(self._samples) < self.calibration_frames:
@@ -143,6 +166,7 @@ class GestureEngine:
         self._calibrating = False
 
     def update(self, observation: HandObservation) -> ControllerState:
+        """Map one observation to a debounced controller state with safe tracking-loss release."""
         self._sequence += 1
         if self._calibrating:
             self._collect_calibration(observation)

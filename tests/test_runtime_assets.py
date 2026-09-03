@@ -1,4 +1,15 @@
+# Project: PowerGlove Vision
+# File: tests/test_runtime_assets.py
+# Purpose: Verify model download caching, checksum enforcement, and atomic installation behavior.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-03 - Added with standardized source documentation.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify model download caching, checksum enforcement, and atomic installation behavior."""
+
 import hashlib
 import io
 import tempfile

@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/control_server.py
+# Purpose: Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
+
 from __future__ import annotations
 
 import html
@@ -33,6 +45,7 @@ class ForbiddenActionError(Exception):
 
 
 def _page(title: str, content: str, script: str) -> bytes:
+    """Assemble a complete branded HTML page as UTF-8 bytes."""
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
 <title>{html.escape(title)} · PowerGlove Vision</title>
@@ -165,6 +178,7 @@ $('pair-code-button').onclick=()=>pair('code','/api/pair/code',{host:$('pair-hos
 
 
 class ControlState:
+    """Synchronize persistent settings, supervisor health, worker status, and pairing authorization."""
     def __init__(self, config_path: Path, pairing_display: Callable[[str, str], None] | None = None) -> None:
         self.config_path = config_path
         self.lock = threading.Lock()
@@ -182,9 +196,11 @@ class ControlState:
         self.started_at = time.time()
 
     def configure_pairing_identity(self, identity: str) -> None:
+        """Publish the current certificate identity used for physical verification."""
         self._pairing_identity = identity
 
     def begin_pairing(self, host: str, method: str) -> dict[str, Any]:
+        """Create a short-lived physical authorization PIN for one host and pairing method."""
         if not host or len(host) > 253 or any(character.isspace() for character in host):
             raise ValueError("enter a valid RetroPie hostname or IP address")
         if method not in {"ssh", "code"}:
@@ -217,6 +233,7 @@ class ControlState:
         return {"certificate_id": self._pairing_identity, "expires_in": max(0, round(session["expires"] - now))}
 
     def authorize_pairing(self, host: str, method: str, pin: str) -> None:
+        """Consume a matching one-time physical PIN or reject the pairing attempt."""
         now = time.monotonic()
         with self.lock:
             session = self._pairing_session
@@ -234,10 +251,12 @@ class ControlState:
             self._pairing_session = None
 
     def controller_enabled(self) -> bool:
+        """Return the operator-selected controller transmission state."""
         with self.lock:
             return self._controller_enabled
 
     def set_controller_enabled(self, enabled: bool) -> None:
+        """Queue a controller start or stop request for the vision worker."""
         with self.lock:
             self._controller_enabled = enabled
 
@@ -252,6 +271,7 @@ class ControlState:
             self._shutdown_scheduled = True
 
         def trigger() -> None:
+            """Create the fixed request file after allowing the HTTP response to complete."""
             path = data_directory / "shutdown-request"
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
             try:
@@ -266,9 +286,11 @@ class ControlState:
         timer.start()
 
     def load_config(self) -> dict[str, Any]:
+        """Load the complete private device configuration from disk."""
         return json.loads(self.config_path.read_text())
 
     def public_config(self) -> dict[str, Any]:
+        """Return browser-safe settings with all secrets removed."""
         config = self.load_config()
         return {
             "receiver": config.get("receiver", "retropieconsole.local"),
@@ -281,6 +303,7 @@ class ControlState:
         }
 
     def save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
+        """Validate and persist browser-submitted non-secret device settings."""
         receiver = str(incoming.get("receiver", "")).strip()
         if not receiver or len(receiver) > 253 or any(ch.isspace() for ch in receiver):
             raise ValueError("Enter a valid console hostname or IP address.")
@@ -313,6 +336,7 @@ class ControlState:
         return self.public_config()
 
     def snapshot(self) -> dict[str, Any]:
+        """Return a thread-safe dashboard snapshot of configuration and runtime health."""
         with self.lock:
             status = dict(self.worker_status)
             status.update({
@@ -326,6 +350,7 @@ class ControlState:
         return status
 
     def update_supervisor(self, *, camera: bool, running: bool, error: str | None = None) -> None:
+        """Publish camera, worker, and supervisor-error state for the dashboard."""
         with self.lock:
             self.camera_available = camera
             self.worker_running = running
@@ -334,6 +359,7 @@ class ControlState:
                 self.worker_status = {}
 
     def update_worker(self, status: dict[str, Any]) -> None:
+        """Merge the latest worker diagnostics into shared dashboard state."""
         status.pop("token", None)
         with self.lock:
             self.worker_status = status
@@ -342,6 +368,7 @@ class ControlState:
 
 
 def _send(handler: BaseHTTPRequestHandler, status: int, body: bytes, content_type: str) -> None:
+    """Send one HTTP response with explicit content type and length."""
     handler.send_response(status)
     handler.send_header("Content-Type", content_type)
     handler.send_header("Content-Length", str(len(body)))
@@ -352,11 +379,14 @@ def _send(handler: BaseHTTPRequestHandler, status: int, body: bytes, content_typ
 
 
 def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
+    """Build the request handler bound to one shared control state."""
     class Handler(BaseHTTPRequestHandler):
+        """Handle public diagnostics and protected local administration routes."""
         def log_message(self, _format: str, *_args: object) -> None:
             return
 
         def json_body(self, require_json: bool = False) -> dict[str, Any]:
+            """Read a size-bounded JSON request body and require an object value."""
             if require_json and self.headers.get_content_type() != "application/json":
                 raise ValueError("Content-Type must be application/json")
             length = int(self.headers.get("Content-Length", "0"))
@@ -486,10 +516,12 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 _send(self, 503, json.dumps({"error": f"Not reachable: {exc}"}).encode(), "application/json")
 
         def require_secure_pairing(self) -> None:
+            """Reject credential-bearing requests that did not arrive through HTTPS."""
             if not isinstance(self.connection, ssl.SSLSocket):
                 raise PermissionError(f"Pairing credentials require HTTPS on port {HTTPS_PORT}.")
 
         def proxy_stream(self) -> None:
+            """Relay the worker MJPEG stream while tolerating temporary worker loss."""
             try:
                 with urllib.request.urlopen(WORKER_URL + "/stream", timeout=2) as response:
                     self.send_response(200)
@@ -512,10 +544,12 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
 
 
 class ControlServerGroup:
+    """Own the HTTP and HTTPS control servers as one shutdown unit."""
     def __init__(self, servers: list[ThreadingHTTPServer]) -> None:
         self.servers = servers
 
     def shutdown(self) -> None:
+        """Stop and close every managed control server."""
         for server in self.servers:
             server.shutdown()
             server.server_close()
@@ -528,6 +562,7 @@ def start_control_server(
     https_port: int = HTTPS_PORT,
     pairing_display: Callable[[str, str], None] | None = None,
 ) -> tuple[ControlServerGroup, ControlState]:
+    """Start public diagnostics and protected setup servers and return their shared state."""
     state = ControlState(config_path, pairing_display)
     server = ThreadingHTTPServer((host, port), make_handler(state))
     threading.Thread(target=server.serve_forever, name="control-web", daemon=True).start()

@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
+# Project: PowerGlove Vision
+# File: scripts/fetch-runtime-assets.sh
+# Purpose: Download and SHA-256 verify the official Google Hand Landmarker model for local or offline staging.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-03 - Added with standardized source documentation.
+# Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
 
@@ -11,6 +18,7 @@ readonly MODEL_PATH="${MODEL_DIR}/hand_landmarker.task"
 readonly MODEL_URL="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 readonly MODEL_SHA256="fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1"
 
+# Print the SHA-256 digest of one file without loading the asset into memory.
 sha256_file() {
   python3 - "$1" <<'PY'
 from hashlib import sha256
@@ -32,6 +40,7 @@ fi
 
 mkdir -p "${MODEL_DIR}"
 temporary_model="$(mktemp "${MODEL_DIR}/hand_landmarker.task.XXXXXX")"
+# Delete an incomplete download when verification or installation fails.
 cleanup() {
   rm -f "${temporary_model}"
 }

@@ -118,7 +118,7 @@ dependency metadata is tailored for the headless UNO Q runtime. Do not replace
 it with the similarly named stock PyPI wheel without retesting the complete
 camera startup path. Sources, exact checksums, modifications, and applicable
 licenses are recorded in
-[`THIRD_PARTY_COMPONENTS.md`](THIRD_PARTY_COMPONENTS.md).
+[THIRD_PARTY_COMPONENTS.md](THIRD_PARTY_COMPONENTS.md).
 
 In Arduino App Lab:
 
@@ -649,4 +649,4 @@ Bennett. Nintendo, NES, Power Glove, Bad Street Brawler, Super Glove Ball, and
 other marks belong to their respective owners. No ROM images are distributed
 with this project. Third-party runtime components retain their own licenses and
 terms as documented in
-[`THIRD_PARTY_COMPONENTS.md`](THIRD_PARTY_COMPONENTS.md).
+[THIRD_PARTY_COMPONENTS.md](THIRD_PARTY_COMPONENTS.md).

@@ -1,4 +1,16 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/retropie_hook.py
+# Purpose: Translate RetroPie launch and exit events into authenticated PowerGlove profile requests.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Translate RetroPie launch and exit events into authenticated PowerGlove profile requests."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,6 +21,7 @@ from .profile_control import load_registry, read_token, select_profile, send_req
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the parser for RetroPie runcommand lifecycle arguments."""
     parser = argparse.ArgumentParser(description="RetroPie PowerGlove launch hook")
     parser.add_argument("action", choices=("start", "end"))
     parser.add_argument("system", nargs="?", default="")
@@ -20,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Select and request a profile without ever blocking the game launch on failure."""
     args = build_parser().parse_args()
     settings = json.loads(args.settings.read_text())
     token = read_token(None, Path(settings["token_file"]))

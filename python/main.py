@@ -1,4 +1,14 @@
+# Project: PowerGlove Vision
+# File: python/main.py
+# Purpose: Supervise the UNO Q App Lab vision worker, web controls, model retrieval, and camera recovery.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Arduino App Lab entry point for PowerGlove Vision."""
 
 from __future__ import annotations
@@ -23,10 +33,12 @@ from powerglove_vision.runtime_assets import ensure_hand_landmarker_model
 
 
 def _shutdown_on_signal(_signum: int, _frame: object) -> None:
+    """Convert process termination into the supervisor's normal cleanup path."""
     raise KeyboardInterrupt
 
 
 def load_device_config() -> dict:
+    """Load persistent device settings, creating safe first-run defaults when absent."""
     if CONFIG_PATH.exists():
         return json.loads(CONFIG_PATH.read_text())
     # A useful, portable first-run default. The same token must be copied to
@@ -44,6 +56,7 @@ def load_device_config() -> dict:
 
 
 def worker_command(settings: dict, model_path: Path, controller_enabled: bool = False) -> list[str]:
+    """Build the isolated MediaPipe worker command from validated runtime settings."""
     wheel = next((APP_ROOT / "python" / "worker-wheels").glob("mediapipe-0.10.18-*.whl"))
     command = [
         # The repository supports the RetroPie receiver on Python 3.7, while
@@ -66,6 +79,7 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
 
 
 def main() -> int:
+    """Supervise the worker, control server, matrix, camera availability, and clean shutdown."""
     settings = load_device_config()
     from powerglove_vision.matrix import MatrixStatus, UnoQMatrix
     matrix = UnoQMatrix()

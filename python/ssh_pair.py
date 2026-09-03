@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
+# Project: PowerGlove Vision
+# File: python/ssh_pair.py
+# Purpose: Pair an UNO Q with RetroPie over password-authenticated SSH without exposing credentials on the command line.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-03 - Standardized source documentation and maintenance metadata.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Password-authenticated RetroPie pairing using a temporary Python SSH client."""
 
 from __future__ import annotations
@@ -45,6 +54,7 @@ finally:
 
 
 def main() -> int:
+    """Read one pairing request from standard input, install its token remotely, and report JSON status."""
     request = json.load(sys.stdin)
     known_hosts = Path(str(request["known_hosts"]))
     known_hosts.parent.mkdir(parents=True, exist_ok=True)
