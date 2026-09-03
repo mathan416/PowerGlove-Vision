@@ -28,7 +28,8 @@ Replace the example hostnames with your own.
 sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local
 ```
 
-This installs the system Python receiver dependencies, loads uinput, installs
+This installs the system Python receiver dependencies, Avahi and `libnss-mdns`,
+enables Avahi at boot, loads uinput, installs
 the delayed receiver timer, adds launch hooks and the controller profile, and
 creates only missing configuration. Existing pairing tokens, game registries,
 launcher settings and controller profiles are preserved. If changing an existing
@@ -42,7 +43,8 @@ Changed managed files are backed up under `/var/backups/powerglove-vision/`.
 sudo python3 scripts/setup-machine.py uno-q
 ```
 
-This completes an App Lab import: Avahi, persistent resolver mount, secure web
+This completes an App Lab import: Avahi and `libnss-mdns` for host name resolution,
+the persistent app-owned resolver service for container lookups, secure web
 port, shutdown helper, and default startup app. It restarts the application.
 This first version requires the standard app directory above. It does not
 change private device settings, pair without approval, or enable gameplay output.
@@ -543,7 +545,7 @@ The command should acknowledge the change and the matrix should show `B`.
 2. Open `http://UNO-Q-NAME.local:8088/debug`.
 3. Select the active profile on the Dashboard, then confirm the expected
    profile and a detected hand. The saved startup profile remains on Setup.
-4. Select **Calibrate** while holding a comfortable neutral pose.
+4. On first use, or after changing your camera or playing position, select **Calibrate** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
 5. Select **Start controller** only when you are ready to play.
 6. Launch the game and confirm its profile code on the matrix.
 7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
@@ -579,9 +581,14 @@ matter more than glove color.
 
 Debug shows the camera overlay, active profile, tracking confidence, generated
 D-pad/buttons, analogue axes, finger curl, and recent gesture events.
+**Right** or **Left** in the camera overlay identifies the detected hand, not
+a movement direction. Its confidence score describes that handedness classification,
+not confidence in a movement command. Use the D-pad/buttons and axes to inspect
+actual generated controls.
 Its profile selector changes the current session immediately. Selecting
 **Gestures off** releases controls, closes the camera and shows a friendly idle
-panel; selecting another profile starts vision and calibration again.
+panel; selecting another profile starts vision using the saved calibration.
+Recalibrate only when your camera or playing position changes, or neutral is incorrect.
 
 ![PowerGlove Vision Debug dashboard](images/debug-dashboard.png)
 
@@ -750,10 +757,17 @@ are additional hooks.
 - Confirm both runcommand hooks call the supplied helper scripts.
 - Match the exact ROM basename in `/etc/powerglove/games.json`.
 
-### `.local` names do not resolve
+### FAQ: What if the console name cannot be resolved?
 
-Use router-reserved IP addresses or enable mDNS on the affected machine. Both
-devices must share a network segment that permits the required traffic.
+1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Test console name**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the UNO Q app; successful lookup on your laptop alone is not sufficient.
+2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
+3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
+4. On the UNO Q, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
+5. Check that both machines are on a network that allows communication between devices. Guest Wi-Fi, client isolation, VPN routing, separate VLANs, or multicast filtering can prevent `.local` discovery. mDNS uses UDP port 5353; do not disable your firewall wholesale or expose the app to the Internet to fix discovery.
+6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the UNO Q by name, check that reverse direction separately.
+7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
+
+After fixing the problem, reboot both machines and repeat **Test console name** before testing gameplay. The app-owned resolver has been verified across a UNO Q reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
 
 ## Uninstalling
 
@@ -793,19 +807,18 @@ with this project. Third-party runtime components retain their own licenses and
 terms as documented in
 [THIRD_PARTY_COMPONENTS.md](THIRD_PARTY_COMPONENTS.md).
 
-## Enable local hostnames in the UNO Q container
+## Local hostnames survive App Lab recreation
 
-The Wi-Fi deployment script performs this step automatically. After a fresh
-App Lab import, run on the UNO Q (adjust the app directory if renamed):
+The `local:avahi_resolver` brick in `app.yaml` starts a small resolver service
+whenever App Lab starts the app. It mounts the host Avahi directory read-only
+and accepts only bounded IPv4 `.local` lookups over `data/.avahi-resolver.sock`.
+No network port, Docker socket, host networking, or privileged mode is used.
+The main app uses this private socket for gameplay and pairing. Answers expire
+after five seconds; IP addresses are not pinned.
 
-```sh
-cd /home/arduino/ArduinoApps/powerglove-vision
-test -S /run/avahi-daemon/socket
-python3 scripts/configure-uno-q-mdns.py .cache/app-compose.yaml
-docker compose -f .cache/app-compose.yaml up -d --force-recreate
-```
-
-This mounts only the host Avahi resolver directory, read-only. It does not
-expose the system D-Bus socket or Docker socket and does not pin an IP address.
-Use Connection's hostname test to verify `RETROPIE-NAME.local`. Reapply this
-step if App Lab regenerates the Compose configuration during re-import.
+Run the one-command UNO Q setup to enable host Avahi, then start the app through
+App Lab. Connection's hostname test should resolve `RETROPIE-NAME.local`.
+The service is part of the app, not a manual edit to generated `.cache` files.
+App Lab regeneration was tested successfully; a complete board reboot remains
+the final hardware check. A temporary missing Avahi socket returns a retryable
+error and does not stop the resolver service.

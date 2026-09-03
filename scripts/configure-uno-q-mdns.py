@@ -8,15 +8,22 @@
 #   2026-09-03 - Added persistent host mDNS resolution without pinned IP addresses.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Add the host resolver socket directory to the existing App Lab Compose file."""
+"""Add the resolver brick include and a compatibility mount to existing Compose output."""
 import sys
 from pathlib import Path
 
 
 def configure(path):
-    """Insert one read-only Avahi directory mount, preserving other configuration."""
+    """Preserve existing settings while supporting deployment before App Lab regeneration."""
     text = path.read_text()
+    brick = path.resolve().parents[1] / "bricks/local/avahi_resolver/brick_compose.yaml"
+    if "bricks/local/avahi_resolver/brick_compose.yaml" not in text:
+        if "include:" in text:
+            raise ValueError("Run App Lab start to regenerate the resolver brick include")
+        import json
+        text += "\ninclude:\n  - " + json.dumps(str(brick)) + "\n"
     if "target: /run/avahi-daemon" in text:
+        path.write_text(text)
         return
     anchor = "    volumes:\n"
     if text.count(anchor) != 1:

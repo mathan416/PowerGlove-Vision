@@ -8,17 +8,54 @@
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Corrected Program I throttle and turbo output for Knight Rider.
+#   2026-09-03 - Persist and restore neutral-hand calibration.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Convert calibrated hand observations into stable gamepad states for supported gesture profiles."""
 
 from __future__ import annotations
 
+import json
 import math
+import os
+import tempfile
+from pathlib import Path
 from collections import deque
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 
 from .model import AXIS_MAX, Calibration, ControllerState, HandObservation
+
+
+def load_calibration(path: Path) -> Calibration | None:
+    """Read a finite, versioned neutral reference; reject missing or corrupt data."""
+    try:
+        data = json.loads(path.read_text())
+        if data["version"] != 1:
+            return None
+        value = Calibration(**data["neutral"])
+        if not all(type(v) in (int, float) and math.isfinite(v) for v in asdict(value).values()):
+            return None
+        if value.palm_scale <= 0:
+            return None
+        return value
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+
+
+def save_calibration(path: Path, calibration: Calibration) -> None:
+    """Atomically persist a completed reference without truncating the previous one."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    name = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as handle:
+            name = handle.name
+            json.dump({"version": 1, "neutral": asdict(calibration)}, handle, allow_nan=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(name, path)
+    finally:
+        if name and os.path.exists(name):
+            os.unlink(name)
 
 
 PROGRAM_PROFILES = tuple(f"program_{letter}" for letter in "abcdefghi")
@@ -104,15 +141,16 @@ class GestureEngine:
         profile: str,
         config: GestureConfig | None = None,
         calibration_frames: int = 24,
+        calibration: Calibration | None = None,
     ) -> None:
         if profile not in SUPPORTED_PROFILES:
             raise ValueError(f"unknown profile: {profile}")
         self.profile = profile
         self.config = config or GestureConfig()
         self.calibration_frames = calibration_frames
-        self.calibration: Calibration | None = None
+        self.calibration = calibration
         self._samples: deque[HandObservation] = deque(maxlen=calibration_frames)
-        self._calibrating = True
+        self._calibrating = calibration is None
         self._sequence = 0
         self._last_seen = 0.0
         self._last_state: ControllerState | None = None

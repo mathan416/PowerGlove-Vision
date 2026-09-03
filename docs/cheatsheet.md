@@ -219,8 +219,8 @@ system also turns gestures off.
    reports **Gestures off**.
 2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**,
    **H: General**, or another profile.
-3. Wait for vision to start and ask for centering.
-4. Center your hand, select **Start controller**, and test movement and actions.
+3. Wait for vision to start using your saved calibration.
+4. Recalibrate only if neutral needs adjusting, select **Start controller**, and test movement and actions.
 5. Stop the controller before changing profiles or games.
 
 This temporary choice is ideal for discovery. It does not change the automatic
@@ -280,3 +280,8 @@ including when connected directly to a Mac without the powered hub. The helper
 requests halt correctly, but remaining stopped is not verified. Do not use loss
 of the website or a fixed delay as confirmation that power can safely be removed.
 See the installation guide for the investigation status and Arduino guidance.
+
+
+## Saved calibration
+
+Calibrate once with a relaxed hand in your neutral playing position. The reference in `data/calibration.json` survives Learn, profile changes, and restarts. Recalibrate when the camera or your position changes, or neutral is wrong. Include this file in private backups. Camera-overlay Right/Left and its confidence score describe handedness, not movement.

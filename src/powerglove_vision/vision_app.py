@@ -10,6 +10,7 @@
 #   2026-09-03 - Added lazy vision activation and a persistent camera-free idle state.
 #   2026-09-03 - Added temporary Learn-page vision with automatic state restoration.
 #   2026-09-03 - Published startup timing for browser elapsed-time feedback.
+#   2026-09-03 - Retain neutral calibration across worker and profile restarts.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output."""
@@ -25,7 +26,7 @@ from pathlib import Path
 
 from .camera import CameraUnavailableError, camera_candidates
 from .debug_server import SharedDebugState, start_debug_server
-from .gesture import GestureConfig, GestureEngine
+from .gesture import GestureConfig, GestureEngine, load_calibration, save_calibration
 from .matrix import MatrixStatus, UnoQMatrix
 from .model import ControllerState
 from .profile_control import ProfileCommandServer, read_token
@@ -145,6 +146,9 @@ def _base_status(
 def main() -> int:
     """Keep profile control online while starting vision resources only when needed."""
     args = build_parser().parse_args()
+    calibration_path = Path(__file__).resolve().parents[2] / "data" / "calibration.json"
+    retained_calibration = load_calibration(calibration_path)
+    calibration_save_error = None
     matrix = UnoQMatrix(enabled=not args.no_matrix)
     current_profile: str | None = None if args.profile == "off" else args.profile
     current_game = "Startup default"
@@ -276,7 +280,10 @@ def main() -> int:
                     tracker = MediaPipeTracker(
                         args.glove_color, mirror=not args.no_mirror, model_path=model_path
                     )
-                    engine = GestureEngine(vision_profile, _load_config(vision_profile, args.config))
+                    engine = GestureEngine(
+                        vision_profile, _load_config(vision_profile, args.config),
+                        calibration=retained_calibration,
+                    )
                     vision_error = None
                     matrix.set_status(
                         MatrixStatus.LEARNING if practice_mode else MatrixStatus.READY
@@ -314,6 +321,14 @@ def main() -> int:
             inference_started = time.monotonic()
             result = tracker.process(frame)
             state = engine.update(result.observation)
+            if engine.calibrated and engine.calibration is not retained_calibration:
+                retained_calibration = engine.calibration
+                try:
+                    save_calibration(calibration_path, retained_calibration)
+                    calibration_save_error = None
+                except OSError as exc:
+                    calibration_save_error = str(exc)
+                    print(f"Calibration retained in memory but not saved: {exc}", file=sys.stderr, flush=True)
             inference_finished = time.monotonic()
             # Gameplay output takes priority over matrix RPC and browser preview work.
             receiver_available = sender.send(state) if controller_enabled and not practice_mode else False
@@ -330,6 +345,8 @@ def main() -> int:
             status = state.to_dict()
             status["inference_ms"] = round((inference_finished - inference_started) * 1000, 1)
             status["send_ms"] = round((sent_at - inference_finished) * 1000, 1)
+            status["calibration_save_error"] = calibration_save_error
+            status["calibration_retained"] = retained_calibration is not None
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
             status["game"] = current_game
             status["active_profile"] = current_profile or "off"

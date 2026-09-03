@@ -13,6 +13,8 @@ No changes yet.
 
 ### Added
 
+- App-owned Avahi resolver brick survives App Lab Compose regeneration, replacing reliance on a volatile direct socket mount.
+
 - Added one-command host setup for RetroPie and UNO Q, with managed-file
   backups, preserved private configuration, delayed startup, and read-only
   PASS/FAIL/ACTION checks. Empty pairing tokens no longer cause restart loops.
@@ -229,3 +231,21 @@ No changes yet.
 - Required confirmation and a fixed host-side request path for system shutdown.
 - Added a third-party component notice covering licenses, provenance, pinned
   versions, checksums, and update procedure.
+
+
+### Neutral calibration retention
+
+Completed neutral-hand calibration now persists across Learn/gameplay transitions, profile changes, camera reconnects, and restarts. Explicit recalibration replaces the saved reference atomically.
+
+
+### RetroPie mDNS installation
+
+The RetroPie setup command now installs `avahi-daemon` and `libnss-mdns`, enables Avahi at boot, and checks both the service and dependency. Existing hostname configuration and pairing settings are preserved. Fresh-machine installation has not yet been tested.
+
+
+The UNO Q installer also installs and checks `libnss-mdns` alongside Avahi for host-level resolution, while retaining the separate app-container resolver.
+
+
+### Documentation and shutdown wording consistency
+
+Updated calibration instructions and backup guidance, clarified overlay handedness confidence, and aligned shutdown confirmations with the known possibility of an automatic UNO Q restart.

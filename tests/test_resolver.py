@@ -46,3 +46,26 @@ class ResolverTests(unittest.TestCase):
     def test_normal_dns_without_avahi(self, lookup, exists):
         self.assertEqual(resolver.resolve_ipv4("pi.local"), "192.0.2.3")
         lookup.assert_called_once_with("pi.local")
+
+class ResolverBridgeTests(unittest.TestCase):
+    def test_bridge_rejects_nonlocal_and_multiple_commands(self):
+        """The private bridge accepts only a single bounded .local query."""
+        import runpy
+        from pathlib import Path
+        lookup = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/avahi-resolver-service.py'))['lookup']
+        for query in (b'RESOLVE-HOSTNAME-IPV4 example.com\n', b'BROWSE-DNS-SERVERS\n',
+                      b'RESOLVE-HOSTNAME-IPV4 pi.local\nOTHER\n'):
+            with patch('socket.socket') as factory:
+                self.assertTrue(lookup(query).startswith(b'-1'))
+                factory.assert_not_called()
+
+    def test_bridge_forwards_valid_query(self):
+        """Forward Avahi replies without substituting a stale or pinned address."""
+        import runpy
+        from pathlib import Path
+        lookup = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/avahi-resolver-service.py'))['lookup']
+        with patch('socket.socket') as factory:
+            channel = factory.return_value.__enter__.return_value
+            channel.recv.return_value = b'+ 3 0 pi.local 192.0.2.5\n'
+            self.assertEqual(lookup(b'RESOLVE-HOSTNAME-IPV4 pi.local\n'), channel.recv.return_value)
+            channel.connect.assert_called_once_with('/run/avahi-daemon/socket')
