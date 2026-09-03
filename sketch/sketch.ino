@@ -119,90 +119,33 @@ const char* const errorFrame[8] = {
   ".....OOO.....", "....OO.OO....", "...OO...OO...", ".OO.......OO.",
 };
 
-// Pinball-display-inspired attract sequence for the healthy gestures-paused
-// state. The frames deliberately separate the streak, travelling cuff, open
-// hand, clench, spark path, and pulse so each beat reads on the 13x8 display.
-const char* const idleFrames[][8] = {
-  {
-    "17...........", ".173.........", ".173.........", "..173........",
-    "..173........", ".173.........", ".173.........", "17...........",
-  },
-  {
-    "....17.......", ".....173.....", ".....173.....", "......173....",
-    "......173....", ".....173.....", ".....173.....", "....17.......",
-  },
-  {
-    "........17...", ".........173.", ".........173.", "..........173",
-    "..........173", ".........173.", ".........173.", "........17...",
-  },
-  {
-    ".............", ".............", ".............", ".............",
-    ".............", ".............", "47...........", "47...........",
-  },
-  {
-    ".............", ".............", ".............", ".............",
-    ".............", ".............", "4447.........", "4447.........",
-  },
-  {
-    ".............", ".............", ".............", ".............",
-    ".............", ".............", "...4447......", "...4447......",
-  },
-  {
-    "....4.4.4.4..", "....4.4.4.4..", "...44444444..", "..444444444..",
-    "..44444444...", "...444444....", "...4444......", "...4444......",
-  },
-  {
-    ".............", "...555555....", "..55555555...", "..55333355...",
-    "..55555555...", "...555555....", "...5555......", "...5555......",
-  },
-  {
-    "....3.3.3.3..", "....3.3.3.3..", "...33333333..", "..333333333..",
-    "..33333333...", "...333333....", "...3333......", "...3333......",
-  },
-  {
-    "....2.2.2.2..", "....2.2.2.2..", "...22222222..", "..222222222..",
-    "..22222222...", "...242222....", "...4742......", "...2422......",
-  },
-  {
-    "....2.2.2.2..", "....2.2.2.2..", "...22222222..", "..222222222..",
-    "..22422222...", "...474222....", "...2422......", "...2222......",
-  },
-  {
-    "....2.2.2.2..", "....2.2.2.2..", "...22422222..", "..224742222..",
-    "..24742222...", "...242222....", "...2222......", "...2222......",
-  },
-  {
-    "....2.2.2.2..", "....2.4.2.2..", "...22474222..", "..222474222..",
-    "..22242222...", "...222222....", "...2222......", "...2222......",
-  },
-  {
-    "....2.2.4.2..", "....2.2.4.2..", "...22224742..", "..222222422..",
-    "..22222222...", "...222222....", "...2222......", "...2222......",
-  },
-  {
-    "....2.2.2.4..", "....2.2.4.7..", "...22222242..", "..222222222..",
-    "..22222222...", "...222222....", "...2222......", "...2222......",
-  },
-  {
-    "....3.3.3.3..", "....3.3.3.3..", "...33333333..", "..333333333..",
-    "..33333333...", "...333333....", "...3333......", "...3333......",
-  },
-  {
-    "....7.7.7.7..", "....7.7.7.7..", "...77777777..", "..777777777..",
-    "..77777777...", "...777777....", "...7777......", "...7777......",
-  },
-  {
-    "....4.4.4.4..", "....4.4.4.4..", "...44444444..", "..444444444..",
-    "..44444444...", "...444444....", "...4444......", "...4444......",
-  },
+// Pinball-display-inspired glove silhouettes for the healthy gestures-paused
+// state. Edge highlighting gives the tiny monochrome image depth without
+// saturating the palm into an unreadable rectangle.
+const char* const idleOpenGlove[8] = {
+  "....#.#.#.#..", "....#.#.#.#..", "...########..", "..#########..",
+  "..########...", "...######....", "...####......", "...####......",
 };
 
-// Per-frame timing makes the action beats crisp while preserving a readable
-// final hold. Short spark frames imply speed; the bright pulse is intentionally
-// brief so it reads as one flash instead of a second glove design.
+const char* const idleCurlGlove[8] = {
+  ".............", "....#.#.#.#..", "...########..", "..#########..",
+  "..########...", "...######....", "...####......", "...####......",
+};
+
+const char* const idleFistGlove[8] = {
+  ".............", "...######....", "..########...", "..########...",
+  "..########...", "...######....", "...####......", "...####......",
+};
+
+// Per-frame timing makes the entrance, finger curl, spark, and outline pulse
+// distinct. The final frame holds long enough to serve as a friendly idle icon.
 const uint16_t idleFrameDurations[] = {
-  90, 90, 110, 110, 110, 130, 190, 140, 150,
-  85, 85, 85, 85, 85, 85, 100, 110, 900,
+  75, 75, 75, 105,              // energy streak
+  105, 105, 105, 130,           // cuff travels right-to-left
+  90, 90, 180,                  // glove rises from the cuff
+  90, 125, 90, 150,             // curl, clench, reopen
+  70, 70, 70, 70, 70, 70, 70, 70, // spark and comet trail
+  90, 120, 850,                 // settle, outline pulse, hold
 };
 
 // Five-pixel-wide glyphs A-I, B, S, and G. Program profiles use a large
@@ -307,6 +250,107 @@ void drawRows(const char* const rows[8]) {
   matrix.draw(pixels);
 }
 
+// Raise one matrix pixel without allowing a dim layer to overwrite a brighter
+// outline, spark core, or comet trail.
+void setPixelMax(uint8_t* pixels, int x, int y, uint8_t brightness) {
+  if (x < 0 || x >= 13 || y < 0 || y >= 8) {
+    return;
+  }
+  const int index = y * 13 + x;
+  if (brightness > pixels[index]) {
+    pixels[index] = brightness;
+  }
+}
+
+// Test whether a coordinate belongs to one of the 13x8 glove silhouettes.
+bool isGlovePixel(const char* const mask[8], int x, int y) {
+  return x >= 0 && x < 13 && y >= 0 && y < 8 && mask[y][x] == '#';
+}
+
+// Render a glove with separate body and edge levels. minRow supports the two
+// reveal frames that grow the hand upward from the already-positioned cuff.
+void drawGlove(
+  uint8_t* pixels,
+  const char* const mask[8],
+  uint8_t bodyBrightness,
+  uint8_t edgeBrightness,
+  int minRow = 0
+) {
+  for (int y = minRow; y < 8; ++y) {
+    for (int x = 0; x < 13; ++x) {
+      if (!isGlovePixel(mask, x, y)) {
+        continue;
+      }
+      const bool edge =
+        !isGlovePixel(mask, x - 1, y) || !isGlovePixel(mask, x + 1, y) ||
+        !isGlovePixel(mask, x, y - 1) || !isGlovePixel(mask, x, y + 1);
+      setPixelMax(pixels, x, y, edge ? edgeBrightness : bodyBrightness);
+    }
+  }
+}
+
+// Render one complete beat of the gestures-paused attract sequence. Motion is
+// intentionally broad: the cuff crosses seven columns, the fingers curl over
+// three poses, and the spark uses a bright core plus two-position comet trail.
+void drawIdleFrame(uint8_t frame) {
+  uint8_t pixels[104] = {0};
+
+  if (frame < 4) {
+    const int coreX[] = {0, 4, 8, 12};
+    for (int y = 0; y < 8; ++y) {
+      const int x = coreX[frame] + abs(y - 3) / 2;
+      setPixelMax(pixels, x - 2, y, 1);
+      setPixelMax(pixels, x - 1, y, 4);
+      setPixelMax(pixels, x, y, 7);
+    }
+  } else if (frame < 8) {
+    const int cuffX[] = {10, 8, 5, 3};
+    const int left = cuffX[frame - 4];
+    for (int y = 6; y < 8; ++y) {
+      setPixelMax(pixels, left - 1, y, 2);
+      for (int x = left; x < left + 4; ++x) {
+        setPixelMax(pixels, x, y, x == left ? 7 : 4);
+      }
+      setPixelMax(pixels, left + 4, y, 2);
+    }
+  } else if (frame < 11) {
+    const int revealRows[] = {5, 3, 0};
+    drawGlove(pixels, idleOpenGlove, 2, 5, revealRows[frame - 8]);
+  } else if (frame == 11 || frame == 13) {
+    drawGlove(pixels, idleCurlGlove, 2, 5);
+  } else if (frame == 12) {
+    drawGlove(pixels, idleFistGlove, 2, 6);
+  } else if (frame >= 15 && frame < 23) {
+    const int sparkX[] = {3, 4, 5, 5, 6, 7, 8, 10};
+    const int sparkY[] = {7, 6, 5, 4, 3, 2, 1, 0};
+    const int sparkIndex = frame - 15;
+    drawGlove(pixels, idleOpenGlove, 1, 3);
+    if (sparkIndex >= 2) {
+      setPixelMax(
+        pixels, sparkX[sparkIndex - 2], sparkY[sparkIndex - 2], 3
+      );
+    }
+    if (sparkIndex >= 1) {
+      setPixelMax(
+        pixels, sparkX[sparkIndex - 1], sparkY[sparkIndex - 1], 5
+      );
+    }
+    const int x = sparkX[sparkIndex];
+    const int y = sparkY[sparkIndex];
+    setPixelMax(pixels, x - 1, y, 4);
+    setPixelMax(pixels, x + 1, y, 4);
+    setPixelMax(pixels, x, y - 1, 4);
+    setPixelMax(pixels, x, y + 1, 4);
+    setPixelMax(pixels, x, y, 7);
+  } else if (frame == 24) {
+    drawGlove(pixels, idleOpenGlove, 4, 7);
+  } else {
+    drawGlove(pixels, idleOpenGlove, 2, 5);
+  }
+
+  matrix.draw(pixels);
+}
+
 // Router Bridge endpoint: request a bounded status code from the Linux app.
 void set_powerglove_status(int status) {
   if (status < PG_OFF || status > PG_GESTURES_IDLE) {
@@ -386,9 +430,9 @@ void loop() {
     animationFrame = (animationFrame + 1) % 9;
     nextFrameAt = now + 650;
   } else if (status == PG_GESTURES_IDLE) {
-    drawRows(idleFrames[animationFrame]);
+    drawIdleFrame(animationFrame);
     nextFrameAt = now + idleFrameDurations[animationFrame];
     animationFrame = (animationFrame + 1) %
-      (sizeof(idleFrames) / sizeof(idleFrames[0]));
+      (sizeof(idleFrameDurations) / sizeof(idleFrameDurations[0]));
   }
 }

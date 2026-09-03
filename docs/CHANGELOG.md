@@ -23,13 +23,17 @@ authoritative record for line-level and file-level history.
   vision processing and can return to an active profile without restarting the
   website.
 - Reworked the matrix attract sequence into distinct pinball-style beats: a
-  three-frame energy sweep, a travelling cuff, open and clenched glove poses,
-  a six-position high-contrast spark, one clean pulse, and a readable hold.
+  four-frame energy sweep, a broad travelling cuff, a staged glove reveal,
+  intermediate finger curls, an eight-position spark with a comet trail, one
+  outline pulse, and a readable hold.
 - Used the UNO Q matrix's full eight-level grayscale range to separate the dim
   glove body, spark halo, bright spark, and whole-glove pulse.
 
 ### Documentation
 
+- Documented the UNO Q matrix as an eight-level monochrome DMD/BitPixel-style
+  design target, including silhouette, contrast, motion, pulse, and physical
+  review guidance for future animations.
 - Standardized source headers with each file's purpose, author, copyright,
   SPDX license identifier, local history, and links to the complete history.
 - Documented public interfaces and non-obvious security, lifecycle, tracking,

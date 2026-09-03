@@ -444,6 +444,27 @@ shutdown require additional protections, but the project assumes that the LAN
 itself is trusted. Review [SECURITY.md](SECURITY.md) before using a shared,
 guest, school, or public network.
 
+## UNO Q matrix artwork
+
+The built-in display is a 13-by-8 monochrome blue LED matrix with eight
+brightness levels. Treat it as a very small dot-matrix display in the spirit of
+a pinball DMD or monochrome BitPixel display, rather than as a miniature screen.
+The sketch encodes status, pairing, profile identifiers, and the gestures-idle
+Power Glove attract sequence.
+
+Matrix artwork should use broad motion, recognizable silhouettes, and strong
+separation between the subject and its brightest effect. A moving spark needs a
+dim body underneath it, a medium halo, and a full-bright core. Pulses should
+emphasize an outline instead of illuminating every pixel at maximum brightness,
+which erases the shape on the physical display. Transitional objects need to
+cross several columns and remain visible for more than one frame; isolated
+one-pixel changes are easily lost to persistence and viewing angle.
+
+Always judge animation timing and grayscale on the physical UNO Q. A source
+grid or browser mock-up is useful for finding malformed frames, but it cannot
+reproduce LED bloom, exposure, or perceived persistence. A short video covering
+several complete loops is the preferred review artifact for later refinements.
+
 ## Files most users should not edit
 
 | File or directory | Purpose |
