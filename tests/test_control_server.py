@@ -65,6 +65,10 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"pair-password').disabled=true", SETUP)
         self.assertIn(b"verified').checked", SETUP)
 
+    def test_one_time_code_pairing_is_an_advanced_option(self):
+        self.assertIn(b"Advanced: pair without a RetroPie password", SETUP)
+        self.assertIn(b"Prepare one-time code", SETUP)
+
     def test_controller_connection_starts_disarmed_every_launch(self):
         self.assertFalse(self.state.controller_enabled())
         self.assertFalse(self.state.snapshot()["controller_enabled"])

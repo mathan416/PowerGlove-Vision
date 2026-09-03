@@ -72,7 +72,7 @@ def main() -> int:
         remote_token = posixpath.join(
             sftp.normalize("."), ".powerglove-pairing-" + secrets.token_hex(16)
         )
-        with sftp.file(remote_token, "x") as token_file:
+        with sftp.file(remote_token, "wx") as token_file:
             token_file.write(str(request["token"]) + "\n")
         sftp.chmod(remote_token, 0o600)
         command = (
