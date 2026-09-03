@@ -198,7 +198,7 @@ has created the private `.shutdown-enabled` marker.
 ### `.github/workflows/quality.yml`
 
 GitHub runs this workflow for pull requests, pushes to `main`, and manual
-requests. It tests Python 3.10 and 3.12, checks Python and shell syntax, validates
+requests. It tests Python 3.7 and 3.12, checks Python and shell syntax, validates
 JSON, audits source and documentation, rebuilds and inspects all PDF editions,
 builds the public App Lab package, rejects private or unsafe archive content,
 and publishes the verified ZIP as a 14-day workflow artifact.

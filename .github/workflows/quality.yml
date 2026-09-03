@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added automated tests, audits, syntax checks, and package verification.
+#   2026-09-03 - Aligned the test matrix with the declared Python 3.7 minimum.
 # Full history: docs/CHANGELOG.md and Git history.
 
 name: Quality and package verification
@@ -31,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.12"]
+        python-version: ["3.7", "3.12"]
     steps:
       - name: Check out source
         uses: actions/checkout@v4
