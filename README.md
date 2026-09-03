@@ -22,22 +22,26 @@ four analogue channels plus individual finger values in the network protocol.
 Native Power Glove packets for Super Glove Ball will be added later through an
 `lr-nestopia` integration; no ROM modification is required.
 
+The standard gamepad path has been verified on the arcade cabinet with
+`lr-nestopia`, including automatic selection of the Super Glove Ball profile,
+directional movement, finger-curl actions, and the held V-sign Start gesture.
+
 Bad Street Brawler's unusual cartridge-resident Programs A-I and their direct
 camera equivalents are documented in
-[`bad-street-brawler-programs.md`](bad-street-brawler-programs.md).
+[`bad-street-brawler-programs.md`](docs/bad-street-brawler-programs.md).
 
 ## Pick up the right guide
 
 | Guide | Best for |
 | --- | --- |
-| [PowerGlove Vision Field Guide](INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
-| [Programs A-I: The Cartridge-Free Field Manual](bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
-| `cheatsheet.md` | Machine-specific URLs and maintenance notes; contains no private pairing token |
+| [PowerGlove Vision Field Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
+| [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
+| [`docs/cheatsheet.md`](docs/cheatsheet.md) | Machine-specific URLs and maintenance notes; contains no private pairing token |
 
 The Field Guide is organized as a six-stage build. New makers can follow it in
 order; returning builders can jump directly to the daily checklist, workshop,
 or symptom-based troubleshooting sections. Print-ready editions live in
-`../output/pdf/`.
+[`output/pdf/`](output/pdf/).
 
 ## Current web interface
 
@@ -46,9 +50,9 @@ and the status pages remain available while the camera is disconnected.
 
 | Debug dashboard | Offline gesture lessons |
 | --- | --- |
-| [![PowerGlove Vision debug dashboard](images/debug-dashboard.png)](images/debug-dashboard.png) | [![PowerGlove Vision Learn page](images/learn-page.png)](images/learn-page.png) |
+| [![PowerGlove Vision debug dashboard](docs/images/debug-dashboard.png)](docs/images/debug-dashboard.png) | [![PowerGlove Vision Learn page](docs/images/learn-page.png)](docs/images/learn-page.png) |
 
-[![PowerGlove Vision connection setup](images/setup-page.png)](images/setup-page.png)
+[![PowerGlove Vision connection setup](docs/images/setup-page.png)](docs/images/setup-page.png)
 
 - `/debug` shows the camera, selected profile, recognition state and generated
   controller output.
@@ -76,7 +80,7 @@ web interface and pairing controls continue working while the Kiyo is absent.
    virtual gamepad in RetroArch, and use `/learn` before playing.
 
 Detailed installation, both pairing methods, automatic game profiles, and
-recovery procedures are in the [Field Guide](INSTALL_README.md).
+recovery procedures are in the [Field Guide](docs/INSTALL_README.md).
 
 ## Controls
 
@@ -189,7 +193,7 @@ immediately afterward.
 
 For a complete first-install sequence, including the two secure pairing
 methods and USB-to-Wi-Fi bootstrap, follow
-[`INSTALL_README.md`](INSTALL_README.md). The recommended pairing method uses
+[`docs/INSTALL_README.md`](docs/INSTALL_README.md). The recommended pairing method uses
 the temporary code printed by `powerglove-pair`; username/password pairing is
 also supported and those credentials are never stored.
 
@@ -364,7 +368,7 @@ Core tests do not require a camera or MediaPipe:
 python -m unittest discover -s tests -v
 ```
 
-Rebuild the two PDF guides after changing Markdown, then rebuild the importable
+Rebuild the four PDF guides after changing Markdown, then rebuild the importable
 App Lab ZIP:
 
 ```sh
@@ -381,7 +385,7 @@ added without changing the gesture engine.
 
 ## License
 
-PowerGlove Vision is open source under the [MIT License](../LICENSE). You may use,
+PowerGlove Vision is open source under the [MIT License](LICENSE). You may use,
 modify, and distribute it subject to the license terms. Nintendo, NES, Mattel,
 Power Glove, and other referenced product names and marks belong to their
 respective owners; this independent project is not affiliated with or endorsed

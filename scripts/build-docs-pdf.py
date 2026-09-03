@@ -369,7 +369,7 @@ def build(source: Path, destination: Path, title: str, subtitle: str, kind: str)
 
 def main():
     docs = ROOT / "docs"
-    overview = docs / "README.md"
+    overview = ROOT / "README.md"
     install = docs / "INSTALL_README.md"
     cheatsheet = docs / "cheatsheet.md"
     programs = docs / "bad-street-brawler-programs.md"
