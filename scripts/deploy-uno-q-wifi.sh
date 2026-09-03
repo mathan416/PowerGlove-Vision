@@ -8,6 +8,8 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Added deployment verification for the Help library.
+#   2026-09-03 - Added an IP fallback when mDNS pauses during container restart.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -50,6 +52,12 @@ readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
 
 echo "Checking ${UNO_TARGET}..."
 ssh -o BatchMode=yes -o ConnectTimeout=8 "${UNO_TARGET}" true
+UNO_ADDRESSES="$(ssh -o BatchMode=yes "${UNO_TARGET}" hostname -I 2>/dev/null || true)"
+UNO_HEALTH_HOST="${UNO_ADDRESSES%% *}"
+if [[ -z "${UNO_HEALTH_HOST}" ]]; then
+  UNO_HEALTH_HOST="${UNO_HOST}"
+fi
+readonly UNO_ADDRESSES UNO_HEALTH_HOST
 
 echo "Uploading PowerGlove Vision over Wi-Fi..."
 ssh -o BatchMode=yes "${UNO_TARGET}" "mkdir -p '${REMOTE_APP_DIR}'"
@@ -83,7 +91,7 @@ echo "Waiting for the dashboard..."
 ready=false
 for _ in {1..30}; do
   if curl --fail --silent --show-error --max-time 2 \
-      "http://${UNO_HOST}:8088/status" >/dev/null 2>&1; then
+      "http://${UNO_HEALTH_HOST}:8088/status" >/dev/null 2>&1; then
     ready=true
     break
   fi
@@ -96,13 +104,16 @@ if [[ "${ready}" != true ]]; then
 fi
 
 curl --fail --silent --show-error --max-time 5 \
-  "http://${UNO_HOST}:8088/debug" >/dev/null
+  "http://${UNO_HEALTH_HOST}:8088/debug" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
-  "http://${UNO_HOST}:8088/learn" >/dev/null
+  "http://${UNO_HEALTH_HOST}:8088/learn" >/dev/null
+curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_HOST}:8088/help" >/dev/null
 curl --insecure --fail --silent --show-error --max-time 5 \
-  "https://${UNO_HOST}:8443/setup" >/dev/null
+  "https://${UNO_HEALTH_HOST}:8443/setup" >/dev/null
 
 echo "Deployment complete."
 echo "  Learn:  http://${UNO_HOST}:8088/learn"
 echo "  Debug:  http://${UNO_HOST}:8088/debug"
+echo "  Help:   http://${UNO_HOST}:8088/help"
 echo "  Setup:  https://${UNO_HOST}:8443/setup"

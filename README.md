@@ -51,19 +51,24 @@ or symptom-based troubleshooting sections. Print-ready editions live in
 
 ## Current web interface
 
-The UNO Q hosts three pages. They remain available even when RetroPie is off,
+The UNO Q hosts four pages. They remain available even when RetroPie is off,
 and the status pages remain available while the camera is disconnected.
 
 | Debug dashboard | Offline gesture lessons |
 | --- | --- |
 | [![PowerGlove Vision debug dashboard](docs/images/debug-dashboard.png)](docs/images/debug-dashboard.png) | [![PowerGlove Vision Learn page](docs/images/learn-page.png)](docs/images/learn-page.png) |
 
-[![PowerGlove Vision connection setup](docs/images/setup-page.png)](docs/images/setup-page.png)
+| Built-in Help library | Connection setup |
+| --- | --- |
+| [![PowerGlove Vision Help library](docs/images/help-page.png)](docs/images/help-page.png) | [![PowerGlove Vision connection setup](docs/images/setup-page.png)](docs/images/setup-page.png) |
 
 - `/debug` shows the camera, selected profile, recognition state and generated
   controller output.
 - `/learn` provides ten guided exercises and automatically stops controller
   transmission so it is safe to practise without RetroPie.
+- `/help` renders the maintained Markdown manuals as an offline Help library,
+  with guide navigation, contents links, illustrations, tables, code samples,
+  and access to the original Markdown.
 - `/setup` configures the receiver, profile, camera and controller state. Pairing
   credentials are accepted only by the HTTPS version on port 8443.
 - **Shutdown system** on Dashboard or Setup safely powers off Linux after a

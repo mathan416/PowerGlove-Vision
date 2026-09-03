@@ -124,7 +124,7 @@ release unless camera testing demonstrates a clear need.
 ### `app.yaml`
 
 App Lab reads this manifest to name the application, show its icon, and publish
-ports `8088` and `8443`. Port `8088` serves the dashboard and diagnostics;
+ports `8088` and `8443`. Port `8088` serves the dashboard, Help library, and diagnostics;
 `8443` provides the protected HTTPS setup and pairing routes. The deployment
 script also verifies that App Lab's generated compose file publishes the secure
 port.
@@ -226,6 +226,12 @@ It contains the application source, configuration examples, documentation, and
 the required UNO Q MediaPipe wheel. It excludes private `data/`, the downloaded
 Google model, tests, PDFs, caches, and Git history. The Google model downloads
 and verifies itself on first launch.
+
+The public Markdown files under `docs/` are also the source for the UNO Q's
+offline `/help` library. `src/powerglove_vision/help_content.py` exposes only
+the fixed guide registry and images below `docs/images`; it does not serve
+arbitrary repository files. The machine-specific `docs/cheatsheet.md` is
+excluded from the public ZIP and therefore cannot appear in Help.
 
 For a public release, attach the verified ZIP to a tagged GitHub Release. Do
 not commit changing 33 MB ZIP binaries into the source branch.

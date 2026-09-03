@@ -165,6 +165,7 @@ Open these pages from another device on the same network:
 ```text
 http://UNO-Q-NAME.local:8088/learn
 http://UNO-Q-NAME.local:8088/debug
+http://UNO-Q-NAME.local:8088/help
 http://UNO-Q-NAME.local:8088/setup
 https://UNO-Q-NAME.local:8443/setup
 ```
@@ -173,6 +174,15 @@ The browser may warn about the locally generated certificate on port 8443.
 That is expected; verify its fingerprint against the matrix during pairing.
 
 ![PowerGlove Vision Setup page](images/setup-page.png)
+
+The **Help** page renders the public Markdown manuals stored in `docs/` as an
+offline reading library. Choose a guide to get a styled reading view, guide
+navigation, a table of contents, illustrations, tables, and code samples. Use
+**View Markdown** when you need the original source. The machine-specific
+`cheatsheet.md` is deliberately excluded from the public App Lab package and
+does not appear in Help.
+
+![PowerGlove Vision Help library](images/help-page.png)
 
 ## Stage 3 - Install the RetroPie receiver
 

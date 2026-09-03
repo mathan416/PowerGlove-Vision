@@ -8,6 +8,7 @@
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Published shutdown requests atomically for reliable host handoff.
+#   2026-09-03 - Added the offline Markdown Help library.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -29,6 +30,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
 
+from .help_content import help_asset, help_document_content, help_index_content, guide_markdown
 from .pairing import PAIRING_PORT, certificate_identity, generate_certificate, pair_over_ssh, pair_with_code
 
 
@@ -69,9 +71,16 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .learn-grid{{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:14px;align-items:start}}.learn-camera{{position:relative}}.learn-camera .camera{{height:min(55vh,500px);aspect-ratio:auto;margin:0}}.practice-badge{{position:absolute;left:12px;top:12px;padding:7px 10px;border-radius:999px;background:#090b11dc;border:1px solid var(--green);color:var(--green);font-size:12px}}.lesson-number{{color:var(--cyan);font-size:12px;letter-spacing:1.5px;text-transform:uppercase}}.lesson-title{{font:900 clamp(26px,4vw,40px)/1.05 system-ui;margin:8px 0}}.lesson-cue{{color:var(--muted);min-height:72px}}.lesson-result{{border:1px solid var(--line);border-radius:10px;padding:12px;margin:14px 0;background:#090b11}}.lesson-result.ready{{border-color:var(--green);color:var(--green)}}.lesson-progress{{display:flex;gap:5px;margin:14px 0}}.lesson-progress i{{height:7px;flex:1;border-radius:9px;background:#303748}}.lesson-progress i.done{{background:var(--green)}}.lesson-progress i.current{{background:var(--cyan)}}.live-readout{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}}.live-readout>div{{padding:10px;border-radius:9px;background:#090b11;text-align:center}}.live-readout strong{{display:block;font:800 18px system-ui;margin-top:4px}}
 form{{display:grid;gap:16px}}.formgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}}label{{display:grid;gap:7px;color:var(--muted);font-size:13px}}input,select{{width:100%;background:#090b11;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;font:16px inherit}}input:focus,select:focus{{outline:2px solid var(--blue);border-color:transparent}}.check{{display:flex;align-items:center;gap:10px}}.check input{{width:auto}}.notice{{min-height:24px;color:var(--cyan)}}code{{color:var(--cyan)}}
 details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}details.advanced summary{{color:var(--cyan);cursor:pointer;font-weight:800}}details.advanced p{{color:var(--muted);max-width:760px}}
+.help-group{{margin-top:28px}}.help-group>h2{{margin-bottom:12px;color:var(--cyan)}}.guide-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}}
+.guide-card{{position:relative;display:block;min-height:145px;padding:20px 52px 20px 20px;color:var(--ink);text-decoration:none;background:linear-gradient(145deg,#1b2030,#11141d);border:1px solid var(--line);border-radius:14px;transition:transform .15s,border-color .15s}}
+.guide-card:hover{{transform:translateY(-2px);border-color:var(--cyan)}}.guide-card h2{{margin:0 0 8px}}.guide-card p{{margin:0;color:var(--muted)}}.guide-arrow{{position:absolute;right:20px;top:17px;color:var(--cyan);font-size:25px}}
+.help-toolbar{{display:flex;justify-content:space-between;gap:16px;margin:0 0 14px}}.help-toolbar a{{color:var(--cyan);text-decoration:none}}.help-layout{{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}}
+.help-sidebar{{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:16px;background:#11141d;border:1px solid var(--line);border-radius:12px}}.guide-nav,.toc{{display:grid;gap:2px;margin-top:8px}}.guide-nav a,.toc a{{padding:7px 9px;color:var(--muted);text-decoration:none;border-radius:7px;font-size:13px}}.guide-nav a:hover,.toc a:hover,.guide-nav a.current{{color:var(--ink);background:#202636}}.toc{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}.toc-level-3{{padding-left:20px!important}}
+.markdown-body{{min-width:0;padding:clamp(20px,4vw,46px);background:#f8f9fc;color:#151927;border-radius:14px;font:16px/1.65 system-ui,sans-serif}}.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4{{color:#101522;scroll-margin-top:20px}}.markdown-body h1{{font-size:clamp(30px,5vw,46px);letter-spacing:-1.5px}}.markdown-body h2{{margin-top:38px;font-size:27px;border-bottom:2px solid #d9dfeb;padding-bottom:7px}}.markdown-body h3{{margin-top:28px;font-size:21px}}.markdown-body a{{color:#075fc4}}.markdown-body code{{color:#005dc7;background:#e9eef7;border-radius:4px;padding:2px 5px}}.markdown-body pre{{overflow:auto;padding:16px;background:#0b1220;border-left:4px solid var(--cyan);border-radius:8px}}.markdown-body pre code{{padding:0;color:#eaf2ff;background:none}}.markdown-body blockquote{{margin:20px 0;padding:14px 18px;border-left:5px solid #0b78d1;background:#e9f4fd}}.markdown-body img{{display:block;max-width:100%;height:auto;margin:22px auto;border-radius:9px}}.table-scroll{{overflow-x:auto;margin:18px 0}}.markdown-body table{{width:100%;border-collapse:collapse;font-size:14px}}.markdown-body th{{background:#101827;color:white;text-align:left}}.markdown-body th,.markdown-body td{{padding:10px 12px;border:1px solid #cbd3e2;vertical-align:top}}.markdown-body tr:nth-child(even) td{{background:#eef2f8}}
 @media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera{{height:auto;aspect-ratio:4/3}}}}
-@media(max-width:600px){{header{{align-items:center}}.brand{{max-width:68%}}nav{{display:grid;gap:7px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}}}
-</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/learn>Learn</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
+@media(max-width:900px){{.help-layout{{grid-template-columns:1fr}}.help-sidebar{{position:static;max-height:none}}.guide-nav{{grid-template-columns:repeat(2,minmax(0,1fr))}}.toc{{display:none}}}}
+@media(max-width:600px){{header{{align-items:center}}.brand{{max-width:58%}}nav{{display:grid;grid-template-columns:repeat(2,auto);gap:5px 12px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}.guide-nav{{grid-template-columns:1fr}}.markdown-body{{padding:20px 17px}}}}
+</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/learn>Learn</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><script>{script}</script></body></html>""".encode()
 
 
 DASHBOARD = _page(
@@ -176,6 +185,20 @@ async function pair(method,path,payload,button){if(prepared!==method){await prep
 $('pair-ssh').onclick=()=>pair('ssh','/api/pair/ssh',{host:$('pair-host').value.trim(),username:$('pair-user').value.trim(),password:$('pair-password').value},$('pair-ssh'));
 $('pair-code-button').onclick=()=>pair('code','/api/pair/code',{host:$('pair-host').value.trim(),code:$('pair-code').value.trim()},$('pair-code-button'));""",
 )
+
+
+def help_index_page() -> bytes:
+    """Build the Help library page from the bundled public-guide registry."""
+    return _page("Help", help_index_content(), "")
+
+
+def help_document_page(slug: str) -> bytes | None:
+    """Build one styled Help reading page or return None for an unknown guide."""
+    document = help_document_content(slug)
+    if document is None:
+        return None
+    content, title = document
+    return _page(title, content, "")
 
 
 class ControlState:
@@ -412,6 +435,27 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 _send(self, 200, LEARN, "text/html; charset=utf-8")
             elif path == "/setup":
                 _send(self, 200, SETUP, "text/html; charset=utf-8")
+            elif path == "/help":
+                _send(self, 200, help_index_page(), "text/html; charset=utf-8")
+            elif path.startswith("/help/") and path.endswith(".md"):
+                source = guide_markdown(path[len("/help/"):-len(".md")])
+                if source is None:
+                    self.send_error(404)
+                else:
+                    _send(self, 200, source, "text/markdown; charset=utf-8")
+            elif path.startswith("/help/"):
+                page = help_document_page(path[len("/help/"):])
+                if page is None:
+                    self.send_error(404)
+                else:
+                    _send(self, 200, page, "text/html; charset=utf-8")
+            elif path.startswith("/help-assets/"):
+                asset = help_asset(path[len("/help-assets/"):])
+                if asset is None:
+                    self.send_error(404)
+                else:
+                    body, content_type = asset
+                    _send(self, 200, body, content_type)
             elif path == "/assets/powerglove-vision-logo.png":
                 try:
                     _send(self, 200, LOGO_PATH.read_bytes(), "image/png")

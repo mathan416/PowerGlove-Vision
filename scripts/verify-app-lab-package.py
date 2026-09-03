@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added repeatable public-package content and path verification.
+#   2026-09-03 - Required the offline Help renderer in every public package.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify the generated UNO Q App Lab package before publication."""
@@ -34,6 +35,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/python/main.py",
     "PowerGlove-Vision/sketch/sketch.ino",
     "PowerGlove-Vision/src/powerglove_vision/runtime_assets.py",
+    "PowerGlove-Vision/src/powerglove_vision/help_content.py",
 }
 FORBIDDEN_PARTS = {".git", ".venv", "__pycache__", "data", "output", "tests", "tmp"}
 FORBIDDEN_NAMES = {".DS_Store", "cheatsheet.md", "hand_landmarker.task"}

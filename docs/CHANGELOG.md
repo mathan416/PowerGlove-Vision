@@ -30,9 +30,14 @@ authoritative record for line-level and file-level history.
   configured titles, with original direction, finger-pose, wrist, and depth art.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
+- Added an offline Help library that renders the maintained public Markdown
+  guides with responsive navigation, contents links, illustrations, tables,
+  code samples, and access to the original source.
 
 ### Fixed
 
+- Allowed the UNO Q deployment health check to use the board's current IP when
+  its `.local` name pauses during a container restart.
 - Published the host shutdown request atomically so a filesystem observer cannot
   consume the request between file creation and the final content write.
 - Updated the GitHub Actions workflow to use the current Node 24 action releases

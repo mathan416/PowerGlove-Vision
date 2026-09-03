@@ -8,6 +8,7 @@
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified atomic publication of host shutdown requests.
+#   2026-09-03 - Verified the bundled Help library, Markdown reader, and assets.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -22,8 +23,12 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from powerglove_vision.control_server import DASHBOARD, LEARN, LOGO_PATH, SETUP, ControlState, start_control_server
+from powerglove_vision.control_server import (
+    DASHBOARD, LEARN, LOGO_PATH, SETUP, ControlState, help_document_page,
+    help_index_page, start_control_server,
+)
 from powerglove_vision.debug_server import SharedDebugState
+from powerglove_vision.help_content import help_asset, render_markdown
 
 
 class ControlStateTests(unittest.TestCase):
@@ -68,6 +73,59 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(logo_url, DASHBOARD)
         self.assertIn(logo_url, LEARN)
         self.assertIn(logo_url, SETUP)
+
+    def test_help_is_in_the_primary_navigation(self):
+        for page in (DASHBOARD, LEARN, SETUP, help_index_page()):
+            self.assertIn(b"href=/help>Help", page)
+
+    def test_help_index_lists_the_public_guides(self):
+        page = help_index_page()
+        self.assertIn(b"Help, without leaving the glove", page)
+        self.assertIn(b"/help/gameplay", page)
+        self.assertIn(b"/help/field-guide", page)
+        self.assertNotIn(b"cheatsheet", page.lower())
+
+    def test_help_document_renders_markdown_with_contents_and_images(self):
+        page = help_document_page("gameplay")
+        self.assertIsNotNone(page)
+        assert page is not None
+        self.assertIn(b"Play with PowerGlove Vision", page)
+        self.assertIn(b"On this page", page)
+        self.assertIn(b"/help-assets/gestures/directional-movement.png", page)
+        self.assertIn(b"/help/gameplay.md", page)
+
+    def test_help_renderer_escapes_html_and_unsafe_links(self):
+        rendered, _headings = render_markdown("# Safe\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))")
+        self.assertNotIn("<script>", rendered)
+        self.assertNotIn("javascript:", rendered)
+        self.assertIn("href='#'", rendered)
+
+    def test_help_assets_are_limited_to_documentation_images(self):
+        asset = help_asset("gestures/directional-movement.png")
+        self.assertIsNotNone(asset)
+        assert asset is not None
+        self.assertEqual(asset[1], "image/png")
+        self.assertIsNone(help_asset("../../data/device.json"))
+
+    def test_help_routes_serve_html_markdown_and_images(self):
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            for path, expected_type in (
+                ("/help", "text/html"),
+                ("/help/gameplay", "text/html"),
+                ("/help/gameplay.md", "text/markdown"),
+                ("/help-assets/gestures/directional-movement.png", "image/png"),
+            ):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                connection.request("GET", path)
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, 200, path)
+                self.assertTrue(response.getheader("Content-Type").startswith(expected_type), path)
+                connection.close()
+        finally:
+            servers.shutdown()
 
     def test_learn_page_is_offline_practice_mode(self):
         self.assertIn(b"Practice gesture recognition without a RetroPie connection", LEARN)

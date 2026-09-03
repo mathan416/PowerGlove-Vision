@@ -79,7 +79,7 @@ requires explicit security review.
 | `55355` | UDP | UNO Q to RetroPie | Authenticated virtual-controller packets |
 | `55356` | UDP | RetroPie to UNO Q | HMAC-authenticated profile commands and acknowledgements |
 | `55357` | TCP/TLS | Pairing client to temporary server | Short-lived code-pairing exchange only |
-| `8088` | HTTP | Browser to UNO Q | Local dashboard, diagnostics, and ordinary controls; no pairing credentials accepted |
+| `8088` | HTTP | Browser to UNO Q | Local dashboard, public Help guides, diagnostics, and ordinary controls; no pairing credentials accepted |
 | `8443` | HTTPS | Browser to UNO Q | Protected setup and pairing operations |
 
 Keep these ports on a trusted LAN. Do not configure router port forwarding,
@@ -92,6 +92,12 @@ with access to the local network can observe packet timing and size even when
 they cannot create accepted input without the token. The dashboard can expose
 camera imagery and operational status to clients that can reach it, so network
 access to port `8088` is itself sensitive.
+
+The Help library serves a fixed list of public Markdown guides and images from
+the installed application. It must not expose `data/`, the machine-specific
+cheat sheet, arbitrary filesystem paths, or pairing credentials. Markdown HTML
+is not executed, unsafe link schemes are rejected, and image requests are
+confined below `docs/images`.
 
 ## Shutdown permissions
 
