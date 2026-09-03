@@ -108,7 +108,7 @@ Street Brawler and Super Glove Ball.
 These profiles reproduce the useful controller output of the original glove
 programs directly. Bad Street Brawler never needs to be started. The included
 game registry selects B for Joust, C for Gyruss, E for Defender II, F for
-Sesame Street 1-2-3, G for Gun.Smoke, and I for Knight Rider. Programs A, D,
+Sesame Street 1-2-3, G for Gun Smoke, and I for Knight Rider. Programs A, D,
 and H are fully implemented but intentionally have no default ROM assignment:
 A is the pinball profile, D is the reversed-direction challenge profile, and H
 is the general-play and training profile. Assign them to an exact ROM basename
@@ -155,9 +155,11 @@ App Lab supervisor maintains an isolated Python 3.12 worker with MediaPipe
 generates a private random pairing token. Keep `data/device.json` out of Git;
 copy its token to `/etc/powerglove/token` on the console.
 
-The camera setting defaults to `auto`. If no UVC camera is connected, the app
-stays alive, shows the matrix error state, and waits quietly. Connecting a
-UVC-compatible USB camera starts the tracker without a reboot.
+The camera setting defaults to `auto`. If an active profile cannot use the
+camera, the app stays alive, shows the matrix error state, and retries quietly.
+Connecting a UVC-compatible USB camera starts the tracker without a reboot.
+The **Gestures off** profile is a healthy idle state: camera capture and
+MediaPipe stop while the website and profile-command listener remain online.
 
 ### Wi-Fi and pairing
 
@@ -177,6 +179,17 @@ PowerGlove Vision always boots with controller transmission stopped. Use
 **Start controller** or **Stop controller** on either the setup page or debug
 dashboard. Vision remains active while stopped, and stopping releases every
 virtual input without restarting the camera.
+
+The Dashboard also changes the active profile without visiting Setup. This is
+a live, session-level choice and does not replace the startup profile saved on
+the Setup page. Selecting **Gestures off** releases all controls and closes the
+camera until the Dashboard or RetroPie launch hook activates another profile.
+Opening **Learn** temporarily starts the camera and gesture recognition even
+when **Gestures off** is selected, while keeping controller output suppressed.
+Leaving Learn restores the selected profile, camera state, and controller
+state. Loading or refreshing the Dashboard also clears any abandoned Learn
+session and reapplies the selected mode. The matrix shows a softly scanning
+`L` throughout the Learn session.
 
 **Shutdown system** appears on both pages after the fixed-purpose host helper
 is installed. It stops controller output and asks Linux to power off cleanly.
@@ -242,11 +255,18 @@ starts a new packet session, changes the mapping, begins neutral-position
 calibration, and acknowledges the selected profile.
 
 Open `http://<uno-q-name>.local:8088/debug` from another machine. The live
-dashboard shows the camera overlay, active game/profile, tracking confidence,
+dashboard shows the camera overlay, an active-profile selector, active game,
+tracking confidence,
 D-pad and button output, axes, finger curl, recent gesture events, and a
-**Center hand** button. It remains available even when the camera is unplugged.
+**Center hand** button. The Dashboard remains available even when the camera
+is unplugged; centering is disabled until vision is active.
 Calibration also begins automatically at tracker startup. The shorter root URL
 redirects to this dashboard.
+
+Dashboard and Learn show **Starting camera and gesture tracking** with elapsed
+seconds while vision initializes. First activation can take longer than later
+profile switches because the camera and tracker must be initialized. This is
+a startup state, not an error. Gestures off does not pre-warm the camera.
 
 Open `http://<uno-q-name>.local:8088/learn` for offline practice. The page
 automatically stops controller transmission, keeps vision active without a
@@ -268,10 +288,14 @@ matrix. It deliberately does not replace the UNO Q's protected early system
 boot display. Once the PowerGlove Vision app starts, it shows:
 
 - an animated, scanning 8-bit hand while camera and model components load;
+- a pinball-display-style glove attract animation while gestures are paused;
 - a blocky `PG` emblem before a game profile is selected;
 - a large `A`-`I`, `BS`, or `GB` acknowledgement for the active profile;
 - a gently pulsing version of that acknowledgement while tracking is active;
 - a blinking X if camera or runtime initialization fails.
+
+A true system shutdown clears the matrix. The glove attract animation therefore
+means that Linux and the website are healthy while only gesture capture is idle.
 
 Copy `sketch/` into the sketch portion of the PowerGlove Vision App Lab
 app. The Python process detects App Lab's Bridge automatically and calls the
@@ -293,7 +317,8 @@ scripts/deploy-uno-q-wifi.sh arduino@arduiain.local
 
 The target can be any UNO Q `.local` hostname. Device settings and private
 pairing material in `data/` are preserved. The script restarts the container
-and checks the Learn, Debug, and secure Setup pages before reporting success.
+keeps PowerGlove Vision as the default startup app, and checks the Learn,
+Debug, and secure Setup pages before reporting success.
 Microcontroller sketch updates remain available through App Lab's private
 credential prompt; USB remains the passwordless recovery path.
 
@@ -308,8 +333,10 @@ Install the host shutdown helper once from a terminal on the development Mac:
 scripts/install-uno-q-shutdown-helper.sh arduino@arduiain.local
 ```
 
-The remote `sudo` prompt is handled by the terminal and is never stored. This
-installs and enables `powerglove-system-shutdown.path`; later application
+This is a required host-integration step for the standard installation. The
+remote `sudo` prompt is handled by the terminal and is never stored. The script
+installs and enables `powerglove-system-shutdown.path` plus a boot-time rule
+that recreates the web application's readiness marker. Later application
 deployments do not need to reinstall it.
 
 ## Raspberry Pi receiver
@@ -394,9 +421,9 @@ python3 scripts/check-source-docs.py
 
 Rebuild the PDF guides after changing Markdown, then rebuild the importable App
 Lab installation ZIP. The installation package deliberately omits Google's
-Hand Landmarker model. On first launch, the UNO Q downloads the model into its
-persistent private `data/` directory and verifies its pinned SHA-256 checksum
-before use:
+Hand Landmarker model. The first time gestures are activated, the UNO Q
+downloads the model into its persistent private `data/` directory and verifies
+its pinned SHA-256 checksum before use:
 
 ```sh
 python3 scripts/build-docs-pdf.py

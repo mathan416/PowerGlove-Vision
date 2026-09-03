@@ -9,6 +9,7 @@
 #   2026-09-03 - Added repeatable installation-package content and path verification.
 #   2026-09-03 - Required the offline Help renderer in every installation ZIP.
 #   2026-09-03 - Required only the allowlisted public PDF editions.
+#   2026-09-03 - Required the complete host shutdown-helper installation set.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify the generated UNO Q App Lab installation ZIP before publication."""
@@ -47,8 +48,12 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/THIRD_PARTY_COMPONENTS.md",
     "PowerGlove-Vision/python/main.py",
     "PowerGlove-Vision/sketch/sketch.ino",
+    "PowerGlove-Vision/scripts/install-uno-q-shutdown-helper.sh",
     "PowerGlove-Vision/src/powerglove_vision/runtime_assets.py",
     "PowerGlove-Vision/src/powerglove_vision/help_content.py",
+    "PowerGlove-Vision/uno-q/powerglove-system-shutdown.conf",
+    "PowerGlove-Vision/uno-q/powerglove-system-shutdown.path",
+    "PowerGlove-Vision/uno-q/powerglove-system-shutdown.service",
 } | {f"PowerGlove-Vision/{path}" for path in PUBLIC_PDF_PATHS}
 FORBIDDEN_PARTS = {".git", ".venv", "__pycache__", "data", "tests", "tmp"}
 FORBIDDEN_NAMES = {".DS_Store", "cheatsheet.md", "hand_landmarker.task"}

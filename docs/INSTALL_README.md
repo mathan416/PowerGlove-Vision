@@ -109,10 +109,11 @@ scripts/build-app-lab-package.sh
 ```
 
 The generated App Lab installation ZIP is not stored in Git. It deliberately
-excludes Google's Hand Landmarker model. On first launch, the UNO Q downloads
-the model directly from Google into the app's persistent private
-`data/models/` directory and verifies its pinned SHA-256 checksum before
-starting the vision worker. Later launches reuse that verified copy. A
+excludes Google's Hand Landmarker model. The first time an active gesture
+profile needs vision, the UNO Q downloads the model directly from Google into
+the app's persistent private `data/models/` directory and verifies its pinned
+SHA-256 checksum before starting tracking. **Gestures off** leaves the model
+and camera unopened. Later launches reuse that verified copy. A
 published GitHub release may provide the same model-free App Lab installation
 ZIP.
 
@@ -127,8 +128,8 @@ In Arduino App Lab:
 
 1. Import the App Lab installation ZIP as an Arduino App.
 2. Open **PowerGlove Vision** and select **Run**.
-3. Allow several minutes for the first launch. The app downloads and verifies
-   the Hand Landmarker model, prepares an isolated Python 3.12 vision
+3. Allow several minutes when first activating gestures. The app downloads and
+   verifies the Hand Landmarker model, prepares an isolated Python 3.12 vision
    environment, and downloads its ARM64 dependencies once.
 4. When the app is healthy, enable **Run at startup**.
 
@@ -151,6 +152,7 @@ or after the app starts.
 | Display | Meaning |
 | --- | --- |
 | Animated hand | Application or model is loading |
+| Animated glove with an energy sweep | Gestures are paused; Linux, the website, and profile selection remain available |
 | `PG` | Ready; no specific profile selected yet |
 | `A`-`I` | One of the cartridge-free Programs A-I is active |
 | `BS` | Bad Street Brawler profile |
@@ -433,7 +435,7 @@ and configures automatically out of the box:
 | Gyruss | `program_c` |
 | Defender II | `program_e` |
 | Sesame Street 1-2-3 | `program_f` |
-| Gun.Smoke | `program_g` |
+| Gun Smoke | `program_g` |
 | Knight Rider | `program_i` |
 
 Programs A, D, and H are also fully implemented. They are control profiles, not
@@ -476,7 +478,8 @@ The command should acknowledge the change and the matrix should show `B`.
 
 1. Power the RetroPie and UNO Q; leave the camera connected to the powered hub.
 2. Open `http://UNO-Q-NAME.local:8088/debug`.
-3. Confirm **Camera online**, the expected profile, and a detected hand.
+3. Select the active profile on the Dashboard, then confirm the expected
+   profile and a detected hand. The saved startup profile remains on Setup.
 4. Select **Center hand** while holding a comfortable neutral pose.
 5. Select **Start controller** only when you are ready to play.
 6. Launch the game and confirm its profile code on the matrix.
@@ -491,9 +494,17 @@ cycling power is required to start it again.
 
 ### Learn before you launch
 
+Dashboard and Learn show **Starting camera and gesture tracking** with elapsed
+seconds during initialization. The first activation can take longer while the
+camera and tracker load. Wait for vision to become active before centering;
+the centering button is disabled during startup. Gestures off keeps the camera
+off rather than briefly activating it at boot.
+
 Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
-controller transmission and walks through ten exercises with live recognition
-feedback. RetroPie does not need to be online.
+controller transmission, starts the camera when necessary, and walks through
+ten exercises with live recognition feedback. RetroPie does not need to be
+online. Leaving Learn restores the selected profile and its camera state;
+loading or refreshing the Dashboard also reapplies the selected mode.
 
 ![PowerGlove Vision Learn page](images/learn-page.png)
 
@@ -505,6 +516,9 @@ matter more than glove color.
 
 Debug shows the camera overlay, active profile, tracking confidence, generated
 D-pad/buttons, analogue axes, finger curl, and recent gesture events.
+Its profile selector changes the current session immediately. Selecting
+**Gestures off** releases controls, closes the camera and shows a friendly idle
+panel; selecting another profile starts vision and calibration again.
 
 ![PowerGlove Vision Debug dashboard](images/debug-dashboard.png)
 
@@ -532,15 +546,17 @@ Then deploy from the repository root:
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
 ```
 
-The script preserves private `data/`, restarts the container, and verifies the
-Learn, Debug, and secure Setup pages. If mDNS is temporarily unavailable, use
-the UNO Q's current IP address. Matrix firmware updates remain a separate App
-Lab operation; USB is the safest recovery route.
+The script preserves private `data/`, keeps PowerGlove Vision as the default
+startup app, restarts the container, and verifies the Learn, Debug, and secure
+Setup pages. If mDNS is temporarily unavailable, use the UNO Q's current IP
+address. Matrix firmware updates remain a separate App Lab operation; USB is
+the safest recovery route.
 
-### Install the safe-shutdown helper
+### Install the safe-shutdown helper (required)
 
 The App Lab container is intentionally unprivileged and cannot power off the
-Linux host. Install the supplied fixed-purpose systemd path helper once:
+Linux host. Complete the standard installation by installing the supplied
+fixed-purpose systemd path helper once:
 
 ```sh
 scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
@@ -551,7 +567,8 @@ script does not read or store it. The helper watches only the fixed
 `data/shutdown-request` path and can perform only a system poweroff. After it is
 installed, **Shutdown system** is available on Dashboard and Setup. Each press
 requires browser confirmation and warns that power must be restored or cycled
-to restart the UNO Q.
+to restart the UNO Q. Its boot-time tmpfiles rule recreates the readiness
+marker if the UNO Q reboots or App Lab replaces the application directory.
 
 Verify the helper without triggering shutdown:
 
@@ -588,6 +605,8 @@ for only one copy, stop the older copy, then remove it through App Lab.
 
 ### Matrix shows a blinking X
 
+- Confirm that an active gesture profile is selected. **Gestures off** should
+  display the animated glove attract sequence, never the error X.
 - Confirm the camera is connected through the powered hub.
 - Try another hub port or USB cable.
 - Check whether Linux sees a USB camera; internal `qcom-venus-encoder` and
@@ -682,12 +701,14 @@ On the UNO Q, stop the app, disable **Run at startup**, and remove it through
 Arduino App Lab. Its private `data` directory contains the device token and
 cached runtime.
 
-Remove the optional shutdown helper separately:
+Remove the host shutdown helper separately:
 
 ```sh
 sudo systemctl disable --now powerglove-system-shutdown.path
 sudo rm /etc/systemd/system/powerglove-system-shutdown.path \
-  /etc/systemd/system/powerglove-system-shutdown.service
+  /etc/systemd/system/powerglove-system-shutdown.service \
+  /etc/tmpfiles.d/powerglove-system-shutdown.conf
+rm -f /home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled
 sudo systemctl daemon-reload
 ```
 

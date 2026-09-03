@@ -78,6 +78,29 @@ Selecting **Save** validates the fields, writes them atomically with private
 permissions, and restarts the vision worker. Hold a neutral hand in view and
 center it again after the restart.
 
+The Dashboard profile selector changes only the current active profile. It does
+not rewrite `device.json` or change the Setup page's startup profile. RetroPie
+may replace a Dashboard selection when a game starts or ends.
+
+The first vision activation opens the camera and loads the gesture tracker,
+so it can take longer than switching between active profiles. Dashboard and
+Learn show **Starting camera and gesture tracking** with elapsed time until
+vision is active. Centering is disabled during initialization. The camera is
+not pre-warmed at boot when **Gestures off** is selected.
+
+The Learn page uses a temporary practice session. Entering Learn starts camera
+capture and recognition even if the selected profile is **Gestures off**; the
+practice engine uses Program H internally without changing the selected
+profile. Controller packets remain suppressed. Leaving Learn restores the
+selected profile and its camera state. A Dashboard load or refresh clears any
+stale practice session, and a six-second lease timeout provides the same
+recovery if a browser closes without sending its normal release request.
+An existing Learn tab cannot reactivate practice after a Dashboard reset;
+reload Learn to begin a new practice session.
+
+More than one Learn tab may be open. Vision remains active until the last tab
+closes or its lease expires.
+
 **Start controller** and **Stop controller** change live output only. The
 controller deliberately starts stopped after an application or system restart;
 this prevents hand motion from navigating menus before you are ready.
@@ -247,7 +270,7 @@ their own entries because `.nes`, `.zip`, and `.7z` are different basenames.
 | Gyruss | `program_c` |
 | Defender II | `program_e` |
 | Sesame Street 1-2-3 | `program_f` |
-| Gun.Smoke | `program_g` |
+| Gun Smoke | `program_g` |
 | Knight Rider | `program_i` |
 
 The table above is the complete set of games recognized automatically by the
@@ -275,7 +298,9 @@ sudo /opt/powerglove/bin/powerglove-profile \
 ```
 
 Use `--profile off` to stop gesture output. A successful request prints an
-acknowledgement and changes the profile shown on the UNO Q matrix.
+acknowledgement and starts the matrix glove attract animation. In this healthy
+idle state the camera and MediaPipe tracker are closed, while the website and
+authenticated profile listener remain available.
 
 ## Tune gesture sensitivity
 
@@ -396,21 +421,23 @@ or any other physical controller.
 If RetroArch has a hand-written override for this device, remove or reconcile
 that override before diagnosing the supplied autoconfiguration.
 
-## Optional UNO Q shutdown helper
+## UNO Q shutdown helper
 
-The dashboard's **Shutdown system** action requires two host-level systemd
-units supplied with the project:
+The standard installation includes the host shutdown helper so Dashboard and
+Setup can power Linux off cleanly. It consists of two systemd units and one
+boot-time readiness rule:
 
 | Repository file | Installed path | Purpose |
 | --- | --- | --- |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/powerglove-system-shutdown.path` | Watches for one fixed shutdown request in the application's private data directory |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/powerglove-system-shutdown.service` | Removes that request and asks systemd to power off Linux cleanly |
+| `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/powerglove-system-shutdown.conf` | Recreates the unprivileged readiness marker at boot or after application replacement |
 
 Install them with `scripts/install-uno-q-shutdown-helper.sh`. The installer also
 creates the private `data/.shutdown-enabled` marker that allows the web UI to
-offer the action. The application cannot use this mechanism to execute an
-arbitrary privileged command; it can only create the fixed request after an
-explicit confirmation.
+offer the action. The tmpfiles rule restores that marker at boot. The
+application cannot use this mechanism to execute an arbitrary privileged
+command; it can only create the fixed request after an explicit confirmation.
 
 Do not change the request path in only one component. The web application, path
 unit, service, and marker must continue to agree. After installation, confirm
@@ -438,6 +465,27 @@ shutdown require additional protections, but the project assumes that the LAN
 itself is trusted. Review [SECURITY.md](SECURITY.md) before using a shared,
 guest, school, or public network.
 
+## UNO Q matrix artwork
+
+The built-in display is a 13-by-8 monochrome blue LED matrix with eight
+brightness levels. Treat it as a very small dot-matrix display in the spirit of
+a pinball DMD or monochrome BitPixel display, rather than as a miniature screen.
+The sketch encodes status, pairing, profile identifiers, and the gestures-idle
+Power Glove attract sequence.
+
+Matrix artwork should use broad motion, recognizable silhouettes, and strong
+separation between the subject and its brightest effect. A moving spark needs a
+dim body underneath it, a medium halo, and a full-bright core. Pulses should
+emphasize an outline instead of illuminating every pixel at maximum brightness,
+which erases the shape on the physical display. Transitional objects need to
+cross several columns and remain visible for more than one frame; isolated
+one-pixel changes are easily lost to persistence and viewing angle.
+
+Always judge animation timing and grayscale on the physical UNO Q. A source
+grid or browser mock-up is useful for finding malformed frames, but it cannot
+reproduce LED bloom, exposure, or perceived persistence. A short video covering
+several complete loops is the preferred review artifact for later refinements.
+
 ## Files most users should not edit
 
 | File or directory | Purpose |
@@ -446,7 +494,7 @@ guest, school, or public network.
 | `sketch/sketch.yaml` | UNO Q sketch platform and pinned Arduino library dependencies |
 | `pyproject.toml` | Python package metadata, supported interpreter range, and optional dependencies |
 | `python/worker-wheels/` | Platform-specific MediaPipe worker dependency supplied by the App Lab installation ZIP |
-| `data/models/hand_landmarker.task` | Checksum-verified model downloaded on first launch |
+| `data/models/hand_landmarker.task` | Checksum-verified model downloaded when vision is first activated |
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
 | `data/.shutdown-enabled` | Marker installed by the optional fixed-purpose shutdown helper |
@@ -463,8 +511,8 @@ output/app-lab/PowerGlove-Vision-Uno-Q.zip
 The installation ZIP intentionally excludes private `data/`, downloaded models,
 caches, tests, Git metadata, and the cabinet-specific quick-reference PDF. It
 includes only the nine allowlisted public PDF editions used by Help. The pinned
-Google Hand Landmarker model downloads and passes a SHA-256 check on first
-launch.
+Google Hand Landmarker model downloads and passes a SHA-256 check when an
+active profile first needs vision. Gestures-idle mode does not open it.
 
 ### Automated quality and package verification
 
@@ -507,6 +555,7 @@ not automatically migrate active configuration.
 | Controller appears but a game uses the wrong gestures | Confirm the system is `nes` or `famicom` and the exact ROM basename exists in `/etc/powerglove/games.json`. |
 | Game launches slowly while UNO Q is offline | Confirm `timeout` remains near `0.4`; the hook retries but must never block game launch indefinitely. |
 | Profile command is not acknowledged | Check the UNO Q name, UDP `55356`, pairing token, and the UNO Q application status. |
+| Gestures off shows a blinking X | Update Power Glove Vision; Gestures off should show the glove attract animation and must not open the camera. |
 | Camera disappears after reboot | Return Camera to `auto`, check powered-hub and cable stability, and inspect the UNO Q dashboard error. |
 | Movement triggers too late | Center again first; if repeatable, lower `move_on` slightly for the active profile. |
 | Direction remains stuck | Raise `move_off` slightly, keep it below `move_on`, and verify tracking-loss release. |
@@ -526,6 +575,7 @@ not automatically migrate active configuration.
 | `retropie/powerglove-receiver.timer` | `/etc/systemd/system/` | Delayed boot activation |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/` | Fixed shutdown request watcher |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/` | Fixed clean-shutdown action |
+| `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/` | Boot-time shutdown readiness marker |
 | `.github/workflows/quality.yml` | GitHub Actions | Automated tests and release verification |
 | `app.yaml` | UNO Q application root | App Lab |
 | `sketch/sketch.yaml` | UNO Q application sketch directory | Arduino build system |

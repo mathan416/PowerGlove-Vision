@@ -65,12 +65,13 @@ the public internet.
 | Delayed-start timer | `powerglove-receiver.timer` (45 seconds after boot) |
 | UNO Q shutdown watcher | `powerglove-system-shutdown.path` (`enabled`, `active`) |
 | Shutdown readiness marker | `data/.shutdown-enabled` |
+| Shutdown marker boot rule | `/etc/tmpfiles.d/powerglove-system-shutdown.conf` |
 
 The token in `/etc/powerglove/token` must exactly match the token stored in the
 UNO Q app's `data/device.json`. Never paste that value into GitHub, screenshots,
 logs or this cheat sheet.
 
-The shutdown watcher, readiness marker, Dashboard and Setup buttons, and API
+The shutdown watcher, persistent readiness marker, Dashboard and Setup buttons, and API
 rejection safeguards were verified on September 3, 2026. **Stop controller**
 leaves the UNO Q running; **Shutdown system** powers Linux off and requires
 power to be restored or cycled before restart.
@@ -190,7 +191,13 @@ cycle through camera indexes when no UVC device exists.
 
 ## Profiles
 
-The setup page can choose:
+Dashboard and Learn display **Starting camera and gesture tracking** with elapsed
+seconds during initialization. First startup may take longer than later profile
+switches. Wait for the camera view before centering. Gestures off leaves the
+camera off until a profile or Learn needs it.
+
+The Dashboard can change the active profile for the current session, and Setup
+can choose the profile used at startup:
 
 - Bad Street Brawler
 - Super Glove Ball
@@ -214,13 +221,16 @@ system also turns gestures off.
 
 1. Launch an unregistered NES or Famicom game. Confirm that PowerGlove Vision
    reports **Gestures off**.
-2. Open **Setup** on the UNO Q and choose Program A, D, H, or another profile.
-3. Select **Save & restart tracker**.
+2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**,
+   **H: General**, or another profile.
+3. Wait for vision to start and ask for centering.
 4. Center your hand, select **Start controller**, and test movement and actions.
 5. Stop the controller before changing profiles or games.
 
 This temporary choice is ideal for discovery. It does not change the automatic
-game registry.
+game registry or the startup profile saved in Setup. While **Gestures off** is
+selected, the camera and MediaPipe tracker are closed and the UNO Q matrix runs
+its animated glove attract sequence.
 
 ### Keep a working combination
 
@@ -263,7 +273,6 @@ EmulationStation initializes before the virtual controller appears. This
 helps prevent frontend pauses and conflicts with other USB devices, including
 the BitPixel display, when the receiver starts too early.
 
-App Lab currently contains the active `powerglove-vision` installation and an
-older timestamped import. The older container is stopped. Keep only the active
-copy set as the default/autostart app; remove the older entry through App Lab
-after confirming its `data/device.json` is not needed.
+App Lab should contain one active `powerglove-vision` installation. Keep that
+copy set as the default/autostart app so the dashboard returns after every UNO
+Q reboot. The Wi-Fi deployment script reapplies this designation.

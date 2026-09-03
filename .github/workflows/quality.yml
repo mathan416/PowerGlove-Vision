@@ -9,13 +9,14 @@
 #   2026-09-03 - Aligned the test matrix with the declared Python 3.7 minimum.
 #   2026-09-03 - Used Ubuntu 22.04 for the archived Python 3.7 toolchain.
 #   2026-09-03 - Updated official actions to their Node 24 releases.
+#   2026-09-03 - Added push validation for the dev integration branch.
 # Full history: docs/CHANGELOG.md and Git history.
 
 name: Quality and package verification
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   workflow_dispatch:
 

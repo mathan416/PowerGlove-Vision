@@ -7,13 +7,15 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Verified gestures idle remains distinct from system off.
+#   2026-09-03 - Verified the dedicated Learn-mode matrix state.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify LED matrix status, profile, and physical pairing-display bridge calls."""
 
 import unittest
 
-from powerglove_vision.matrix import MatrixStatus, UnoQMatrix
+from powerglove_vision.matrix import MatrixStatus, UnoQMatrix, status_from_worker
 
 
 class MatrixTests(unittest.TestCase):
@@ -29,6 +31,41 @@ class MatrixTests(unittest.TestCase):
                 ("set_powerglove_status", int(MatrixStatus.READY)),
             ],
         )
+
+    def test_gestures_idle_is_distinct_from_system_off(self):
+        calls = []
+        matrix = UnoQMatrix(call=lambda *args: calls.append(args))
+        matrix.set_status(MatrixStatus.GESTURES_IDLE)
+        matrix.set_status(MatrixStatus.OFF)
+        self.assertEqual(calls, [
+            ("set_powerglove_status", int(MatrixStatus.GESTURES_IDLE)),
+            ("set_powerglove_status", int(MatrixStatus.OFF)),
+        ])
+
+    def test_learning_is_a_dedicated_matrix_state(self):
+        calls = []
+        matrix = UnoQMatrix(call=lambda *args: calls.append(args))
+        matrix.set_status(MatrixStatus.LEARNING)
+        self.assertEqual(calls, [
+            ("set_powerglove_status", int(MatrixStatus.LEARNING)),
+        ])
+        self.assertEqual(status_from_worker({
+            "practice_mode": True,
+            "active_profile": "off",
+            "vision_state": "starting",
+        }), MatrixStatus.LEARNING)
+        self.assertEqual(status_from_worker({
+            "practice_mode": True,
+            "active_profile": "off",
+            "vision_state": "active",
+            "detected": True,
+            "calibrated": True,
+        }), MatrixStatus.LEARNING)
+        self.assertEqual(status_from_worker({
+            "practice_mode": True,
+            "active_profile": "off",
+            "vision_state": "error",
+        }), MatrixStatus.ERROR)
 
     def test_duplicate_status_is_not_resent(self):
         calls = []

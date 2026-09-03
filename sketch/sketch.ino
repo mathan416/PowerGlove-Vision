@@ -7,6 +7,9 @@
 // Change log:
 //   2026-09-02 - Added to PowerGlove Vision.
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
+//   2026-09-03 - Added the gestures-idle Power Glove attract animation.
+//   2026-09-03 - Refined the attract animation with cuff travel, spark motion, and grayscale pulsing.
+//   2026-09-03 - Added a scanning L animation for Learn mode.
 // Full history: docs/CHANGELOG.md and Git history.
 
 #include "Arduino_RouterBridge.h"
@@ -21,6 +24,8 @@ enum PowerGloveStatus {
   PG_TRACKING = 3,
   PG_ERROR = 4,
   PG_PAIRING = 5,
+  PG_GESTURES_IDLE = 6,
+  PG_LEARNING = 7,
 };
 
 Arduino_LED_Matrix matrix;
@@ -34,7 +39,8 @@ unsigned long nextFrameAt = 0;
 uint8_t animationFrame = 0;
 
 // Original 8-bit artwork sized for the UNO Q's 8x13 blue matrix. Characters
-// encode brightness: '.' is off, 'o' is dim, 'O' is full brightness.
+// encode brightness: '.' is off, '1' through '7' select exact grayscale
+// levels, 'o' is legacy dim, and 'O' is full brightness.
 const char* const loadingFrames[][8] = {
   {
     "..O.O.O.O....",
@@ -115,6 +121,35 @@ const char* const errorFrame[8] = {
   ".....OOO.....", "....OO.OO....", "...OO...OO...", ".OO.......OO.",
 };
 
+// Pinball-display-inspired glove silhouettes for the healthy gestures-paused
+// state. Edge highlighting gives the tiny monochrome image depth without
+// saturating the palm into an unreadable rectangle.
+const char* const idleOpenGlove[8] = {
+  "....#.#.#.#..", "....#.#.#.#..", "...########..", "..#########..",
+  "..########...", "...######....", "...####......", "...####......",
+};
+
+const char* const idleCurlGlove[8] = {
+  ".............", "....#.#.#.#..", "...########..", "..#########..",
+  "..########...", "...######....", "...####......", "...####......",
+};
+
+const char* const idleFistGlove[8] = {
+  ".............", "...######....", "..########...", "..########...",
+  "..########...", "...######....", "...####......", "...####......",
+};
+
+// Per-frame timing makes the entrance, finger curl, spark, and outline pulse
+// distinct. The final frame holds long enough to serve as a friendly idle icon.
+const uint16_t idleFrameDurations[] = {
+  75, 75, 75, 105,              // energy streak
+  105, 105, 105, 130,           // cuff travels right-to-left
+  90, 90, 180,                  // glove rises from the cuff
+  90, 125, 90, 150,             // curl, clench, reopen
+  70, 70, 70, 70, 70, 70, 70, 70, // spark and comet trail
+  90, 120, 850,                 // settle, outline pulse, hold
+};
+
 // Five-pixel-wide glyphs A-I, B, S, and G. Program profiles use a large
 // centred letter; the dedicated game profiles display BS and GB.
 const uint8_t programGlyphs[9][7] = {
@@ -136,8 +171,10 @@ const uint8_t digitGlyphs[10][7] = {
 };
 const uint8_t glyphN[7] = {17,25,25,21,19,19,17};
 const uint8_t glyphP[7] = {30,17,17,30,16,16,16};
+const uint8_t glyphL[7] = {16,16,16,16,16,16,31};
 
 void drawRows(const char* const rows[8]);
+void setPixelMax(uint8_t* pixels, int x, int y, uint8_t brightness);
 
 // Blend one five-column glyph into the 8x13 matrix framebuffer.
 void placeGlyph(uint8_t* pixels, const uint8_t glyph[7], int left, uint8_t brightness) {
@@ -201,21 +238,144 @@ void drawProfile(int profile, bool pulse) {
   matrix.draw(pixels);
 }
 
+// Show a legible L with a bright scan line so Learn mode remains visually
+// active without resembling a game-profile code or an error condition.
+void drawLearning(uint8_t frame) {
+  uint8_t pixels[104] = {0};
+  placeGlyph(pixels, glyphL, 4, 3);
+  const int scanRow = frame % 8;
+  for (int x = 4; x < 9; ++x) {
+    if (scanRow < 7 && (glyphL[scanRow] & (1 << (8 - x)))) {
+      setPixelMax(pixels, x, scanRow, 7);
+    }
+    if (scanRow > 0 && scanRow - 1 < 7 &&
+        (glyphL[scanRow - 1] & (1 << (8 - x)))) {
+      setPixelMax(pixels, x, scanRow - 1, 5);
+    }
+  }
+  matrix.draw(pixels);
+}
+
 // Convert character-based artwork into matrix brightness values and display it.
 void drawRows(const char* const rows[8]) {
   uint8_t pixels[104];
   for (int y = 0; y < 8; ++y) {
     for (int x = 0; x < 13; ++x) {
       const char value = rows[y][x];
-      pixels[y * 13 + x] = value == 'O' ? 7 : (value == 'o' ? 2 : 0);
+      if (value >= '1' && value <= '7') {
+        pixels[y * 13 + x] = value - '0';
+      } else {
+        pixels[y * 13 + x] = value == 'O' ? 7 : (value == 'o' ? 2 : 0);
+      }
     }
   }
   matrix.draw(pixels);
 }
 
+// Raise one matrix pixel without allowing a dim layer to overwrite a brighter
+// outline, spark core, or comet trail.
+void setPixelMax(uint8_t* pixels, int x, int y, uint8_t brightness) {
+  if (x < 0 || x >= 13 || y < 0 || y >= 8) {
+    return;
+  }
+  const int index = y * 13 + x;
+  if (brightness > pixels[index]) {
+    pixels[index] = brightness;
+  }
+}
+
+// Test whether a coordinate belongs to one of the 13x8 glove silhouettes.
+bool isGlovePixel(const char* const mask[8], int x, int y) {
+  return x >= 0 && x < 13 && y >= 0 && y < 8 && mask[y][x] == '#';
+}
+
+// Render a glove with separate body and edge levels. minRow supports the two
+// reveal frames that grow the hand upward from the already-positioned cuff.
+void drawGlove(
+  uint8_t* pixels,
+  const char* const mask[8],
+  uint8_t bodyBrightness,
+  uint8_t edgeBrightness,
+  int minRow = 0
+) {
+  for (int y = minRow; y < 8; ++y) {
+    for (int x = 0; x < 13; ++x) {
+      if (!isGlovePixel(mask, x, y)) {
+        continue;
+      }
+      const bool edge =
+        !isGlovePixel(mask, x - 1, y) || !isGlovePixel(mask, x + 1, y) ||
+        !isGlovePixel(mask, x, y - 1) || !isGlovePixel(mask, x, y + 1);
+      setPixelMax(pixels, x, y, edge ? edgeBrightness : bodyBrightness);
+    }
+  }
+}
+
+// Render one complete beat of the gestures-paused attract sequence. Motion is
+// intentionally broad: the cuff crosses seven columns, the fingers curl over
+// three poses, and the spark uses a bright core plus two-position comet trail.
+void drawIdleFrame(uint8_t frame) {
+  uint8_t pixels[104] = {0};
+
+  if (frame < 4) {
+    const int coreX[] = {0, 4, 8, 12};
+    for (int y = 0; y < 8; ++y) {
+      const int x = coreX[frame] + abs(y - 3) / 2;
+      setPixelMax(pixels, x - 2, y, 1);
+      setPixelMax(pixels, x - 1, y, 4);
+      setPixelMax(pixels, x, y, 7);
+    }
+  } else if (frame < 8) {
+    const int cuffX[] = {10, 8, 5, 3};
+    const int left = cuffX[frame - 4];
+    for (int y = 6; y < 8; ++y) {
+      setPixelMax(pixels, left - 1, y, 2);
+      for (int x = left; x < left + 4; ++x) {
+        setPixelMax(pixels, x, y, x == left ? 7 : 4);
+      }
+      setPixelMax(pixels, left + 4, y, 2);
+    }
+  } else if (frame < 11) {
+    const int revealRows[] = {5, 3, 0};
+    drawGlove(pixels, idleOpenGlove, 2, 5, revealRows[frame - 8]);
+  } else if (frame == 11 || frame == 13) {
+    drawGlove(pixels, idleCurlGlove, 2, 5);
+  } else if (frame == 12) {
+    drawGlove(pixels, idleFistGlove, 2, 6);
+  } else if (frame >= 15 && frame < 23) {
+    const int sparkX[] = {3, 4, 5, 5, 6, 7, 8, 10};
+    const int sparkY[] = {7, 6, 5, 4, 3, 2, 1, 0};
+    const int sparkIndex = frame - 15;
+    drawGlove(pixels, idleOpenGlove, 1, 3);
+    if (sparkIndex >= 2) {
+      setPixelMax(
+        pixels, sparkX[sparkIndex - 2], sparkY[sparkIndex - 2], 3
+      );
+    }
+    if (sparkIndex >= 1) {
+      setPixelMax(
+        pixels, sparkX[sparkIndex - 1], sparkY[sparkIndex - 1], 5
+      );
+    }
+    const int x = sparkX[sparkIndex];
+    const int y = sparkY[sparkIndex];
+    setPixelMax(pixels, x - 1, y, 4);
+    setPixelMax(pixels, x + 1, y, 4);
+    setPixelMax(pixels, x, y - 1, 4);
+    setPixelMax(pixels, x, y + 1, 4);
+    setPixelMax(pixels, x, y, 7);
+  } else if (frame == 24) {
+    drawGlove(pixels, idleOpenGlove, 4, 7);
+  } else {
+    drawGlove(pixels, idleOpenGlove, 2, 5);
+  }
+
+  matrix.draw(pixels);
+}
+
 // Router Bridge endpoint: request a bounded status code from the Linux app.
 void set_powerglove_status(int status) {
-  if (status < PG_OFF || status > PG_PAIRING) {
+  if (status < PG_OFF || status > PG_LEARNING) {
     status = PG_ERROR;
   }
   requestedStatus = status;
@@ -291,5 +451,14 @@ void loop() {
     drawPairing(animationFrame);
     animationFrame = (animationFrame + 1) % 9;
     nextFrameAt = now + 650;
+  } else if (status == PG_GESTURES_IDLE) {
+    drawIdleFrame(animationFrame);
+    nextFrameAt = now + idleFrameDurations[animationFrame];
+    animationFrame = (animationFrame + 1) %
+      (sizeof(idleFrameDurations) / sizeof(idleFrameDurations[0]));
+  } else if (status == PG_LEARNING) {
+    drawLearning(animationFrame);
+    animationFrame = (animationFrame + 1) % 8;
+    nextFrameAt = now + 160;
   }
 }

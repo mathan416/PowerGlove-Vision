@@ -6,7 +6,7 @@ Linux devices, and a privileged shutdown helper.
 
 ## Before changing code
 
-1. Start from the current `main` branch and create a short-lived topic branch.
+1. Start from the current `dev` branch and create a short-lived topic branch.
 2. Read `SECURITY.md` before changing pairing, tokens, network listeners,
    downloads, file permissions, uinput, or shutdown behavior.
 3. Check `CONFIGURATION_REFERENCE.md` before changing a file format, default,
@@ -16,6 +16,26 @@ Linux devices, and a privileged shutdown helper.
 
 Security vulnerabilities should follow the private reporting process in
 `SECURITY.md`, not an ordinary pull request or public issue.
+
+## Branch and release workflow
+
+`dev` is the integration branch for ordinary development. Create feature, fix,
+and documentation branches from current `dev`, then open pull requests back to
+`dev`. Do not commit ordinary development directly to `main`.
+
+`main` represents released code. To prepare a release:
+
+1. Confirm the complete quality workflow passes on `dev`.
+2. Finalize the version and move the release notes out of `Unreleased`.
+3. Open and review a pull request from `dev` to `main`.
+4. Merge only the reviewed release changes, tag the release, and verify its
+   generated App Lab package.
+5. Merge any release-only adjustments on `main` back into `dev` immediately.
+
+For an urgent released-version fix, branch from `main`, review and merge the
+fix into `main`, publish the corrective release, and then merge `main` back into
+`dev`. Keep both branches protected against unreviewed or failing changes when
+the repository host supports branch protection.
 
 ## Source style and documentation
 
@@ -138,3 +158,5 @@ releases may attach a verified ZIP for long-term distribution.
 - Do not claim hardware verification unless the change was tested on the named
   device. Automated tests and simulated input should be described accurately.
 - Wait for the GitHub Actions quality workflow to pass before merging.
+- Target ordinary pull requests at `dev`; reserve pull requests into `main` for
+  reviewed releases and urgent release fixes.

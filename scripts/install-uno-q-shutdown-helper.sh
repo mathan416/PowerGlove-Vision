@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added with standardized source documentation.
+#   2026-09-03 - Made the readiness marker persistent across boots and app replacement.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -17,6 +18,7 @@ readonly UNO_TARGET="${1:-${UNO_Q_SSH_TARGET:-arduino@arduiain.local}}"
 readonly REMOTE_APP_DIR="/home/arduino/ArduinoApps/powerglove-vision"
 readonly REMOTE_PATH_UNIT="/tmp/powerglove-system-shutdown.path"
 readonly REMOTE_SERVICE_UNIT="/tmp/powerglove-system-shutdown.service"
+readonly REMOTE_TMPFILES_CONFIG="/tmp/powerglove-system-shutdown.conf"
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<'USAGE'
@@ -36,15 +38,16 @@ fi
 
 scp "${PROJECT_DIR}/uno-q/powerglove-system-shutdown.path" "${UNO_TARGET}:${REMOTE_PATH_UNIT}"
 scp "${PROJECT_DIR}/uno-q/powerglove-system-shutdown.service" "${UNO_TARGET}:${REMOTE_SERVICE_UNIT}"
+scp "${PROJECT_DIR}/uno-q/powerglove-system-shutdown.conf" "${UNO_TARGET}:${REMOTE_TMPFILES_CONFIG}"
 
 ssh -t "${UNO_TARGET}" \
   "sudo install -m 0644 '${REMOTE_PATH_UNIT}' /etc/systemd/system/powerglove-system-shutdown.path && \
    sudo install -m 0644 '${REMOTE_SERVICE_UNIT}' /etc/systemd/system/powerglove-system-shutdown.service && \
+   sudo install -m 0644 '${REMOTE_TMPFILES_CONFIG}' /etc/tmpfiles.d/powerglove-system-shutdown.conf && \
    sudo systemctl daemon-reload && \
    sudo systemctl enable --now powerglove-system-shutdown.path && \
-   mkdir -p '${REMOTE_APP_DIR}/data' && \
-   touch '${REMOTE_APP_DIR}/data/.shutdown-enabled' && \
-   rm -f '${REMOTE_PATH_UNIT}' '${REMOTE_SERVICE_UNIT}' && \
+   sudo systemd-tmpfiles --create /etc/tmpfiles.d/powerglove-system-shutdown.conf && \
+   rm -f '${REMOTE_PATH_UNIT}' '${REMOTE_SERVICE_UNIT}' '${REMOTE_TMPFILES_CONFIG}' && \
    systemctl is-enabled powerglove-system-shutdown.path && \
    systemctl is-active powerglove-system-shutdown.path"
 

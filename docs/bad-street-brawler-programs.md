@@ -20,7 +20,7 @@ depth, wrist angle, and finger flex into ordinary NES controller inputs. The
 next game therefore did not need special Power Glove support.
 
 > **POWERGLOVE VISION CHANGES THE WORKFLOW**  The UNO Q keeps all nine profiles
-> ready at once. Select one on Setup or let RetroPie choose it when a game
+> ready at once. Select one on the Dashboard or let RetroPie choose it when a game
 > launches. Bad Street Brawler never has to be opened first.
 
 ## Quick selector
@@ -33,7 +33,7 @@ next game therefore did not need special Power Glove support.
 | **D** | Challenge mode | Reversed directions with thumb/index buttons |
 | **E** | Defender II | Ship movement, fire, smart bomb, evasive movement |
 | **F** | Sesame Street 1-2-3 | Open-hand Yes and closed-hand No |
-| **G** | Gun.Smoke | Walk by position; aim by wrist angle |
+| **G** | Gun Smoke | Walk by position; aim by wrist angle |
 | **H** | Training / general play | Familiar controls with pulsed buttons |
 | **I** | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
 
@@ -113,7 +113,7 @@ experiments that need inverted direction mappings.
 
 **Use it for:** Sesame Street 1-2-3 and simple choice-driven games.
 
-### G - Gun.Smoke rig
+### G - Gun Smoke rig
 
 | Gesture | See it | Controller result |
 | --- | --- | --- |
@@ -122,7 +122,7 @@ experiments that need inverted direction mappings.
 | Roll the wrist | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Choose firing direction |
 | Curl the thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress action for menu navigation |
 
-**Use it for:** Gun.Smoke and shooters with movement plus directional fire.
+**Use it for:** Gun Smoke and shooters with movement plus directional fire.
 
 ### H - Training rig
 
@@ -176,8 +176,10 @@ preventing a previous title's mapping from leaking into the next one.
 4. Open Debug to compare hand motion with generated controller output.
 5. Start controller delivery only when ready to play.
 
-Learn mode works without RetroPie and automatically stops controller output.
-That makes it the right place to build muscle memory.
+Learn mode works without RetroPie and automatically starts the camera while
+suppressing controller output. This also works while **Gestures off** is the
+selected profile. Leaving Learn restores the selected mode, so it is a safe
+place to build muscle memory without changing the saved or active selection.
 
 ## What remains special
 

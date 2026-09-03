@@ -119,9 +119,14 @@ substitution; they do not make the dashboard safe for public network exposure.
 Anyone able to use the reachable dashboard may still cause a denial of service
 by shutting down the UNO Q.
 
-Keep the path and service units root-owned and mode `0644`. Do not replace the
-fixed `ExecStart` commands with user input, a shell string, or an arbitrary
-command runner. Remove or disable both units if remote shutdown is not wanted.
+A root-owned tmpfiles rule recreates only that fixed readiness marker during
+boot. It grants no command execution and does not change the container's
+privileges.
+
+Keep the path unit, service unit, and tmpfiles rule root-owned and mode `0644`.
+Do not replace the fixed `ExecStart` commands with user input, a shell string,
+or an arbitrary command runner. Remove or disable all three files if remote
+shutdown is not wanted.
 
 ## Dependency and release integrity
 

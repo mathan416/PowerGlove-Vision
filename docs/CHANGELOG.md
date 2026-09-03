@@ -7,8 +7,60 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+### Added
+
+- Added a live active-profile selector to the Dashboard without changing the
+  startup profile saved on Setup.
+- Added temporary Learn sessions that start vision while preserving the
+  selected profile and desired controller state, including multi-tab leases
+  and automatic recovery when a page disappears unexpectedly.
+- Added a dedicated matrix gestures-idle state with a pinball-style animated
+  glove, separate from both true shutdown and the flashing error X.
+- Added a dedicated Learn-mode matrix state with a bright `L` and moving
+  grayscale scan highlight.
+- Added a root-owned tmpfiles rule that restores shutdown-helper readiness
+  after reboot or App Lab application replacement.
+
+### Changed
+
+- Made Dashboard and Learn show camera/tracker startup with elapsed time and
+  a first-start explanation, without enabling the camera in Gestures off.
+- Kept Learn startup feedback updating before camera frames arrive and disabled
+  centering until vision is active.
+- Replaced generic Program A–I labels on Dashboard and Setup with the program
+  letter and its intended game or use, while retaining the existing profile IDs.
+- Standardized the reader-facing game name “Gun Smoke” throughout Help and the
+  public guides; exact `Gun.Smoke` ROM basenames remain unchanged for matching.
+- Made leaving Learn restore the selected profile, camera state, and controller
+  state. Loading or refreshing the Dashboard now clears abandoned Learn
+  sessions, prevents their old heartbeats from reactivating vision, and
+  reapplies the selected mode.
+- Made Wi-Fi deployments preserve PowerGlove Vision as the UNO Q default
+  startup app so the dashboard returns after a board reboot.
+- Made Wi-Fi deployments restore the shutdown readiness marker when the
+  installed host watcher is active.
+- Extended deployment health verification to tolerate a three-minute cold App
+  Lab runtime startup.
+- Made deployment verification use the UNO Q address from the active SSH
+  connection instead of accidentally selecting a Docker bridge interface.
+- Made **Gestures off** a healthy worker state that releases controller input,
+  closes the camera and MediaPipe tracker, and keeps the website and
+  authenticated RetroPie profile listener available.
+- Made camera and model initialization lazy so idle mode performs no capture or
+  vision processing and can return to an active profile without restarting the
+  website.
+- Reworked the matrix attract sequence into distinct pinball-style beats: a
+  four-frame energy sweep, a broad travelling cuff, a staged glove reveal,
+  intermediate finger curls, an eight-position spark with a comet trail, one
+  outline pulse, and a readable hold.
+- Used the UNO Q matrix's full eight-level grayscale range to separate the dim
+  glove body, spark halo, bright spark, and whole-glove pulse.
+
 ### Documentation
 
+- Documented the UNO Q matrix as an eight-level monochrome DMD/BitPixel-style
+  design target, including silhouette, contrast, motion, pulse, and physical
+  review guidance for future animations.
 - Standardized source headers with each file's purpose, author, copyright,
   SPDX license identifier, local history, and links to the complete history.
 - Documented public interfaces and non-obvious security, lifecycle, tracking,
@@ -54,6 +106,8 @@ authoritative record for line-level and file-level history.
   while keeping the cabinet-specific quick-reference PDF private.
 - Included the nine allowlisted public PDFs in UNO Q deployments and App Lab
   installation packages, with package and live-route verification.
+- Established `dev` as the integration branch, documented release and hotfix
+  promotion into `main`, and enabled CI validation for pushes to both branches.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
 - Added an offline Help library that renders the maintained public Markdown

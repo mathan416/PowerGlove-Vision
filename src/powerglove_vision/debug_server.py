@@ -7,6 +7,8 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Added runtime profile requests and camera-free status updates.
+#   2026-09-03 - Added expiring browser practice leases for the Learn page.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Expose live worker status, camera frames, calibration, and controller state to the supervisor."""
@@ -15,8 +17,14 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable
+
+from .gesture import SUPPORTED_PROFILES
+
+
+PRACTICE_LEASE_SECONDS = 6.0
 
 
 PAGE = b"""<!doctype html>
@@ -50,11 +58,23 @@ class SharedDebugState:
         self.calibrate_requested = False
         self.controller_enabled = controller_enabled
         self.controller_request: bool | None = None
+        self.profile_request: tuple[str | None, str, str] | None = None
+        self.practice_sessions: dict[str, float] = {}
+        self.invalidated_practice_sessions: dict[str, float] = {}
+        self.practice_active = False
+        self.practice_request: bool | None = None
 
     def update(self, jpeg: bytes, status: dict) -> None:
         """Atomically replace the current JPEG frame and worker status."""
         with self.lock:
             self.jpeg = jpeg
+            self.status = status
+
+    def update_status(self, status: dict, *, clear_frame: bool = False) -> None:
+        """Publish diagnostics without requiring a camera frame."""
+        with self.lock:
+            if clear_frame:
+                self.jpeg = None
             self.status = status
 
     def request_calibration(self) -> None:
@@ -79,6 +99,64 @@ class SharedDebugState:
         with self.lock:
             requested = self.controller_request
             self.controller_request = None
+            return requested
+
+    def request_profile(self, profile: str | None, source: str = "Dashboard", game: str = "Manual selection") -> None:
+        """Queue a runtime profile change without changing the saved startup profile."""
+        with self.lock:
+            self.profile_request = (profile, source, game)
+
+    def take_profile_request(self) -> tuple[str | None, str, str] | None:
+        """Consume and clear a pending runtime profile change."""
+        with self.lock:
+            requested = self.profile_request
+            self.profile_request = None
+            return requested
+
+    def _refresh_practice_locked(self, now: float) -> None:
+        """Expire abandoned browser leases and queue only real mode changes."""
+        self.practice_sessions = {
+            session: refreshed
+            for session, refreshed in self.practice_sessions.items()
+            if now - refreshed < PRACTICE_LEASE_SECONDS
+        }
+        self.invalidated_practice_sessions = {
+            session: refreshed
+            for session, refreshed in self.invalidated_practice_sessions.items()
+            if now - refreshed < PRACTICE_LEASE_SECONDS
+        }
+        active = bool(self.practice_sessions)
+        if active != self.practice_active:
+            self.practice_active = active
+            self.practice_request = active
+
+    def request_practice(self, session: str, enabled: bool, *, reset: bool = False) -> bool:
+        """Create, refresh, release, or reset an expiring Learn-page camera lease."""
+        now = time.monotonic()
+        with self.lock:
+            self._refresh_practice_locked(now)
+            if reset:
+                self.invalidated_practice_sessions.update(
+                    dict.fromkeys(self.practice_sessions, now)
+                )
+                self.practice_sessions.clear()
+            elif enabled:
+                if session in self.invalidated_practice_sessions:
+                    self.invalidated_practice_sessions[session] = now
+                else:
+                    self.practice_sessions[session] = now
+            else:
+                self.practice_sessions.pop(session, None)
+                self.invalidated_practice_sessions.pop(session, None)
+            self._refresh_practice_locked(now)
+            return self.practice_active
+
+    def take_practice_request(self) -> bool | None:
+        """Consume a practice transition, including one caused by lease expiry."""
+        with self.lock:
+            self._refresh_practice_locked(time.monotonic())
+            requested = self.practice_request
+            self.practice_request = None
             return requested
 
 
@@ -123,6 +201,57 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                         raise ValueError("enabled must be true or false")
                     shared.request_controller(enabled)
                     response = json.dumps({"controller_enabled": enabled}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(response)))
+                    self.end_headers()
+                    self.wfile.write(response)
+                except (ValueError, json.JSONDecodeError) as exc:
+                    response = json.dumps({"error": str(exc)}).encode()
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(response)))
+                    self.end_headers()
+                    self.wfile.write(response)
+            elif self.path == "/profile":
+                try:
+                    length = min(int(self.headers.get("Content-Length", "0")), 1024)
+                    body = json.loads(self.rfile.read(length) or b"{}")
+                    profile = body.get("profile")
+                    if profile == "off":
+                        profile = None
+                    if profile is not None and profile not in SUPPORTED_PROFILES:
+                        raise ValueError("choose a supported gesture profile")
+                    shared.request_profile(profile)
+                    response = json.dumps({"active_profile": profile or "off"}).encode()
+                    self.send_response(202)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(response)))
+                    self.end_headers()
+                    self.wfile.write(response)
+                except (ValueError, json.JSONDecodeError) as exc:
+                    response = json.dumps({"error": str(exc)}).encode()
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(response)))
+                    self.end_headers()
+                    self.wfile.write(response)
+            elif self.path == "/practice":
+                try:
+                    length = min(int(self.headers.get("Content-Length", "0")), 1024)
+                    body = json.loads(self.rfile.read(length) or b"{}")
+                    enabled = body.get("enabled")
+                    reset = body.get("reset") is True
+                    session = str(body.get("session", ""))
+                    if not isinstance(enabled, bool):
+                        raise ValueError("enabled must be true or false")
+                    if not reset and (
+                        not 8 <= len(session) <= 128
+                        or not all(character.isalnum() or character in "-_" for character in session)
+                    ):
+                        raise ValueError("session must be an opaque browser identifier")
+                    active = shared.request_practice(session, enabled, reset=reset)
+                    response = json.dumps({"practice_mode": active}).encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.send_header("Content-Length", str(len(response)))
