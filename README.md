@@ -184,6 +184,21 @@ In App Lab, enable **Run at startup** for the completed custom app. The Arduino
 system boot logo remains visible during Linux startup, after which the custom
 loading and ready states take over.
 
+### Deploy application updates over Wi-Fi
+
+After installing an SSH public key for the UNO Q's `arduino` account, update a
+running App Lab installation without reconnecting USB:
+
+```sh
+scripts/deploy-uno-q-wifi.sh arduino@arduiain.local
+```
+
+The target can be any UNO Q `.local` hostname. Device settings and private
+pairing material in `data/` are preserved. The script restarts the container
+and checks the Learn, Debug, and secure Setup pages before reporting success.
+Microcontroller sketch updates remain available through App Lab's private
+credential prompt; USB remains the passwordless recovery path.
+
 ## Raspberry Pi receiver
 
 The receiver requires Python `evdev` and access to `/dev/uinput`:

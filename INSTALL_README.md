@@ -73,6 +73,32 @@ addresses in the two configuration files instead.
 Initial provisioning should be done over USB. Once configured, the UNO Q can
 normally be selected and managed over Wi-Fi from App Lab.
 
+### 1a. Enable repeatable Wi-Fi application deployments
+
+After the first USB setup, install your computer's SSH public key for the
+`arduino` account on the UNO Q. This is a one-time maintenance step; keep the
+private key on your computer and never commit it to the repository.
+
+Once key-based access works, deploy a development checkout from the repository
+root with:
+
+```sh
+scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-HOSTNAME.local
+```
+
+The script copies only application source, preserves the board's private
+`data/device.json`, publishes both web ports, restarts the App Lab container,
+and verifies `/learn`, `/debug`, and the secure setup page. Set
+`UNO_Q_SSH_TARGET` or `UNO_Q_APP_DIR` if the board name or App Lab directory is
+different.
+
+The Linux application can therefore be updated entirely over Wi-Fi. The blue
+matrix sketch is separate microcontroller firmware. Arduino's UNO Q OTA tool
+currently requires the board password as an upload field, so use App Lab's
+credential prompt for wireless sketch updates or connect USB for a passwordless
+recovery upload. Never place that password in this script, a shell-history
+command, or GitHub.
+
 ### 2. Connect the camera
 
 Connect the powered hub or dock to the UNO Q, then connect the Razer Kiyo to
