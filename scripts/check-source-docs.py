@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added the repository source-documentation audit.
+#   2026-09-03 - Added the GitHub Actions workflow to audited configuration.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Audit tracked source files for required headers and useful Python docstrings."""
@@ -30,7 +31,12 @@ HEADER_MARKERS = (
     "Full history: docs/CHANGELOG.md and Git history.",
 )
 SOURCE_SUFFIXES = {".py", ".sh", ".ino", ".service", ".timer", ".path", ".cfg"}
-COMMENTED_CONFIGS = {"app.yaml", "sketch/sketch.yaml", "pyproject.toml"}
+COMMENTED_CONFIGS = {
+    ".github/workflows/quality.yml",
+    "app.yaml",
+    "sketch/sketch.yaml",
+    "pyproject.toml",
+}
 UNDOCUMENTED_FRAMEWORK_METHODS = {"__init__", "do_GET", "do_POST", "log_message"}
 
 

@@ -19,6 +19,13 @@ authoritative record for line-level and file-level history.
 - Added a complete configuration reference covering JSON templates and active
   copies, gesture thresholds, manifests, RetroArch mapping, systemd units,
   generated state, secret handling, and the public ZIP location.
+- Added GitHub Actions checks for supported Python versions, tests, source and
+  documentation audits, syntax, PDF builds, and public-package verification.
+- Added a security policy for private reporting, pairing and network boundaries,
+  shared-token handling, shutdown permissions, and dependency integrity.
+- Added a contributing guide for code style, tests, documentation, changelog,
+  generated artifacts, commits, and pull requests.
+- Added reusable documentation and App Lab package verification tools.
 
 ## 0.1.0 - 2026-09-03
 

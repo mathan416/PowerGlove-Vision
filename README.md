@@ -37,6 +37,8 @@ camera equivalents are documented in
 | [PowerGlove Vision Field Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
 | [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
 | [Configuration reference](docs/CONFIGURATION_REFERENCE.md) | Every repository, installed, private, and generated configuration file and field |
+| [Security policy](docs/SECURITY.md) | Private reporting, pairing boundaries, network exposure, shutdown permissions, and release integrity |
+| [Contributing guide](docs/CONTRIBUTING.md) | Source style, tests, documentation, changelog, packaging, commits, and pull requests |
 | [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md) | MediaPipe repackaging, model provenance, checksums, licenses, and update procedure |
 | [Changelog](docs/CHANGELOG.md) | Versioned features, fixes, security changes, and documentation updates |
 | [docs/cheatsheet.md](docs/cheatsheet.md) | Machine-specific URLs and maintenance notes; contains no private pairing token |
@@ -373,7 +375,7 @@ python -m unittest discover -s tests -v
 python3 scripts/check-source-docs.py
 ```
 
-Rebuild the seven PDF guides after changing Markdown, then rebuild the importable
+Rebuild the nine PDF guides after changing Markdown, then rebuild the importable
 App Lab ZIP. The public package deliberately omits Google's Hand Landmarker
 model. On first launch, the UNO Q downloads the model into its persistent
 private `data/` directory and verifies its pinned SHA-256 checksum before use:
@@ -381,6 +383,7 @@ private `data/` directory and verifies its pinned SHA-256 checksum before use:
 ```sh
 python3 scripts/build-docs-pdf.py
 scripts/build-app-lab-package.sh
+scripts/verify-app-lab-package.py
 ```
 
 The packaging script excludes private `data/`, the local cheat sheet, caches,

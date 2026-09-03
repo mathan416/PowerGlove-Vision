@@ -26,6 +26,7 @@ carry standard source headers.
 | `retropie/powerglove-receiver.timer` | `/etc/systemd/system/` | RetroPie systemd | No |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/` | UNO Q host systemd | No |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/` | UNO Q host systemd | No |
+| `.github/workflows/quality.yml` | GitHub Actions | Hosted CI runners | No |
 
 ## UNO Q device settings
 
@@ -191,6 +192,20 @@ has created the private `.shutdown-enabled` marker.
   script ensures it publishes port `8443`; do not maintain a local copy.
 - `data/.shutdown-enabled` is an installation marker created by the shutdown
   helper, not a user-editable setting.
+
+## GitHub Actions workflow
+
+### `.github/workflows/quality.yml`
+
+GitHub runs this workflow for pull requests, pushes to `main`, and manual
+requests. It tests Python 3.10 and 3.12, checks Python and shell syntax, validates
+JSON, audits source and documentation, rebuilds and inspects all PDF editions,
+builds the public App Lab package, rejects private or unsafe archive content,
+and publishes the verified ZIP as a 14-day workflow artifact.
+
+The workflow has read-only repository permissions and uses no project secrets.
+Keep deployment credentials and live-device operations out of this workflow;
+deployment remains an explicit maintainer action.
 
 ## Public package location
 

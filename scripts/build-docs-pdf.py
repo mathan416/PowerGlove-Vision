@@ -8,6 +8,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Added changelog, configuration, security, and contributor editions.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Build polished, distributable PowerGlove Vision PDF field guides."""
@@ -399,6 +400,8 @@ def main():
     third_party = docs / "THIRD_PARTY_COMPONENTS.md"
     changelog = docs / "CHANGELOG.md"
     configuration = docs / "CONFIGURATION_REFERENCE.md"
+    security = docs / "SECURITY.md"
+    contributing = docs / "CONTRIBUTING.md"
     build(
         overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
         "PowerGlove Vision Project Overview",
@@ -441,7 +444,19 @@ def main():
         "Active files, installed copies, fields, secrets, and generated state.",
         "Technical reference",
     )
-    print(f"Built 7 PDF guides on {date.today().isoformat()}")
+    build(
+        security, OUTPUT / "PowerGlove-Vision-Security.pdf",
+        "PowerGlove Vision Security Policy",
+        "Reporting, trust boundaries, network exposure, shutdown, and release integrity.",
+        "Security policy",
+    )
+    build(
+        contributing, OUTPUT / "PowerGlove-Vision-Contributing.pdf",
+        "Contributing to PowerGlove Vision",
+        "Source style, testing, documentation, packaging, and pull-request expectations.",
+        "Contributor guide",
+    )
+    print(f"Built 9 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

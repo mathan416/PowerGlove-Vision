@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
+  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
 </p>
 
 # PowerGlove Vision — Current Setup Cheat Sheet
