@@ -573,6 +573,8 @@ loading or refreshing the Dashboard also reapplies the selected mode.
 
 ![PowerGlove Vision Learn page](images/learn-page.png)
 
+The camera preview in this screenshot is masked for privacy.
+
 For a white glove, use a darker background. For a black glove, use a lighter
 background. Even lighting, a simple scene, and keeping the whole hand in frame
 matter more than glove color.
