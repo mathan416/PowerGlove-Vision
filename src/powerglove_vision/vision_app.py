@@ -51,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-matrix", action="store_true", help="disable the UNO Q LED matrix bridge")
     parser.add_argument("--profile-listen", default="0.0.0.0")
     parser.add_argument("--profile-port", type=int, default=55356)
+    parser.add_argument("--controller-enabled", action="store_true", help="begin sending controller packets")
     return parser
 
 
@@ -93,7 +94,7 @@ def main() -> int:
         tracker = MediaPipeTracker(args.glove_color, mirror=not args.no_mirror, model_path=args.model)
         sender = UdpSender(args.receiver, args.port, args.token)
         profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
-        shared = SharedDebugState()
+        shared = SharedDebugState(args.controller_enabled)
         server = start_debug_server(shared, args.web_host, args.web_port)
     except CameraUnavailableError as exc:
         matrix.set_status(MatrixStatus.ERROR)
@@ -106,6 +107,7 @@ def main() -> int:
     matrix.set_status(MatrixStatus.READY)
     matrix.set_profile(current_profile)
     signal.signal(signal.SIGTERM, _shutdown_on_signal)
+    controller_enabled = args.controller_enabled
 
     try:
         read_failures = 0
@@ -120,7 +122,7 @@ def main() -> int:
             read_failures = 0
             request = profile_server.take()
             if request is not None:
-                if engine is not None:
+                if controller_enabled and engine is not None:
                     sender.send(ControllerState.released(
                         2_147_483_647, time.monotonic(), current_profile or "off", engine.calibrated
                     ))
@@ -135,6 +137,15 @@ def main() -> int:
                 matrix.set_status(MatrixStatus.READY)
                 profile_server.acknowledge(request, True, current_profile)
 
+            controller_request = shared.take_controller_request()
+            if controller_request is not None and controller_request != controller_enabled:
+                if not controller_request and engine is not None:
+                    sender.send(ControllerState.released(
+                        2_147_483_647, time.monotonic(), current_profile or "off", engine.calibrated
+                    ))
+                sender.new_session()
+                controller_enabled = controller_request
+
             if shared.take_calibration_request() and engine is not None:
                 engine.begin_calibration()
             result = tracker.process(frame)
@@ -148,14 +159,15 @@ def main() -> int:
                 if current_profile and state.detected and state.calibrated
                 else MatrixStatus.READY
             )
-            receiver_available = sender.send(state)
+            receiver_available = sender.send(state) if controller_enabled else False
             status = state.to_dict()
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
             status["game"] = current_game
             status["active_profile"] = current_profile or "off"
             status["profile_source"] = "RetroPie launch hook" if request is not None or current_game != "Startup default" else "startup"
             status["receiver_available"] = receiver_available
-            status["receiver_error"] = sender.last_error
+            status["receiver_error"] = sender.last_error if controller_enabled else "Controller connection stopped"
+            status["controller_enabled"] = controller_enabled
             cv2.putText(
                 result.frame,
                 "GESTURES OFF" if engine is None else (
@@ -180,7 +192,7 @@ def main() -> int:
         raise
     finally:
         released = engine.update(type(result.observation)(time.monotonic(), False)) if engine is not None and 'result' in locals() else None
-        if released:
+        if released and controller_enabled:
             sender.send(released)
         capture.release()
         tracker.close()

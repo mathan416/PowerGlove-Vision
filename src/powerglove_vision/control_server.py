@@ -60,7 +60,7 @@ DASHBOARD = _page(
  <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
 </div>
 <div class=dashboard-workspace><div><img class=camera src=/stream alt='Live camera view'>
-<div class='controls dashboard-controls'><button id=center>Center hand</button><a class=button href=/setup>Connection setup</a></div></div>
+<div class='controls dashboard-controls'><button id=center>Center hand</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection setup</a></div></div>
 <div class=diagnostic-grid>
  <section class=card><h2>Controller output</h2><div class=label>Directions</div><div class=bits id=dpad></div><div class=label style='margin-top:14px'>Buttons</div><div class=bits id=buttons></div></section>
  <section class=card><h2>Axes</h2><div id=axes></div></section>
@@ -74,12 +74,14 @@ const bars=(id,obj,max=32767)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,
 let seen=[]; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();
 $('system').textContent=s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'); $('system').className='value '+(s.worker_running?'good':'warn');
 $('profile').textContent=pretty(s.active_profile||s.configured_profile); $('game').textContent=s.game||'Startup default';
-$('receiver').textContent=s.receiver_available===true?'Sending controls':(s.receiver_error?'Waiting for console':'Starting'); $('receiver').className='value '+(s.receiver_available===true?'good':'warn');
+$('receiver').textContent=s.controller_enabled?(s.receiver_available===true?'Sending controls':'Waiting for console'):'Stopped'; $('receiver').className='value '+(s.receiver_available===true?'good':'warn');
+$('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start controller'; $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false';
 $('tracking').textContent=s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand'); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);
 for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');
 }catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}} setInterval(update,250);update();
-$('center').onclick=async()=>{await fetch('/calibrate',{method:'POST'});};""",
+$('center').onclick=async()=>{await fetch('/calibrate',{method:'POST'});};
+$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};""",
 )
 
 
@@ -93,11 +95,12 @@ SETUP = _page(
 <label>Tracking aid<select id=glove_color name=glove_color><option value=none>Bare hand</option><option value=white>White glove</option><option value=black>Black glove</option></select></label>
 <label>Camera<input id=camera name=camera placeholder=auto></label></div>
 <label class=check><input id=rotate_token type=checkbox> Generate a new private pairing token</label>
-<div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button></div><div class=notice id=notice></div></form></section>
+<div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button><button type=button id=controller-toggle>Start controller</button></div><div class=notice id=notice></div></form></section>
 <div class=grid style='margin-top:14px'><div class=card><div class=label>Pairing</div><div class=value id=paired>Checking…</div><p>Your matching token remains in <code>data/device.json</code> and must also be installed at <code>/etc/powerglove/token</code> on RetroPie.</p></div><div class=card><div class=label>Address</div><div class=value><code>/setup</code></div><p>Bookmark this page at your UNO Q's <code>.local:8088</code> address.</p></div></div>""",
-    r"""const $=id=>document.getElementById(id);async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('paired').textContent=c.paired?'Private token configured':'Not paired'}load();
+    r"""const $=id=>document.getElementById(id);async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('paired').textContent=c.paired?'Private token configured':'Not paired';$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
 $('form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;$('notice').textContent='Saving…';const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),rotate_token:$('rotate_token').checked};const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const x=await r.json();$('notice').textContent=r.ok?'Saved. The tracker is restarting with the new settings.':x.error||'Could not save.';$('rotate_token').checked=false;b.disabled=false;load()};
-$('test').onclick=async()=>{$('notice').textContent='Testing name…';const r=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver:$('receiver').value.trim()})});const x=await r.json();$('notice').textContent=x.ok?`Found ${x.receiver} at ${x.address}. UDP controller delivery can now be attempted.`:x.error};""",
+$('test').onclick=async()=>{$('notice').textContent='Testing name…';const r=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver:$('receiver').value.trim()})});const x=await r.json();$('notice').textContent=x.ok?`Found ${x.receiver} at ${x.address}. UDP controller delivery can now be attempted.`:x.error};
+$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;const r=await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});const x=await r.json();$('notice').textContent=r.ok?(enabled?'Controller started.':'Controller stopped and controls released.'):(x.error||'Could not change controller state.');b.disabled=false;load()};""",
 )
 
 
@@ -110,7 +113,16 @@ class ControlState:
         self.camera_available = False
         self.worker_running = False
         self.last_error: str | None = None
+        self._controller_enabled = False
         self.started_at = time.time()
+
+    def controller_enabled(self) -> bool:
+        with self.lock:
+            return self._controller_enabled
+
+    def set_controller_enabled(self, enabled: bool) -> None:
+        with self.lock:
+            self._controller_enabled = enabled
 
     def load_config(self) -> dict[str, Any]:
         return json.loads(self.config_path.read_text())
@@ -124,6 +136,7 @@ class ControlState:
             "glove_color": config.get("glove_color", "none"),
             "camera": str(config.get("camera", "auto")),
             "paired": bool(config.get("token")),
+            "controller_enabled": self.controller_enabled(),
         }
 
     def save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
@@ -165,6 +178,7 @@ class ControlState:
                 "camera_available": self.camera_available,
                 "worker_running": self.worker_running,
                 "last_error": self.last_error,
+                "controller_enabled": self._controller_enabled,
                 "uptime_seconds": round(time.time() - self.started_at),
             })
         status.setdefault("configured_profile", self.public_config()["profile"])
@@ -239,6 +253,23 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     receiver = str(self.json_body().get("receiver", "")).strip()
                     address = socket.getaddrinfo(receiver, None, type=socket.SOCK_DGRAM)[0][4][0]
                     _send(self, 200, json.dumps({"ok": True, "receiver": receiver, "address": address}).encode(), "application/json")
+                elif path == "/api/controller":
+                    enabled = self.json_body().get("enabled")
+                    if not isinstance(enabled, bool):
+                        raise ValueError("enabled must be true or false")
+                    state.set_controller_enabled(enabled)
+                    request = urllib.request.Request(
+                        WORKER_URL + "/controller",
+                        method="POST",
+                        data=json.dumps({"enabled": enabled}).encode(),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    try:
+                        with urllib.request.urlopen(request, timeout=1):
+                            pass
+                    except (OSError, urllib.error.URLError):
+                        pass
+                    _send(self, 200, json.dumps({"controller_enabled": enabled}).encode(), "application/json")
                 elif path == "/calibrate":
                     request = urllib.request.Request(WORKER_URL + "/calibrate", method="POST", data=b"")
                     with urllib.request.urlopen(request, timeout=1):

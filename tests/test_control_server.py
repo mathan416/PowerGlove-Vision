@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from powerglove_vision.control_server import DASHBOARD, LOGO_PATH, SETUP, ControlState
+from powerglove_vision.debug_server import SharedDebugState
 
 
 class ControlStateTests(unittest.TestCase):
@@ -48,6 +49,25 @@ class ControlStateTests(unittest.TestCase):
         logo_url = b"/assets/powerglove-vision-logo.png"
         self.assertIn(logo_url, DASHBOARD)
         self.assertIn(logo_url, SETUP)
+
+    def test_controller_connection_starts_disarmed_every_launch(self):
+        self.assertFalse(self.state.controller_enabled())
+        self.assertFalse(self.state.snapshot()["controller_enabled"])
+        self.assertFalse(self.state.public_config()["controller_enabled"])
+
+        self.state.set_controller_enabled(True)
+        self.assertTrue(self.state.snapshot()["controller_enabled"])
+        self.assertTrue(self.state.public_config()["controller_enabled"])
+
+        restarted = ControlState(self.path)
+        self.assertFalse(restarted.controller_enabled())
+
+    def test_worker_controller_request_is_consumed_once(self):
+        shared = SharedDebugState()
+        self.assertIsNone(shared.take_controller_request())
+        shared.request_controller(True)
+        self.assertTrue(shared.take_controller_request())
+        self.assertIsNone(shared.take_controller_request())
 
 
 if __name__ == "__main__":

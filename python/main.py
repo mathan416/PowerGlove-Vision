@@ -42,9 +42,9 @@ def load_device_config() -> dict:
     return settings
 
 
-def worker_command(settings: dict) -> list[str]:
+def worker_command(settings: dict, controller_enabled: bool = False) -> list[str]:
     wheel = next((APP_ROOT / "python" / "worker-wheels").glob("mediapipe-0.10.18-*.whl"))
-    return [
+    command = [
         "uv", "run", "--python", "3.12", "--with", str(wheel),
         "python", "-m", "powerglove_vision.vision_app",
         "--receiver", str(settings["receiver"]),
@@ -55,6 +55,9 @@ def worker_command(settings: dict) -> list[str]:
         "--camera", str(settings.get("camera", "auto")),
         "--web-host", "127.0.0.1", "--web-port", "8089", "--no-matrix",
     ]
+    if controller_enabled:
+        command.append("--controller-enabled")
+    return command
 
 
 def main() -> int:
@@ -92,7 +95,9 @@ def main() -> int:
                 continue
             matrix.set_status(MatrixStatus.LOADING)
             revision = control.revision
-            process = subprocess.Popen(worker_command(settings), cwd=APP_ROOT, env=environment)
+            process = subprocess.Popen(
+                worker_command(settings, control.controller_enabled()), cwd=APP_ROOT, env=environment
+            )
             control.update_supervisor(camera=True, running=True)
             configuration_changed = False
             while process.poll() is None:

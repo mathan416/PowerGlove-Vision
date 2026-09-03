@@ -30,11 +30,13 @@ source.textContent=s.profile_source||'Startup';}catch(e){}},250)</script></body>
 
 
 class SharedDebugState:
-    def __init__(self) -> None:
+    def __init__(self, controller_enabled: bool = False) -> None:
         self.lock = threading.Lock()
         self.jpeg: bytes | None = None
         self.status: dict = {}
         self.calibrate_requested = False
+        self.controller_enabled = controller_enabled
+        self.controller_request: bool | None = None
 
     def update(self, jpeg: bytes, status: dict) -> None:
         with self.lock:
@@ -49,6 +51,16 @@ class SharedDebugState:
         with self.lock:
             requested = self.calibrate_requested
             self.calibrate_requested = False
+            return requested
+
+    def request_controller(self, enabled: bool) -> None:
+        with self.lock:
+            self.controller_request = enabled
+
+    def take_controller_request(self) -> bool | None:
+        with self.lock:
+            requested = self.controller_request
+            self.controller_request = None
             return requested
 
 
@@ -79,10 +91,32 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                 self.send_error(404)
 
         def do_POST(self) -> None:
-            if self.path != "/calibrate":
-                self.send_error(404); return
-            shared.request_calibration()
-            self.send_response(204); self.end_headers()
+            if self.path == "/calibrate":
+                shared.request_calibration()
+                self.send_response(204); self.end_headers()
+            elif self.path == "/controller":
+                try:
+                    length = min(int(self.headers.get("Content-Length", "0")), 1024)
+                    body = json.loads(self.rfile.read(length) or b"{}")
+                    enabled = body.get("enabled")
+                    if not isinstance(enabled, bool):
+                        raise ValueError("enabled must be true or false")
+                    shared.request_controller(enabled)
+                    response = json.dumps({"controller_enabled": enabled}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(response)))
+                    self.end_headers()
+                    self.wfile.write(response)
+                except (ValueError, json.JSONDecodeError) as exc:
+                    response = json.dumps({"error": str(exc)}).encode()
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(response)))
+                    self.end_headers()
+                    self.wfile.write(response)
+            else:
+                self.send_error(404)
     return Handler
 
 
