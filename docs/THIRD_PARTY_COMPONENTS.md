@@ -70,6 +70,19 @@ it directly from Google. Anyone who independently bundles or redistributes the
 model should confirm that the intended distribution complies with Google's
 applicable model terms.
 
+## Documentation illustration provenance
+
+The gesture sheets under `docs/images/gestures/` were generated on September 3,
+2026 with OpenAI's image-generation tool from project-authored prompts, then
+selected and arranged for the PowerGlove Vision gameplay guide. They are
+documentation assets, not runtime dependencies. No game screenshots, scans,
+box art, characters, publisher logos, or other source images were supplied to
+the generator.
+
+The repository applies its MIT License to these curated project assets to the
+extent the project owner has rights in them. Game names and other third-party
+marks remain the property of their respective owners.
+
 ## Updating either component
 
 Treat a wheel or model update as a tested dependency change:

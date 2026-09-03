@@ -35,6 +35,7 @@ camera equivalents are documented in
 | Guide | Best for |
 | --- | --- |
 | [PowerGlove Vision Field Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
+| [Illustrated game and gesture guide](docs/GAMEPLAY_GUIDE.md) | One-page instructions, gesture drawings, and play tips for every automatically configured game |
 | [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
 | [Configuration reference](docs/CONFIGURATION_REFERENCE.md) | Every repository, installed, private, and generated configuration file and field |
 | [Security policy](docs/SECURITY.md) | Private reporting, pairing boundaries, network exposure, shutdown permissions, and release integrity |

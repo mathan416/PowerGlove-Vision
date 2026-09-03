@@ -9,6 +9,7 @@
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added changelog, configuration, security, and contributor editions.
+#   2026-09-03 - Added explicit page breaks and the illustrated gameplay handbook.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Build polished, distributable PowerGlove Vision PDF field guides."""
@@ -216,6 +217,10 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
             story.append(Spacer(1, 8))
             index += 1
             continue
+        if line == "<!-- PAGEBREAK -->":
+            story.append(PageBreak())
+            index += 1
+            continue
 
         image_match = re.fullmatch(r"!\[([^]]*)\]\(([^)]+)\)", line)
         if image_match:
@@ -402,6 +407,7 @@ def main():
     configuration = docs / "CONFIGURATION_REFERENCE.md"
     security = docs / "SECURITY.md"
     contributing = docs / "CONTRIBUTING.md"
+    gameplay = docs / "GAMEPLAY_GUIDE.md"
     build(
         overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
         "PowerGlove Vision Project Overview",
@@ -456,7 +462,13 @@ def main():
         "Source style, testing, documentation, packaging, and pull-request expectations.",
         "Contributor guide",
     )
-    print(f"Built 9 PDF guides on {date.today().isoformat()}")
+    build(
+        gameplay, OUTPUT / "PowerGlove-Vision-Gameplay-Guide.pdf",
+        "Play with PowerGlove Vision",
+        "Eight games, eight gesture profiles, and one gloriously impractical way to play.",
+        "Illustrated game handbook",
+    )
+    print(f"Built 10 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

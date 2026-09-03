@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Verified Program I throttle, brake, steering, turbo, and weapons.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify calibration, hysteresis, safety release, menu poses, and supported gesture profiles."""
@@ -99,6 +100,25 @@ class GestureTests(unittest.TestCase):
     def test_program_b_pulses_joust_flap(self):
         state = calibrated_engine("program_b").update(hand(0.15, index_curl=0.9))
         self.assertTrue(state.buttons["a"])
+
+    def test_program_i_maps_driving_controls_to_the_nes_pad(self):
+        engine = calibrated_engine("program_i")
+        throttle = engine.update(hand(0.10, index_curl=0.9))
+        self.assertTrue(throttle.dpad["up"])
+        self.assertFalse(throttle.buttons["a"])
+
+        turbo = engine.update(hand(0.20, palm_scale=0.30))
+        self.assertTrue(turbo.dpad["up"])
+        self.assertTrue(turbo.buttons["a"])
+
+        weapons = engine.update(hand(0.30, thumb_curl=0.9))
+        self.assertTrue(weapons.buttons["b"])
+
+        brake = engine.update(hand(0.40, palm_y=0.62))
+        self.assertTrue(brake.dpad["down"])
+
+        steering = engine.update(hand(0.50, roll=-1.2))
+        self.assertTrue(steering.dpad["left"])
 
     def test_held_v_sign_pulses_start_without_attacking(self):
         engine = calibrated_engine()

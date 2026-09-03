@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added documentation and generated-PDF consistency checks.
+#   2026-09-03 - Registered the illustrated gameplay handbook and PDF edition.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Check that maintained documentation is complete, linked, and publishable."""
@@ -49,6 +50,7 @@ PDF_EDITIONS = {
     "docs/CONFIGURATION_REFERENCE.md": "PowerGlove-Vision-Configuration-Reference.pdf",
     "docs/SECURITY.md": "PowerGlove-Vision-Security.pdf",
     "docs/CONTRIBUTING.md": "PowerGlove-Vision-Contributing.pdf",
+    "docs/GAMEPLAY_GUIDE.md": "PowerGlove-Vision-Gameplay-Guide.pdf",
 }
 
 

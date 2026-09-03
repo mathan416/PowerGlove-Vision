@@ -26,6 +26,8 @@ authoritative record for line-level and file-level history.
 - Added a contributing guide for code style, tests, documentation, changelog,
   generated artifacts, commits, and pull requests.
 - Added reusable documentation and App Lab package verification tools.
+- Added an illustrated, one-page-per-game handbook for all eight automatically
+  configured titles, with original direction, finger-pose, wrist, and depth art.
 
 ### Fixed
 
@@ -33,6 +35,8 @@ authoritative record for line-level and file-level history.
   consume the request between file creation and the final content write.
 - Updated the GitHub Actions workflow to use the current Node 24 action releases
   and run the Python 3.7 compatibility job on Ubuntu 22.04.
+- Corrected Program I so index curl accelerates in Knight Rider, a forward push
+  accelerates with turbo, and thumb curl fires the weapons.
 
 ## 0.1.0 - 2026-09-03
 

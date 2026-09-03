@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Corrected Program I throttle and turbo output for Knight Rider.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Convert calibrated hand observations into stable gamepad states for supported gesture profiles."""
@@ -400,8 +401,9 @@ class GestureEngine:
             dpad["right"] = roll >= self.config.roll_on
             dpad["down"] = dy >= self.config.move_on
             turbo = depth >= self.config.push_on
-            a = index or turbo
-            b = thumb or turbo
+            dpad["up"] = index or turbo
+            a = turbo
+            b = thumb
 
         if menu_pose:
             a = b = False
