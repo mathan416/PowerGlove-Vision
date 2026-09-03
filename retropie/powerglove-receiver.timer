@@ -1,0 +1,10 @@
+[Unit]
+Description=Start PowerGlove receiver after EmulationStation settles
+
+[Timer]
+OnBootSec=45s
+AccuracySec=1s
+Unit=powerglove-receiver.service
+
+[Install]
+WantedBy=timers.target

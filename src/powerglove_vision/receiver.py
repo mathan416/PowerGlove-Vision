@@ -91,7 +91,9 @@ def main() -> int:
     token = args.token if args.token is not None else args.token_file.read_text().strip()
     if len(token) < 16:
         raise ValueError("receiver token must contain at least 16 characters")
-    device = DryRunDevice() if args.dry_run else UInputDevice()
+    # Keep an idle virtual controller out of frontend startup. Create the real
+    # uinput device only after an authenticated controller packet arrives.
+    device = DryRunDevice() if args.dry_run else None
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
     sock.settimeout(args.timeout_ms / 1000)
@@ -117,17 +119,20 @@ def main() -> int:
                 if last_sequence >= 0 and sequence <= last_sequence:
                     continue
                 last_sequence = sequence
+                if device is None:
+                    device = UInputDevice()
                 device.write_state(state)
                 released = False
             except socket.timeout:
-                if not released:
+                if device is not None and not released:
                     device.release()
                     released = True
     except KeyboardInterrupt:
         return 0
     finally:
-        device.release()
-        device.close()
+        if device is not None:
+            device.release()
+            device.close()
         sock.close()
 
 

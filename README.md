@@ -110,7 +110,9 @@ the future native-glove core can consume it.
 
 X, Y, estimated depth, wrist roll, and all five finger curl values are sent
 continuously. The standard-gamepad fallback maps hand position to the D-pad,
-index curl to A, and thumb curl to B.
+index curl to A, and thumb curl to B. Hold a V sign for about 0.7 seconds to
+press Start. Hold a thumbs-up with the other four fingers closed for Select.
+Menu poses suppress directional and attack output while they form.
 
 ## UNO Q setup
 
@@ -280,6 +282,12 @@ network interruption, or stopped UNO Q cannot leave a direction held.
 After the virtual device named `PowerGlove Vision` appears, bind it in
 RetroArch as Player 1 or add it as another input source to the cabinet's
 existing gamepad merger.
+
+The receiver creates the uinput device only after the first authenticated
+controller packet arrives. On the validated cabinet, start it with
+`powerglove-receiver.timer` 45 seconds after boot instead of enabling the
+service directly. This lets EmulationStation initialize before the virtual
+controller appears and prevents frontend pauses and Pixelcade/BitPixel flicker.
 
 ## Automatic RetroPie profiles
 

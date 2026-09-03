@@ -280,7 +280,7 @@ sudo /opt/powerglove/bin/powerglove-receiver \
 Show one hand to the camera, then select **Start controller** on Setup or Debug.
 Controller state should appear in the terminal. Press `Ctrl+C` when finished.
 
-### Install the startup service
+### Install delayed receiver startup
 
 Create `/etc/systemd/system/powerglove-receiver.service`:
 
@@ -303,15 +303,25 @@ RestartSec=2
 WantedBy=multi-user.target
 ```
 
-Enable and verify it:
+Install the supplied timer and verify it:
 
 ```sh
 sudo chmod 0644 /etc/systemd/system/powerglove-receiver.service
+sudo install -m 0644 /opt/powerglove-src/retropie/powerglove-receiver.timer \
+  /etc/systemd/system/powerglove-receiver.timer
 sudo systemctl daemon-reload
-sudo systemctl enable --now powerglove-receiver.service
+sudo systemctl disable powerglove-receiver.service
+sudo systemctl enable --now powerglove-receiver.timer
+sudo systemctl start powerglove-receiver.service
 sudo systemctl status powerglove-receiver.service
 grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices
 ```
+
+The timer starts the receiver 45 seconds after boot. This keeps the virtual
+controller out of EmulationStation's initialization path; on the validated
+cabinet, starting the receiver too early caused frontend pauses and BitPixel
+flicker. Do not enable the service directly in addition to the timer. The
+receiver creates its uinput device after its first authenticated packet.
 
 ### Bind it in RetroArch
 
@@ -510,12 +520,26 @@ available and watch the App Lab log for progress.
 ### Controller does not appear on RetroPie
 
 ```sh
+systemctl is-enabled powerglove-receiver.service
+systemctl is-enabled powerglove-receiver.timer
 sudo systemctl status powerglove-receiver.service
+sudo systemctl status powerglove-receiver.timer
 sudo journalctl -u powerglove-receiver.service -n 100 --no-pager
 ls -l /dev/uinput
 ```
 
-Confirm `uinput` is loaded and `/etc/powerglove/token` is not empty.
+Allow 45 seconds after boot. Confirm `uinput` is loaded and
+`/etc/powerglove/token` is not empty. Expected boot enablement is `disabled`
+for the service and `enabled` for the timer. The virtual controller appears
+only after an authenticated packet arrives.
+
+### Frontend slowdown or BitPixel flicker
+
+Confirm the receiver service was not enabled directly. Stop it, restart
+EmulationStation, and start the receiver afterward as an A/B test. If the
+frontend becomes responsive, restore the supplied timer. Also ensure
+Pixelcade's `game-select` and `system-select` directories contain only one
+executable hook each; executable backup scripts are additional hooks.
 
 ### Controller exists but does not move
 
