@@ -78,7 +78,8 @@ class SetupTests(unittest.TestCase):
             self.assertTrue(mapped("/opt/powerglove/bin/powerglove-receiver").exists())
             self.assertTrue(mapped("/etc/systemd/system/powerglove-receiver.timer").exists())
             self.assertIn("echo lighting", first)
-            self.assertTrue(command.called)
+            command.assert_any_call("apt-get", "install", "-y", "python3", "python3-evdev", "openssl", "avahi-daemon", "libnss-mdns")
+            command.assert_any_call("systemctl", "enable", "--now", "avahi-daemon")
 
     def test_unoq_install_twice_preserves_private_data_and_mount(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -102,10 +103,12 @@ class SetupTests(unittest.TestCase):
             def mapped(value):
                 path = Path(value)
                 return root / str(path).lstrip("/") if str(path).startswith("/etc/") else path
-            with patch.object(setup, "SOURCE", AppPath()), patch.object(setup, "Path", side_effect=mapped), patch.object(setup, "BACKUPS", root / "backups"), patch.object(setup, "run"), patch.object(setup.os, "chown"), patch.object(setup.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)):
+            with patch.object(setup, "SOURCE", AppPath()), patch.object(setup, "Path", side_effect=mapped), patch.object(setup, "BACKUPS", root / "backups"), patch.object(setup, "run") as command, patch.object(setup.os, "chown"), patch.object(setup.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)):
                 setup.install_unoq(None)
                 first = compose.read_text()
                 setup.install_unoq(None)
+            command.assert_any_call("apt-get", "install", "-y", "avahi-daemon", "libnss-mdns")
+            command.assert_any_call("systemctl", "enable", "--now", "avahi-daemon")
             self.assertEqual(first, compose.read_text())
             self.assertEqual(first.count("target: /run/avahi-daemon"), 1)
             self.assertEqual(first.count("- 8443:8443"), 1)

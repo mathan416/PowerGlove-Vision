@@ -209,3 +209,37 @@ class GestureTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CalibrationRetentionTests(unittest.TestCase):
+    """Verify saved neutral references survive engine replacement and explicit recalibration."""
+
+    def test_roundtrip_and_replacement(self):
+        import tempfile
+        from pathlib import Path
+        from powerglove_vision.gesture import load_calibration, save_calibration
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.json"
+            self.assertIsNone(load_calibration(path))
+            original = calibrated_engine()
+            save_calibration(path, original.calibration)
+            restored = GestureEngine("super_glove_ball", calibration_frames=3,
+                                     calibration=load_calibration(path))
+            self.assertTrue(restored.calibrated)
+            state = restored.update(hand(1))
+            self.assertFalse(any(state.dpad.values()))
+            restored.begin_calibration()
+            for t in (2, 3, 4):
+                restored.update(hand(t, palm_x=0.7))
+            save_calibration(path, restored.calibration)
+            self.assertAlmostEqual(load_calibration(path).palm_x, 0.7)
+
+    def test_invalid_saved_reference(self):
+        import tempfile
+        from pathlib import Path
+        from powerglove_vision.gesture import load_calibration
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "calibration.json"
+            for value in ('broken', '{}', '{"version":1,"neutral":{"palm_x":0,"palm_y":0,"palm_scale":0,"roll":0}}'):
+                path.write_text(value)
+                self.assertIsNone(load_calibration(path))

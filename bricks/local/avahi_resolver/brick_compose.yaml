@@ -1,0 +1,25 @@
+# PowerGlove Vision: app-owned resolver service, 2026-09-03.
+# No TCP ports, privileged mode, host networking, or Docker socket access.
+# SPDX-License-Identifier: MIT
+services:
+  avahi-resolver:
+    image: ghcr.io/arduino/app-bricks/python-apps-base:0.12.0
+    entrypoint: [python3, /resolver_service.py]
+    restart: unless-stopped
+    user: "1000:1000"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - type: bind
+        source: /run/avahi-daemon
+        target: /run/avahi-daemon
+        read_only: true
+      - type: bind
+        source: ${APP_HOME}/data
+        target: /app/data
+      - type: bind
+        source: ${APP_HOME}/scripts/avahi-resolver-service.py
+        target: /resolver_service.py
+        read_only: true

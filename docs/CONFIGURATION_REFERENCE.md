@@ -130,9 +130,11 @@ The Calibrate button turns red while calibration is active, then blue with a
 brief completion confirmation. Browser preview encoding is capped at 15 fps;
 controller status continues at inference rate. Status fields `inference_ms` and
 `send_ms` measure processing and local send time, not full camera-to-game latency.
-Centering happens when a new vision engine starts. Learn uses the general
-practice profile; changing into or out of a different profile starts a fresh
-engine and centers again. Use Calibrate with a relaxed hand if needed.
+Learn uses the general practice profile. A new vision engine reuses the saved
+neutral reference across Learn, gameplay, profile changes, and restarts. Only
+first use or an unavailable/invalid saved reference triggers automatic centering.
+Use **Calibrate** to replace the reference after moving the camera or changing
+your playing position.
 
 Each Learn lesson shows a gesture illustration. Start uses a V sign; Select
 uses a thumbs-up with the other four fingers closed. Both must remain steady
@@ -573,6 +575,7 @@ Back up custom configuration before replacing an installation:
 
 | Item | Why it matters |
 | --- | --- |
+| UNO Q `data/calibration.json` | Preserves your neutral hand position, size, and wrist angle; recalibrate if the physical setup changes |
 | UNO Q `data/device.json` | Contains device settings and the private token |
 | UNO Q `config/profiles.json` | Contains any custom sensitivity values |
 | RetroPie `/etc/powerglove/games.json` | Contains local ROM mappings |
@@ -629,18 +632,19 @@ changing controller mappings.
 
 ## Local hostname resolution inside App Lab
 
-The app resolves `.local` IPv4 names through the UNO Q host's Avahi socket.
-The deployment script mounts `/run/avahi-daemon` read-only into the container;
-this is a directory mount so daemon restarts can replace the socket safely.
-Answers are cached for five seconds, then refreshed, allowing DHCP changes.
-Gameplay, connection testing, and both pairing methods use this resolver.
-Ordinary DNS names and IP addresses continue to use the normal system resolver.
-No fixed RetroPie address is written to `/etc/hosts`. Generic container tools
-such as `getent` may still lack mDNS; test through the app's Connection page.
+Both machine installers install `avahi-daemon` and `libnss-mdns` and enable Avahi at boot. The UNO Q host dependency supports native hostname lookups; it does not replace the app-owned resolver used inside the container. Setup check mode verifies the dependency and Avahi service, and the UNO Q check tests the configured destination inside the app.
 
-If App Lab regenerates its Compose file during a fresh import, rerun deployment
-or the installation step below to restore the mount. Restarting or rebooting an
-existing configured container retains it.
+The app-owned `local:avahi_resolver` brick survives App Lab container regeneration.
+It mounts `/run/avahi-daemon` read-only in a separate unprivileged service and
+exposes only IPv4 `.local` queries through `data/.avahi-resolver.sock`. It has
+no network interface or published port. The app prefers this private socket;
+the direct host socket remains a compatibility fallback. Both sockets are
+runtime files, not configuration to back up or distribute.
+
+All gameplay and pairing lookups use this resolver. Answers expire after five
+seconds, so DHCP changes do not require editing an address. Ordinary DNS names
+use the system resolver. Generic container `getent` is not the app's mDNS test;
+use Connection's hostname test or the setup command's check mode.
 
 ## Known limitation: UNO Q restarts after Shutdown
 
@@ -649,3 +653,13 @@ including when connected directly to a Mac without the powered hub. The helper
 requests halt correctly, but remaining stopped is not verified. Do not use loss
 of the website or a fixed delay as confirmation that power can safely be removed.
 See the installation guide for the investigation status and Arduino guidance.
+
+
+## Saved neutral-hand calibration
+
+The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, and wrist angle; it is not a personally trained gesture model. Learn, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating position.
+
+On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Hold your hand in a comfortable neutral position, then use **Calibrate** if necessary. A storage failure is reported as `calibration_save_error` in status; the reference remains usable in memory but will not survive a worker restart. The file is local runtime data, not a source or release-package file.
+
+
+For a failed console lookup, follow the installation guide's **FAQ: What if the console name cannot be resolved?** Start with **Test console name** inside Connection. A router-reserved IPv4 address is a fallback, not a prerequisite. Both the resolver and the saved neutral-hand calibration have now been checked after a physical UNO Q reboot; the calibration values remained unchanged.

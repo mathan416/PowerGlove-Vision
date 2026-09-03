@@ -294,7 +294,8 @@ class ControlStateTests(unittest.TestCase):
         for page in (DASHBOARD, SETUP):
             self.assertIn(b">Shutdown</button>", page)
             self.assertIn(b"/api/system/shutdown", page)
-            self.assertIn(b"restore or cycle power", page.lower())
+            self.assertIn(b"restart automatically", page.lower())
+            self.assertIn(b"does not confirm it is safe to remove power", page.lower())
 
     def test_runtime_profile_selector_is_dashboard_only(self):
         self.assertIn(b"id=profile-selector", DASHBOARD)

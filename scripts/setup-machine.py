@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added repeatable host installers with backups and explicit health reports.
+#   2026-09-03 - Install and check mDNS dependencies and boot service on both machines.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Run on the target Linux host: setup-machine.py {retropie,uno-q} [--check]."""
@@ -101,7 +102,8 @@ def install_retropie(peer):
     if not launcher.exists() and not peer:
         raise ValueError("First installation requires --peer YOUR-UNO-Q.local")
     run("apt-get", "update")
-    run("apt-get", "install", "-y", "python3", "python3-evdev", "openssl")
+    run("apt-get", "install", "-y", "python3", "python3-evdev", "openssl", "avahi-daemon", "libnss-mdns")
+    run("systemctl", "enable", "--now", "avahi-daemon")
     run("modprobe", "uinput")
     write_file("/etc/modules-load.d/powerglove.conf", "uinput\n")
     destination = Path("/opt/powerglove-src")
@@ -149,7 +151,7 @@ def install_unoq(peer):
     if (app / "data/shutdown-request").exists():
         raise ValueError("A pending shutdown request exists; remove it deliberately before setup")
     run("apt-get", "update")
-    run("apt-get", "install", "-y", "avahi-daemon")
+    run("apt-get", "install", "-y", "avahi-daemon", "libnss-mdns")
     run("systemctl", "enable", "--now", "avahi-daemon")
     for suffix, directory in (("path", "/etc/systemd/system"), ("service", "/etc/systemd/system"), ("conf", "/etc/tmpfiles.d")):
         name = "powerglove-system-shutdown." + suffix
@@ -212,6 +214,9 @@ class Report:
 
 def check_retropie(report):
     """Inspect boot configuration, receiver prerequisites and launch integration."""
+    report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
+    report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])
+    report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
     report.check("uinput device exists", Path("/dev/uinput").exists())
     report.command("Receiver Python dependency", ["python3", "-c", "import evdev"])
     report.command("Delayed boot timer enabled", ["systemctl", "is-enabled", "--quiet", "powerglove-receiver.timer"])
@@ -236,7 +241,9 @@ def check_retropie(report):
 
 
 def check_unoq(report):
-    """Check the host services, persistent resolver mount and public application health."""
+    """Check boot persistence, the app-owned resolver and public application health."""
+    report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
+    report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
     report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])
     report.command("Shutdown helper enabled", ["systemctl", "is-enabled", "--quiet", "powerglove-system-shutdown.path"])
     report.command("Shutdown helper running", ["systemctl", "is-active", "--quiet", "powerglove-system-shutdown.path"])
@@ -257,7 +264,7 @@ def check_unoq(report):
         report.check("Application HTTP status", bool(status.get("version")))
     except (OSError, ValueError):
         report.check("Application HTTP status", False)
-    report.check("Persistent Avahi mount configured", "target: /run/avahi-daemon" in (SOURCE / ".cache/app-compose.yaml").read_text())
+    report.check("App-owned Avahi resolver configured", "local:avahi_resolver" in (SOURCE / "app.yaml").read_text() and (SOURCE / "bricks/local/avahi_resolver/brick_compose.yaml").is_file())
     code = ("import json; from pathlib import Path; from powerglove_vision.resolver import resolve_ipv4; "
             "d=json.loads(Path('/app/data/device.json').read_text()); resolve_ipv4(d['receiver'])")
     if status.get("connection_configured"):

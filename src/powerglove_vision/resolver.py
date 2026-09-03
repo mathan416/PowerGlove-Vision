@@ -15,13 +15,15 @@ import time
 from pathlib import Path
 
 AVAHI_SOCKET = "/run/avahi-daemon/socket"
+APP_AVAHI_SOCKET = Path(__file__).resolve().parents[2] / "data/.avahi-resolver.sock"
 _cache = {}
 
 
 def resolve_ipv4(host):
     """Resolve an IPv4 destination, refreshing local addresses every five seconds."""
     name = host.rstrip(".")
-    if not name.lower().endswith(".local") or not Path(AVAHI_SOCKET).exists():
+    endpoint = str(APP_AVAHI_SOCKET) if APP_AVAHI_SOCKET.exists() else AVAHI_SOCKET
+    if not name.lower().endswith(".local") or not Path(endpoint).exists():
         return socket.gethostbyname(host)
     if not name.isascii() or any(c.isspace() for c in name) or len(name) > 253:
         raise socket.gaierror("Invalid local hostname")
@@ -31,7 +33,7 @@ def resolve_ipv4(host):
         return cached[1]
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         connection.settimeout(0.5)
-        connection.connect(AVAHI_SOCKET)
+        connection.connect(endpoint)
         connection.sendall(("RESOLVE-HOSTNAME-IPV4 " + name + "\n").encode("ascii"))
         response = b""
         while b"\n" not in response and len(response) < 1024:

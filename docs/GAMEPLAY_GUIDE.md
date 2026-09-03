@@ -15,7 +15,7 @@ First startup can take longer; the elapsed-seconds display confirms that the
 page is still updating. **Calibrate** becomes available when vision is active.
 
 1. Stand where the camera can see your whole hand with a little room on every side.
-2. Open your hand, face your palm toward the camera, and select **Calibrate**.
+2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved neutral position.
 3. Wait for tracking to settle, then select **Start controller**.
 4. Move your whole hand away from center for directions. Return to center to stop.
 5. Make one gesture at a time. Clean poses beat frantic motion.
@@ -257,7 +257,7 @@ changing the ROM or emulator.
 2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**,
    **H: General**, or another Program
    A-I profile from **Active profile**.
-3. Return to the game, select **Calibrate**, and then **Start controller**.
+3. Use **Calibrate** on the Dashboard only if your neutral position needs adjusting, then select **Start controller** and return to the game.
 4. Test movement, both action gestures, Start, and Select before committing to a
    long session. Stop the controller immediately if a gesture remains active.
 
@@ -318,3 +318,8 @@ and publisher logos.
 Power Glove Vision is an independent MIT-licensed hobbyist project by Iain
 Bennett. Nintendo, NES, Power Glove, and all game titles and marks belong to
 their respective owners. No ROM images or original game artwork are distributed.
+
+
+### Reading the camera overlay
+
+**Right** and **Left** label the detected hand; the adjacent confidence score is handedness confidence, not a left/right movement command. Check the Dashboard D-pad/buttons and axes for generated controls. Learn uses the same saved neutral reference as gameplay; it does not train and save a personal hand-recognition model.
