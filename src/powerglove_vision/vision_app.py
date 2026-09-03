@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Added lazy vision activation and a persistent camera-free idle state.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output."""
@@ -26,6 +27,7 @@ from .gesture import GestureConfig, GestureEngine
 from .matrix import MatrixStatus, UnoQMatrix
 from .model import ControllerState
 from .profile_control import ProfileCommandServer, read_token
+from .runtime_assets import ensure_hand_landmarker_model
 from .tracker import MediaPipeTracker
 from .transport import UdpSender
 
@@ -70,88 +72,112 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _open_camera(args: argparse.Namespace):
+    """Open and warm the selected UVC camera only when gestures are active."""
+    import cv2
+
+    for camera_device in camera_candidates(args.camera):
+        backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
+        candidate = cv2.VideoCapture(camera_device, backend)
+        candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+        candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+        candidate.set(cv2.CAP_PROP_FPS, args.fps)
+        candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        warmup_deadline = time.monotonic() + 5.0
+        while candidate.isOpened() and time.monotonic() < warmup_deadline:
+            ok, _frame = candidate.read()
+            if ok:
+                return cv2, candidate
+            time.sleep(0.1)
+        candidate.release()
+    raise CameraUnavailableError(f"camera '{args.camera}' is unavailable; waiting for a USB camera")
+
+
+def _close_vision(capture, tracker) -> None:
+    """Release optional camera and MediaPipe resources after a profile transition."""
+    if capture is not None:
+        capture.release()
+    if tracker is not None:
+        tracker.close()
+
+
+def _base_status(profile: str | None, game: str, source: str, controller_enabled: bool) -> dict:
+    """Build a neutral dashboard state for idle, starting, and error modes."""
+    status = ControllerState.released(0, time.monotonic(), profile or "off").to_dict()
+    status.update({
+        "calibrating": False,
+        "game": game,
+        "active_profile": profile or "off",
+        "profile_source": source,
+        "receiver_available": False,
+        "receiver_error": "Gestures are paused" if profile is None else "Vision is not ready",
+        "controller_enabled": controller_enabled,
+        "camera_available": False,
+    })
+    return status
+
+
 def main() -> int:
-    """Run the complete vision-to-controller worker until shutdown or camera loss."""
+    """Keep profile control online while starting vision resources only when needed."""
     args = build_parser().parse_args()
     matrix = UnoQMatrix(enabled=not args.no_matrix)
-    matrix.set_status(MatrixStatus.LOADING)
+    current_profile: str | None = None if args.profile == "off" else args.profile
+    current_game = "Startup default"
+    profile_source = "startup"
+    controller_enabled = args.controller_enabled
+    token = read_token(args.token, None)
+    sender = UdpSender(args.receiver, args.port, args.token)
+    profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
+    shared = SharedDebugState(controller_enabled)
+    server = start_debug_server(shared, args.web_host, args.web_port)
+    capture = tracker = engine = cv2 = None
+    retry_at = 0.0
+    read_failures = 0
+    vision_error: str | None = None
 
-    try:
-        import cv2
-
-        token = read_token(args.token, None)
-        engine: GestureEngine | None = GestureEngine(args.profile, _load_config(args.profile, args.config))
-        current_profile: str | None = args.profile
-        current_game = "Startup default"
-        candidates = camera_candidates(args.camera)
-        capture = None
-        for camera_device in candidates:
-            backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
-            candidate = cv2.VideoCapture(camera_device, backend)
-            candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-            candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
-            candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
-            candidate.set(cv2.CAP_PROP_FPS, args.fps)
-            candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            # UVC cameras such as the Razer Kiyo can need several seconds to
-            # wake and negotiate a stream after boot or an application restart.
-            warmup_deadline = time.monotonic() + 5.0
-            while candidate.isOpened() and time.monotonic() < warmup_deadline:
-                ok, _frame = candidate.read()
-                if ok:
-                    capture = candidate
-                    break
-                time.sleep(0.1)
-            if capture is not None:
-                break
-            candidate.release()
-        if capture is None:
-            raise CameraUnavailableError(f"camera '{args.camera}' is unavailable; waiting for a USB camera")
-        tracker = MediaPipeTracker(args.glove_color, mirror=not args.no_mirror, model_path=args.model)
-        sender = UdpSender(args.receiver, args.port, args.token)
-        profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
-        shared = SharedDebugState(args.controller_enabled)
-        server = start_debug_server(shared, args.web_host, args.web_port)
-    except CameraUnavailableError as exc:
-        matrix.set_status(MatrixStatus.ERROR)
-        print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
-        return 2
-    except Exception:
-        matrix.set_status(MatrixStatus.ERROR)
-        raise
-
-    matrix.set_status(MatrixStatus.READY)
+    matrix.set_status(MatrixStatus.GESTURES_IDLE if current_profile is None else MatrixStatus.LOADING)
     matrix.set_profile(current_profile)
     signal.signal(signal.SIGTERM, _shutdown_on_signal)
-    controller_enabled = args.controller_enabled
 
     try:
-        read_failures = 0
         while True:
-            ok, frame = capture.read()
-            if not ok:
-                read_failures += 1
-                if read_failures >= max(10, args.fps * 2):
-                    raise CameraUnavailableError("camera stopped delivering frames; reconnecting")
-                time.sleep(0.05)
-                continue
-            read_failures = 0
             request = profile_server.take()
-            if request is not None:
+            # Give the authenticated game lifecycle command priority without
+            # consuming a simultaneous Dashboard request; it remains queued
+            # for the following loop iteration.
+            dashboard_request = None if request is not None else shared.take_profile_request()
+            requested_profile = request.profile if request is not None else (
+                dashboard_request[0] if dashboard_request is not None else current_profile
+            )
+            if request is not None or dashboard_request is not None:
                 if controller_enabled and engine is not None:
                     sender.send(ControllerState.released(
                         2_147_483_647, time.monotonic(), current_profile or "off", engine.calibrated
                     ))
-                sender.new_session()
-                current_profile = request.profile
-                current_game = request.rom or request.system or "No game"
-                engine = (
-                    GestureEngine(current_profile, _load_config(current_profile, args.config))
-                    if current_profile else None
-                )
+                if requested_profile != current_profile:
+                    _close_vision(capture, tracker)
+                    capture = tracker = engine = cv2 = None
+                    shared.update_status(
+                        _base_status(requested_profile, current_game, profile_source, controller_enabled),
+                        clear_frame=True,
+                    )
+                    sender.new_session()
+                    retry_at = 0.0
+                    read_failures = 0
+                    vision_error = None
+                current_profile = requested_profile
+                if request is not None:
+                    current_game = request.rom or request.system or "No game"
+                    profile_source = "RetroPie launch hook"
+                else:
+                    assert dashboard_request is not None
+                    profile_source = dashboard_request[1]
+                    current_game = dashboard_request[2]
                 matrix.set_profile(current_profile)
-                matrix.set_status(MatrixStatus.READY)
-                profile_server.acknowledge(request, True, current_profile)
+                matrix.set_status(MatrixStatus.GESTURES_IDLE if current_profile is None else MatrixStatus.LOADING)
+                if request is not None:
+                    profile_server.acknowledge(request, True, current_profile)
 
             controller_request = shared.take_controller_request()
             if controller_request is not None and controller_request != controller_enabled:
@@ -164,26 +190,88 @@ def main() -> int:
 
             if shared.take_calibration_request() and engine is not None:
                 engine.begin_calibration()
+
+            if current_profile is None:
+                status = _base_status(None, current_game, profile_source, controller_enabled)
+                status["vision_state"] = "idle"
+                shared.update_status(status, clear_frame=True)
+                matrix.set_status(MatrixStatus.GESTURES_IDLE)
+                time.sleep(0.1)
+                continue
+
+            if capture is None or tracker is None or engine is None or cv2 is None:
+                now = time.monotonic()
+                status = _base_status(current_profile, current_game, profile_source, controller_enabled)
+                if now < retry_at:
+                    status.update({
+                        "vision_state": "error",
+                        "vision_error": vision_error or "Camera or tracker unavailable; retrying",
+                    })
+                    shared.update_status(status, clear_frame=True)
+                    time.sleep(0.1)
+                    continue
+                status["vision_state"] = "starting"
+                shared.update_status(status, clear_frame=True)
+                matrix.set_status(MatrixStatus.LOADING)
+                try:
+                    model_path = args.model
+                    if model_path is None or model_path.name == "hand_landmarker.task":
+                        data_directory = model_path.parent.parent if model_path is not None else Path("data")
+                        model_path = ensure_hand_landmarker_model(data_directory)
+                    elif not model_path.is_file():
+                        raise RuntimeError(f"MediaPipe hand model not found: {model_path}")
+                    cv2, capture = _open_camera(args)
+                    tracker = MediaPipeTracker(
+                        args.glove_color, mirror=not args.no_mirror, model_path=model_path
+                    )
+                    engine = GestureEngine(current_profile, _load_config(current_profile, args.config))
+                    vision_error = None
+                    matrix.set_status(MatrixStatus.READY)
+                except (CameraUnavailableError, OSError, RuntimeError) as exc:
+                    _close_vision(capture, tracker)
+                    capture = tracker = engine = cv2 = None
+                    retry_at = time.monotonic() + 5.0
+                    vision_error = str(exc)
+                    status.update({"vision_state": "error", "vision_error": vision_error})
+                    shared.update_status(status, clear_frame=True)
+                    matrix.set_status(MatrixStatus.ERROR)
+                    print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
+                continue
+
+            ok, frame = capture.read()
+            if not ok:
+                read_failures += 1
+                if read_failures >= max(10, args.fps * 2):
+                    _close_vision(capture, tracker)
+                    capture = tracker = engine = cv2 = None
+                    retry_at = time.monotonic() + 1.0
+                    vision_error = "Camera stopped delivering frames; reconnecting"
+                    status = _base_status(current_profile, current_game, profile_source, controller_enabled)
+                    status.update({"vision_state": "error", "vision_error": vision_error})
+                    shared.update_status(status, clear_frame=True)
+                    matrix.set_status(MatrixStatus.ERROR)
+                else:
+                    time.sleep(0.05)
+                continue
+            read_failures = 0
             result = tracker.process(frame)
-            state = (
-                engine.update(result.observation)
-                if engine is not None
-                else ControllerState.released(0, result.observation.timestamp, "off")
-            )
+            state = engine.update(result.observation)
             matrix.set_status(
                 MatrixStatus.TRACKING
-                if current_profile and state.detected and state.calibrated
+                if state.detected and state.calibrated
                 else MatrixStatus.READY
             )
             receiver_available = sender.send(state) if controller_enabled else False
             status = state.to_dict()
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
             status["game"] = current_game
-            status["active_profile"] = current_profile or "off"
-            status["profile_source"] = "RetroPie launch hook" if request is not None or current_game != "Startup default" else "startup"
+            status["active_profile"] = current_profile
+            status["profile_source"] = profile_source
             status["receiver_available"] = receiver_available
             status["receiver_error"] = sender.last_error if controller_enabled else "Controller connection stopped"
             status["controller_enabled"] = controller_enabled
+            status["camera_available"] = True
+            status["vision_state"] = "active"
             cv2.putText(
                 result.frame,
                 "GESTURES OFF" if engine is None else (
@@ -199,19 +287,15 @@ def main() -> int:
     except KeyboardInterrupt:
         matrix.set_status(MatrixStatus.OFF)
         return 0
-    except CameraUnavailableError as exc:
-        matrix.set_status(MatrixStatus.ERROR)
-        print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
-        return 2
     except Exception:
         matrix.set_status(MatrixStatus.ERROR)
         raise
     finally:
-        released = engine.update(type(result.observation)(time.monotonic(), False)) if engine is not None and 'result' in locals() else None
-        if released and controller_enabled:
-            sender.send(released)
-        capture.release()
-        tracker.close()
+        if engine is not None and controller_enabled:
+            sender.send(ControllerState.released(
+                2_147_483_647, time.monotonic(), current_profile or "off", engine.calibrated
+            ))
+        _close_vision(capture, tracker)
         sender.close()
         profile_server.close()
         server.shutdown()

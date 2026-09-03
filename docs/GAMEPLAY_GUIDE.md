@@ -249,8 +249,8 @@ changing the ROM or emulator.
 
 1. Launch the NES or Famicom game normally. An unregistered game safely turns
    gesture output off instead of inheriting the previous game's controls.
-2. Open UNO Q **Setup**, choose Program A, D, H, or another Program A-I profile,
-   then select **Save & restart tracker**.
+2. Open the UNO Q **Dashboard** and choose Program A, D, H, or another Program
+   A-I profile from **Active profile**.
 3. Return to the game, select **Center hand**, and then **Start controller**.
 4. Test movement, both action gestures, Start, and Select before committing to a
    long session. Stop the controller immediately if a gesture remains active.

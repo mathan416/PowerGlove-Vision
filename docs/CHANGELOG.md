@@ -7,6 +7,22 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+### Added
+
+- Added a live active-profile selector to the Dashboard without changing the
+  startup profile saved on Setup.
+- Added a dedicated matrix gestures-idle state with a pinball-style animated
+  glove, separate from both true shutdown and the flashing error X.
+
+### Changed
+
+- Made **Gestures off** a healthy worker state that releases controller input,
+  closes the camera and MediaPipe tracker, and keeps the website and
+  authenticated RetroPie profile listener available.
+- Made camera and model initialization lazy so idle mode performs no capture or
+  vision processing and can return to an active profile without restarting the
+  website.
+
 ### Documentation
 
 - Standardized source headers with each file's purpose, author, copyright,

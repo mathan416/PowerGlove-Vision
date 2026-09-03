@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Added live Dashboard profile selection and idle presentation.
 #   2026-09-03 - Published shutdown requests atomically for reliable host handoff.
 #   2026-09-03 - Added the offline Markdown Help library.
 #   2026-09-03 - Added the dynamic cabinet connection page.
@@ -68,6 +69,7 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .label{{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px}}.value{{font:800 21px system-ui;margin-top:6px;overflow-wrap:anywhere}}.good{{color:var(--green)}}.warn{{color:#ffd75e}}.bad{{color:#ff6f75}}
 .camera{{width:100%;aspect-ratio:4/3;object-fit:contain;background:#050608;border:1px solid var(--line);border-radius:14px;margin-top:14px}}
 .dashboard-workspace{{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(430px,.95fr);gap:14px;align-items:start;margin-top:14px}}.dashboard-workspace .camera{{height:min(38vh,340px);aspect-ratio:auto;margin:0}}.dashboard-controls{{margin:10px 0 0}}
+.camera-stage{{position:relative}}.camera-idle{{display:none;height:min(38vh,340px);align-items:center;justify-content:center;text-align:center;padding:30px;background:radial-gradient(circle,#17284b,#050608 62%);border:1px solid var(--line);border-radius:14px;color:var(--cyan);font:900 24px/1.25 system-ui}}.camera-idle small{{display:block;margin-top:10px;color:var(--muted);font:14px/1.45 ui-monospace,monospace}}.profile-select{{margin-top:6px;padding:7px 9px;font:800 15px system-ui}}
 .diagnostic-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.diagnostic-grid .card{{padding:10px}}.diagnostic-grid h2{{font-size:15px;margin-bottom:6px}}.diagnostic-grid .label{{font-size:9px}}.diagnostic-grid .bits{{gap:5px;margin-top:6px}}.diagnostic-grid .bit{{padding:3px 5px;font-size:12px}}.diagnostic-grid .meter{{height:6px;margin-top:4px}}.diagnostic-grid .events{{height:110px}}
 .controls{{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}}button,.button{{border:0;border-radius:8px;padding:12px 16px;background:var(--blue);color:white;font:800 15px system-ui;cursor:pointer;text-decoration:none}}button.secondary{{background:#272d3c}}button.danger{{background:var(--red)}}button:disabled{{opacity:.5;cursor:wait}}
 .meter{{height:8px;background:#080a10;border-radius:9px;margin-top:10px;overflow:hidden}}.meter i{{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));transition:width .15s}}
@@ -93,33 +95,34 @@ DASHBOARD = _page(
     """<h1>I love the Power Glove. It’s so bad.</h1><p class='lead dashboard-lead'>Live vision, gesture and controller diagnostics from your camera-only Power Glove.</p>
 <div class=status-grid>
  <div class=card><div class=label>System</div><div class=value id=system>Starting</div></div>
- <div class=card><div class=label>Active profile</div><div class=value id=profile>—</div></div>
+ <div class=card><label class=label for=profile-selector>Active profile</label><select class=profile-select id=profile-selector><option value=bad_street_brawler>Bad Street Brawler</option><option value=super_glove_ball>Super Glove Ball</option><option value=off>Gestures off</option><option value=program_a>Program A</option><option value=program_b>Program B</option><option value=program_c>Program C</option><option value=program_d>Program D</option><option value=program_e>Program E</option><option value=program_f>Program F</option><option value=program_g>Program G</option><option value=program_h>Program H</option><option value=program_i>Program I</option></select><div class=label id=profile-source style='margin-top:6px'>—</div></div>
  <div class=card><div class=label>Game</div><div class=value id=game>—</div></div>
  <div class=card><div class=label>Hand tracking</div><div class=value id=tracking>—</div><div class=meter><i id=confidence></i></div></div>
  <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
 </div>
-<div class=dashboard-workspace><div><img class=camera src=/stream alt='Live camera view'>
+<div class=dashboard-workspace><div><div class=camera-stage><img class=camera id=camera data-src=/stream alt='Live camera view'><div class=camera-idle id=camera-idle>POWER GLOVE VISION<small>Gestures are paused. Select a profile to resume.</small></div></div>
 <div class='controls dashboard-controls'><button id=center>Center hand</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection setup</a><button class=danger id=shutdown-system>Shutdown system</button></div></div>
 <div class=diagnostic-grid>
  <section class=card><h2>Controller output</h2><div class=label>Directions</div><div class=bits id=dpad></div><div class=label style='margin-top:14px'>Buttons</div><div class=bits id=buttons></div></section>
  <section class=card><h2>Axes</h2><div id=axes></div></section>
  <section class=card><h2>Finger curl</h2><div id=fingers></div></section>
  <section class='card events-card'><h2>Recent events</h2><div class=events id=events><div>Waiting for tracker…</div></div></section>
-</div></div>""",
-    r"""const $=id=>document.getElementById(id), names={bad_street_brawler:'Bad Street Brawler',super_glove_ball:'Super Glove Ball',off:'Off'};
-const pretty=p=>names[p]||(p&&p.startsWith('program_')?'Program '+p.slice(-1).toUpperCase():p||'—');
+</div></div><div class=notice id=dashboard-notice></div>""",
+    r"""const $=id=>document.getElementById(id);
 const bits=(id,obj)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<span class="bit ${v?'on':''}">${k.toUpperCase()}</span>`).join('')||'<span class=bit>None</span>'};
 const bars=(id,obj,max=32767)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<div class=label>${k}: ${v}</div><div class=meter><i style="width:${Math.min(100,Math.abs(v)/max*100)}%"></i></div>`).join('')||'—'};
-let seen=[]; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();
-$('system').textContent=s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'); $('system').className='value '+(s.worker_running?'good':'warn');
-$('profile').textContent=pretty(s.active_profile||s.configured_profile); $('game').textContent=s.game||'Startup default';
-$('receiver').textContent=s.controller_enabled?(s.receiver_available===true?'Sending controls':'Waiting for console'):'Stopped'; $('receiver').className='value '+(s.receiver_available===true?'good':'warn');
+let seen=[],switching=false,desiredProfile=''; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off';
+$('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||s.worker_running?'good':'warn'));
+if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
+$('camera').style.display=idle?'none':'block';$('camera-idle').style.display=idle?'flex':'none';if(idle){$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){$('camera').src=$('camera').dataset.src+'?t='+Date.now()}$('center').disabled=idle;
+$('receiver').textContent=s.controller_enabled?(idle?'Ready when gestures resume':(s.receiver_available===true?'Sending controls':'Waiting for console')):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle?'good':'warn');
 $('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start controller'; $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false';
-$('tracking').textContent=s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand'); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
+$('tracking').textContent=idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);
 for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');
 }catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}} setInterval(update,250);update();
 $('center').onclick=async()=>{await fetch('/calibrate',{method:'POST'});};
+$('profile-selector').onchange=async()=>{const p=$('profile-selector'),notice=$('dashboard-notice');desiredProfile=p.value;switching=true;p.disabled=true;notice.textContent='Switching profile…';try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:desiredProfile})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Could not change profile.');notice.textContent=desiredProfile==='off'?'Gestures paused. Camera capture is stopping.':'Profile selected. Vision is starting and will ask you to center your hand.';}catch(e){switching=false;p.disabled=false;notice.textContent=e.message;update()}};
 $('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};
 $('shutdown-system').onclick=()=>shutdownSystem($('shutdown-system'));
 async function shutdownSystem(button){if(!confirm('Shut down the entire UNO Q system? Controller input will stop and Linux will shut down safely. To start it again, restore or cycle power.'))return;button.disabled=true;button.textContent='Shutting down…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('system').textContent='Shutting down safely';$('system').className='value warn';}catch(e){button.disabled=false;button.textContent='Shutdown system';alert(e.message);}}""",
@@ -406,6 +409,7 @@ class ControlState:
         with self.lock:
             self.worker_status = status
             self.worker_running = True
+            self.camera_available = bool(status.get("camera_available", False))
             self.last_error = None
 
 
@@ -517,6 +521,19 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     except (OSError, urllib.error.URLError):
                         pass
                     _send(self, 200, json.dumps({"controller_enabled": enabled}).encode(), "application/json")
+                elif path == "/api/profile":
+                    profile = str(self.json_body(require_json=True).get("profile", ""))
+                    if profile not in PROFILES:
+                        raise ValueError("Choose a supported gesture profile.")
+                    request = urllib.request.Request(
+                        WORKER_URL + "/profile",
+                        method="POST",
+                        data=json.dumps({"profile": profile}).encode(),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with urllib.request.urlopen(request, timeout=1) as response:
+                        result = response.read()
+                    _send(self, 202, result, "application/json")
                 elif path == "/api/system/shutdown":
                     incoming = self.json_body(require_json=True)
                     if self.headers.get("X-PowerGlove-Action") != "shutdown":

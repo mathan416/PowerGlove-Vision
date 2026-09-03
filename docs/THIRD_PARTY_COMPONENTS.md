@@ -60,10 +60,11 @@ PowerGlove Vision uses Google's float16 Hand Landmarker task bundle.
 | Size | 7,819,105 bytes |
 
 The model is not tracked in Git and is not included in the App Lab installation
-ZIP. On first launch, the application downloads it from Google's versioned URL
-into the private, persistent `data/models/` directory. It refuses to start the
-vision worker if the SHA-256 checksum differs, reports the problem on the
-dashboard, and retries without taking the web interface offline. Later
+ZIP. The first time an active gesture profile needs vision, the application
+downloads it from Google's versioned URL into the private, persistent
+`data/models/` directory. **Gestures off** does not download or open the model.
+If the SHA-256 checksum differs, the active vision state reports the problem on
+the dashboard and retries without taking the web interface offline. Later
 launches reuse the verified cached model. Wi-Fi deployments preserve `data/`,
 so an application update does not download the model again.
 

@@ -190,7 +190,8 @@ cycle through camera indexes when no UVC device exists.
 
 ## Profiles
 
-The setup page can choose:
+The Dashboard can change the active profile for the current session, and Setup
+can choose the profile used at startup:
 
 - Bad Street Brawler
 - Super Glove Ball
@@ -214,13 +215,15 @@ system also turns gestures off.
 
 1. Launch an unregistered NES or Famicom game. Confirm that PowerGlove Vision
    reports **Gestures off**.
-2. Open **Setup** on the UNO Q and choose Program A, D, H, or another profile.
-3. Select **Save & restart tracker**.
+2. Open the UNO Q **Dashboard** and choose Program A, D, H, or another profile.
+3. Wait for vision to start and ask for centering.
 4. Center your hand, select **Start controller**, and test movement and actions.
 5. Stop the controller before changing profiles or games.
 
 This temporary choice is ideal for discovery. It does not change the automatic
-game registry.
+game registry or the startup profile saved in Setup. While **Gestures off** is
+selected, the camera and MediaPipe tracker are closed and the UNO Q matrix runs
+its animated glove attract sequence.
 
 ### Keep a working combination
 

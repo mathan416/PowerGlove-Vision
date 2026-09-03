@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Delegated idle and active vision lifecycle to the persistent worker.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Arduino App Lab entry point for PowerGlove Vision."""
@@ -27,10 +28,6 @@ from pathlib import Path
 APP_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = APP_ROOT / "data" / "device.json"
 sys.path.insert(0, str(APP_ROOT / "src"))
-
-from powerglove_vision.camera import camera_connected
-from powerglove_vision.runtime_assets import ensure_hand_landmarker_model
-
 
 def _shutdown_on_signal(_signum: int, _frame: object) -> None:
     """Convert process termination into the supervisor's normal cleanup path."""
@@ -99,37 +96,20 @@ def main() -> int:
     })
 
     process: subprocess.Popen | None = None
-    model_path: Path | None = None
+    model_path = APP_ROOT / "data" / "models" / "hand_landmarker.task"
     signal.signal(signal.SIGTERM, _shutdown_on_signal)
     try:
-        # Keep App Lab alive without a camera. The worker is retried so plugging
-        # a UVC camera in later is enough; no reboot or command is needed.
+        # The worker keeps its lightweight control plane alive while gestures
+        # are paused and owns lazy camera/model activation for active profiles.
         while True:
             settings = load_device_config()
             matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
-            camera_setting = str(settings.get("camera", "auto"))
-            if model_path is None:
-                try:
-                    model_path = ensure_hand_landmarker_model(APP_ROOT / "data")
-                except (OSError, RuntimeError) as exc:
-                    control.update_supervisor(
-                        camera=camera_connected(camera_setting), running=False,
-                        error=f"Hand model download failed; retrying: {exc}",
-                    )
-                    matrix.set_status(MatrixStatus.ERROR)
-                    time.sleep(5)
-                    continue
-            if not camera_connected(camera_setting):
-                control.update_supervisor(camera=False, running=False, error="No UVC camera detected")
-                matrix.set_status(MatrixStatus.ERROR)
-                time.sleep(1)
-                continue
             matrix.set_status(MatrixStatus.LOADING)
             revision = control.revision
             process = subprocess.Popen(
                 worker_command(settings, model_path, control.controller_enabled()), cwd=APP_ROOT, env=environment
             )
-            control.update_supervisor(camera=True, running=True)
+            control.update_supervisor(camera=False, running=True)
             configuration_changed = False
             while process.poll() is None:
                 if revision != control.revision:
@@ -146,23 +126,29 @@ def main() -> int:
                     control.update_worker(status)
                     active_profile = status.get("active_profile")
                     matrix.set_profile(None if active_profile == "off" else active_profile)
-                    matrix.set_status(
-                        MatrixStatus.TRACKING
-                        if status.get("detected") and status.get("calibrated")
-                        else MatrixStatus.READY
-                    )
+                    vision_state = status.get("vision_state")
+                    if active_profile == "off" or vision_state == "idle":
+                        matrix.set_status(MatrixStatus.GESTURES_IDLE)
+                    elif vision_state == "starting":
+                        matrix.set_status(MatrixStatus.LOADING)
+                    elif vision_state == "error":
+                        matrix.set_status(MatrixStatus.ERROR)
+                    else:
+                        matrix.set_status(
+                            MatrixStatus.TRACKING
+                            if status.get("detected") and status.get("calibrated")
+                            else MatrixStatus.READY
+                        )
                 except (OSError, ValueError, TimeoutError):
                     pass
                 time.sleep(0.25)
             process = None
             if configuration_changed:
                 matrix.set_status(MatrixStatus.LOADING)
-                control.update_supervisor(camera=camera_connected(camera_setting), running=False)
+                control.update_supervisor(camera=False, running=False)
                 continue
             matrix.set_status(MatrixStatus.ERROR)
-            available = camera_connected(camera_setting)
-            error = "Camera disconnected; waiting for it to return" if not available else "Camera stopped responding; retrying"
-            control.update_supervisor(camera=available, running=False, error=error)
+            control.update_supervisor(camera=False, running=False, error="Vision worker stopped; retrying")
             time.sleep(5)
     except KeyboardInterrupt:
         matrix.set_status(MatrixStatus.OFF)

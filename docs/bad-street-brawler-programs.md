@@ -20,7 +20,7 @@ depth, wrist angle, and finger flex into ordinary NES controller inputs. The
 next game therefore did not need special Power Glove support.
 
 > **POWERGLOVE VISION CHANGES THE WORKFLOW**  The UNO Q keeps all nine profiles
-> ready at once. Select one on Setup or let RetroPie choose it when a game
+> ready at once. Select one on the Dashboard or let RetroPie choose it when a game
 > launches. Bad Street Brawler never has to be opened first.
 
 ## Quick selector

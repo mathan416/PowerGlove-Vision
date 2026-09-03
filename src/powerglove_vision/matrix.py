@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Added a gestures-idle state distinct from system shutdown.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Drive UNO Q LED matrix status, pairing, and active-profile displays through Router Bridge."""
@@ -26,6 +27,7 @@ class MatrixStatus(IntEnum):
     TRACKING = 3
     ERROR = 4
     PAIRING = 5
+    GESTURES_IDLE = 6
 
 
 class UnoQMatrix:

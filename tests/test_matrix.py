@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Verified gestures idle remains distinct from system off.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify LED matrix status, profile, and physical pairing-display bridge calls."""
@@ -29,6 +30,16 @@ class MatrixTests(unittest.TestCase):
                 ("set_powerglove_status", int(MatrixStatus.READY)),
             ],
         )
+
+    def test_gestures_idle_is_distinct_from_system_off(self):
+        calls = []
+        matrix = UnoQMatrix(call=lambda *args: calls.append(args))
+        matrix.set_status(MatrixStatus.GESTURES_IDLE)
+        matrix.set_status(MatrixStatus.OFF)
+        self.assertEqual(calls, [
+            ("set_powerglove_status", int(MatrixStatus.GESTURES_IDLE)),
+            ("set_powerglove_status", int(MatrixStatus.OFF)),
+        ])
 
     def test_duplicate_status_is_not_resent(self):
         calls = []

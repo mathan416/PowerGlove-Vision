@@ -7,6 +7,7 @@
 // Change log:
 //   2026-09-02 - Added to PowerGlove Vision.
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
+//   2026-09-03 - Added the gestures-idle Power Glove attract animation.
 // Full history: docs/CHANGELOG.md and Git history.
 
 #include "Arduino_RouterBridge.h"
@@ -21,6 +22,7 @@ enum PowerGloveStatus {
   PG_TRACKING = 3,
   PG_ERROR = 4,
   PG_PAIRING = 5,
+  PG_GESTURES_IDLE = 6,
 };
 
 Arduino_LED_Matrix matrix;
@@ -113,6 +115,44 @@ const char* const trackingFrames[][8] = {
 const char* const errorFrame[8] = {
   ".OO.......OO.", ".oOO.....OOo.", "...OO...OO...", "....OO.OO....",
   ".....OOO.....", "....OO.OO....", "...OO...OO...", ".OO.......OO.",
+};
+
+// Pinball-display-inspired attract sequence for the healthy gestures-paused
+// state. An energy spark sweeps in, reveals the glove, makes it clench, and
+// leaves the open glove gently glowing before the sequence repeats.
+const char* const idleFrames[][8] = {
+  {
+    "O.o..........", ".O.o.........", "..O.o........", "...O.o.......",
+    "....O.o......", "...O.o.......", "..O.o........", ".O.o.........",
+  },
+  {
+    "..O.o........", "...O.o.......", "....O.o......", ".....O.o.....",
+    "......O.o....", ".....O.o.....", "....O.o......", "...O.o.......",
+  },
+  {
+    "....O.o......", ".....O.o.....", "......O.o....", ".......O.o...",
+    "........O.o..", ".......O.o...", "......O.o....", ".....O.o.....",
+  },
+  {
+    "..o.o.o.o..O.", "..o.o.o.o.O..", "..oooooooo...", "..ooooooo....",
+    "..oooooo.....", "...oooo......", "...oooo......", "...oooo......",
+  },
+  {
+    "..O.O.O.O....", "..o.o.o.o....", "..OOOOOOOO...", "..OoooooO....",
+    "..OOOOOO.....", "...OooO......", "...OOOO......", "...OOOO......",
+  },
+  {
+    ".............", "...OOOOOO....", "..OOOOOOOO...", "..OOooooOO...",
+    "..OOOOOOOO...", "...OOOOOO....", "....OOOO.....", "....OOOO.....",
+  },
+  {
+    "O.O.O.O.O.O.O", "..O.O.O.O....", "..OOOOOOOO...", "..OOOOOOO....",
+    "..OOOOOO.....", "...OOOO......", "...OOOO......", "...OOOO......",
+  },
+  {
+    "..o.o.o.o....", "..O.O.O.O....", "..oooooooo...", "..ooooooo....",
+    "..oooooo.....", "...oooo......", "...oooo......", "...oooo......",
+  },
 };
 
 // Five-pixel-wide glyphs A-I, B, S, and G. Program profiles use a large
@@ -215,7 +255,7 @@ void drawRows(const char* const rows[8]) {
 
 // Router Bridge endpoint: request a bounded status code from the Linux app.
 void set_powerglove_status(int status) {
-  if (status < PG_OFF || status > PG_PAIRING) {
+  if (status < PG_OFF || status > PG_GESTURES_IDLE) {
     status = PG_ERROR;
   }
   requestedStatus = status;
@@ -291,5 +331,9 @@ void loop() {
     drawPairing(animationFrame);
     animationFrame = (animationFrame + 1) % 9;
     nextFrameAt = now + 650;
+  } else if (status == PG_GESTURES_IDLE) {
+    drawRows(idleFrames[animationFrame]);
+    nextFrameAt = now + (animationFrame == 6 ? 800 : (animationFrame == 7 ? 520 : 125));
+    animationFrame = (animationFrame + 1) % 8;
   }
 }

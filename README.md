@@ -155,9 +155,11 @@ App Lab supervisor maintains an isolated Python 3.12 worker with MediaPipe
 generates a private random pairing token. Keep `data/device.json` out of Git;
 copy its token to `/etc/powerglove/token` on the console.
 
-The camera setting defaults to `auto`. If no UVC camera is connected, the app
-stays alive, shows the matrix error state, and waits quietly. Connecting a
-UVC-compatible USB camera starts the tracker without a reboot.
+The camera setting defaults to `auto`. If an active profile cannot use the
+camera, the app stays alive, shows the matrix error state, and retries quietly.
+Connecting a UVC-compatible USB camera starts the tracker without a reboot.
+The **Gestures off** profile is a healthy idle state: camera capture and
+MediaPipe stop while the website and profile-command listener remain online.
 
 ### Wi-Fi and pairing
 
@@ -177,6 +179,11 @@ PowerGlove Vision always boots with controller transmission stopped. Use
 **Start controller** or **Stop controller** on either the setup page or debug
 dashboard. Vision remains active while stopped, and stopping releases every
 virtual input without restarting the camera.
+
+The Dashboard also changes the active profile without visiting Setup. This is
+a live, session-level choice and does not replace the startup profile saved on
+the Setup page. Selecting **Gestures off** releases all controls and closes the
+camera until the Dashboard or RetroPie launch hook activates another profile.
 
 **Shutdown system** appears on both pages after the fixed-purpose host helper
 is installed. It stops controller output and asks Linux to power off cleanly.
@@ -242,7 +249,8 @@ starts a new packet session, changes the mapping, begins neutral-position
 calibration, and acknowledges the selected profile.
 
 Open `http://<uno-q-name>.local:8088/debug` from another machine. The live
-dashboard shows the camera overlay, active game/profile, tracking confidence,
+dashboard shows the camera overlay, an active-profile selector, active game,
+tracking confidence,
 D-pad and button output, axes, finger curl, recent gesture events, and a
 **Center hand** button. It remains available even when the camera is unplugged.
 Calibration also begins automatically at tracker startup. The shorter root URL
@@ -268,10 +276,14 @@ matrix. It deliberately does not replace the UNO Q's protected early system
 boot display. Once the PowerGlove Vision app starts, it shows:
 
 - an animated, scanning 8-bit hand while camera and model components load;
+- a pinball-display-style glove attract animation while gestures are paused;
 - a blocky `PG` emblem before a game profile is selected;
 - a large `A`-`I`, `BS`, or `GB` acknowledgement for the active profile;
 - a gently pulsing version of that acknowledgement while tracking is active;
 - a blinking X if camera or runtime initialization fails.
+
+A true system shutdown clears the matrix. The glove attract animation therefore
+means that Linux and the website are healthy while only gesture capture is idle.
 
 Copy `sketch/` into the sketch portion of the PowerGlove Vision App Lab
 app. The Python process detects App Lab's Bridge automatically and calls the
@@ -394,9 +406,9 @@ python3 scripts/check-source-docs.py
 
 Rebuild the PDF guides after changing Markdown, then rebuild the importable App
 Lab installation ZIP. The installation package deliberately omits Google's
-Hand Landmarker model. On first launch, the UNO Q downloads the model into its
-persistent private `data/` directory and verifies its pinned SHA-256 checksum
-before use:
+Hand Landmarker model. The first time gestures are activated, the UNO Q
+downloads the model into its persistent private `data/` directory and verifies
+its pinned SHA-256 checksum before use:
 
 ```sh
 python3 scripts/build-docs-pdf.py

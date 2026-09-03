@@ -78,6 +78,10 @@ Selecting **Save** validates the fields, writes them atomically with private
 permissions, and restarts the vision worker. Hold a neutral hand in view and
 center it again after the restart.
 
+The Dashboard profile selector changes only the current active profile. It does
+not rewrite `device.json` or change the Setup page's startup profile. RetroPie
+may replace a Dashboard selection when a game starts or ends.
+
 **Start controller** and **Stop controller** change live output only. The
 controller deliberately starts stopped after an application or system restart;
 this prevents hand motion from navigating menus before you are ready.
@@ -275,7 +279,9 @@ sudo /opt/powerglove/bin/powerglove-profile \
 ```
 
 Use `--profile off` to stop gesture output. A successful request prints an
-acknowledgement and changes the profile shown on the UNO Q matrix.
+acknowledgement and starts the matrix glove attract animation. In this healthy
+idle state the camera and MediaPipe tracker are closed, while the website and
+authenticated profile listener remain available.
 
 ## Tune gesture sensitivity
 
@@ -446,7 +452,7 @@ guest, school, or public network.
 | `sketch/sketch.yaml` | UNO Q sketch platform and pinned Arduino library dependencies |
 | `pyproject.toml` | Python package metadata, supported interpreter range, and optional dependencies |
 | `python/worker-wheels/` | Platform-specific MediaPipe worker dependency supplied by the App Lab installation ZIP |
-| `data/models/hand_landmarker.task` | Checksum-verified model downloaded on first launch |
+| `data/models/hand_landmarker.task` | Checksum-verified model downloaded when vision is first activated |
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
 | `data/.shutdown-enabled` | Marker installed by the optional fixed-purpose shutdown helper |
@@ -463,8 +469,8 @@ output/app-lab/PowerGlove-Vision-Uno-Q.zip
 The installation ZIP intentionally excludes private `data/`, downloaded models,
 caches, tests, Git metadata, and the cabinet-specific quick-reference PDF. It
 includes only the nine allowlisted public PDF editions used by Help. The pinned
-Google Hand Landmarker model downloads and passes a SHA-256 check on first
-launch.
+Google Hand Landmarker model downloads and passes a SHA-256 check when an
+active profile first needs vision. Gestures-idle mode does not open it.
 
 ### Automated quality and package verification
 
@@ -507,6 +513,7 @@ not automatically migrate active configuration.
 | Controller appears but a game uses the wrong gestures | Confirm the system is `nes` or `famicom` and the exact ROM basename exists in `/etc/powerglove/games.json`. |
 | Game launches slowly while UNO Q is offline | Confirm `timeout` remains near `0.4`; the hook retries but must never block game launch indefinitely. |
 | Profile command is not acknowledged | Check the UNO Q name, UDP `55356`, pairing token, and the UNO Q application status. |
+| Gestures off shows a blinking X | Update Power Glove Vision; Gestures off should show the glove attract animation and must not open the camera. |
 | Camera disappears after reboot | Return Camera to `auto`, check powered-hub and cable stability, and inspect the UNO Q dashboard error. |
 | Movement triggers too late | Center again first; if repeatable, lower `move_on` slightly for the active profile. |
 | Direction remains stuck | Raise `move_off` slightly, keep it below `move_on`, and verify tracking-loss release. |

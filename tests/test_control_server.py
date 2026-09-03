@@ -11,6 +11,7 @@
 #   2026-09-03 - Verified the bundled Help library, Markdown reader, and assets.
 #   2026-09-03 - Verified dynamic UNO Q and RetroPie cabinet details.
 #   2026-09-03 - Verified public PDF links, routes, and allowlisting.
+#   2026-09-03 - Verified Dashboard profile switching and healthy idle status.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -32,6 +33,7 @@ from powerglove_vision.control_server import (
 from powerglove_vision.debug_server import SharedDebugState
 from powerglove_vision.help_content import guide_pdf, help_asset, render_markdown
 from powerglove_vision.help_content import cabinet_reference_content, request_browser_address
+from powerglove_vision.vision_app import _base_status
 
 
 class ControlStateTests(unittest.TestCase):
@@ -207,6 +209,51 @@ class ControlStateTests(unittest.TestCase):
             self.assertIn(b"/api/system/shutdown", page)
             self.assertIn(b"restore or cycle power", page.lower())
 
+    def test_runtime_profile_selector_is_dashboard_only(self):
+        self.assertIn(b"id=profile-selector", DASHBOARD)
+        self.assertIn(b"Gestures off", DASHBOARD)
+        self.assertIn(b"/api/profile", DASHBOARD)
+        self.assertNotIn(b"/api/profile", SETUP)
+
+    def test_runtime_profile_route_rejects_unknown_profiles(self):
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+            connection.request(
+                "POST", "/api/profile", json.dumps({"profile": "run-a-command"}),
+                {"Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 400)
+            connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_runtime_profile_route_forwards_valid_selection_to_worker(self):
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            reply = mock.MagicMock()
+            reply.__enter__.return_value.read.return_value = b'{"active_profile":"program_h"}'
+            with mock.patch("powerglove_vision.control_server.urllib.request.urlopen", return_value=reply) as open_worker:
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                connection.request(
+                    "POST", "/api/profile", json.dumps({"profile": "program_h"}),
+                    {"Content-Type": "application/json"},
+                )
+                response = connection.getresponse()
+                body = json.loads(response.read())
+                self.assertEqual(response.status, 202)
+                self.assertEqual(body["active_profile"], "program_h")
+                forwarded = open_worker.call_args.args[0]
+                self.assertEqual(forwarded.full_url, "http://127.0.0.1:8089/profile")
+                self.assertEqual(json.loads(forwarded.data), {"profile": "program_h"})
+                connection.close()
+        finally:
+            servers.shutdown()
+
     def test_shutdown_uses_only_the_fixed_host_trigger(self):
         marker = self.path.parent / ".shutdown-enabled"
         marker.touch()
@@ -269,6 +316,20 @@ class ControlStateTests(unittest.TestCase):
         shared.request_controller(True)
         self.assertTrue(shared.take_controller_request())
         self.assertIsNone(shared.take_controller_request())
+
+    def test_worker_profile_request_is_consumed_once_and_normalizes_off(self):
+        shared = SharedDebugState()
+        self.assertIsNone(shared.take_profile_request())
+        shared.request_profile(None, "Dashboard", "Manual selection")
+        self.assertEqual(shared.take_profile_request(), (None, "Dashboard", "Manual selection"))
+        self.assertIsNone(shared.take_profile_request())
+
+    def test_gestures_off_reports_healthy_camera_idle_state(self):
+        status = _base_status(None, "Manual selection", "dashboard", True)
+        status["vision_state"] = "idle"
+        self.assertEqual(status["active_profile"], "off")
+        self.assertFalse(status["camera_available"])
+        self.assertEqual(status["receiver_error"], "Gestures are paused")
 
     def test_pairing_credentials_are_rejected_over_plain_http(self):
         servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
