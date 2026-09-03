@@ -495,8 +495,10 @@ cycling power is required to start it again.
 ### Learn before you launch
 
 Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
-controller transmission and walks through ten exercises with live recognition
-feedback. RetroPie does not need to be online.
+controller transmission, starts the camera when necessary, and walks through
+ten exercises with live recognition feedback. RetroPie does not need to be
+online. Leaving Learn restores the selected profile and its camera state;
+loading or refreshing the Dashboard also reapplies the selected mode.
 
 ![PowerGlove Vision Learn page](images/learn-page.png)
 
@@ -538,10 +540,11 @@ Then deploy from the repository root:
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
 ```
 
-The script preserves private `data/`, restarts the container, and verifies the
-Learn, Debug, and secure Setup pages. If mDNS is temporarily unavailable, use
-the UNO Q's current IP address. Matrix firmware updates remain a separate App
-Lab operation; USB is the safest recovery route.
+The script preserves private `data/`, keeps PowerGlove Vision as the default
+startup app, restarts the container, and verifies the Learn, Debug, and secure
+Setup pages. If mDNS is temporarily unavailable, use the UNO Q's current IP
+address. Matrix firmware updates remain a separate App Lab operation; USB is
+the safest recovery route.
 
 ### Install the safe-shutdown helper
 

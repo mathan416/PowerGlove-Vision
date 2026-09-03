@@ -266,7 +266,6 @@ EmulationStation initializes before the virtual controller appears. This
 helps prevent frontend pauses and conflicts with other USB devices, including
 the BitPixel display, when the receiver starts too early.
 
-App Lab currently contains the active `powerglove-vision` installation and an
-older timestamped import. The older container is stopped. Keep only the active
-copy set as the default/autostart app; remove the older entry through App Lab
-after confirming its `data/device.json` is not needed.
+App Lab should contain one active `powerglove-vision` installation. Keep that
+copy set as the default/autostart app so the dashboard returns after every UNO
+Q reboot. The Wi-Fi deployment script reapplies this designation.

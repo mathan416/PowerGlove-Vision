@@ -82,6 +82,19 @@ The Dashboard profile selector changes only the current active profile. It does
 not rewrite `device.json` or change the Setup page's startup profile. RetroPie
 may replace a Dashboard selection when a game starts or ends.
 
+The Learn page uses a temporary practice session. Entering Learn starts camera
+capture and recognition even if the selected profile is **Gestures off**; the
+practice engine uses Program H internally without changing the selected
+profile. Controller packets remain suppressed. Leaving Learn restores the
+selected profile and its camera state. A Dashboard load or refresh clears any
+stale practice session, and a six-second lease timeout provides the same
+recovery if a browser closes without sending its normal release request.
+An existing Learn tab cannot reactivate practice after a Dashboard reset;
+reload Learn to begin a new practice session.
+
+More than one Learn tab may be open. Vision remains active until the last tab
+closes or its lease expires.
+
 **Start controller** and **Stop controller** change live output only. The
 controller deliberately starts stopped after an application or system restart;
 this prevents hand motion from navigating menus before you are ready.

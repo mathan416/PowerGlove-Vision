@@ -12,6 +12,7 @@
 #   2026-09-03 - Added the offline Markdown Help library.
 #   2026-09-03 - Added the dynamic cabinet connection page.
 #   2026-09-03 - Served allowlisted PDF editions from the Help Center.
+#   2026-09-03 - Added automatic Learn-page practice activation and restoration.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -120,7 +121,8 @@ $('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start
 $('tracking').textContent=idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);
 for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');
-}catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}} setInterval(update,250);update();
+}catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}}
+fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false,reset:true})}).finally(update);setInterval(update,250);
 $('center').onclick=async()=>{await fetch('/calibrate',{method:'POST'});};
 $('profile-selector').onchange=async()=>{const p=$('profile-selector'),notice=$('dashboard-notice');desiredProfile=p.value;switching=true;p.disabled=true;notice.textContent='Switching profile…';try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:desiredProfile})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Could not change profile.');notice.textContent=desiredProfile==='off'?'Gestures paused. Camera capture is stopping.':'Profile selected. Vision is starting and will ask you to center your hand.';}catch(e){switching=false;p.disabled=false;notice.textContent=e.message;update()}};
 $('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};
@@ -132,7 +134,7 @@ async function shutdownSystem(button){if(!confirm('Shut down the entire UNO Q sy
 LEARN = _page(
     "Learn gestures",
     """<h1>Train your hand.</h1><p class='lead dashboard-lead'>Practice gesture recognition without a RetroPie connection. Controller transmission is stopped while this page is open.</p>
-<div class=learn-grid><div class=learn-camera><img class=camera src=/stream alt='Live camera view for gesture practice'><div class=practice-badge>● PRACTICE ONLY</div></div>
+<div class=learn-grid><div class=learn-camera><img class=camera id=learn-camera data-src=/stream alt='Live camera view for gesture practice'><div class=practice-badge>● PRACTICE ONLY</div></div>
 <section class=card><div class=lesson-number id=lesson-number>Lesson 1 of 10</div><div class=lesson-title id=lesson-title>Show your hand</div><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
 <div class=lesson-result id=lesson-result>Waiting for your hand…</div><div class=lesson-progress id=lesson-progress></div>
 <div class=controls><button class=secondary id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button class=secondary id=center type=button>Re-center</button></div>
@@ -150,12 +152,16 @@ const lessons=[
  {title:'Give a thumbs-up',cue:'Extend your thumb and close all four fingers, then hold. This is SELECT.',ok:s=>s.buttons?.select,result:'SELECT recognized.'},
  {title:'Push toward the camera',cue:'Move your open hand closer to the camera in one deliberate push.',ok:s=>s.buttons?.glove_zap||(s.events||[]).includes('glove_zap'),result:'Push recognized — training complete!'}
 ];
-let index=0,completed=new Set(),holdStarted=0,lastSequence=-1,advancing=false;
+let index=0,completed=new Set(),holdStarted=0,lastSequence=-1,advancing=false,practiceActive=false;
+const practiceSession=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+async function practice(enabled){const r=await fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:practiceSession,enabled}),keepalive:!enabled});if(!r.ok)throw new Error('Practice camera request failed.');practiceActive=enabled;return r}
+async function startPractice(){try{await practice(true);$('learn-camera').src=$('learn-camera').dataset.src+'?t='+Date.now()}catch(e){$('lesson-result').textContent='Could not start the practice camera.';$('lesson-result').className='lesson-result'}}
+function stopPractice(){if(!practiceActive)return;practiceActive=false;fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:practiceSession,enabled:false}),keepalive:true}).catch(()=>{})}
 function action(s){const d=Object.entries(s.dpad||{}).find(([,v])=>v);if(d)return d[0].toUpperCase();const b=Object.entries(s.buttons||{}).find(([,v])=>v);if(b)return b[0].replace('_',' ').toUpperCase();const f=Object.entries(s.fingers||{}).filter(([,v])=>v>=2).map(([k])=>k);return f.length?f.join(' + '):'None'}
 function draw(s={}){const lesson=lessons[index];$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=index===0;$('next').textContent=index===lessons.length-1?'Start again':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
 async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();if(s.sequence===lastSequence)return;lastSequence=s.sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);setTimeout(()=>{if(index<lessons.length-1)index++;holdStarted=0;advancing=false;draw(s)},700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?'Try the gesture shown above.':'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
 $('previous').onclick=()=>{index=Math.max(0,index-1);holdStarted=0;advancing=false;draw()};$('next').onclick=()=>{index=index===lessons.length-1?0:index+1;if(index===0)completed.clear();holdStarted=0;advancing=false;draw()};$('center').onclick=()=>fetch('/calibrate',{method:'POST'});
-fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false})}).catch(()=>{});draw();setInterval(update,150);update();""",
+window.addEventListener('pagehide',stopPractice);draw();startPractice();setInterval(()=>{if(practiceActive)practice(true).catch(()=>{})},2000);setInterval(update,150);update();""",
 )
 
 
@@ -534,6 +540,25 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     with urllib.request.urlopen(request, timeout=1) as response:
                         result = response.read()
                     _send(self, 202, result, "application/json")
+                elif path == "/api/practice":
+                    incoming = self.json_body(require_json=True)
+                    enabled = incoming.get("enabled")
+                    if not isinstance(enabled, bool):
+                        raise ValueError("enabled must be true or false")
+                    payload = {
+                        "session": str(incoming.get("session", "")),
+                        "enabled": enabled,
+                        "reset": incoming.get("reset") is True,
+                    }
+                    request = urllib.request.Request(
+                        WORKER_URL + "/practice",
+                        method="POST",
+                        data=json.dumps(payload).encode(),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with urllib.request.urlopen(request, timeout=1) as response:
+                        result = response.read()
+                    _send(self, 200, result, "application/json")
                 elif path == "/api/system/shutdown":
                     incoming = self.json_body(require_json=True)
                     if self.headers.get("X-PowerGlove-Action") != "shutdown":

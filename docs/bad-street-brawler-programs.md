@@ -176,8 +176,10 @@ preventing a previous title's mapping from leaking into the next one.
 4. Open Debug to compare hand motion with generated controller output.
 5. Start controller delivery only when ready to play.
 
-Learn mode works without RetroPie and automatically stops controller output.
-That makes it the right place to build muscle memory.
+Learn mode works without RetroPie and automatically starts the camera while
+suppressing controller output. This also works while **Gestures off** is the
+selected profile. Leaving Learn restores the selected mode, so it is a safe
+place to build muscle memory without changing the saved or active selection.
 
 ## What remains special
 

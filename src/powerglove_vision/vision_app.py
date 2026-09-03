@@ -8,6 +8,7 @@
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added lazy vision activation and a persistent camera-free idle state.
+#   2026-09-03 - Added temporary Learn-page vision with automatic state restoration.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output."""
@@ -30,6 +31,9 @@ from .profile_control import ProfileCommandServer, read_token
 from .runtime_assets import ensure_hand_landmarker_model
 from .tracker import MediaPipeTracker
 from .transport import UdpSender
+
+
+PRACTICE_PROFILE = "program_h"
 
 
 def _shutdown_on_signal(_signum: int, _frame: object) -> None:
@@ -102,16 +106,35 @@ def _close_vision(capture, tracker) -> None:
         tracker.close()
 
 
-def _base_status(profile: str | None, game: str, source: str, controller_enabled: bool) -> dict:
+def _effective_profile(profile: str | None, practice_mode: bool) -> str | None:
+    """Choose a tracking profile while preserving an intentionally selected off state."""
+    return profile or (PRACTICE_PROFILE if practice_mode else None)
+
+
+def _base_status(
+    profile: str | None,
+    game: str,
+    source: str,
+    controller_enabled: bool,
+    *,
+    practice_mode: bool = False,
+) -> dict:
     """Build a neutral dashboard state for idle, starting, and error modes."""
-    status = ControllerState.released(0, time.monotonic(), profile or "off").to_dict()
+    vision_profile = _effective_profile(profile, practice_mode)
+    status = ControllerState.released(0, time.monotonic(), vision_profile or "off").to_dict()
     status.update({
         "calibrating": False,
         "game": game,
         "active_profile": profile or "off",
+        "vision_profile": vision_profile or "off",
+        "practice_mode": practice_mode,
         "profile_source": source,
         "receiver_available": False,
-        "receiver_error": "Gestures are paused" if profile is None else "Vision is not ready",
+        "receiver_error": (
+            "Practice mode; controller transmission is paused"
+            if practice_mode
+            else ("Gestures are paused" if profile is None else "Vision is not ready")
+        ),
         "controller_enabled": controller_enabled,
         "camera_available": False,
     })
@@ -126,6 +149,7 @@ def main() -> int:
     current_game = "Startup default"
     profile_source = "startup"
     controller_enabled = args.controller_enabled
+    practice_mode = False
     token = read_token(args.token, None)
     sender = UdpSender(args.receiver, args.port, args.token)
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
@@ -142,6 +166,7 @@ def main() -> int:
 
     try:
         while True:
+            old_vision_profile = _effective_profile(current_profile, practice_mode)
             request = profile_server.take()
             # Give the authenticated game lifecycle command priority without
             # consuming a simultaneous Dashboard request; it remains queued
@@ -150,38 +175,52 @@ def main() -> int:
             requested_profile = request.profile if request is not None else (
                 dashboard_request[0] if dashboard_request is not None else current_profile
             )
-            if request is not None or dashboard_request is not None:
+            profile_requested = request is not None or dashboard_request is not None
+            practice_request = shared.take_practice_request()
+            transition_requested = profile_requested or practice_request is not None
+            if transition_requested:
                 if controller_enabled and engine is not None:
                     sender.send(ControllerState.released(
-                        2_147_483_647, time.monotonic(), current_profile or "off", engine.calibrated
+                        2_147_483_647, time.monotonic(), engine.profile, engine.calibrated
                     ))
-                if requested_profile != current_profile:
+                current_profile = requested_profile
+                if profile_requested:
+                    if request is not None:
+                        current_game = request.rom or request.system or "No game"
+                        profile_source = "RetroPie launch hook"
+                    else:
+                        assert dashboard_request is not None
+                        profile_source = dashboard_request[1]
+                        current_game = dashboard_request[2]
+                if practice_request is not None:
+                    practice_mode = practice_request
+
+                vision_profile = _effective_profile(current_profile, practice_mode)
+                if vision_profile != old_vision_profile:
                     _close_vision(capture, tracker)
                     capture = tracker = engine = cv2 = None
                     shared.update_status(
-                        _base_status(requested_profile, current_game, profile_source, controller_enabled),
+                        _base_status(
+                            current_profile, current_game, profile_source,
+                            controller_enabled, practice_mode=practice_mode,
+                        ),
                         clear_frame=True,
                     )
                     sender.new_session()
                     retry_at = 0.0
                     read_failures = 0
                     vision_error = None
-                current_profile = requested_profile
-                if request is not None:
-                    current_game = request.rom or request.system or "No game"
-                    profile_source = "RetroPie launch hook"
-                else:
-                    assert dashboard_request is not None
-                    profile_source = dashboard_request[1]
-                    current_game = dashboard_request[2]
-                matrix.set_profile(current_profile)
-                matrix.set_status(MatrixStatus.GESTURES_IDLE if current_profile is None else MatrixStatus.LOADING)
+                matrix.set_profile(None if practice_mode else current_profile)
+                if vision_profile is None:
+                    matrix.set_status(MatrixStatus.GESTURES_IDLE)
+                elif vision_profile != old_vision_profile:
+                    matrix.set_status(MatrixStatus.LOADING)
                 if request is not None:
                     profile_server.acknowledge(request, True, current_profile)
 
             controller_request = shared.take_controller_request()
             if controller_request is not None and controller_request != controller_enabled:
-                if not controller_request and engine is not None:
+                if not controller_request and engine is not None and not practice_mode:
                     sender.send(ControllerState.released(
                         2_147_483_647, time.monotonic(), current_profile or "off", engine.calibrated
                     ))
@@ -191,7 +230,8 @@ def main() -> int:
             if shared.take_calibration_request() and engine is not None:
                 engine.begin_calibration()
 
-            if current_profile is None:
+            vision_profile = _effective_profile(current_profile, practice_mode)
+            if vision_profile is None:
                 status = _base_status(None, current_game, profile_source, controller_enabled)
                 status["vision_state"] = "idle"
                 shared.update_status(status, clear_frame=True)
@@ -201,7 +241,10 @@ def main() -> int:
 
             if capture is None or tracker is None or engine is None or cv2 is None:
                 now = time.monotonic()
-                status = _base_status(current_profile, current_game, profile_source, controller_enabled)
+                status = _base_status(
+                    current_profile, current_game, profile_source,
+                    controller_enabled, practice_mode=practice_mode,
+                )
                 if now < retry_at:
                     status.update({
                         "vision_state": "error",
@@ -224,7 +267,7 @@ def main() -> int:
                     tracker = MediaPipeTracker(
                         args.glove_color, mirror=not args.no_mirror, model_path=model_path
                     )
-                    engine = GestureEngine(current_profile, _load_config(current_profile, args.config))
+                    engine = GestureEngine(vision_profile, _load_config(vision_profile, args.config))
                     vision_error = None
                     matrix.set_status(MatrixStatus.READY)
                 except (CameraUnavailableError, OSError, RuntimeError) as exc:
@@ -246,7 +289,10 @@ def main() -> int:
                     capture = tracker = engine = cv2 = None
                     retry_at = time.monotonic() + 1.0
                     vision_error = "Camera stopped delivering frames; reconnecting"
-                    status = _base_status(current_profile, current_game, profile_source, controller_enabled)
+                    status = _base_status(
+                        current_profile, current_game, profile_source,
+                        controller_enabled, practice_mode=practice_mode,
+                    )
                     status.update({"vision_state": "error", "vision_error": vision_error})
                     shared.update_status(status, clear_frame=True)
                     matrix.set_status(MatrixStatus.ERROR)
@@ -261,21 +307,27 @@ def main() -> int:
                 if state.detected and state.calibrated
                 else MatrixStatus.READY
             )
-            receiver_available = sender.send(state) if controller_enabled else False
+            receiver_available = sender.send(state) if controller_enabled and not practice_mode else False
             status = state.to_dict()
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
             status["game"] = current_game
-            status["active_profile"] = current_profile
+            status["active_profile"] = current_profile or "off"
+            status["vision_profile"] = vision_profile
+            status["practice_mode"] = practice_mode
             status["profile_source"] = profile_source
             status["receiver_available"] = receiver_available
-            status["receiver_error"] = sender.last_error if controller_enabled else "Controller connection stopped"
+            status["receiver_error"] = (
+                "Practice mode; controller transmission is paused"
+                if practice_mode
+                else (sender.last_error if controller_enabled else "Controller connection stopped")
+            )
             status["controller_enabled"] = controller_enabled
             status["camera_available"] = True
             status["vision_state"] = "active"
             cv2.putText(
                 result.frame,
-                "GESTURES OFF" if engine is None else (
-                    "CALIBRATING - hold still" if not engine.calibrated else current_profile.replace("_", " ").upper()
+                "PRACTICE" if practice_mode else (
+                    "CALIBRATING - hold still" if not engine.calibrated else vision_profile.replace("_", " ").upper()
                 ),
                 (20, result.frame.shape[0] - 24),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.65,
@@ -291,9 +343,9 @@ def main() -> int:
         matrix.set_status(MatrixStatus.ERROR)
         raise
     finally:
-        if engine is not None and controller_enabled:
+        if engine is not None and controller_enabled and not practice_mode:
             sender.send(ControllerState.released(
-                2_147_483_647, time.monotonic(), current_profile or "off", engine.calibrated
+                2_147_483_647, time.monotonic(), engine.profile, engine.calibrated
             ))
         _close_vision(capture, tracker)
         sender.close()

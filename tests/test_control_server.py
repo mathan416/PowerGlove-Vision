@@ -12,6 +12,7 @@
 #   2026-09-03 - Verified dynamic UNO Q and RetroPie cabinet details.
 #   2026-09-03 - Verified public PDF links, routes, and allowlisting.
 #   2026-09-03 - Verified Dashboard profile switching and healthy idle status.
+#   2026-09-03 - Verified Learn-page practice leases and Dashboard restoration.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -33,7 +34,7 @@ from powerglove_vision.control_server import (
 from powerglove_vision.debug_server import SharedDebugState
 from powerglove_vision.help_content import guide_pdf, help_asset, render_markdown
 from powerglove_vision.help_content import cabinet_reference_content, request_browser_address
-from powerglove_vision.vision_app import _base_status
+from powerglove_vision.vision_app import _base_status, _effective_profile
 
 
 class ControlStateTests(unittest.TestCase):
@@ -178,9 +179,60 @@ class ControlStateTests(unittest.TestCase):
 
     def test_learn_page_is_offline_practice_mode(self):
         self.assertIn(b"Practice gesture recognition without a RetroPie connection", LEARN)
-        self.assertIn(b"/api/controller", LEARN)
-        self.assertIn(b"enabled:false", LEARN)
+        self.assertIn(b"/api/practice", LEARN)
+        self.assertIn(b"pagehide", LEARN)
+        self.assertIn(b"keepalive:true", LEARN)
+        self.assertIn(b"data-src=/stream", LEARN)
+        self.assertNotIn(b"/api/controller", LEARN)
         self.assertIn(b"Lesson 1 of 10", LEARN)
+
+    def test_dashboard_load_clears_practice_and_restores_selected_mode(self):
+        self.assertIn(b"/api/practice", DASHBOARD)
+        self.assertIn(b"reset:true", DASHBOARD)
+
+        shared = SharedDebugState()
+        with mock.patch("powerglove_vision.debug_server.time.monotonic", return_value=10.0):
+            self.assertTrue(shared.request_practice("existing-learn-tab", True))
+            self.assertIs(shared.take_practice_request(), True)
+            self.assertFalse(shared.request_practice("", False, reset=True))
+            self.assertIs(shared.take_practice_request(), False)
+            # A still-open tab cannot undo the Dashboard reset with its next heartbeat.
+            self.assertFalse(shared.request_practice("existing-learn-tab", True))
+            self.assertIsNone(shared.take_practice_request())
+            # Reloading Learn creates a new browser session and starts normally.
+            self.assertTrue(shared.request_practice("reloaded-learn-tab", True))
+            self.assertIs(shared.take_practice_request(), True)
+
+    def test_practice_leases_support_multiple_pages_and_clean_release(self):
+        shared = SharedDebugState()
+        with mock.patch("powerglove_vision.debug_server.time.monotonic", return_value=10.0):
+            self.assertTrue(shared.request_practice("learn-page-one", True))
+            self.assertIs(shared.take_practice_request(), True)
+            self.assertTrue(shared.request_practice("learn-page-two", True))
+            self.assertIsNone(shared.take_practice_request())
+            self.assertTrue(shared.request_practice("learn-page-one", False))
+            self.assertIsNone(shared.take_practice_request())
+            self.assertFalse(shared.request_practice("learn-page-two", False))
+            self.assertIs(shared.take_practice_request(), False)
+
+    def test_abandoned_practice_lease_expires(self):
+        shared = SharedDebugState()
+        with mock.patch("powerglove_vision.debug_server.time.monotonic", return_value=10.0):
+            shared.request_practice("abandoned-page", True)
+            self.assertIs(shared.take_practice_request(), True)
+        with mock.patch("powerglove_vision.debug_server.time.monotonic", return_value=17.0):
+            self.assertIs(shared.take_practice_request(), False)
+
+    def test_practice_uses_general_tracking_without_changing_selected_off_mode(self):
+        self.assertEqual(_effective_profile(None, True), "program_h")
+        self.assertIsNone(_effective_profile(None, False))
+        status = _base_status(
+            None, "Startup default", "startup", True, practice_mode=True,
+        )
+        self.assertEqual(status["active_profile"], "off")
+        self.assertEqual(status["vision_profile"], "program_h")
+        self.assertTrue(status["practice_mode"])
+        self.assertIn("Practice mode", status["receiver_error"])
 
     def test_password_pairing_requires_certificate_comparison(self):
         self.assertIn(b"browser certificate fingerprint", SETUP)
@@ -251,6 +303,42 @@ class ControlStateTests(unittest.TestCase):
                 self.assertEqual(forwarded.full_url, "http://127.0.0.1:8089/profile")
                 self.assertEqual(json.loads(forwarded.data), {"profile": "program_h"})
                 connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_practice_route_forwards_session_and_dashboard_reset(self):
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            reply = mock.MagicMock()
+            reply.__enter__.return_value.read.return_value = b'{"practice_mode":true}'
+            with mock.patch(
+                "powerglove_vision.control_server.urllib.request.urlopen",
+                return_value=reply,
+            ) as open_worker:
+                for payload in (
+                    {"session": "learn-session-1", "enabled": True},
+                    {"enabled": False, "reset": True},
+                ):
+                    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                    connection.request(
+                        "POST", "/api/practice", json.dumps(payload),
+                        {"Content-Type": "application/json"},
+                    )
+                    response = connection.getresponse()
+                    response.read()
+                    self.assertEqual(response.status, 200)
+                    connection.close()
+
+                first = open_worker.call_args_list[0].args[0]
+                second = open_worker.call_args_list[1].args[0]
+                self.assertEqual(first.full_url, "http://127.0.0.1:8089/practice")
+                self.assertEqual(json.loads(first.data), {
+                    "session": "learn-session-1", "enabled": True, "reset": False,
+                })
+                self.assertEqual(json.loads(second.data), {
+                    "session": "", "enabled": False, "reset": True,
+                })
         finally:
             servers.shutdown()
 

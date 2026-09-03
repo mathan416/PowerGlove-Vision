@@ -11,11 +11,20 @@ authoritative record for line-level and file-level history.
 
 - Added a live active-profile selector to the Dashboard without changing the
   startup profile saved on Setup.
+- Added temporary Learn sessions that start vision while preserving the
+  selected profile and desired controller state, including multi-tab leases
+  and automatic recovery when a page disappears unexpectedly.
 - Added a dedicated matrix gestures-idle state with a pinball-style animated
   glove, separate from both true shutdown and the flashing error X.
 
 ### Changed
 
+- Made leaving Learn restore the selected profile, camera state, and controller
+  state. Loading or refreshing the Dashboard now clears abandoned Learn
+  sessions, prevents their old heartbeats from reactivating vision, and
+  reapplies the selected mode.
+- Made Wi-Fi deployments preserve PowerGlove Vision as the UNO Q default
+  startup app so the dashboard returns after a board reboot.
 - Made **Gestures off** a healthy worker state that releases controller input,
   closes the camera and MediaPipe tracker, and keeps the website and
   authenticated RetroPie profile listener available.

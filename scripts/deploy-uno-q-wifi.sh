@@ -14,6 +14,7 @@
 #   2026-09-03 - Used staged SFTP uploads and terminal-backed UNO Q commands.
 #   2026-09-03 - Verified every Help guide and all gameplay table illustrations.
 #   2026-09-03 - Deployed and verified every allowlisted public PDF guide.
+#   2026-09-03 - Preserved PowerGlove Vision as the UNO Q default startup app.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -29,8 +30,9 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
 Usage: scripts/deploy-uno-q-wifi.sh [user@uno-q-host]
 
 Deploy the PowerGlove Vision Linux application over an authenticated SSH
-connection, preserve device settings, expose ports 8088 and 8443, restart the
-container, and verify its status. The default target is:
+connection, preserve device settings, expose ports 8088 and 8443, keep it as
+the default startup app, restart the container, and verify its status. The
+default target is:
 
   arduino@arduiain.local
 
@@ -103,7 +105,7 @@ ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
 
 echo "Restarting the UNO Q application..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "docker compose -f '${REMOTE_COMPOSE}' up -d --force-recreate"
+  "arduino-app-cli properties set default '${REMOTE_APP_DIR}' && docker compose -f '${REMOTE_COMPOSE}' up -d --force-recreate"
 
 echo "Waiting for the dashboard..."
 ready=false

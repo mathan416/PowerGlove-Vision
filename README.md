@@ -184,6 +184,11 @@ The Dashboard also changes the active profile without visiting Setup. This is
 a live, session-level choice and does not replace the startup profile saved on
 the Setup page. Selecting **Gestures off** releases all controls and closes the
 camera until the Dashboard or RetroPie launch hook activates another profile.
+Opening **Learn** temporarily starts the camera and gesture recognition even
+when **Gestures off** is selected, while keeping controller output suppressed.
+Leaving Learn restores the selected profile, camera state, and controller
+state. Loading or refreshing the Dashboard also clears any abandoned Learn
+session and reapplies the selected mode.
 
 **Shutdown system** appears on both pages after the fixed-purpose host helper
 is installed. It stops controller output and asks Linux to power off cleanly.
@@ -305,7 +310,8 @@ scripts/deploy-uno-q-wifi.sh arduino@arduiain.local
 
 The target can be any UNO Q `.local` hostname. Device settings and private
 pairing material in `data/` are preserved. The script restarts the container
-and checks the Learn, Debug, and secure Setup pages before reporting success.
+keeps PowerGlove Vision as the default startup app, and checks the Learn,
+Debug, and secure Setup pages before reporting success.
 Microcontroller sketch updates remain available through App Lab's private
 credential prompt; USB remains the passwordless recovery path.
 
