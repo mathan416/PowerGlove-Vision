@@ -58,7 +58,7 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 
 DASHBOARD = _page(
     "Dashboard",
-    """<h1>It's so bad.</h1><p class='lead dashboard-lead'>Live vision, gesture and controller diagnostics from your camera-only Power Glove.</p>
+    """<h1>I love the Power Glove. It’s so bad.</h1><p class='lead dashboard-lead'>Live vision, gesture and controller diagnostics from your camera-only Power Glove.</p>
 <div class=status-grid>
  <div class=card><div class=label>System</div><div class=value id=system>Starting</div></div>
  <div class=card><div class=label>Active profile</div><div class=value id=profile>—</div></div>
