@@ -28,6 +28,8 @@ authoritative record for line-level and file-level history.
 - Added reusable documentation and App Lab package verification tools.
 - Added an illustrated, one-page-per-game handbook for all eight automatically
   configured titles, with original direction, finger-pose, wrist, and depth art.
+- Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
+  after the tagline, compact diagnostics, and safe-shutdown controls were added.
 
 ### Fixed
 

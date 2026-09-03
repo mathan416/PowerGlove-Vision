@@ -17,7 +17,7 @@ does not contain the private pairing token.
 | Board | Arduino UNO Q |
 | App Lab app | PowerGlove Vision |
 | Camera | Razer Kiyo, configured as `auto` |
-| Configured receiver | `10.0.2.52` (`retropieconsole.local` when mDNS is available) |
+| Configured receiver | `10.0.2.57` (`retropieconsole.local` when mDNS is available) |
 | Startup profile | Super Glove Ball |
 
 Prefer the `.local` hostname in bookmarks and configuration. The numeric IP is
