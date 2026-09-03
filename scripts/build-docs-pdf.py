@@ -10,9 +10,10 @@
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added changelog, configuration, security, and contributor editions.
 #   2026-09-03 - Added explicit page breaks and the illustrated gameplay handbook.
+#   2026-09-03 - Added contextual gesture images inside gameplay control tables.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Build polished, distributable PowerGlove Vision PDF field guides."""
+"""Build polished, distributable PowerGlove Vision PDF guides."""
 
 from __future__ import annotations
 
@@ -116,7 +117,30 @@ def image_flowable(path: Path, max_width: float, max_height: float) -> Image:
     return Image(str(path), width=width * scale, height=height * scale)
 
 
-def parse_table(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
+def table_cell(
+    cell: str,
+    source: Path,
+    style: ParagraphStyle,
+):
+    """Render a table cell as either text or one local contextual image."""
+
+    image_match = re.fullmatch(
+        r'<img\s+src="([^"]+)"\s+alt="([^"]*)"(?:\s+width="([0-9]+)")?\s*/?>',
+        cell.strip(),
+    )
+    if image_match:
+        image_path = (source.parent / image_match.group(1)).resolve()
+        if image_path.exists():
+            return image_flowable(image_path, 0.92 * inch, 0.48 * inch)
+    return Paragraph(inline(cell), style)
+
+
+def parse_table(
+    lines: list[str],
+    start: int,
+    styles: dict[str, ParagraphStyle],
+    source: Path,
+):
     """Parse one Markdown table and return its flowable plus the next source line."""
     rows: list[list[str]] = []
     index = start
@@ -126,13 +150,15 @@ def parse_table(lines: list[str], start: int, styles: dict[str, ParagraphStyle])
     if len(rows) > 1:
         rows.pop(1)
     formatted = [
-        [Paragraph(inline(cell), styles["table_head"] if row_number == 0 else styles["table"])
+        [table_cell(cell, source, styles["table_head"] if row_number == 0 else styles["table"])
          for cell in row]
         for row_number, row in enumerate(rows)
     ]
     columns = max(len(row) for row in formatted)
     if columns == 2:
         widths = [2.05 * inch, 4.55 * inch]
+    elif columns == 3:
+        widths = [2.0 * inch, 1.08 * inch, 3.52 * inch]
     elif columns == 4:
         widths = [1.25 * inch, 1.25 * inch, 1.25 * inch, 2.85 * inch]
     else:
@@ -294,7 +320,7 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
             continue
 
         if line.startswith("|") and index + 1 < len(lines) and re.match(r"^\|?\s*:?-+", lines[index + 1].strip()):
-            table, index = parse_table(lines, index, styles)
+            table, index = parse_table(lines, index, styles, source)
             story.extend([table, Spacer(1, 10)])
             continue
 
@@ -375,7 +401,7 @@ def page_decor(canvas, document):
     canvas.line(document.leftMargin, 0.47 * inch, width - document.rightMargin, 0.47 * inch)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(MUTED)
-    canvas.drawString(document.leftMargin, 0.27 * inch, "POWERGLOVE VISION  /  IAIN BENNETT")
+    canvas.drawString(document.leftMargin, 0.27 * inch, "POWER GLOVE VISION  /  IAIN BENNETT")
     canvas.drawRightString(width - document.rightMargin, 0.27 * inch, f"PAGE {document.page - 1}")
     canvas.restoreState()
 
@@ -389,7 +415,7 @@ def build(source: Path, destination: Path, title: str, subtitle: str, kind: str)
         rightMargin=0.7 * inch, leftMargin=0.7 * inch,
         topMargin=0.55 * inch, bottomMargin=0.67 * inch,
         title=title, subject=subtitle, author="Iain Bennett",
-        creator="PowerGlove Vision documentation builder",
+        creator="Power Glove Vision documentation builder",
     )
     story = cover_story(title, subtitle, kind, styles) + markdown_story(source, styles)
     document.build(story, onFirstPage=cover_page, onLaterPages=page_decor)
@@ -410,26 +436,26 @@ def main():
     gameplay = docs / "GAMEPLAY_GUIDE.md"
     build(
         overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
-        "PowerGlove Vision Project Overview",
+        "Power Glove Vision Project Overview",
         "Architecture, controls, security, deployment, and project status.",
         "Project overview",
     )
     build(
         install, OUTPUT / "PowerGlove-Vision-Guide.pdf",
-        "PowerGlove Vision Field Guide",
+        "Power Glove Vision Installation Guide",
         "Build, pair, and play with camera-based hand controls on Arduino UNO Q and RetroPie.",
-        "Maker's field guide",
+        "Installation instructions",
     )
     build(
         cheatsheet, OUTPUT / "PowerGlove-Vision-Quick-Reference.pdf",
-        "PowerGlove Vision Quick Reference",
+        "Power Glove Vision Quick Reference",
         "Current cabinet addresses, services, controls, and maintenance commands.",
         "Cabinet cheat sheet",
     )
     build(
         programs, OUTPUT / "Bad-Street-Brawler-Power-Glove-Programs.pdf",
         "Programs A-I",
-        "The cartridge-free field manual for PowerGlove Vision profiles.",
+        "The cartridge-free field manual for Power Glove Vision profiles.",
         "Profile handbook",
     )
     build(
@@ -440,32 +466,32 @@ def main():
     )
     build(
         changelog, OUTPUT / "PowerGlove-Vision-Changelog.pdf",
-        "PowerGlove Vision Changelog",
+        "Power Glove Vision Changelog",
         "Versioned features, fixes, security changes, and documentation updates.",
         "Release history",
     )
     build(
         configuration, OUTPUT / "PowerGlove-Vision-Configuration-Reference.pdf",
-        "PowerGlove Vision Configuration Reference",
+        "Power Glove Vision Configuration Reference",
         "Active files, installed copies, fields, secrets, and generated state.",
         "Technical reference",
     )
     build(
         security, OUTPUT / "PowerGlove-Vision-Security.pdf",
-        "PowerGlove Vision Security Policy",
+        "Power Glove Vision Security Policy",
         "Reporting, trust boundaries, network exposure, shutdown, and release integrity.",
         "Security policy",
     )
     build(
         contributing, OUTPUT / "PowerGlove-Vision-Contributing.pdf",
-        "Contributing to PowerGlove Vision",
+        "Contributing to Power Glove Vision",
         "Source style, testing, documentation, packaging, and pull-request expectations.",
         "Contributor guide",
     )
     build(
         gameplay, OUTPUT / "PowerGlove-Vision-Gameplay-Guide.pdf",
-        "Play with PowerGlove Vision",
-        "Eight games, eight gesture profiles, and one gloriously impractical way to play.",
+        "Play with Power Glove Vision",
+        "Eight ready-made play cards, nine reusable programs, and a whole library to rediscover.",
         "Illustrated game handbook",
     )
     print(f"Built 10 PDF guides on {date.today().isoformat()}")

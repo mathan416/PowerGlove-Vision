@@ -2,7 +2,7 @@
   <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
 </p>
 
-# PowerGlove Vision Field Guide
+# PowerGlove Vision Installation Guide
 
 **Build, pair, and play with camera-based hand controls on an Arduino UNO Q and RetroPie.**
 
@@ -20,7 +20,7 @@ virtual joystick.
 | If you want to... | Go to... |
 | --- | --- |
 | Build the complete system for the first time | Stages 1-6, in order |
-| Reconnect an existing build | Daily play checklist |
+| Reconnect an existing build | Play Checklist |
 | Pair the UNO Q and RetroPie | Stage 4 |
 | Configure automatic profiles | Stage 6 |
 | Understand every configuration file and field | `CONFIGURATION_REFERENCE.md` |
@@ -33,12 +33,12 @@ virtual joystick.
 ```text
                     trusted local network
 
-Razer Kiyo --USB--> UNO Q ===== authenticated UDP =====> RetroPie
-                     |                                    |
-                     | hand tracking                      | virtual gamepad
-                     | profiles + matrix                  | RetroArch / NES
-                     |
-                     +-- web workshop: Setup / Debug / Learn
+UVC-compatible USB camera --USB--> UNO Q ===== authenticated UDP =====> RetroPie
+                                |                                    |
+                                | hand tracking                      | virtual gamepad
+                                | profiles + matrix                  | RetroArch / NES
+                                |
+                                +-- web workshop: Setup / Debug / Learn
 ```
 
 The system does not require an original Power Glove or the Bad Street Brawler
@@ -49,7 +49,8 @@ contrast, but it contains no electronics.
 
 - Arduino UNO Q; the 4 GB model is recommended.
 - Raspberry Pi running RetroPie and RetroArch.
-- Razer Kiyo or another UVC-compatible USB camera.
+- UVC-compatible USB camera. Power Glove Vision has been tested with a Razer
+  Kiyo, but the Kiyo is not required.
 - Externally powered USB-C hub or dock for the UNO Q and camera.
 - Suitable 5 V/3 A UNO Q power supply.
 - Computer with Arduino App Lab and a USB data cable.
@@ -95,7 +96,7 @@ DHCP reservation makes that fallback stable.
 
 ### Import and start the app
 
-Clone the repository and build this release package:
+Clone the repository and build the App Lab installation ZIP:
 
 ```text
 output/app-lab/PowerGlove-Vision-Uno-Q.zip
@@ -107,12 +108,13 @@ cd PowerGlove-Vision
 scripts/build-app-lab-package.sh
 ```
 
-The generated ZIP is not stored in Git. It deliberately excludes Google's Hand
-Landmarker model. On first launch, the UNO Q downloads the model directly from
-Google into the app's persistent private `data/models/` directory and verifies
-its pinned SHA-256 checksum before starting the vision worker. Later launches
-reuse that verified copy. A published GitHub release may provide the same
-model-free ZIP.
+The generated App Lab installation ZIP is not stored in Git. It deliberately
+excludes Google's Hand Landmarker model. On first launch, the UNO Q downloads
+the model directly from Google into the app's persistent private
+`data/models/` directory and verifies its pinned SHA-256 checksum before
+starting the vision worker. Later launches reuse that verified copy. A
+published GitHub release may provide the same model-free App Lab installation
+ZIP.
 
 The repository retains a custom MediaPipe 0.10.18 ARM64 wheel because its
 dependency metadata is tailored for the headless UNO Q runtime. Do not replace
@@ -123,7 +125,7 @@ licenses are recorded in
 
 In Arduino App Lab:
 
-1. Import an Arduino App from the ZIP file.
+1. Import the App Lab installation ZIP as an Arduino App.
 2. Open **PowerGlove Vision** and select **Run**.
 3. Allow several minutes for the first launch. The app downloads and verifies
    the Hand Landmarker model, prepares an isolated Python 3.12 vision
@@ -136,9 +138,10 @@ matrix after its application starts.
 
 ### Connect the camera
 
-Connect the powered hub to the UNO Q, then connect the Kiyo to the hub. The app
-automatically ignores the UNO Q's internal codec nodes and waits for a real USB
-camera. It is safe to connect the camera before or after the app starts.
+Connect the powered hub to the UNO Q, then connect your UVC-compatible USB
+camera to the hub. The app automatically ignores the UNO Q's internal codec
+nodes and waits for a real USB camera. It is safe to connect the camera before
+or after the app starts.
 
 > **POWER MATTERS**  Webcam dropouts that look like software problems are often
 > caused by an underpowered passive adapter. Use a powered hub and a solid cable.
@@ -179,7 +182,7 @@ The **Help** page renders the public Markdown manuals stored in `docs/` as an
 offline reading library. Choose a guide to get a styled reading view, guide
 navigation, a table of contents, illustrations, tables, and code samples. Use
 **View Markdown** when you need the original source. The machine-specific
-`cheatsheet.md` is deliberately excluded from the public App Lab package and
+`cheatsheet.md` is deliberately excluded from the App Lab installation ZIP and
 does not appear in Help.
 
 Choose **This cabinet** for a live quick reference without a static machine
@@ -357,9 +360,10 @@ grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices
 
 The timer starts the receiver 45 seconds after boot. This keeps the virtual
 controller out of EmulationStation's initialization path; on the validated
-cabinet, starting the receiver too early caused frontend pauses and BitPixel
-flicker. Do not enable the service directly in addition to the timer. The
-receiver creates its uinput device after its first authenticated packet.
+cabinet, starting the receiver too early caused frontend pauses and conflicts
+with other USB devices, including a BitPixel display. Do not enable the service
+directly in addition to the timer. The receiver creates its uinput device after
+its first authenticated packet.
 
 ### Bind it in RetroArch
 
@@ -415,8 +419,10 @@ sudo chmod 0755 /opt/retropie/configs/all/runcommand-onend.sh
 ### Review the game registry
 
 `/etc/powerglove/games.json` matches exact ROM basenames case-insensitively.
+The shipped registry contains all eight games that Power Glove Vision recognizes
+and configures automatically out of the box:
 
-| Game | Default profile |
+| Automatically recognized game | Profile |
 | --- | --- |
 | Bad Street Brawler | `bad_street_brawler` |
 | Super Glove Ball | `super_glove_ball` |
@@ -427,8 +433,30 @@ sudo chmod 0755 /opt/retropie/configs/all/runcommand-onend.sh
 | Gun.Smoke | `program_g` |
 | Knight Rider | `program_i` |
 
-Programs A, D, and H are ready for custom assignments. Unknown games turn
-gesture control off instead of inheriting the previous game's profile.
+Programs A, D, and H are also fully implemented. They are control profiles, not
+missing game entries, and are intentionally unassigned because none is tied to
+one specific title:
+
+| Available profile | Intended use | Default game assignment |
+| --- | --- | --- |
+| `program_a` | Pinball controls with two finger flippers and wrist tilt | None |
+| `program_d` | Reversed-direction challenge or accessibility experiments | None |
+| `program_h` | General play and training with conventional movement | None |
+
+You can assign any appropriate NES or Famicom ROM to one of these profiles by
+adding its exact filename to `/etc/powerglove/games.json`. This is a configuration
+change and does not require new code. For example:
+
+```json
+{
+  "games": {
+    "YOUR EXACT PINBALL ROM FILENAME.nes": "program_a"
+  }
+}
+```
+
+Keep the existing entries when adding your own. An unknown game turns gesture
+control off instead of inheriting the previous game's profile.
 
 Test a profile manually:
 
@@ -441,7 +469,7 @@ sudo /opt/powerglove/bin/powerglove-profile \
 
 The command should acknowledge the change and the matrix should show `B`.
 
-## Daily play checklist
+## Play Checklist
 
 1. Power the RetroPie and UNO Q; leave the camera connected to the powered hub.
 2. Open `http://UNO-Q-NAME.local:8088/debug`.
@@ -560,7 +588,7 @@ for only one copy, stop the older copy, then remove it through App Lab.
 - Confirm the camera is connected through the powered hub.
 - Try another hub port or USB cable.
 - Check whether Linux sees a USB camera; internal `qcom-venus-encoder` and
-  `qcom-venus-decoder` nodes are not the Kiyo.
+  `qcom-venus-decoder` nodes are codecs, not your camera.
 - Restart the app after checking power and cabling.
 
 ### Camera appears only after reconnecting it
@@ -605,13 +633,14 @@ Allow 45 seconds after boot. Confirm `uinput` is loaded and
 for the service and `enabled` for the timer. The virtual controller appears
 only after an authenticated packet arrives.
 
-### Frontend slowdown or BitPixel flicker
+### Frontend slowdown or USB-device conflicts
 
 Confirm the receiver service was not enabled directly. Stop it, restart
 EmulationStation, and start the receiver afterward as an A/B test. If the
 frontend becomes responsive, restore the supplied timer. Also ensure
 Pixelcade's `game-select` and `system-select` directories contain only one
-executable hook each; executable backup scripts are additional hooks.
+executable hook each if you use a BitPixel display; executable backup scripts
+are additional hooks.
 
 ### Controller exists but does not move
 

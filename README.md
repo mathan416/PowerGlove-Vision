@@ -34,7 +34,7 @@ camera equivalents are documented in
 
 | Guide | Best for |
 | --- | --- |
-| [PowerGlove Vision Field Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
+| [PowerGlove Vision Installation Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, the Play Checklist, updates, and troubleshooting |
 | [Illustrated game and gesture guide](docs/GAMEPLAY_GUIDE.md) | One-page instructions, gesture drawings, and play tips for every automatically configured game |
 | [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
 | [Configuration reference](docs/CONFIGURATION_REFERENCE.md) | Every repository, installed, private, and generated configuration file and field |
@@ -44,8 +44,8 @@ camera equivalents are documented in
 | [Changelog](docs/CHANGELOG.md) | Versioned features, fixes, security changes, and documentation updates |
 | [docs/cheatsheet.md](docs/cheatsheet.md) | Machine-specific URLs and maintenance notes; contains no private pairing token |
 
-The Field Guide is organized as a six-stage build. New makers can follow it in
-order; returning builders can jump directly to the daily checklist, workshop,
+The Installation Guide is organized as a six-stage build. New makers can follow it in
+order; returning builders can jump directly to the Play Checklist, workshop,
 or symptom-based troubleshooting sections. Print-ready editions live in
 [output/pdf/](output/pdf/).
 
@@ -78,13 +78,14 @@ and the status pages remain available while the camera is disconnected.
   confirmation. Restoring or cycling power is required to start the UNO Q again.
 
 The screenshots show the intentionally recoverable camera-offline state: the
-web interface and pairing controls continue working while the Kiyo is absent.
+web interface and pairing controls continue working while the camera is absent.
 
 ## Quick start
 
 1. Provision the UNO Q over USB in Arduino App Lab, join the same trusted Wi-Fi
-   network as RetroPie, import the App Lab ZIP, and enable **Run at startup**.
-2. Connect the Razer Kiyo to the UNO Q through a powered USB hub.
+   network as RetroPie, import the App Lab installation ZIP, and enable **Run
+   at startup**.
+2. Connect a UVC-compatible USB camera to the UNO Q through a powered USB hub.
 3. Install the receiver on RetroPie and run
    `sudo /opt/powerglove/bin/powerglove-pair`.
 4. Open `https://<uno-q-name>.local:8443/setup`, compare the browser
@@ -94,7 +95,7 @@ web interface and pairing controls continue working while the Kiyo is absent.
    virtual gamepad in RetroArch, and use `/learn` before playing.
 
 Detailed installation, both pairing methods, automatic game profiles, and
-recovery procedures are in the [Field Guide](docs/INSTALL_README.md).
+recovery procedures are in the [Installation Guide](docs/INSTALL_README.md).
 
 ## Controls
 
@@ -107,7 +108,10 @@ These profiles reproduce the useful controller output of the original glove
 programs directly. Bad Street Brawler never needs to be started. The included
 game registry selects B for Joust, C for Gyruss, E for Defender II, F for
 Sesame Street 1-2-3, G for Gun.Smoke, and I for Knight Rider. Programs A, D,
-and H are ready to assign to any ROM in `config/games.json`.
+and H are fully implemented but intentionally have no default ROM assignment:
+A is the pinball profile, D is the reversed-direction challenge profile, and H
+is the general-play and training profile. Assign them to an exact ROM basename
+in `config/games.json` when wanted.
 
 ### Bad Street Brawler
 
@@ -136,11 +140,13 @@ Menu poses suppress directional and attack output while they form.
 
 ## UNO Q setup
 
-Use the 4 GB UNO Q when possible. Connect a UVC USB camera through an externally
-powered USB-C hub, then connect to the board over the network.
+Use the 4 GB UNO Q when possible. Connect a UVC-compatible USB camera through an
+externally powered USB-C hub, then connect to the board over the network. Power
+Glove Vision has been tested with a Razer Kiyo, but the Kiyo is not required.
 
-The repository root is also an Arduino App Lab app. Import its zip file in App
-Lab to install the Linux vision process and matrix sketch as one unit. Because
+The repository root is also an Arduino App Lab app. Build and import its App Lab
+installation ZIP to install the Linux vision process and matrix sketch as one
+unit. Because
 the UNO Q's system Python is newer than the compatible hand-tracking build, the
 App Lab supervisor maintains an isolated Python 3.12 worker with MediaPipe
 0.10.18 and headless OpenCV. On first launch it creates
@@ -149,8 +155,8 @@ generates a private random pairing token. Keep `data/device.json` out of Git;
 copy its token to `/etc/powerglove/token` on the console.
 
 The camera setting defaults to `auto`. If no UVC camera is connected, the app
-stays alive, shows the matrix error state, and waits quietly. Plugging in a
-Razer Kiyo or another UVC camera starts the tracker without a reboot.
+stays alive, shows the matrix error state, and waits quietly. Connecting a
+UVC-compatible USB camera starts the tracker without a reboot.
 
 ### Wi-Fi and pairing
 
@@ -330,7 +336,8 @@ The receiver creates the uinput device only after the first authenticated
 controller packet arrives. On the validated cabinet, start it with
 `powerglove-receiver.timer` 45 seconds after boot instead of enabling the
 service directly. This lets EmulationStation initialize before the virtual
-controller appears and prevents frontend pauses and Pixelcade/BitPixel flicker.
+controller appears and helps prevent frontend pauses and conflicts with other
+USB devices, such as a BitPixel display.
 
 ## Automatic RetroPie profiles
 
@@ -384,10 +391,11 @@ python -m unittest discover -s tests -v
 python3 scripts/check-source-docs.py
 ```
 
-Rebuild the nine PDF guides after changing Markdown, then rebuild the importable
-App Lab ZIP. The public package deliberately omits Google's Hand Landmarker
-model. On first launch, the UNO Q downloads the model into its persistent
-private `data/` directory and verifies its pinned SHA-256 checksum before use:
+Rebuild the PDF guides after changing Markdown, then rebuild the importable App
+Lab installation ZIP. The installation package deliberately omits Google's
+Hand Landmarker model. On first launch, the UNO Q downloads the model into its
+persistent private `data/` directory and verifies its pinned SHA-256 checksum
+before use:
 
 ```sh
 python3 scripts/build-docs-pdf.py
@@ -397,11 +405,17 @@ scripts/verify-app-lab-package.py
 
 The packaging script excludes private `data/`, the local cheat sheet, caches,
 tests and Git history while retaining the public instructions and screenshots.
-It writes the generated public package to
+It writes the generated App Lab installation ZIP to
 `output/app-lab/PowerGlove-Vision-Uno-Q.zip`. The ZIP is ignored by Git and is
 intended for a tagged GitHub Release rather than normal source commits. See the
 [configuration reference](docs/CONFIGURATION_REFERENCE.md) for its exact
 contents and exclusions.
+
+The ZIP is a ready-to-import source distribution, not a precompiled PowerGlove
+Vision application. It contains the runtime source, Arduino sketch, public
+configuration and documentation, plus the required prebuilt MediaPipe wheel.
+The Git repository remains the complete contributor checkout with tests and
+development tooling.
 
 The code intentionally separates observations, gesture mapping, transport, and
 Linux input output. Recorded-camera replay and a native Nestopia adapter can be

@@ -81,7 +81,9 @@ power to be restored or cycled before restart.
 | --- | --- |
 | Git working copy | `/Users/mathan/Developer/PowerGlove` |
 | Installation guide | `/Users/mathan/Developer/PowerGlove/docs/INSTALL_README.md` |
-| UNO Q App Lab package | `/Users/mathan/Developer/PowerGlove/output/app-lab/PowerGlove-Vision-Uno-Q.zip` |
+| Gameplay guide | `/Users/mathan/Developer/PowerGlove/docs/GAMEPLAY_GUIDE.md` |
+| Programs A–I reference | `/Users/mathan/Developer/PowerGlove/docs/bad-street-brawler-programs.md` |
+| UNO Q App Lab installation ZIP | `/Users/mathan/Developer/PowerGlove/output/app-lab/PowerGlove-Vision-Uno-Q.zip` |
 | Gesture profiles | `/Users/mathan/Developer/PowerGlove/config/profiles.json` |
 | Automatic game mapping | `/Users/mathan/Developer/PowerGlove/config/games.json` |
 
@@ -195,7 +197,54 @@ The setup page can choose:
 - Power Glove Programs A–I
 - Gestures off
 
-RetroPie launch hooks can override the startup profile for each recognized ROM.
+RetroPie launch hooks select the registered profile for each recognized ROM.
+Launching an unregistered game safely selects **Gestures off**. Automatic profile
+selection currently applies only to NES and Famicom games; launching another
+system also turns gestures off.
+
+### Useful off-script starting points
+
+| Program | Good first experiment | Controls and tradeoff |
+| --- | --- | --- |
+| A | Pinball and games built around short bursts | Finger actions suit flippers, wrist movement can suit tilt, and pullback toggles a control. It does not provide an ordinary D-pad. |
+| D | Challenge runs and games where reversed movement is fun | Every direction is reversed; thumb and index actions provide A and B. |
+| H | General NES and Famicom experiments | Hand movement provides a conventional D-pad and thumb/index actions pulse A and B. Pulses are a poor fit for actions that must be held continuously. |
+
+### Quick off-script test
+
+1. Launch an unregistered NES or Famicom game. Confirm that PowerGlove Vision
+   reports **Gestures off**.
+2. Open **Setup** on the UNO Q and choose Program A, D, H, or another profile.
+3. Select **Save & restart tracker**.
+4. Center your hand, select **Start controller**, and test movement and actions.
+5. Stop the controller before changing profiles or games.
+
+This temporary choice is ideal for discovery. It does not change the automatic
+game registry.
+
+### Keep a working combination
+
+Add the ROM's exact basename, including `.nes`, `.zip`, or `.7z`, to the `games`
+object in `/etc/powerglove/games.json`. Preserve all existing entries. For
+example:
+
+```json
+{
+  "games": {
+    "YOUR EXACT GAME FILENAME.nes": "program_h"
+  }
+}
+```
+
+Check the edited file before testing:
+
+```sh
+sudo python3 -m json.tool /etc/powerglove/games.json >/dev/null
+```
+
+Restart the game so its launch hook selects the newly registered profile. See
+`docs/GAMEPLAY_GUIDE.md` for the illustrated play and experimentation guide and
+`docs/bad-street-brawler-programs.md` for complete Program A–I controls.
 
 For Super Glove Ball, hand position controls the D-pad, index curl is A, thumb
 curl is B, a V sign held for about 0.7 seconds is Start, and a thumbs-up with
@@ -211,7 +260,8 @@ the best first place to diagnose startup or camera problems.
 On RetroPie, direct boot enablement of `powerglove-receiver.service` is
 disabled. `powerglove-receiver.timer` starts it after 45 seconds so
 EmulationStation initializes before the virtual controller appears. This
-prevents the frontend pauses and BitPixel flicker seen with early startup.
+helps prevent frontend pauses and conflicts with other USB devices, including
+the BitPixel display, when the receiver starts too early.
 
 App Lab currently contains the active `powerglove-vision` installation and an
 older timestamped import. The older container is stopped. Keep only the active

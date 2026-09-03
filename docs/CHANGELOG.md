@@ -18,16 +18,30 @@ authoritative record for line-level and file-level history.
   and production Python interface docstrings.
 - Added a complete configuration reference covering JSON templates and active
   copies, gesture thresholds, manifests, RetroArch mapping, systemd units,
-  generated state, secret handling, and the public ZIP location.
+  generated state, secret handling, and the App Lab installation ZIP location.
 - Added GitHub Actions checks for supported Python versions, tests, source and
-  documentation audits, syntax, PDF builds, and public-package verification.
+  documentation audits, syntax, PDF builds, and App Lab installation ZIP
+  verification.
 - Added a security policy for private reporting, pairing and network boundaries,
   shared-token handling, shutdown permissions, and dependency integrity.
 - Added a contributing guide for code style, tests, documentation, changelog,
   generated artifacts, commits, and pull requests.
-- Added reusable documentation and App Lab package verification tools.
+- Added reusable documentation and App Lab installation package verification
+  tools.
 - Added an illustrated, one-page-per-game handbook for all eight automatically
   configured titles, with original direction, finger-pose, wrist, and depth art.
+- Placed cropped gesture illustrations beside the corresponding instructions in
+  the gameplay handbook, including the universal V-sign and thumbs-up controls.
+- Added the same contextual gesture illustrations to every Program A-I card and
+  documented the menu gestures shared by all nine programs.
+- Added an off-script gameplay section that encourages safe experiments with
+  other NES and Famicom games, especially the unassigned A, D, and H programs.
+- Updated the cabinet cheat sheet with off-script profile testing, safe behavior
+  for unknown games, and exact ROM registration guidance.
+- Renamed the built-in installation Help route, retained the original URL as an
+  alias, and aligned its summaries with the Play Checklist terminology.
+- Extended the documentation audit to require Help-library coverage and a
+  gameplay section for every title in the shipped game registry.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
 - Added an offline Help library that renders the maintained public Markdown
@@ -36,6 +50,12 @@ authoritative record for line-level and file-level history.
 - Added a dynamic **This cabinet** Help page whose UNO Q links follow the
   browser's validated hostname or IP and whose non-secret RetroPie values come
   from the active configuration.
+- Rewrote the configuration reference for public installations, with guided
+  UNO Q and RetroPie setup, field-level behavior, safe gesture tuning, network
+  boundaries, backup and recovery advice, and symptom-based troubleshooting.
+- Renamed the Field Guide as the Installation Guide and generalized camera
+  instructions for UVC-compatible USB cameras while recording the Razer Kiyo
+  as tested reference hardware.
 
 ### Fixed
 
@@ -61,7 +81,7 @@ authoritative record for line-level and file-level history.
   camera recovery, controller start/stop controls, and UNO Q matrix feedback.
 - Wi-Fi deployment, App Lab packaging, runtime-asset retrieval, branded PDF
   generation, and a fixed-purpose host shutdown helper.
-- Project overview, field guide, quick reference, profile handbook, third-party
+- Project overview, installation guide, quick reference, profile handbook, third-party
   component notice, screenshots, and reproducible build instructions.
 
 ### Changed
@@ -70,10 +90,11 @@ authoritative record for line-level and file-level history.
   device scan, preventing the virtual controller from disrupting cabinet input.
 - Made the controller start disarmed and kept tracking/dashboard operation alive
   when RetroPie or the camera temporarily becomes unavailable.
-- Moved private device settings and downloaded model data outside the public
-  App Lab package.
-- Changed the public package to download Google's Hand Landmarker model on first
-  launch and verify its pinned SHA-256 digest before installation.
+- Moved private device settings and downloaded model data outside the App Lab
+  installation ZIP.
+- Changed the App Lab installation ZIP to download Google's Hand Landmarker
+  model on first launch and verify its pinned SHA-256 digest before
+  installation.
 
 ### Fixed
 

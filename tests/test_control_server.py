@@ -84,10 +84,11 @@ class ControlStateTests(unittest.TestCase):
         page = help_index_page()
         self.assertIn(b"Help, without leaving the glove", page)
         self.assertIn(b"/help/gameplay", page)
-        self.assertIn(b"/help/field-guide", page)
+        self.assertIn(b"/help/installation", page)
         self.assertIn(b"/help/cabinet", page)
         self.assertIn(b"This cabinet", page)
         self.assertNotIn(b"cheatsheet", page.lower())
+        self.assertIsNotNone(help_document_page("field-guide"))
 
     def test_cabinet_reference_uses_request_address_and_public_config(self):
         body, title = cabinet_reference_content("10.0.2.105:8088", self.state.public_config())
@@ -106,9 +107,9 @@ class ControlStateTests(unittest.TestCase):
         page = help_document_page("gameplay")
         self.assertIsNotNone(page)
         assert page is not None
-        self.assertIn(b"Play with PowerGlove Vision", page)
+        self.assertIn(b"Play with Power Glove Vision", page)
         self.assertIn(b"On this page", page)
-        self.assertIn(b"/help-assets/gestures/directional-movement.png", page)
+        self.assertIn(b"/help-assets/gestures/actions/whole-hand-movement.png", page)
         self.assertIn(b"/help/gameplay.md", page)
 
     def test_help_renderer_escapes_html_and_unsafe_links(self):

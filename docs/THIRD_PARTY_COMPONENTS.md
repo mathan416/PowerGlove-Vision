@@ -6,7 +6,17 @@ licenses or terms that apply to third-party software and model files.
 
 ## MediaPipe 0.10.18 ARM64 wheel
 
-The UNO Q runtime uses this tracked wheel:
+A Python wheel is a standard installable package archive with a `.whl` file
+extension. It is similar to a ZIP file, but follows a defined layout that lets
+`pip` install Python modules, native libraries, and dependency metadata without
+building the project from source on the target device. In this case, the wheel
+contains MediaPipe's Python package and its already-compiled Linux ARM64 native
+code, so the UNO Q does not have to compile MediaPipe itself.
+
+The filename describes its compatibility: `cp312-cp312` means CPython 3.12 and
+its matching application binary interface, while `manylinux2014_aarch64` and
+`manylinux_2_17_aarch64` identify compatible 64-bit ARM Linux environments. The
+UNO Q runtime uses this tracked wheel:
 
 ```text
 python/worker-wheels/mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
@@ -49,13 +59,13 @@ PowerGlove Vision uses Google's float16 Hand Landmarker task bundle.
 | SHA-256 | `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1` |
 | Size | 7,819,105 bytes |
 
-The model is not tracked in Git and is not included in the public App Lab ZIP.
-On first launch, the application downloads it from Google's versioned URL into
-the private, persistent `data/models/` directory. It refuses to start the
+The model is not tracked in Git and is not included in the App Lab installation
+ZIP. On first launch, the application downloads it from Google's versioned URL
+into the private, persistent `data/models/` directory. It refuses to start the
 vision worker if the SHA-256 checksum differs, reports the problem on the
-dashboard, and retries without taking the web interface offline. Later launches
-reuse the verified cached model. Wi-Fi deployments preserve `data/`, so an
-application update does not download the model again.
+dashboard, and retries without taking the web interface offline. Later
+launches reuse the verified cached model. Wi-Fi deployments preserve `data/`,
+so an application update does not download the model again.
 
 `scripts/fetch-runtime-assets.sh` provides an optional manual prefetch using
 the same URL and checksum. It writes to the same private `data/models/` path and
@@ -92,8 +102,8 @@ Treat a wheel or model update as a tested dependency change:
    the model.
 3. If repackaging another wheel, record every difference from upstream and
    retain its license files.
-4. Build the App Lab ZIP and confirm it contains one wheel, no model file, and
-   only the root `sketch/` application sketch.
+4. Build the App Lab installation ZIP and confirm it contains one wheel, no
+   model file, and only the root `sketch/` application sketch.
 5. Test first-launch download and checksum verification, camera initialization,
    tracking, the Learn and Debug pages, and controller output on the UNO Q
    before publishing the package.

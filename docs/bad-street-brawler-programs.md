@@ -37,84 +37,114 @@ next game therefore did not need special Power Glove support.
 | **H** | Training / general play | Familiar controls with pulsed buttons |
 | **I** | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
 
+## Menu gestures shared by every program
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Hold a V sign for about 0.7 seconds | <img src="images/gestures/actions/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause |
+| Hold a thumbs-up with the other fingers closed for about 0.7 seconds | <img src="images/gestures/actions/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
+
+These menu poses briefly suppress directions and action gestures while they
+form. Return to a relaxed open hand after the command is recognized.
+
 ## Program cards
 
 ### A - Pinball rig
 
-- Index curl operates the right flipper / A.
-- Thumb curl operates the left flipper / Up.
-- Six-o'clock wrist rotation tilts / B.
-- Pulling the hand back toggles combined-flipper behaviour.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Curl the index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | Right flipper / A |
+| Curl the thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | Left flipper / Up |
+| Rotate the wrist toward six o'clock | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist" width="96"> | Tilt / B |
+| Pull the hand away from the camera | <img src="images/gestures/actions/pull-away-from-camera.png" alt="Pull the hand away from the camera" width="72"> | Toggle combined-flipper behaviour |
 
 **Use it for:** pinball tables and games that benefit from two independent
 finger actions.
 
 ### B - Joust rig
 
-- Move left or right to steer.
-- Thumb curl turns the rider.
-- Index or middle curl produces a pulsed flap input.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the hand left or right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Steer left or right |
+| Curl the thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | Turn the rider |
+| Curl the index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger" width="72"> | Pulsed flap input |
 
 **Use it for:** Joust and any game where rhythmic, repeated presses matter.
 
 ### C - Gyruss rig
 
-- Roll the wrist to rotate clockwise or counter-clockwise.
-- Keep the index finger straight for continuous fire.
-- Pull the hand back to launch a bomb.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Roll the wrist left or right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Rotate counter-clockwise or clockwise |
+| Keep the index finger straight | <img src="images/gestures/actions/keep-index-straight.png" alt="Keep the index finger straight" width="72"> | Continuous fire |
+| Pull the hand away from the camera | <img src="images/gestures/actions/pull-away-from-camera.png" alt="Pull the hand away from the camera" width="72"> | Launch a bomb |
 
 **Use it for:** circular shooters and games with rotation plus rapid fire.
 
 ### D - Mirror-world rig
 
-- Left becomes Right; right becomes Left.
-- Up becomes Down; down becomes Up.
-- Thumb and index supply the action buttons.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the hand left or right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Reversed right or left direction |
+| Raise or lower the hand | <img src="images/gestures/actions/vertical-movement.png" alt="Raise or lower the whole hand" width="96"> | Reversed down or up direction |
+| Curl the thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | First action button |
+| Curl the index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | Second action button |
 
 **Use it for:** deliberate chaos, party challenges, or accessibility
 experiments that need inverted direction mappings.
 
 ### E - Defender rig
 
-- Hand position moves the ship.
-- Thumb curl fires.
-- Six-o'clock wrist rotation triggers the smart bomb.
-- Ring-finger flex produces rapid horizontal movement.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Move the ship |
+| Curl the thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | Fire |
+| Rotate the wrist toward six o'clock | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist" width="96"> | Smart bomb |
+| Curl the ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger" width="72"> | Rapid horizontal movement |
 
 **Use it for:** Defender II and multi-action shooters.
 
 ### F - Yes / No rig
 
-- A closed or grabbing hand means No.
-- Moving an open hand means Yes.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Close all fingers" width="72"> | No |
+| Move an open hand in any direction | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move an open hand in any direction" width="96"> | Yes |
 
 **Use it for:** Sesame Street 1-2-3 and simple choice-driven games.
 
 ### G - Gun.Smoke rig
 
-- X/Y/depth movement walks the character.
-- Index curl fires.
-- Wrist angles choose firing direction.
-- Thumb plus ring flex suppresses action for menu navigation.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Walk using X, Y, and depth movement |
+| Curl the index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | Fire |
+| Roll the wrist | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Choose firing direction |
+| Curl the thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress action for menu navigation |
 
 **Use it for:** Gun.Smoke and shooters with movement plus directional fire.
 
 ### H - Training rig
 
-- Hand movement supplies conventional directions.
-- Thumb and index provide pulsed action buttons.
-- Centring the hand produces a training acknowledgement.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Conventional directions |
+| Curl the thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | First pulsed action button |
+| Curl the index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | Second pulsed action button |
+| Return the hand to center | <img src="images/gestures/actions/whole-hand-movement.png" alt="Return the whole hand to center" width="96"> | Training acknowledgement |
 
 **Use it for:** learning the system or giving an unmapped game a sensible
 general-purpose starting point.
 
 ### I - Driving rig
 
-- Wrist angle steers.
-- Index curl is the throttle.
-- Lowering the hand brakes.
-- Pushing forward enables turbo.
-- Thumb curl fires an auxiliary action.
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Roll the wrist left or right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Steer |
+| Curl the index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | Throttle |
+| Lower the hand | <img src="images/gestures/actions/move-down.png" alt="Lower the whole hand" width="72"> | Brake |
+| Push the hand toward the camera | <img src="images/gestures/actions/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Turbo |
+| Curl the thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | Auxiliary action |
 
 **Use it for:** Knight Rider and driving games that need steering, speed, and
 one extra action.

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # Project: PowerGlove Vision
 # File: scripts/verify-app-lab-package.py
-# Purpose: Reject incomplete, unsafe, or private content in the generated public App Lab ZIP.
+# Purpose: Reject incomplete, unsafe, or private content in the generated App Lab installation ZIP.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-03 - Added repeatable public-package content and path verification.
-#   2026-09-03 - Required the offline Help renderer in every public package.
+#   2026-09-03 - Added repeatable installation-package content and path verification.
+#   2026-09-03 - Required the offline Help renderer in every installation ZIP.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Verify the generated UNO Q App Lab package before publication."""
+"""Verify the generated UNO Q App Lab installation ZIP before publication."""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ def archive_errors(path: Path) -> list[str]:
                     errors.append(f"member outside {PACKAGE_ROOT}/: {info.filename}")
                 mode = info.external_attr >> 16
                 if stat.S_ISLNK(mode):
-                    errors.append(f"symbolic link is not allowed in public package: {info.filename}")
+                    errors.append(f"symbolic link is not allowed in the App Lab installation ZIP: {info.filename}")
                 relative_parts = set(member.parts[1:])
                 if relative_parts & FORBIDDEN_PARTS:
                     errors.append(f"private or generated path included: {info.filename}")
@@ -85,7 +85,7 @@ def archive_errors(path: Path) -> list[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Create the public-package verification command-line parser."""
+    """Create the installation-package verification command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", nargs="?", type=Path, default=DEFAULT_ARCHIVE)
     return parser
@@ -98,7 +98,7 @@ def main() -> int:
     if errors:
         print("\n".join(errors))
         return 1
-    print(f"Public package verified: {path}")
+    print(f"App Lab installation ZIP verified: {path}")
     print(f"SHA-256: {sha256_file(path)}")
     return 0
 

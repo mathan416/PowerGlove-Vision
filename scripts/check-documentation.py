@@ -8,6 +8,7 @@
 # Change log:
 #   2026-09-03 - Added documentation and generated-PDF consistency checks.
 #   2026-09-03 - Registered the illustrated gameplay handbook and PDF edition.
+#   2026-09-03 - Added Help-library and registered-game coverage checks.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Check that maintained documentation is complete, linked, and publishable."""
@@ -25,6 +26,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 MARKDOWN_LINK = re.compile(r"!?\[[^]]*\]\(([^)]+)\)")
 HTML_LINK = re.compile(r"(?:href|src)=[\"']([^\"']+)[\"']", re.IGNORECASE)
+HELP_FILE = re.compile(r'[\"\x27]file[\"\x27]\s*:\s*[\"\x27]([^\"\x27]+\.md)[\"\x27]')
 CONFIGURATION_FILES = (
     "config/device.example.json",
     "config/games.json",
@@ -101,6 +103,36 @@ def check_pdfs(errors: list[str]) -> None:
             errors.append(f"PDF contains unresolved renderer placeholder: {path.relative_to(ROOT)}")
 
 
+def check_help_coverage(markdown: list[Path], errors: list[str]) -> None:
+    """Require every portable guide to appear in the built-in Help library."""
+    source = (ROOT / "src" / "powerglove_vision" / "help_content.py").read_text()
+    help_files = set(HELP_FILE.findall(source))
+    portable_guides = {
+        path.name
+        for path in markdown
+        if path.parts[:1] == ("docs",) and path.name != "cheatsheet.md"
+    }
+    for name in sorted(portable_guides - help_files):
+        errors.append(f"public guide is missing from the Help library: docs/{name}")
+
+
+def check_gameplay_coverage(errors: list[str]) -> None:
+    """Require an illustrated gameplay section for every registered game title."""
+    try:
+        registry = json.loads((ROOT / "config" / "games.json").read_text())["games"]
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        errors.append(f"cannot check gameplay coverage: {exc}")
+        return
+    gameplay = (ROOT / "docs" / "GAMEPLAY_GUIDE.md").read_text()
+    titles = {
+        re.sub(r"\s*\([^)]*\)$", "", Path(filename).stem)
+        for filename in registry
+    }
+    for title in sorted(titles):
+        if f"## {title}" not in gameplay:
+            errors.append(f"registered game is missing from the gameplay guide: {title}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Create the documentation-audit command-line parser."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -123,6 +155,9 @@ def main() -> int:
         for target in local_targets(path):
             if not (ROOT / target).exists():
                 errors.append(f"broken local link in {path}: {target}")
+
+    check_help_coverage(markdown, errors)
+    check_gameplay_coverage(errors)
 
     reference = (ROOT / "docs" / "CONFIGURATION_REFERENCE.md").read_text()
     for name in CONFIGURATION_FILES:

@@ -1,6 +1,6 @@
 # Project: PowerGlove Vision
 # File: .github/workflows/quality.yml
-# Purpose: Test supported Python versions and verify source, documentation, PDFs, and the public package.
+# Purpose: Test supported Python versions and verify source, documentation, PDFs, and the App Lab installation ZIP.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
@@ -54,7 +54,7 @@ jobs:
         run: python -m unittest discover -s tests -v
 
   documentation-and-package:
-    name: Documentation and public package
+    name: Documentation and App Lab installation ZIP
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -85,11 +85,11 @@ jobs:
         run: |
           python scripts/build-docs-pdf.py
           scripts/check-documentation.py --require-pdfs
-      - name: Build and verify public App Lab package
+      - name: Build and verify App Lab installation ZIP
         run: |
           scripts/build-app-lab-package.sh
           scripts/verify-app-lab-package.py
-      - name: Publish verified App Lab package
+      - name: Publish verified App Lab installation ZIP
         uses: actions/upload-artifact@v4
         with:
           name: PowerGlove-Vision-Uno-Q

@@ -12,7 +12,7 @@ Linux devices, and a privileged shutdown helper.
 3. Check `CONFIGURATION_REFERENCE.md` before changing a file format, default,
    installed path, port, controller mapping, or service unit.
 4. Never commit `data/`, tokens, passwords, pairing codes, the downloaded hand
-   model, caches, or locally generated App Lab ZIP files.
+   model, caches, or locally generated App Lab installation ZIP files.
 
 Security vulnerabilities should follow the private reporting process in
 `SECURITY.md`, not an ordinary pull request or public issue.
@@ -93,21 +93,21 @@ scripts/check-documentation.py --require-pdfs
 
 Commit the updated Markdown and PDFs together.
 
-## Public package changes
+## App Lab installation package changes
 
-Build and verify the model-free App Lab package with:
+Build and verify the model-free App Lab installation ZIP with:
 
 ```sh
 scripts/build-app-lab-package.sh
 scripts/verify-app-lab-package.py
 ```
 
-The ZIP must contain public source, configuration examples, documentation, and
-the required custom UNO Q MediaPipe wheel. It must exclude private `data/`, the
-downloaded Google model, tests, PDFs, caches, and Git history. Do not force-add
-the generated ZIP to Git. GitHub Actions publishes a short-lived verified ZIP
-artifact for each successful workflow run; tagged releases may attach a
-verified ZIP for long-term distribution.
+The App Lab installation ZIP must contain public source, configuration
+examples, documentation, and the required custom UNO Q MediaPipe wheel. It must
+exclude private `data/`, the downloaded Google model, tests, PDFs, caches, and
+Git history. Do not force-add the generated ZIP to Git. GitHub Actions publishes
+a short-lived verified ZIP artifact for each successful workflow run; tagged
+releases may attach a verified ZIP for long-term distribution.
 
 ## Commits and pull requests
 

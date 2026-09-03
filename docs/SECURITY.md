@@ -2,8 +2,8 @@
 
 ## Supported code
 
-Security fixes are made on the current `main` branch and included in the next
-tagged release. Older snapshots may lack pairing, network, dependency, or
+Security fixes will be available on the current `main` branch and included in
+the next tagged release. Older snapshots may lack pairing, network, dependency, or
 shutdown protections and should be upgraded before troubleshooting them.
 
 ## Reporting a vulnerability
@@ -43,8 +43,8 @@ The main protected assets are:
 - the privileged `/dev/uinput` receiver;
 - the physical pairing display and single-use PIN;
 - the fixed-purpose UNO Q shutdown helper;
-- the integrity of the App Lab package, MediaPipe wheel, downloaded model, and
-  Arduino dependencies.
+- the integrity of the App Lab installation ZIP, MediaPipe wheel, downloaded
+  model, and Arduino dependencies.
 
 The project does not attempt to protect a device after an attacker obtains root
 access, physical storage access, or control of the trusted local network and
@@ -125,15 +125,15 @@ command runner. Remove or disable both units if remote shutdown is not wanted.
 
 ## Dependency and release integrity
 
-- The public ZIP is generated and verified; it is not maintained as a changing
-  source-controlled binary.
+- The App Lab installation ZIP is generated and verified; it is not maintained
+  as a changing source-controlled binary.
 - The custom MediaPipe wheel's provenance and checksum are recorded in
   `THIRD_PARTY_COMPONENTS.md`.
 - Google's Hand Landmarker model downloads from its pinned source and must match
   the expected SHA-256 digest before atomic installation.
 - Arduino library versions are pinned in `sketch/sketch.yaml`.
-- GitHub Actions rebuilds and inspects documentation and the public package on
-  every pull request and push to `main`.
+- GitHub Actions rebuilds and inspects documentation and the App Lab
+  installation ZIP on every pull request and push to `main`.
 
 Changing a download URL, checksum, dependency source, pairing primitive,
 network binding, file permission, or privileged service requires focused review

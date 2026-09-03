@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-03 - Added the built-in Help library and Markdown reading view.
 #   2026-09-03 - Added a live, non-secret cabinet connection reference.
+#   2026-09-03 - Renamed the installation route while preserving its original alias.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Render the bundled public Markdown guides as safe, offline Help pages."""
@@ -32,10 +33,10 @@ HELP_GUIDES = (
         "group": "Use PowerGlove Vision",
     },
     {
-        "slug": "field-guide",
+        "slug": "installation",
         "title": "Build and operate",
         "file": "INSTALL_README.md",
-        "description": "Installation, secure pairing, daily play, updates, and troubleshooting.",
+        "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.",
         "group": "Use PowerGlove Vision",
     },
     {
@@ -89,6 +90,7 @@ HELP_GUIDES = (
     },
 )
 GUIDES_BY_SLUG = {str(guide["slug"]): guide for guide in HELP_GUIDES}
+LEGACY_SLUGS = {"field-guide": "installation"}
 SLUG_BY_FILE = {
     str(guide["file"]): str(guide["slug"])
     for guide in HELP_GUIDES
@@ -104,7 +106,7 @@ _TABLE_DIVIDER = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$"
 
 def guide_for_slug(slug: str) -> dict[str, Any] | None:
     """Return the fixed public guide definition for a URL slug."""
-    return GUIDES_BY_SLUG.get(slug)
+    return GUIDES_BY_SLUG.get(LEGACY_SLUGS.get(slug, slug))
 
 
 def guide_markdown(slug: str) -> bytes | None:
