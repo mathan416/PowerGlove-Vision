@@ -13,6 +13,7 @@
 #   2026-09-03 - Verified deployed Help guides, Markdown, and gesture artwork.
 #   2026-09-03 - Used staged SFTP uploads and terminal-backed UNO Q commands.
 #   2026-09-03 - Verified every Help guide and all gameplay table illustrations.
+#   2026-09-03 - Deployed and verified every allowlisted public PDF guide.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -83,12 +84,12 @@ COPYFILE_DISABLE=1 tar \
   --exclude './.venv' \
   --exclude './data' \
   --exclude './models/hand_landmarker.task' \
-  --exclude './output' \
+  --exclude './output/app-lab' \
+  --exclude './output/pdf/PowerGlove-Vision-Quick-Reference.pdf' \
   --exclude './tests' \
   --exclude './tmp' \
   --exclude '__pycache__' \
   --exclude '*.pyc' \
-  --exclude '*.pdf' \
   --exclude '.DS_Store' \
   --exclude './docs/cheatsheet.md' \
   -C "${PROJECT_DIR}" -cf "${LOCAL_ARCHIVE}" .
@@ -130,6 +131,15 @@ for HELP_SLUG in cabinet installation gameplay programs configuration security c
   curl --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_HOST}:8088/help/${HELP_SLUG}" >/dev/null
 done
+for PDF_SLUG in overview installation gameplay programs configuration security components contributing changelog; do
+  curl --fail --silent --show-error --max-time 15 \
+    "http://${UNO_HEALTH_HOST}:8088/help-pdf/${PDF_SLUG}.pdf" >/dev/null
+done
+if curl --fail --silent --show-error --max-time 5 \
+    "http://${UNO_HEALTH_HOST}:8088/help-pdf/quick-reference.pdf" >/dev/null 2>&1; then
+  echo "error: cabinet-specific quick-reference PDF was exposed" >&2
+  exit 1
+fi
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_HOST}:8088/help-assets/gestures/actions/v-sign.png" >/dev/null
 GAMEPLAY_MARKDOWN="$(curl --fail --silent --show-error --max-time 5 \

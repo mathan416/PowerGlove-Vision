@@ -105,11 +105,12 @@ scripts/deploy-uno-q-wifi.sh arduino@arduiain.local
 ```
 
 That deployment restarts the Power Glove Vision application and checks every
-Help route plus representative gesture artwork. Confirm the affected page in a
-browser after deployment. The cabinet-specific `docs/cheatsheet.md` and PDF
-editions are intentionally excluded from the public UNO Q Help deployment. If
-the UNO Q is unavailable, state clearly that device synchronization and live
-Help verification remain outstanding.
+Help route, every public PDF, and representative gesture artwork. Confirm the
+affected page and its **Open PDF** link in a browser after deployment. The
+cabinet-specific `docs/cheatsheet.md` and its quick-reference PDF are
+intentionally excluded from the public UNO Q Help deployment. If the UNO Q is
+unavailable, state clearly that device synchronization and live Help
+verification remain outstanding.
 
 ## App Lab installation package changes
 
@@ -121,10 +122,11 @@ scripts/verify-app-lab-package.py
 ```
 
 The App Lab installation ZIP must contain public source, configuration
-examples, documentation, and the required custom UNO Q MediaPipe wheel. It must
-exclude private `data/`, the downloaded Google model, tests, PDFs, caches, and
-Git history. Do not force-add the generated ZIP to Git. GitHub Actions publishes
-a short-lived verified ZIP artifact for each successful workflow run; tagged
+examples, documentation, the nine allowlisted public PDF guides, and the
+required custom UNO Q MediaPipe wheel. It must exclude private `data/`, the
+downloaded Google model, tests, the cabinet quick-reference PDF, caches, and Git
+history. Do not force-add the generated ZIP to Git. GitHub Actions publishes a
+short-lived verified ZIP artifact for each successful workflow run; tagged
 releases may attach a verified ZIP for long-term distribution.
 
 ## Commits and pull requests

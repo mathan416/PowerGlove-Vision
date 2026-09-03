@@ -50,6 +50,10 @@ authoritative record for line-level and file-level history.
   gameplay and Programs A-I illustrations.
 - Documented the required Markdown-to-PDF workflow and UNO Q Help
   synchronization steps for documentation contributions.
+- Added offline PDF links to every public Help guide and the project overview,
+  while keeping the cabinet-specific quick-reference PDF private.
+- Included the nine allowlisted public PDFs in UNO Q deployments and App Lab
+  installation packages, with package and live-route verification.
 - Refreshed the Dashboard, Learn, and Setup screenshots from the running UNO Q
   after the tagline, compact diagnostics, and safe-shutdown controls were added.
 - Added an offline Help library that renders the maintained public Markdown

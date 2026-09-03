@@ -450,6 +450,7 @@ guest, school, or public network.
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
 | `data/.shutdown-enabled` | Marker installed by the optional fixed-purpose shutdown helper |
+| `output/pdf/` | Generated PDF editions; public editions are served by Help, while the cabinet quick reference remains private |
 
 Changing manifests can prevent App Lab from starting the application. Generated
 files and downloaded runtime assets should not be committed or added to an App
@@ -460,8 +461,10 @@ output/app-lab/PowerGlove-Vision-Uno-Q.zip
 ```
 
 The installation ZIP intentionally excludes private `data/`, downloaded models,
-caches, tests, PDFs, and Git metadata. The pinned Google Hand Landmarker model
-downloads and passes a SHA-256 check on first launch.
+caches, tests, Git metadata, and the cabinet-specific quick-reference PDF. It
+includes only the nine allowlisted public PDF editions used by Help. The pinned
+Google Hand Landmarker model downloads and passes a SHA-256 check on first
+launch.
 
 ### Automated quality and package verification
 

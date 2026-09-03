@@ -181,9 +181,12 @@ That is expected; verify its fingerprint against the matrix during pairing.
 The **Help** page renders the public Markdown manuals stored in `docs/` as an
 offline reading library. Choose a guide to get a styled reading view, guide
 navigation, a table of contents, illustrations, tables, and code samples. Use
-**View Markdown** when you need the original source. The machine-specific
-`cheatsheet.md` is deliberately excluded from the App Lab installation ZIP and
-does not appear in Help.
+**View Markdown** when you need the original source, or **Open PDF** to read,
+save, or print the matching PDF edition. The Help landing page also provides
+the project overview PDF. These public PDFs work locally from the UNO Q without
+an Internet connection. The machine-specific `cheatsheet.md` and its quick
+reference PDF are deliberately excluded from the App Lab installation ZIP and
+do not appear in Help.
 
 Choose **This cabinet** for a live quick reference without a static machine
 file. Its UNO Q links use the hostname or IP address that opened Help. Its

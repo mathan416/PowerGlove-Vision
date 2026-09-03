@@ -10,6 +10,7 @@
 #   2026-09-03 - Verified atomic publication of host shutdown requests.
 #   2026-09-03 - Verified the bundled Help library, Markdown reader, and assets.
 #   2026-09-03 - Verified dynamic UNO Q and RetroPie cabinet details.
+#   2026-09-03 - Verified public PDF links, routes, and allowlisting.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -29,7 +30,7 @@ from powerglove_vision.control_server import (
     help_index_page, start_control_server,
 )
 from powerglove_vision.debug_server import SharedDebugState
-from powerglove_vision.help_content import help_asset, render_markdown
+from powerglove_vision.help_content import guide_pdf, help_asset, render_markdown
 from powerglove_vision.help_content import cabinet_reference_content, request_browser_address
 
 
@@ -88,6 +89,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"/help/cabinet", page)
         self.assertIn(b"This cabinet", page)
         self.assertNotIn(b"cheatsheet", page.lower())
+        self.assertIn(b"/help-pdf/overview.pdf", page)
         self.assertIsNotNone(help_document_page("field-guide"))
 
     def test_cabinet_reference_uses_request_address_and_public_config(self):
@@ -114,6 +116,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"/help-assets/gestures/actions/thumbs-up.png", page)
         self.assertGreaterEqual(page.count(b"<img loading=lazy"), 46)
         self.assertIn(b"/help/gameplay.md", page)
+        self.assertIn(b"/help-pdf/gameplay.pdf", page)
 
     def test_help_renderer_escapes_html_and_unsafe_links(self):
         rendered, _headings = render_markdown("# Safe\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))")
@@ -140,6 +143,15 @@ class ControlStateTests(unittest.TestCase):
         self.assertEqual(asset[1], "image/png")
         self.assertIsNone(help_asset("../../data/device.json"))
 
+    def test_help_pdfs_are_allowlisted_and_exclude_the_cabinet_reference(self):
+        document = guide_pdf("gameplay")
+        self.assertIsNotNone(document)
+        assert document is not None
+        self.assertTrue(document[0].startswith(b"%PDF-"))
+        self.assertEqual(document[1], "PowerGlove-Vision-Gameplay-Guide.pdf")
+        self.assertIsNone(guide_pdf("quick-reference"))
+        self.assertIsNone(guide_pdf("../../data/device"))
+
     def test_help_routes_serve_html_markdown_and_images(self):
         servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
         try:
@@ -149,6 +161,7 @@ class ControlStateTests(unittest.TestCase):
                 ("/help/cabinet", "text/html"),
                 ("/help/gameplay", "text/html"),
                 ("/help/gameplay.md", "text/markdown"),
+                ("/help-pdf/gameplay.pdf", "application/pdf"),
                 ("/help-assets/gestures/directional-movement.png", "image/png"),
             ):
                 connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)

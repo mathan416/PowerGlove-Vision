@@ -68,7 +68,8 @@ and the status pages remain available while the camera is disconnected.
   transmission so it is safe to practise without RetroPie.
 - `/help` renders the maintained Markdown manuals as an offline Help library,
   with guide navigation, contents links, illustrations, tables, code samples,
-  and access to the original Markdown.
+  access to the original Markdown, and downloadable PDF editions of every
+  public guide.
 - `/help/cabinet` generates a live, non-secret quick reference. UNO Q links use
   the hostname or IP that opened the page, and RetroPie details come from the
   active public configuration.

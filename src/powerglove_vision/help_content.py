@@ -9,6 +9,7 @@
 #   2026-09-03 - Added a live, non-secret cabinet connection reference.
 #   2026-09-03 - Renamed the installation route while preserving its original alias.
 #   2026-09-03 - Rendered allowlisted inline gesture images used in guide tables.
+#   2026-09-03 - Added allowlisted PDF downloads for every public guide.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Render the bundled public Markdown guides as safe, offline Help pages."""
@@ -25,6 +26,7 @@ from urllib.parse import urlsplit
 
 DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
+HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
     {
         "slug": "cabinet",
@@ -97,6 +99,17 @@ SLUG_BY_FILE = {
     for guide in HELP_GUIDES
     if guide["file"] is not None
 }
+HELP_PDFS = {
+    "overview": "PowerGlove-Vision-Overview.pdf",
+    "installation": "PowerGlove-Vision-Guide.pdf",
+    "gameplay": "PowerGlove-Vision-Gameplay-Guide.pdf",
+    "programs": "Bad-Street-Brawler-Power-Glove-Programs.pdf",
+    "configuration": "PowerGlove-Vision-Configuration-Reference.pdf",
+    "security": "PowerGlove-Vision-Security.pdf",
+    "components": "PowerGlove-Vision-Third-Party-Components.pdf",
+    "contributing": "PowerGlove-Vision-Contributing.pdf",
+    "changelog": "PowerGlove-Vision-Changelog.pdf",
+}
 
 _HTML_IMAGE_PATTERN = r'<img\s+src="([^"]+)"\s+alt="([^"]*)"\s+width="([0-9]{1,3})"\s*/?>'
 _HTML_IMAGE = re.compile(_HTML_IMAGE_PATTERN, re.IGNORECASE)
@@ -122,6 +135,17 @@ def guide_markdown(slug: str) -> bytes | None:
         return None
     try:
         return (DOCS_ROOT / str(guide["file"])).read_bytes()
+    except OSError:
+        return None
+
+
+def guide_pdf(slug: str) -> tuple[bytes, str] | None:
+    """Read one allowlisted public PDF without exposing cabinet-specific files."""
+    filename = HELP_PDFS.get(LEGACY_SLUGS.get(slug, slug))
+    if filename is None:
+        return None
+    try:
+        return (HELP_PDFS_ROOT / filename).read_bytes(), filename
     except OSError:
         return None
 
@@ -166,6 +190,7 @@ def help_index_content() -> str:
         "<h1>Help, without leaving the glove.</h1>"
         "<p class=lead>Read the maintained PowerGlove Vision guides directly on this UNO Q. "
         "The manuals work offline from their Markdown sources, while This cabinet fills in the live connection details.</p>"
+        "<p><a class=button href='/help-pdf/overview.pdf'>Open project overview PDF</a></p>"
         + "".join(sections)
     )
 
@@ -188,7 +213,10 @@ def help_document_content(slug: str) -> tuple[str, str] | None:
         slug,
         rendered,
         contents,
-        f"<a href='/help/{html.escape(slug, quote=True)}.md'>View Markdown</a>",
+        "<span class=document-actions>"
+        f"<a href='/help/{html.escape(slug, quote=True)}.md'>View Markdown</a>"
+        f"<a href='/help-pdf/{html.escape(slug, quote=True)}.pdf'>Open PDF</a>"
+        "</span>",
     )
     return body, str(guide["title"])
 

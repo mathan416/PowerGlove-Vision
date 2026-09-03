@@ -10,6 +10,7 @@
 #   2026-09-03 - Published shutdown requests atomically for reliable host handoff.
 #   2026-09-03 - Added the offline Markdown Help library.
 #   2026-09-03 - Added the dynamic cabinet connection page.
+#   2026-09-03 - Served allowlisted PDF editions from the Help Center.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -33,7 +34,7 @@ from typing import Any, Callable
 
 from .help_content import (
     cabinet_reference_content, help_asset, help_document_content,
-    help_index_content, guide_markdown,
+    help_index_content, guide_markdown, guide_pdf,
 )
 from .pairing import PAIRING_PORT, certificate_identity, generate_certificate, pair_over_ssh, pair_with_code
 
@@ -78,7 +79,7 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 .help-group{{margin-top:28px}}.help-group>h2{{margin-bottom:12px;color:var(--cyan)}}.guide-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}}
 .guide-card{{position:relative;display:block;min-height:145px;padding:20px 52px 20px 20px;color:var(--ink);text-decoration:none;background:linear-gradient(145deg,#1b2030,#11141d);border:1px solid var(--line);border-radius:14px;transition:transform .15s,border-color .15s}}
 .guide-card:hover{{transform:translateY(-2px);border-color:var(--cyan)}}.guide-card h2{{margin:0 0 8px}}.guide-card p{{margin:0;color:var(--muted)}}.guide-arrow{{position:absolute;right:20px;top:17px;color:var(--cyan);font-size:25px}}
-.help-toolbar{{display:flex;justify-content:space-between;gap:16px;margin:0 0 14px}}.help-toolbar a{{color:var(--cyan);text-decoration:none}}.help-layout{{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}}
+.help-toolbar{{display:flex;justify-content:space-between;gap:16px;margin:0 0 14px}}.help-toolbar a{{color:var(--cyan);text-decoration:none}}.document-actions{{display:flex;gap:16px}}.help-layout{{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}}
 .help-sidebar{{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:16px;background:#11141d;border:1px solid var(--line);border-radius:12px}}.guide-nav,.toc{{display:grid;gap:2px;margin-top:8px}}.guide-nav a,.toc a{{padding:7px 9px;color:var(--muted);text-decoration:none;border-radius:7px;font-size:13px}}.guide-nav a:hover,.toc a:hover,.guide-nav a.current{{color:var(--ink);background:#202636}}.toc{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}.toc-level-3{{padding-left:20px!important}}
 .markdown-body{{min-width:0;padding:clamp(20px,4vw,46px);background:#f8f9fc;color:#151927;border-radius:14px;font:16px/1.65 system-ui,sans-serif}}.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4{{color:#101522;scroll-margin-top:20px}}.markdown-body h1{{font-size:clamp(30px,5vw,46px);letter-spacing:-1.5px}}.markdown-body h2{{margin-top:38px;font-size:27px;border-bottom:2px solid #d9dfeb;padding-bottom:7px}}.markdown-body h3{{margin-top:28px;font-size:21px}}.markdown-body a{{color:#075fc4}}.markdown-body code{{color:#005dc7;background:#e9eef7;border-radius:4px;padding:2px 5px}}.markdown-body pre{{overflow:auto;padding:16px;background:#0b1220;border-left:4px solid var(--cyan);border-radius:8px}}.markdown-body pre code{{padding:0;color:#eaf2ff;background:none}}.markdown-body blockquote{{margin:20px 0;padding:14px 18px;border-left:5px solid #0b78d1;background:#e9f4fd}}.markdown-body img{{display:block;max-width:100%;height:auto;margin:22px auto;border-radius:9px}}.table-scroll{{overflow-x:auto;margin:18px 0}}.markdown-body table{{width:100%;border-collapse:collapse;font-size:14px}}.markdown-body th{{background:#101827;color:white;text-align:left}}.markdown-body th,.markdown-body td{{padding:10px 12px;border:1px solid #cbd3e2;vertical-align:top}}.markdown-body tr:nth-child(even) td{{background:#eef2f8}}
 @media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera{{height:auto;aspect-ratio:4/3}}}}
@@ -455,6 +456,13 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     self.send_error(404)
                 else:
                     _send(self, 200, source, "text/markdown; charset=utf-8")
+            elif path.startswith("/help-pdf/") and path.endswith(".pdf"):
+                document = guide_pdf(path[len("/help-pdf/"):-len(".pdf")])
+                if document is None:
+                    self.send_error(404)
+                else:
+                    body, _filename = document
+                    _send(self, 200, body, "application/pdf")
             elif path.startswith("/help/"):
                 page = help_document_page(path[len("/help/"):])
                 if page is None:

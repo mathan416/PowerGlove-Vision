@@ -8,6 +8,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Included allowlisted public PDF guides in installation packages.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -17,6 +18,17 @@ readonly PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly OUTPUT_DIR="${PROJECT_DIR}/output/app-lab"
 readonly OUTPUT_ZIP="${OUTPUT_DIR}/PowerGlove-Vision-Uno-Q.zip"
 readonly PACKAGE_TMP="$(mktemp -d)"
+readonly -a PUBLIC_PDFS=(
+  Bad-Street-Brawler-Power-Glove-Programs.pdf
+  PowerGlove-Vision-Changelog.pdf
+  PowerGlove-Vision-Configuration-Reference.pdf
+  PowerGlove-Vision-Contributing.pdf
+  PowerGlove-Vision-Gameplay-Guide.pdf
+  PowerGlove-Vision-Guide.pdf
+  PowerGlove-Vision-Overview.pdf
+  PowerGlove-Vision-Security.pdf
+  PowerGlove-Vision-Third-Party-Components.pdf
+)
 
 # Remove the private staging directory regardless of build success or failure.
 cleanup() {
@@ -40,6 +52,12 @@ rsync -a \
   --exclude '.DS_Store' \
   --exclude 'docs/cheatsheet.md' \
   "${PROJECT_DIR}/" "${PACKAGE_TMP}/PowerGlove-Vision/"
+
+mkdir -p "${PACKAGE_TMP}/PowerGlove-Vision/output/pdf"
+for PDF_NAME in "${PUBLIC_PDFS[@]}"; do
+  cp "${PROJECT_DIR}/output/pdf/${PDF_NAME}" \
+    "${PACKAGE_TMP}/PowerGlove-Vision/output/pdf/${PDF_NAME}"
+done
 
 rm -f "${OUTPUT_ZIP}"
 cd "${PACKAGE_TMP}"
