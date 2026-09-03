@@ -373,6 +373,7 @@ def main():
     install = docs / "INSTALL_README.md"
     cheatsheet = docs / "cheatsheet.md"
     programs = docs / "bad-street-brawler-programs.md"
+    third_party = docs / "THIRD_PARTY_COMPONENTS.md"
     build(
         overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
         "PowerGlove Vision Project Overview",
@@ -397,7 +398,13 @@ def main():
         "The cartridge-free field manual for PowerGlove Vision profiles.",
         "Profile handbook",
     )
-    print(f"Built 4 PDF guides on {date.today().isoformat()}")
+    build(
+        third_party, OUTPUT / "PowerGlove-Vision-Third-Party-Components.pdf",
+        "Third-party Runtime Components",
+        "MediaPipe provenance, modifications, checksums, licensing, and update procedure.",
+        "Technical notice",
+    )
+    print(f"Built 5 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

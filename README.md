@@ -36,6 +36,7 @@ camera equivalents are documented in
 | --- | --- |
 | [PowerGlove Vision Field Guide](docs/INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
 | [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
+| [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md) | MediaPipe repackaging, model provenance, checksums, licenses, and update procedure |
 | [`docs/cheatsheet.md`](docs/cheatsheet.md) | Machine-specific URLs and maintenance notes; contains no private pairing token |
 
 The Field Guide is organized as a six-stage build. New makers can follow it in
@@ -369,7 +370,7 @@ Core tests do not require a camera or MediaPipe:
 python -m unittest discover -s tests -v
 ```
 
-Rebuild the four PDF guides after changing Markdown, then rebuild the importable
+Rebuild the five PDF guides after changing Markdown, then rebuild the importable
 App Lab ZIP. The packaging script downloads Google's Hand Landmarker model,
 verifies its pinned SHA-256 checksum, and includes it in the ZIP without storing
 the generated package or downloaded model in Git:
@@ -392,4 +393,5 @@ PowerGlove Vision is open source under the [MIT License](LICENSE). You may use,
 modify, and distribute it subject to the license terms. Nintendo, NES, Mattel,
 Power Glove, and other referenced product names and marks belong to their
 respective owners; this independent project is not affiliated with or endorsed
-by them.
+by them. Bundled and downloaded runtime components retain their own terms; see
+[Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md).

@@ -111,6 +111,13 @@ pinned SHA-256 checksum before placing it in the ZIP. The generated ZIP and
 downloaded model are build artifacts and are not stored in Git. A published
 GitHub release may provide the same prebuilt ZIP.
 
+The repository retains a custom MediaPipe 0.10.18 ARM64 wheel because its
+dependency metadata is tailored for the headless UNO Q runtime. Do not replace
+it with the similarly named stock PyPI wheel without retesting the complete
+camera startup path. Sources, exact checksums, modifications, and applicable
+licenses are recorded in
+[`THIRD_PARTY_COMPONENTS.md`](THIRD_PARTY_COMPONENTS.md).
+
 In Arduino App Lab:
 
 1. Import an Arduino App from the ZIP file.
@@ -637,4 +644,6 @@ sudo systemctl daemon-reload
 PowerGlove Vision is an independent MIT-licensed hobbyist project by Iain
 Bennett. Nintendo, NES, Power Glove, Bad Street Brawler, Super Glove Ball, and
 other marks belong to their respective owners. No ROM images are distributed
-with this project.
+with this project. Third-party runtime components retain their own licenses and
+terms as documented in
+[`THIRD_PARTY_COMPONENTS.md`](THIRD_PARTY_COMPONENTS.md).
