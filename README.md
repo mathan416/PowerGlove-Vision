@@ -54,17 +54,26 @@ or symptom-based troubleshooting sections. Print-ready editions live in
 The UNO Q hosts four pages. They remain available even when RetroPie is off,
 and the status pages remain available while the camera is disconnected.
 
-| Debug dashboard | Offline gesture lessons |
-| --- | --- |
-| [![PowerGlove Vision debug dashboard](docs/images/debug-dashboard.png)](docs/images/debug-dashboard.png) | [![PowerGlove Vision Learn page](docs/images/learn-page.png)](docs/images/learn-page.png) |
+### Dashboard
 
-| Built-in Help library | Connection setup |
-| --- | --- |
-| [![PowerGlove Vision Help library](docs/images/help-page.png)](docs/images/help-page.png) | [![PowerGlove Vision connection setup](docs/images/setup-page.png)](docs/images/setup-page.png) |
+![PowerGlove Vision dashboard](docs/images/debug-dashboard.png)
+
+### Learn
+
+![PowerGlove Vision Learn page - camera preview masked for privacy](docs/images/learn-page.png)
+
+### Help
+
+![PowerGlove Vision Help library](docs/images/help-page.png)
+
+### Setup
+
+![PowerGlove Vision connection setup](docs/images/setup-page.png)
+
 
 - `/debug` shows the camera, selected profile, recognition state and generated
   controller output.
-- `/learn` provides ten guided exercises and automatically stops controller
+- `/learn` provides eleven guided exercises and automatically stops controller
   transmission so it is safe to practise without RetroPie.
 - `/help` renders the maintained Markdown manuals as an offline Help library,
   with guide navigation, contents links, illustrations, tables, code samples,
@@ -76,10 +85,28 @@ and the status pages remain available while the camera is disconnected.
 - `/setup` configures the receiver, profile, camera and controller state. Pairing
   credentials are accepted only by the HTTPS version on port 8443.
 - **Shutdown** on Dashboard or Setup safely halts Linux after a
-  confirmation. Restoring or cycling power is required to start the UNO Q again.
+  confirmation. The tested board may restart automatically; a disconnected
+  website is not confirmation that it is safe to remove power.
 
-The screenshots show the intentionally recoverable camera-offline state: the
-web interface and pairing controls continue working while the camera is absent.
+Screenshots were refreshed from the running UNO Q on September 3, 2026
+(v0.2.0.dev3). Dashboard shows Gestures off; the Learn camera preview is masked
+for privacy while the real lesson controls remain visible. Setup shows the HTTP
+page, where pairing is disabled until you open secure Setup.
+
+## Saved calibration and reliable local names
+
+The neutral hand reference is saved in `data/calibration.json` and reused across
+Learn, gameplay, profile changes and restarts. Use **Calibrate** when your camera
+or playing position changes, or neutral is incorrect. Learning does not train a
+personal hand model. The camera overlay's Right/Left score identifies handedness,
+not movement direction.
+
+Both machine installers install `avahi-daemon` and `libnss-mdns` and enable Avahi
+at boot. The UNO Q also uses an app-owned resolver service for container lookups.
+If discovery fails, use **Test console name** in Connection and follow the
+[hostname troubleshooting FAQ](docs/INSTALL_README.md#faq-what-if-the-console-name-cannot-be-resolved).
+A router-reserved IPv4 address is an alternative. Name resolution and saved
+calibration have been verified after reboot; a fresh installation remains untested.
 
 ## Quick start
 
@@ -87,8 +114,12 @@ web interface and pairing controls continue working while the camera is absent.
    network as RetroPie, import the App Lab installation ZIP, and enable **Run
    at startup**.
 2. Connect a UVC-compatible USB camera to the UNO Q through a powered USB hub.
-3. Install the receiver on RetroPie and run
-   `sudo /opt/powerglove/bin/powerglove-pair`.
+3. Complete host setup from the project directory on each machine: run
+   `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`
+   on RetroPie (substitute your board name), and
+   `sudo python3 scripts/setup-machine.py uno-q` in the imported UNO Q app
+   directory. Review the PASS/FAIL/ACTION results, then run
+   `sudo /opt/powerglove/bin/powerglove-pair` on RetroPie.
 4. Open `https://<uno-q-name>.local:8443/setup`, compare the browser
    certificate fingerprint with the `ID` on the matrix, enter the matrix `PN`
    digits and the RetroPie one-time code, then complete pairing.
@@ -155,7 +186,8 @@ App Lab supervisor maintains an isolated Python 3.12 worker with MediaPipe
 pairing token. Configure your RetroPie hostname and pairing in Connection before
 starting controller output. The website, Learn mode, and matrix animations work
 without a paired console. Existing saved destinations are preserved. Keep `data/device.json` out of Git;
-copy its token to `/etc/powerglove/token` on the console.
+use the secure Connection pairing workflow to configure the console token.
+Manual token transfer is an advanced alternative described in the configuration guide.
 
 The camera setting defaults to `auto`. If an active profile cannot use the
 camera, the app stays alive, shows the matrix error state, and retries quietly.
@@ -233,6 +265,13 @@ methods and USB-to-Wi-Fi bootstrap, follow
 the temporary code printed by `powerglove-pair`; username/password pairing is
 also supported and those credentials are never stored.
 
+### Advanced standalone tracker
+
+The following commands run the Python tracker directly, not the complete App Lab
+supervisor and website. Its diagnostic server is not the full Dashboard, Learn,
+Help, and secure Setup interface described above. For normal UNO Q use, follow
+the App Lab installation path instead.
+
 ```sh
 scripts/fetch-runtime-assets.sh
 python3 -m venv .venv
@@ -241,7 +280,10 @@ python -m pip install -U pip
 python -m pip install -e '.[vision]'
 ```
 
-Run the tracker, replacing the receiver address and token:
+Run the tracker, replacing the receiver address and token. Controller transmission
+defaults to stopped; add `--controller-enabled` only when you intend to send inputs.
+The placeholder below is not a real secret: avoid putting an actual token into
+shared terminal history or logs.
 
 ```sh
 powerglove-vision \
@@ -253,17 +295,22 @@ powerglove-vision \
 
 The vision service also listens for authenticated profile changes from
 RetroPie on UDP port 55356. A change first releases every virtual control,
-starts a new packet session, changes the mapping, begins neutral-position
-calibration, and acknowledges the selected profile.
+starts a new packet session, changes the mapping, reuses the saved neutral
+reference, and acknowledges the selected profile. If no valid saved reference
+exists, the tracker collects an initial calibration.
 
-Open `http://<uno-q-name>.local:8088/debug` from another machine. The live
+### App Lab dashboard and learning
+
+In the full App Lab application, open `http://<uno-q-name>.local:8088/debug`
+from another machine. The live
 dashboard shows the camera overlay, an active-profile selector, active game,
 tracking confidence,
 D-pad and button output, axes, finger curl, recent gesture events, and a
 **Calibrate** button. The Dashboard remains available even when the camera
 is unplugged; centering is disabled until vision is active.
-Calibration also begins automatically at tracker startup. The shorter root URL
-redirects to this dashboard.
+The saved calibration is restored at tracker startup; automatic calibration
+is only needed when no valid saved reference exists. The shorter root URL
+redirects to this dashboard in the App Lab application.
 
 Dashboard and Learn show **Starting camera and gesture tracking** with elapsed
 seconds while vision initializes. First activation can take longer than later
@@ -273,7 +320,13 @@ a startup state, not an error. Gestures off does not pre-warm the camera.
 Open `http://<uno-q-name>.local:8088/learn` for offline practice. The page
 automatically stops controller transmission, keeps vision active without a
 RetroPie connection, and guides you through hand detection, neutral position,
-directions, finger curl, Start, Select, and the forward-push gesture.
+directions, finger curl, A, B, Start, Select, and GLOVE ZAP (the forward-push gesture).
+Completing all eleven lessons earns the **Glove Master** achievement; skipped
+lessons must be completed, and **Start again** resets lesson progress.
+
+Each page displays the running application version in its footer. Learn and
+Setup also show when the application last started. The footer reflects the
+deployed build, not whichever branch was most recently merged on GitHub.
 
 Start and Select use poses held for about 0.7 seconds, then emit a short button
 pulse. While either menu pose is forming, ordinary attack controls are
@@ -296,8 +349,10 @@ boot display. Once the PowerGlove Vision app starts, it shows:
 - a gently pulsing version of that acknowledgement while tracking is active;
 - a blinking X if camera or runtime initialization fails.
 
-The Linux shutdown request does not guarantee that the MCU matrix turns off. The glove attract animation therefore
-means that Linux and the website are healthy while only gesture capture is idle.
+During normal operation, the glove attract animation represents Gestures off.
+However, the Linux shutdown request does not guarantee that the MCU matrix
+turns off. An animation alone is not proof that Linux or the website is healthy,
+or that shutdown has completed.
 
 Copy `sketch/` into the sketch portion of the PowerGlove Vision App Lab
 app. The Python process detects App Lab's Bridge automatically and calls the
@@ -335,7 +390,8 @@ Install the host shutdown helper once from a terminal on the development Mac:
 scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
 ```
 
-This is a required host-integration step for the standard installation. The
+The one-command UNO Q installer already installs this helper. Use the separate
+script above only to install or repair that component independently. The
 remote `sudo` prompt is handled by the terminal and is never stored. The script
 installs and enables `powerglove-system-shutdown.path` plus a boot-time rule
 that recreates the web application's readiness marker. Later application
