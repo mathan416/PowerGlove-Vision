@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-03 - Kept mock-call inspection compatible with Python 3.7.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify pairing codes, certificate identity, TLS time bounds, SSH handling, and token permissions."""
@@ -66,12 +67,13 @@ class PairingTests(unittest.TestCase):
                 "retropie.local", "pi", "private-password", "paired-controller-token",
                 Path(temporary_name) / "known_hosts", timeout=2,
             )
-        command = run.call_args.args[0]
+        positional, keywords = run.call_args
+        command = positional[0]
         self.assertEqual(command[:3], ["uv", "run", "--no-project"])
         self.assertNotIn("ssh", command)
         self.assertNotIn("private-password", command)
         self.assertNotIn("paired-controller-token", command)
-        payload = json.loads(run.call_args.kwargs["input"])
+        payload = json.loads(keywords["input"])
         self.assertEqual(payload["password"], "private-password")
         self.assertEqual(payload["token"], "paired-controller-token")
 

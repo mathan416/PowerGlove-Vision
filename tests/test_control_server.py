@@ -113,7 +113,7 @@ class ControlStateTests(unittest.TestCase):
                     break
                 time.sleep(0.01)
         replace.assert_called_once()
-        self.assertEqual(Path(replace.call_args.args[1]), trigger)
+        self.assertEqual(Path(replace.call_args[0][1]), trigger)
         self.assertEqual(trigger.read_text(), "shutdown\n")
         self.assertEqual(trigger.stat().st_mode & 0o777, 0o600)
 
