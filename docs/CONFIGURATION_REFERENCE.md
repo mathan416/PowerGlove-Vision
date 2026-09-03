@@ -264,7 +264,7 @@ their own entries because `.nes`, `.zip`, and `.7z` are different basenames.
 | Gyruss | `program_c` |
 | Defender II | `program_e` |
 | Sesame Street 1-2-3 | `program_f` |
-| Gun.Smoke | `program_g` |
+| Gun Smoke | `program_g` |
 | Knight Rider | `program_i` |
 
 The table above is the complete set of games recognized automatically by the

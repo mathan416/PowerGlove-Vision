@@ -33,7 +33,7 @@ next game therefore did not need special Power Glove support.
 | **D** | Challenge mode | Reversed directions with thumb/index buttons |
 | **E** | Defender II | Ship movement, fire, smart bomb, evasive movement |
 | **F** | Sesame Street 1-2-3 | Open-hand Yes and closed-hand No |
-| **G** | Gun.Smoke | Walk by position; aim by wrist angle |
+| **G** | Gun Smoke | Walk by position; aim by wrist angle |
 | **H** | Training / general play | Familiar controls with pulsed buttons |
 | **I** | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
 
@@ -113,7 +113,7 @@ experiments that need inverted direction mappings.
 
 **Use it for:** Sesame Street 1-2-3 and simple choice-driven games.
 
-### G - Gun.Smoke rig
+### G - Gun Smoke rig
 
 | Gesture | See it | Controller result |
 | --- | --- | --- |
@@ -122,7 +122,7 @@ experiments that need inverted direction mappings.
 | Roll the wrist | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Choose firing direction |
 | Curl the thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress action for menu navigation |
 
-**Use it for:** Gun.Smoke and shooters with movement plus directional fire.
+**Use it for:** Gun Smoke and shooters with movement plus directional fire.
 
 ### H - Training rig
 

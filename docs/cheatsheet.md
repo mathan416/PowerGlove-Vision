@@ -216,7 +216,8 @@ system also turns gestures off.
 
 1. Launch an unregistered NES or Famicom game. Confirm that PowerGlove Vision
    reports **Gestures off**.
-2. Open the UNO Q **Dashboard** and choose Program A, D, H, or another profile.
+2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**,
+   **H: General**, or another profile.
 3. Wait for vision to start and ask for centering.
 4. Center your hand, select **Start controller**, and test movement and actions.
 5. Stop the controller before changing profiles or games.

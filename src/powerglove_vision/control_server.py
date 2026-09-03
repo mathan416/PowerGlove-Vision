@@ -13,6 +13,7 @@
 #   2026-09-03 - Added the dynamic cabinet connection page.
 #   2026-09-03 - Served allowlisted PDF editions from the Help Center.
 #   2026-09-03 - Added automatic Learn-page practice activation and restoration.
+#   2026-09-03 - Added descriptive names to the shared profile selectors.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
@@ -48,6 +49,28 @@ PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
     *(f"program_{letter}" for letter in "abcdefghi"),
 }
+PROFILE_LABELS = (
+    ("bad_street_brawler", "Bad Street Brawler"),
+    ("super_glove_ball", "Super Glove Ball"),
+    ("off", "Gestures off"),
+    ("program_a", "A: Pinball"),
+    ("program_b", "B: Joust"),
+    ("program_c", "C: Gyruss"),
+    ("program_d", "D: Challenge"),
+    ("program_e", "E: Defender II"),
+    ("program_f", "F: Sesame Street"),
+    ("program_g", "G: Gun Smoke"),
+    ("program_h", "H: General"),
+    ("program_i", "I: Knight Rider"),
+)
+
+
+def _profile_options() -> str:
+    """Render the shared profile list while preserving stable configuration IDs."""
+    return "".join(
+        f"<option value={profile}>{html.escape(label)}</option>"
+        for profile, label in PROFILE_LABELS
+    )
 
 
 class ForbiddenActionError(Exception):
@@ -96,7 +119,7 @@ DASHBOARD = _page(
     """<h1>I love the Power Glove. It’s so bad.</h1><p class='lead dashboard-lead'>Live vision, gesture and controller diagnostics from your camera-only Power Glove.</p>
 <div class=status-grid>
  <div class=card><div class=label>System</div><div class=value id=system>Starting</div></div>
- <div class=card><label class=label for=profile-selector>Active profile</label><select class=profile-select id=profile-selector><option value=bad_street_brawler>Bad Street Brawler</option><option value=super_glove_ball>Super Glove Ball</option><option value=off>Gestures off</option><option value=program_a>Program A</option><option value=program_b>Program B</option><option value=program_c>Program C</option><option value=program_d>Program D</option><option value=program_e>Program E</option><option value=program_f>Program F</option><option value=program_g>Program G</option><option value=program_h>Program H</option><option value=program_i>Program I</option></select><div class=label id=profile-source style='margin-top:6px'>—</div></div>
+ <div class=card><label class=label for=profile-selector>Active profile</label><select class=profile-select id=profile-selector>""" + _profile_options() + """</select><div class=label id=profile-source style='margin-top:6px'>—</div></div>
  <div class=card><div class=label>Game</div><div class=value id=game>—</div></div>
  <div class=card><div class=label>Hand tracking</div><div class=value id=tracking>—</div><div class=meter><i id=confidence></i></div></div>
  <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
@@ -171,7 +194,7 @@ SETUP = _page(
 <section class=card><form id=form><div class=formgrid>
 <label>RetroPie console name<input id=receiver name=receiver required placeholder=retropieconsole.local></label>
 <label>Controller port<input id=port name=port type=number min=1 max=65535 required></label>
-<label>Startup profile<select id=profile name=profile><option value=bad_street_brawler>Bad Street Brawler</option><option value=super_glove_ball>Super Glove Ball</option><option value=off>Gestures off</option><optgroup label='Power Glove programs A–I'>""" + "".join(f"<option value=program_{x.lower()}>Program {x}</option>" for x in "ABCDEFGHI") + """</optgroup></select></label>
+<label>Startup profile<select id=profile name=profile>""" + _profile_options() + """</select></label>
 <label>Tracking aid<select id=glove_color name=glove_color><option value=none>Bare hand</option><option value=white>White glove</option><option value=black>Black glove</option></select></label>
 <label>Camera<input id=camera name=camera placeholder=auto></label></div>
 <label class=check><input id=rotate_token type=checkbox> Generate a new private pairing token</label>

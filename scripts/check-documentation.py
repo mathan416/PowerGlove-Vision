@@ -9,6 +9,7 @@
 #   2026-09-03 - Added documentation and generated-PDF consistency checks.
 #   2026-09-03 - Registered the illustrated gameplay handbook and PDF edition.
 #   2026-09-03 - Added Help-library and registered-game coverage checks.
+#   2026-09-03 - Allowed the Gun Smoke display title for its punctuated ROM basename.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Check that maintained documentation is complete, linked, and publishable."""
@@ -130,7 +131,8 @@ def check_gameplay_coverage(errors: list[str]) -> None:
         for filename in registry
     }
     for title in sorted(titles):
-        if f"## {title}" not in gameplay:
+        display_title = {"Gun.Smoke": "Gun Smoke"}.get(title, title)
+        if f"## {display_title}" not in gameplay:
             errors.append(f"registered game is missing from the gameplay guide: {title}")
 
 

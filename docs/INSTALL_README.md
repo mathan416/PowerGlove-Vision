@@ -435,7 +435,7 @@ and configures automatically out of the box:
 | Gyruss | `program_c` |
 | Defender II | `program_e` |
 | Sesame Street 1-2-3 | `program_f` |
-| Gun.Smoke | `program_g` |
+| Gun Smoke | `program_g` |
 | Knight Rider | `program_i` |
 
 Programs A, D, and H are also fully implemented. They are control profiles, not

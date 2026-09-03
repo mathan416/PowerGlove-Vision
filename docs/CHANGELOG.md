@@ -23,6 +23,10 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Replaced generic Program A–I labels on Dashboard and Setup with the program
+  letter and its intended game or use, while retaining the existing profile IDs.
+- Standardized the reader-facing game name “Gun Smoke” throughout Help and the
+  public guides; exact `Gun.Smoke` ROM basenames remain unchanged for matching.
 - Made leaving Learn restore the selected profile, camera state, and controller
   state. Loading or refreshing the Dashboard now clears abandoned Learn
   sessions, prevents their old heartbeats from reactivating vision, and

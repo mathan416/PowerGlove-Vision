@@ -178,7 +178,7 @@ relaxed open hand between questions so one answer does not run into the next.
 
 <!-- PAGEBREAK -->
 
-## Gun.Smoke
+## Gun Smoke
 
 **Profile:** `program_g` / matrix code `G`
 
@@ -249,7 +249,8 @@ changing the ROM or emulator.
 
 1. Launch the NES or Famicom game normally. An unregistered game safely turns
    gesture output off instead of inheriting the previous game's controls.
-2. Open the UNO Q **Dashboard** and choose Program A, D, H, or another Program
+2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**,
+   **H: General**, or another Program
    A-I profile from **Active profile**.
 3. Return to the game, select **Center hand**, and then **Start controller**.
 4. Test movement, both action gestures, Start, and Select before committing to a
@@ -302,7 +303,7 @@ from the following historical instruction sources:
 - [Joust NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/joust.shtml)
 - [Gyruss NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/gyruss.shtml)
 - [Defender II NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/defender_2.shtml)
-- [Gun.Smoke NES gameplay reference](https://strategywiki.org/wiki/Gun.Smoke_%28NES%29/Gameplay)
+- [Gun Smoke NES gameplay reference](https://strategywiki.org/wiki/Gun.Smoke_%28NES%29/Gameplay)
 - [Knight Rider NES instruction manual](https://www.retrogames.cz/manualy/NES/Knight_Rider_-_NES_-_Manual.pdf)
 
 The gesture drawings are original Power Glove Vision project illustrations made

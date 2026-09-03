@@ -108,7 +108,7 @@ Street Brawler and Super Glove Ball.
 These profiles reproduce the useful controller output of the original glove
 programs directly. Bad Street Brawler never needs to be started. The included
 game registry selects B for Joust, C for Gyruss, E for Defender II, F for
-Sesame Street 1-2-3, G for Gun.Smoke, and I for Knight Rider. Programs A, D,
+Sesame Street 1-2-3, G for Gun Smoke, and I for Knight Rider. Programs A, D,
 and H are fully implemented but intentionally have no default ROM assignment:
 A is the pinball profile, D is the reversed-direction challenge profile, and H
 is the general-play and training profile. Assign them to an exact ROM basename

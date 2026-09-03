@@ -8,9 +8,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
-#   2026-09-03 - Added deployment verification for the Help library.
-#   2026-09-03 - Added an IP fallback when mDNS pauses during container restart.
-#   2026-09-03 - Verified deployed Help guides, Markdown, and gesture artwork.
+#   2026-09-03 - Verified Help guides and artwork; added an IP fallback for mDNS pauses.
 #   2026-09-03 - Used staged SFTP uploads and terminal-backed UNO Q commands.
 #   2026-09-03 - Verified every Help guide and all gameplay table illustrations.
 #   2026-09-03 - Deployed and verified every allowlisted public PDF guide.

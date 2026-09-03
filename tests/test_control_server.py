@@ -13,6 +13,7 @@
 #   2026-09-03 - Verified public PDF links, routes, and allowlisting.
 #   2026-09-03 - Verified Dashboard profile switching and healthy idle status.
 #   2026-09-03 - Verified Learn-page practice leases and Dashboard restoration.
+#   2026-09-03 - Verified shared descriptive profile labels and stable IDs.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -266,6 +267,23 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Gestures off", DASHBOARD)
         self.assertIn(b"/api/profile", DASHBOARD)
         self.assertNotIn(b"/api/profile", SETUP)
+
+    def test_profile_selectors_use_descriptive_names_and_stable_ids(self):
+        expected = {
+            b"program_a": b"A: Pinball",
+            b"program_b": b"B: Joust",
+            b"program_c": b"C: Gyruss",
+            b"program_d": b"D: Challenge",
+            b"program_e": b"E: Defender II",
+            b"program_f": b"F: Sesame Street",
+            b"program_g": b"G: Gun Smoke",
+            b"program_h": b"H: General",
+            b"program_i": b"I: Knight Rider",
+        }
+        for page in (DASHBOARD, SETUP):
+            for profile, label in expected.items():
+                self.assertIn(b"value=" + profile + b">" + label, page)
+            self.assertNotIn(b">Program A<", page)
 
     def test_runtime_profile_route_rejects_unknown_profiles(self):
         servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
