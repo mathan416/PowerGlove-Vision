@@ -412,9 +412,13 @@ The command should acknowledge the change and the matrix should show `B`.
 5. Select **Start controller** only when you are ready to play.
 6. Launch the game and confirm its profile code on the matrix.
 7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
+8. Before physically disconnecting UNO Q power, select **Shutdown system** on
+   Dashboard or Setup, confirm the warning, and wait for Linux to power off.
 
 PowerGlove Vision deliberately boots with controller delivery stopped. Vision
 and the dashboard keep running so setup never generates surprise game inputs.
+**Shutdown system** is different: it powers off the entire UNO Q. Restoring or
+cycling power is required to start it again.
 
 ### Learn before you launch
 
@@ -463,6 +467,31 @@ The script preserves private `data/`, restarts the container, and verifies the
 Learn, Debug, and secure Setup pages. If mDNS is temporarily unavailable, use
 the UNO Q's current IP address. Matrix firmware updates remain a separate App
 Lab operation; USB is the safest recovery route.
+
+### Install the safe-shutdown helper
+
+The App Lab container is intentionally unprivileged and cannot power off the
+Linux host. Install the supplied fixed-purpose systemd path helper once:
+
+```sh
+scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
+```
+
+Enter the UNO Q `arduino` account password at the remote `sudo` prompt. The
+script does not read or store it. The helper watches only the fixed
+`data/shutdown-request` path and can perform only a system poweroff. After it is
+installed, **Shutdown system** is available on Dashboard and Setup. Each press
+requires browser confirmation and warns that power must be restored or cycled
+to restart the UNO Q.
+
+Verify the helper without triggering shutdown:
+
+```sh
+ssh arduino@UNO-Q-NAME.local
+systemctl is-enabled powerglove-system-shutdown.path
+systemctl is-active powerglove-system-shutdown.path
+exit
+```
 
 ### RetroPie updates
 
@@ -577,6 +606,15 @@ custom profiles, `/opt/powerglove`, `/opt/powerglove-src`, and
 On the UNO Q, stop the app, disable **Run at startup**, and remove it through
 Arduino App Lab. Its private `data` directory contains the device token and
 cached runtime.
+
+Remove the optional shutdown helper separately:
+
+```sh
+sudo systemctl disable --now powerglove-system-shutdown.path
+sudo rm /etc/systemd/system/powerglove-system-shutdown.path \
+  /etc/systemd/system/powerglove-system-shutdown.service
+sudo systemctl daemon-reload
+```
 
 ## Project note
 

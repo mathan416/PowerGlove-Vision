@@ -28,6 +28,10 @@ PROFILES = {
 }
 
 
+class ForbiddenActionError(Exception):
+    """Raised when a sensitive browser action lacks its CSRF safeguard."""
+
+
 def _page(title: str, content: str, script: str) -> bytes:
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
@@ -67,7 +71,7 @@ DASHBOARD = _page(
  <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
 </div>
 <div class=dashboard-workspace><div><img class=camera src=/stream alt='Live camera view'>
-<div class='controls dashboard-controls'><button id=center>Center hand</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection setup</a></div></div>
+<div class='controls dashboard-controls'><button id=center>Center hand</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection setup</a><button class=danger id=shutdown-system>Shutdown system</button></div></div>
 <div class=diagnostic-grid>
  <section class=card><h2>Controller output</h2><div class=label>Directions</div><div class=bits id=dpad></div><div class=label style='margin-top:14px'>Buttons</div><div class=bits id=buttons></div></section>
  <section class=card><h2>Axes</h2><div id=axes></div></section>
@@ -88,7 +92,9 @@ bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers'
 for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');
 }catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}} setInterval(update,250);update();
 $('center').onclick=async()=>{await fetch('/calibrate',{method:'POST'});};
-$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};""",
+$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};
+$('shutdown-system').onclick=()=>shutdownSystem($('shutdown-system'));
+async function shutdownSystem(button){if(!confirm('Shut down the entire UNO Q system? Controller input will stop and Linux will shut down safely. To start it again, restore or cycle power.'))return;button.disabled=true;button.textContent='Shutting down…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('system').textContent='Shutting down safely';$('system').className='value warn';}catch(e){button.disabled=false;button.textContent='Shutdown system';alert(e.message);}}""",
 )
 
 
@@ -132,7 +138,7 @@ SETUP = _page(
 <label>Tracking aid<select id=glove_color name=glove_color><option value=none>Bare hand</option><option value=white>White glove</option><option value=black>Black glove</option></select></label>
 <label>Camera<input id=camera name=camera placeholder=auto></label></div>
 <label class=check><input id=rotate_token type=checkbox> Generate a new private pairing token</label>
-<div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button><button type=button id=controller-toggle>Start controller</button></div><div class=notice id=notice></div></form></section>
+<div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button><button type=button id=controller-toggle>Start controller</button><button class=danger type=button id=shutdown-system>Shutdown system</button></div><div class=notice id=notice></div></form></section>
 <div class=grid style='margin-top:14px'><div class=card><div class=label>Pairing</div><div class=value id=paired>Checking…</div><p>Your matching token remains in <code>data/device.json</code> and must also be installed at <code>/etc/powerglove/token</code> on RetroPie.</p></div><div class=card><div class=label>Address</div><div class=value><code>/setup</code></div><p>Bookmark this page at your UNO Q's <code>.local:8088</code> address.</p></div></div>
 <section class=card style='margin-top:14px'><h2>Pair with RetroPie</h2><p id=secure-note></p><div id=pairing-fields class=formgrid>
 <label>RetroPie address<input id=pair-host placeholder=retropieconsole.local autocomplete=off></label>
@@ -148,6 +154,7 @@ for(const id of ['pair-host','pair-user','pair-code','pair-ssh','pair-code-butto
 $('form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;$('notice').textContent='Saving…';const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),rotate_token:$('rotate_token').checked};const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const x=await r.json();$('notice').textContent=r.ok?'Saved. The tracker is restarting with the new settings.':x.error||'Could not save.';$('rotate_token').checked=false;b.disabled=false;load()};
 $('test').onclick=async()=>{$('notice').textContent='Testing name…';const r=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver:$('receiver').value.trim()})});const x=await r.json();$('notice').textContent=x.ok?`Found ${x.receiver} at ${x.address}. UDP controller delivery can now be attempted.`:x.error};
 $('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;const r=await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});const x=await r.json();$('notice').textContent=r.ok?(enabled?'Controller started.':'Controller stopped and controls released.'):(x.error||'Could not change controller state.');b.disabled=false;load()};
+$('shutdown-system').onclick=async()=>{const b=$('shutdown-system');if(!confirm('Shut down the entire UNO Q system? Controller input will stop and Linux will shut down safely. To start it again, restore or cycle power.'))return;b.disabled=true;b.textContent='Shutting down…';$('notice').textContent='Requesting a safe system shutdown…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('notice').textContent='System is shutting down safely. Restore or cycle power to start it again.';}catch(e){b.disabled=false;b.textContent='Shutdown system';$('notice').textContent=e.message;}};
 async function prepare(method,button){button.disabled=true;$('pair-notice').textContent='Showing verification on the UNO Q…';try{const r=await fetch('/api/pair/begin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host:$('pair-host').value.trim(),method})}),x=await r.json();if(!r.ok){$('pair-notice').textContent=x.error||'Could not begin pairing.';return}prepared=method;$('device-code').disabled=false;$('verified').disabled=false;$('pair-notice').textContent=`Matrix: ID ${x.certificate_id}, then PIN. Verify the browser certificate SHA-256 begins ${x.certificate_id}; check the confirmation, enter the PIN, and select Complete pairing.`;button.textContent='Complete pairing';}finally{button.disabled=false;}}
 function resetPairing(){prepared='';$('verified').checked=false;$('verified').disabled=true;$('pair-password').disabled=true;$('device-code').disabled=true;$('pair-ssh').textContent='Prepare password pairing';$('pair-code-button').textContent='Prepare one-time code';}
 $('verified').onchange=()=>{$('pair-password').disabled=!(prepared==='ssh'&&$('verified').checked);if($('verified').checked)$('device-code').focus();};
@@ -171,6 +178,7 @@ class ControlState:
         self._pairing_identity = ""
         self._pairing_session: dict[str, Any] | None = None
         self._pairing_locked_until = 0.0
+        self._shutdown_scheduled = False
         self.started_at = time.time()
 
     def configure_pairing_identity(self, identity: str) -> None:
@@ -232,6 +240,30 @@ class ControlState:
     def set_controller_enabled(self, enabled: bool) -> None:
         with self.lock:
             self._controller_enabled = enabled
+
+    def schedule_system_shutdown(self, delay_seconds: float = 2.0) -> None:
+        """Ask the root-owned host helper to power off after the HTTP reply."""
+        data_directory = self.config_path.parent
+        if not (data_directory / ".shutdown-enabled").is_file():
+            raise FileNotFoundError("System shutdown helper is not installed on this UNO Q.")
+        with self.lock:
+            if self._shutdown_scheduled:
+                return
+            self._shutdown_scheduled = True
+
+        def trigger() -> None:
+            path = data_directory / "shutdown-request"
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+            try:
+                descriptor = os.open(path, flags, 0o600)
+                with os.fdopen(descriptor, "w") as request:
+                    request.write("shutdown\n")
+            except FileExistsError:
+                pass
+
+        timer = threading.Timer(delay_seconds, trigger)
+        timer.daemon = True
+        timer.start()
 
     def load_config(self) -> dict[str, Any]:
         return json.loads(self.config_path.read_text())
@@ -383,6 +415,26 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     except (OSError, urllib.error.URLError):
                         pass
                     _send(self, 200, json.dumps({"controller_enabled": enabled}).encode(), "application/json")
+                elif path == "/api/system/shutdown":
+                    incoming = self.json_body(require_json=True)
+                    if self.headers.get("X-PowerGlove-Action") != "shutdown":
+                        raise ForbiddenActionError("Shutdown request is missing its browser-action safeguard.")
+                    if self.headers.get("Sec-Fetch-Site", "").lower() == "cross-site":
+                        raise ForbiddenActionError("Cross-site shutdown requests are not allowed.")
+                    if incoming.get("confirm") != "SHUTDOWN":
+                        raise ValueError("Confirm the system shutdown before continuing.")
+                    state.schedule_system_shutdown()
+                    state.set_controller_enabled(False)
+                    request = urllib.request.Request(
+                        WORKER_URL + "/controller", method="POST",
+                        data=b'{"enabled":false}', headers={"Content-Type": "application/json"},
+                    )
+                    try:
+                        with urllib.request.urlopen(request, timeout=1):
+                            pass
+                    except (OSError, urllib.error.URLError):
+                        pass
+                    _send(self, 202, b'{"shutting_down":true}', "application/json")
                 elif path == "/api/pair/code":
                     self.require_secure_pairing()
                     incoming = self.json_body(require_json=True)
@@ -426,6 +478,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     self.send_error(404)
             except (ValueError, json.JSONDecodeError) as exc:
                 _send(self, 400, json.dumps({"error": str(exc)}).encode(), "application/json")
+            except ForbiddenActionError as exc:
+                _send(self, 403, json.dumps({"error": str(exc)}).encode(), "application/json")
             except PermissionError as exc:
                 _send(self, 426, json.dumps({"error": str(exc)}).encode(), "application/json")
             except (OSError, urllib.error.URLError, subprocess.SubprocessError) as exc:

@@ -88,6 +88,17 @@ cd /Users/mathan/Developer/PowerGlove
 scripts/deploy-uno-q-wifi.sh
 ```
 
+One-time installation of the Dashboard and Setup shutdown control:
+
+```sh
+cd /Users/mathan/Developer/PowerGlove
+scripts/install-uno-q-shutdown-helper.sh arduino@arduiain.local
+```
+
+The helper asks for the UNO Q password through the terminal. **Shutdown
+system** gracefully powers off Linux; restore or cycle power to start the UNO Q
+again.
+
 This preserves the private `data/device.json`. No password is stored in the
 repository. USB is only needed as a recovery option or for a passwordless blue
 matrix firmware upload; App Lab can also perform a wireless firmware update by

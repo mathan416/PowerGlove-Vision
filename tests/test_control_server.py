@@ -3,6 +3,7 @@ import json
 import http.client
 import ssl
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -80,6 +81,65 @@ class ControlStateTests(unittest.TestCase):
 
         restarted = ControlState(self.path)
         self.assertFalse(restarted.controller_enabled())
+
+    def test_shutdown_controls_are_on_dashboard_and_setup(self):
+        for page in (DASHBOARD, SETUP):
+            self.assertIn(b"Shutdown system", page)
+            self.assertIn(b"/api/system/shutdown", page)
+            self.assertIn(b"restore or cycle power", page.lower())
+
+    def test_shutdown_uses_only_the_fixed_host_trigger(self):
+        marker = self.path.parent / ".shutdown-enabled"
+        marker.touch()
+        self.state.schedule_system_shutdown(delay_seconds=0)
+        trigger = self.path.parent / "shutdown-request"
+        for _attempt in range(50):
+            if trigger.exists():
+                break
+            time.sleep(0.01)
+        self.assertEqual(trigger.read_text(), "shutdown\n")
+        self.assertEqual(trigger.stat().st_mode & 0o777, 0o600)
+
+    def test_shutdown_requires_installed_host_helper(self):
+        with self.assertRaisesRegex(FileNotFoundError, "helper is not installed"):
+            self.state.schedule_system_shutdown(delay_seconds=0)
+
+    def test_shutdown_route_requires_confirmation_header(self):
+        servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            with mock.patch.object(state, "schedule_system_shutdown") as schedule:
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                body = json.dumps({"confirm": "SHUTDOWN"})
+                connection.request("POST", "/api/system/shutdown", body, {"Content-Type": "application/json"})
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, 403)
+                schedule.assert_not_called()
+                connection.close()
+
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                connection.request("POST", "/api/system/shutdown", body, {
+                    "Content-Type": "application/json", "X-PowerGlove-Action": "shutdown",
+                    "Sec-Fetch-Site": "cross-site",
+                })
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, 403)
+                schedule.assert_not_called()
+                connection.close()
+
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                connection.request("POST", "/api/system/shutdown", body, {
+                    "Content-Type": "application/json", "X-PowerGlove-Action": "shutdown",
+                })
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, 202)
+                schedule.assert_called_once_with()
+                connection.close()
+        finally:
+            servers.shutdown()
 
     def test_worker_controller_request_is_consumed_once(self):
         shared = SharedDebugState()

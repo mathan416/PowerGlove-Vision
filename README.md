@@ -32,7 +32,7 @@ camera equivalents are documented in
 | --- | --- |
 | [PowerGlove Vision Field Guide](INSTALL_README.md) | First build, secure pairing, RetroArch setup, daily play, updates, and troubleshooting |
 | [Programs A-I: The Cartridge-Free Field Manual](docs/bad-street-brawler-programs.md) | Choosing and understanding the nine classic configuration profiles |
-| `cheatsheet.md` | Private, machine-specific URLs and maintenance notes; intentionally excluded from Git |
+| `cheatsheet.md` | Machine-specific URLs and maintenance notes; contains no private pairing token |
 
 The Field Guide is organized as a six-stage build. New makers can follow it in
 order; returning builders can jump directly to the daily checklist, workshop,
@@ -56,6 +56,8 @@ and the status pages remain available while the camera is disconnected.
   transmission so it is safe to practise without RetroPie.
 - `/setup` configures the receiver, profile, camera and controller state. Pairing
   credentials are accepted only by the HTTPS version on port 8443.
+- **Shutdown system** on Dashboard or Setup safely powers off Linux after a
+  confirmation. Restoring or cycling power is required to start the UNO Q again.
 
 The screenshots show the intentionally recoverable camera-offline state: the
 web interface and pairing controls continue working while the Kiyo is absent.
@@ -150,6 +152,12 @@ PowerGlove Vision always boots with controller transmission stopped. Use
 **Start controller** or **Stop controller** on either the setup page or debug
 dashboard. Vision remains active while stopped, and stopping releases every
 virtual input without restarting the camera.
+
+**Shutdown system** appears on both pages after the fixed-purpose host helper
+is installed. It stops controller output and asks Linux to power off cleanly.
+The confirmation warns that the UNO Q must have power restored or cycled to
+start again. The helper watches one fixed trigger file and cannot run commands
+provided by the browser.
 
 Secure pairing is available at
 `https://<uno-q-name>.local:8443/setup`. The UNO Q creates a local certificate
@@ -261,6 +269,16 @@ The initial SSH key installation is performed once while USB is connected.
 Afterward, application source, container restarts and page verification use
 Wi-Fi only. The deployment deliberately excludes `data/`, so the device token,
 certificate and cached vision runtime are preserved.
+
+Install the host shutdown helper once from a terminal on the development Mac:
+
+```sh
+scripts/install-uno-q-shutdown-helper.sh arduino@arduiain.local
+```
+
+The remote `sudo` prompt is handled by the terminal and is never stored. This
+installs and enables `powerglove-system-shutdown.path`; later application
+deployments do not need to reinstall it.
 
 ## Raspberry Pi receiver
 

@@ -1,0 +1,12 @@
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+
+[Unit]
+Description=Watch for a PowerGlove Vision system shutdown request
+
+[Path]
+PathExists=/home/arduino/ArduinoApps/powerglove-vision/data/shutdown-request
+Unit=powerglove-system-shutdown.service
+
+[Install]
+WantedBy=multi-user.target

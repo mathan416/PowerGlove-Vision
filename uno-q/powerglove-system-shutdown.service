@@ -1,0 +1,10 @@
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+
+[Unit]
+Description=Shut down the UNO Q for PowerGlove Vision
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rm -f /home/arduino/ArduinoApps/powerglove-vision/data/shutdown-request
+ExecStart=/usr/bin/systemctl --no-block poweroff
