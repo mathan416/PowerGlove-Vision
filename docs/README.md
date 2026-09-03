@@ -159,6 +159,12 @@ The confirmation warns that the UNO Q must have power restored or cycled to
 start again. The helper watches one fixed trigger file and cannot run commands
 provided by the browser.
 
+The cabinet installation was validated on September 3, 2026: the host watcher
+reported `enabled` and `active`, its readiness marker was present, both live
+pages displayed **Shutdown system**, and rejected test requests created no
+shutdown trigger. The destructive, fully confirmed path was deliberately not
+invoked during validation.
+
 Secure pairing is available at
 `https://<uno-q-name>.local:8443/setup`. The UNO Q creates a local certificate
 on first boot. Preparing either pairing method makes the physical LED matrix

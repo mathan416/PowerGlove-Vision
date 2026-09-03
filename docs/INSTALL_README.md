@@ -493,6 +493,11 @@ systemctl is-active powerglove-system-shutdown.path
 exit
 ```
 
+Expected results are `enabled` and `active`. On the validated cabinet these
+results, the readiness marker, both live buttons, and rejection of unconfirmed
+requests were verified on September 3, 2026. Do not test the accepted API path
+unless you intend to shut down the UNO Q.
+
 ### RetroPie updates
 
 ```sh
