@@ -65,12 +65,13 @@ the public internet.
 | Delayed-start timer | `powerglove-receiver.timer` (45 seconds after boot) |
 | UNO Q shutdown watcher | `powerglove-system-shutdown.path` (`enabled`, `active`) |
 | Shutdown readiness marker | `data/.shutdown-enabled` |
+| Shutdown marker boot rule | `/etc/tmpfiles.d/powerglove-system-shutdown.conf` |
 
 The token in `/etc/powerglove/token` must exactly match the token stored in the
 UNO Q app's `data/device.json`. Never paste that value into GitHub, screenshots,
 logs or this cheat sheet.
 
-The shutdown watcher, readiness marker, Dashboard and Setup buttons, and API
+The shutdown watcher, persistent readiness marker, Dashboard and Setup buttons, and API
 rejection safeguards were verified on September 3, 2026. **Stop controller**
 leaves the UNO Q running; **Shutdown system** powers Linux off and requires
 power to be restored or cycled before restart.

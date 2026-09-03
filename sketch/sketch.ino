@@ -9,6 +9,7 @@
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
 //   2026-09-03 - Added the gestures-idle Power Glove attract animation.
 //   2026-09-03 - Refined the attract animation with cuff travel, spark motion, and grayscale pulsing.
+//   2026-09-03 - Added a scanning L animation for Learn mode.
 // Full history: docs/CHANGELOG.md and Git history.
 
 #include "Arduino_RouterBridge.h"
@@ -24,6 +25,7 @@ enum PowerGloveStatus {
   PG_ERROR = 4,
   PG_PAIRING = 5,
   PG_GESTURES_IDLE = 6,
+  PG_LEARNING = 7,
 };
 
 Arduino_LED_Matrix matrix;
@@ -169,8 +171,10 @@ const uint8_t digitGlyphs[10][7] = {
 };
 const uint8_t glyphN[7] = {17,25,25,21,19,19,17};
 const uint8_t glyphP[7] = {30,17,17,30,16,16,16};
+const uint8_t glyphL[7] = {16,16,16,16,16,16,31};
 
 void drawRows(const char* const rows[8]);
+void setPixelMax(uint8_t* pixels, int x, int y, uint8_t brightness);
 
 // Blend one five-column glyph into the 8x13 matrix framebuffer.
 void placeGlyph(uint8_t* pixels, const uint8_t glyph[7], int left, uint8_t brightness) {
@@ -230,6 +234,24 @@ void drawProfile(int profile, bool pulse) {
   } else {
     drawRows(readyFrame);
     return;
+  }
+  matrix.draw(pixels);
+}
+
+// Show a legible L with a bright scan line so Learn mode remains visually
+// active without resembling a game-profile code or an error condition.
+void drawLearning(uint8_t frame) {
+  uint8_t pixels[104] = {0};
+  placeGlyph(pixels, glyphL, 4, 3);
+  const int scanRow = frame % 8;
+  for (int x = 4; x < 9; ++x) {
+    if (scanRow < 7 && (glyphL[scanRow] & (1 << (8 - x)))) {
+      setPixelMax(pixels, x, scanRow, 7);
+    }
+    if (scanRow > 0 && scanRow - 1 < 7 &&
+        (glyphL[scanRow - 1] & (1 << (8 - x)))) {
+      setPixelMax(pixels, x, scanRow - 1, 5);
+    }
   }
   matrix.draw(pixels);
 }
@@ -353,7 +375,7 @@ void drawIdleFrame(uint8_t frame) {
 
 // Router Bridge endpoint: request a bounded status code from the Linux app.
 void set_powerglove_status(int status) {
-  if (status < PG_OFF || status > PG_GESTURES_IDLE) {
+  if (status < PG_OFF || status > PG_LEARNING) {
     status = PG_ERROR;
   }
   requestedStatus = status;
@@ -434,5 +456,9 @@ void loop() {
     nextFrameAt = now + idleFrameDurations[animationFrame];
     animationFrame = (animationFrame + 1) %
       (sizeof(idleFrameDurations) / sizeof(idleFrameDurations[0]));
+  } else if (status == PG_LEARNING) {
+    drawLearning(animationFrame);
+    animationFrame = (animationFrame + 1) % 8;
+    nextFrameAt = now + 160;
   }
 }

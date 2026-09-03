@@ -8,6 +8,7 @@
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Delegated idle and active vision lifecycle to the persistent worker.
+#   2026-09-03 - Displayed a dedicated matrix state during Learn sessions.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Arduino App Lab entry point for PowerGlove Vision."""
@@ -78,7 +79,7 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
 def main() -> int:
     """Supervise the worker, control server, matrix, camera availability, and clean shutdown."""
     settings = load_device_config()
-    from powerglove_vision.matrix import MatrixStatus, UnoQMatrix
+    from powerglove_vision.matrix import MatrixStatus, UnoQMatrix, status_from_worker
     matrix = UnoQMatrix()
     from powerglove_vision.control_server import start_control_server
     control_server, control = start_control_server(CONFIG_PATH, pairing_display=matrix.show_pairing)
@@ -125,20 +126,11 @@ def main() -> int:
                         status = json.load(response)
                     control.update_worker(status)
                     active_profile = status.get("active_profile")
-                    matrix.set_profile(None if active_profile == "off" else active_profile)
-                    vision_state = status.get("vision_state")
-                    if active_profile == "off" or vision_state == "idle":
-                        matrix.set_status(MatrixStatus.GESTURES_IDLE)
-                    elif vision_state == "starting":
-                        matrix.set_status(MatrixStatus.LOADING)
-                    elif vision_state == "error":
-                        matrix.set_status(MatrixStatus.ERROR)
-                    else:
-                        matrix.set_status(
-                            MatrixStatus.TRACKING
-                            if status.get("detected") and status.get("calibrated")
-                            else MatrixStatus.READY
-                        )
+                    matrix.set_profile(
+                        None if status.get("practice_mode") or active_profile == "off"
+                        else active_profile
+                    )
+                    matrix.set_status(status_from_worker(status))
                 except (OSError, ValueError, TimeoutError):
                     pass
                 time.sleep(0.25)

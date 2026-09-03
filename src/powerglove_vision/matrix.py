@@ -8,6 +8,7 @@
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added a gestures-idle state distinct from system shutdown.
+#   2026-09-03 - Added a dedicated Learn-mode matrix state.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Drive UNO Q LED matrix status, pairing, and active-profile displays through Router Bridge."""
@@ -28,6 +29,27 @@ class MatrixStatus(IntEnum):
     ERROR = 4
     PAIRING = 5
     GESTURES_IDLE = 6
+    LEARNING = 7
+
+
+def status_from_worker(status: dict) -> MatrixStatus:
+    """Map a worker status snapshot to the physical matrix display state."""
+    vision_state = status.get("vision_state")
+    if status.get("practice_mode") and vision_state != "error":
+        return MatrixStatus.LEARNING
+    if status.get("practice_mode"):
+        return MatrixStatus.ERROR
+    if status.get("active_profile") == "off" or vision_state == "idle":
+        return MatrixStatus.GESTURES_IDLE
+    if vision_state == "starting":
+        return MatrixStatus.LOADING
+    if vision_state == "error":
+        return MatrixStatus.ERROR
+    return (
+        MatrixStatus.TRACKING
+        if status.get("detected") and status.get("calibrated")
+        else MatrixStatus.READY
+    )
 
 
 class UnoQMatrix:

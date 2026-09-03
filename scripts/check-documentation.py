@@ -40,6 +40,7 @@ CONFIGURATION_FILES = (
     "retropie/powerglove-receiver.timer",
     "uno-q/powerglove-system-shutdown.path",
     "uno-q/powerglove-system-shutdown.service",
+    "uno-q/powerglove-system-shutdown.conf",
     ".github/workflows/quality.yml",
 )
 PDF_EDITIONS = {

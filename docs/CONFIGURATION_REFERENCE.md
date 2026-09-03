@@ -415,21 +415,23 @@ or any other physical controller.
 If RetroArch has a hand-written override for this device, remove or reconcile
 that override before diagnosing the supplied autoconfiguration.
 
-## Optional UNO Q shutdown helper
+## UNO Q shutdown helper
 
-The dashboard's **Shutdown system** action requires two host-level systemd
-units supplied with the project:
+The standard installation includes the host shutdown helper so Dashboard and
+Setup can power Linux off cleanly. It consists of two systemd units and one
+boot-time readiness rule:
 
 | Repository file | Installed path | Purpose |
 | --- | --- | --- |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/powerglove-system-shutdown.path` | Watches for one fixed shutdown request in the application's private data directory |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/powerglove-system-shutdown.service` | Removes that request and asks systemd to power off Linux cleanly |
+| `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/powerglove-system-shutdown.conf` | Recreates the unprivileged readiness marker at boot or after application replacement |
 
 Install them with `scripts/install-uno-q-shutdown-helper.sh`. The installer also
 creates the private `data/.shutdown-enabled` marker that allows the web UI to
-offer the action. The application cannot use this mechanism to execute an
-arbitrary privileged command; it can only create the fixed request after an
-explicit confirmation.
+offer the action. The tmpfiles rule restores that marker at boot. The
+application cannot use this mechanism to execute an arbitrary privileged
+command; it can only create the fixed request after an explicit confirmation.
 
 Do not change the request path in only one component. The web application, path
 unit, service, and marker must continue to agree. After installation, confirm
@@ -567,6 +569,7 @@ not automatically migrate active configuration.
 | `retropie/powerglove-receiver.timer` | `/etc/systemd/system/` | Delayed boot activation |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/` | Fixed shutdown request watcher |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/` | Fixed clean-shutdown action |
+| `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/` | Boot-time shutdown readiness marker |
 | `.github/workflows/quality.yml` | GitHub Actions | Automated tests and release verification |
 | `app.yaml` | UNO Q application root | App Lab |
 | `sketch/sketch.yaml` | UNO Q application sketch directory | Arduino build system |

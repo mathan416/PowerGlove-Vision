@@ -16,6 +16,10 @@ authoritative record for line-level and file-level history.
   and automatic recovery when a page disappears unexpectedly.
 - Added a dedicated matrix gestures-idle state with a pinball-style animated
   glove, separate from both true shutdown and the flashing error X.
+- Added a dedicated Learn-mode matrix state with a bright `L` and moving
+  grayscale scan highlight.
+- Added a root-owned tmpfiles rule that restores shutdown-helper readiness
+  after reboot or App Lab application replacement.
 
 ### Changed
 
@@ -25,6 +29,12 @@ authoritative record for line-level and file-level history.
   reapplies the selected mode.
 - Made Wi-Fi deployments preserve PowerGlove Vision as the UNO Q default
   startup app so the dashboard returns after a board reboot.
+- Made Wi-Fi deployments restore the shutdown readiness marker when the
+  installed host watcher is active.
+- Extended deployment health verification to tolerate a three-minute cold App
+  Lab runtime startup.
+- Made deployment verification use the UNO Q address from the active SSH
+  connection instead of accidentally selecting a Docker bridge interface.
 - Made **Gestures off** a healthy worker state that releases controller input,
   closes the camera and MediaPipe tracker, and keeps the website and
   authenticated RetroPie profile listener available.

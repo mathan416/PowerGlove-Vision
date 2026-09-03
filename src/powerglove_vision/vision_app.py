@@ -211,10 +211,14 @@ def main() -> int:
                     read_failures = 0
                     vision_error = None
                 matrix.set_profile(None if practice_mode else current_profile)
-                if vision_profile is None:
+                if practice_mode:
+                    matrix.set_status(MatrixStatus.LEARNING)
+                elif vision_profile is None:
                     matrix.set_status(MatrixStatus.GESTURES_IDLE)
                 elif vision_profile != old_vision_profile:
                     matrix.set_status(MatrixStatus.LOADING)
+                elif engine is not None:
+                    matrix.set_status(MatrixStatus.READY)
                 if request is not None:
                     profile_server.acknowledge(request, True, current_profile)
 
@@ -255,7 +259,9 @@ def main() -> int:
                     continue
                 status["vision_state"] = "starting"
                 shared.update_status(status, clear_frame=True)
-                matrix.set_status(MatrixStatus.LOADING)
+                matrix.set_status(
+                    MatrixStatus.LEARNING if practice_mode else MatrixStatus.LOADING
+                )
                 try:
                     model_path = args.model
                     if model_path is None or model_path.name == "hand_landmarker.task":
@@ -269,7 +275,9 @@ def main() -> int:
                     )
                     engine = GestureEngine(vision_profile, _load_config(vision_profile, args.config))
                     vision_error = None
-                    matrix.set_status(MatrixStatus.READY)
+                    matrix.set_status(
+                        MatrixStatus.LEARNING if practice_mode else MatrixStatus.READY
+                    )
                 except (CameraUnavailableError, OSError, RuntimeError) as exc:
                     _close_vision(capture, tracker)
                     capture = tracker = engine = cv2 = None
@@ -303,9 +311,13 @@ def main() -> int:
             result = tracker.process(frame)
             state = engine.update(result.observation)
             matrix.set_status(
-                MatrixStatus.TRACKING
-                if state.detected and state.calibrated
-                else MatrixStatus.READY
+                MatrixStatus.LEARNING
+                if practice_mode
+                else (
+                    MatrixStatus.TRACKING
+                    if state.detected and state.calibrated
+                    else MatrixStatus.READY
+                )
             )
             receiver_available = sender.send(state) if controller_enabled and not practice_mode else False
             status = state.to_dict()

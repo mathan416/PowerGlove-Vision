@@ -546,10 +546,11 @@ Setup pages. If mDNS is temporarily unavailable, use the UNO Q's current IP
 address. Matrix firmware updates remain a separate App Lab operation; USB is
 the safest recovery route.
 
-### Install the safe-shutdown helper
+### Install the safe-shutdown helper (required)
 
 The App Lab container is intentionally unprivileged and cannot power off the
-Linux host. Install the supplied fixed-purpose systemd path helper once:
+Linux host. Complete the standard installation by installing the supplied
+fixed-purpose systemd path helper once:
 
 ```sh
 scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
@@ -560,7 +561,8 @@ script does not read or store it. The helper watches only the fixed
 `data/shutdown-request` path and can perform only a system poweroff. After it is
 installed, **Shutdown system** is available on Dashboard and Setup. Each press
 requires browser confirmation and warns that power must be restored or cycled
-to restart the UNO Q.
+to restart the UNO Q. Its boot-time tmpfiles rule recreates the readiness
+marker if the UNO Q reboots or App Lab replaces the application directory.
 
 Verify the helper without triggering shutdown:
 
@@ -693,12 +695,14 @@ On the UNO Q, stop the app, disable **Run at startup**, and remove it through
 Arduino App Lab. Its private `data` directory contains the device token and
 cached runtime.
 
-Remove the optional shutdown helper separately:
+Remove the host shutdown helper separately:
 
 ```sh
 sudo systemctl disable --now powerglove-system-shutdown.path
 sudo rm /etc/systemd/system/powerglove-system-shutdown.path \
-  /etc/systemd/system/powerglove-system-shutdown.service
+  /etc/systemd/system/powerglove-system-shutdown.service \
+  /etc/tmpfiles.d/powerglove-system-shutdown.conf
+rm -f /home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled
 sudo systemctl daemon-reload
 ```
 

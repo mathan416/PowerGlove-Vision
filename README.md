@@ -188,7 +188,8 @@ Opening **Learn** temporarily starts the camera and gesture recognition even
 when **Gestures off** is selected, while keeping controller output suppressed.
 Leaving Learn restores the selected profile, camera state, and controller
 state. Loading or refreshing the Dashboard also clears any abandoned Learn
-session and reapplies the selected mode.
+session and reapplies the selected mode. The matrix shows a softly scanning
+`L` throughout the Learn session.
 
 **Shutdown system** appears on both pages after the fixed-purpose host helper
 is installed. It stops controller output and asks Linux to power off cleanly.
@@ -326,8 +327,10 @@ Install the host shutdown helper once from a terminal on the development Mac:
 scripts/install-uno-q-shutdown-helper.sh arduino@arduiain.local
 ```
 
-The remote `sudo` prompt is handled by the terminal and is never stored. This
-installs and enables `powerglove-system-shutdown.path`; later application
+This is a required host-integration step for the standard installation. The
+remote `sudo` prompt is handled by the terminal and is never stored. The script
+installs and enables `powerglove-system-shutdown.path` plus a boot-time rule
+that recreates the web application's readiness marker. Later application
 deployments do not need to reinstall it.
 
 ## Raspberry Pi receiver
