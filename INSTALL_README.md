@@ -32,9 +32,9 @@ optional tracking aid and contains no electronics.
   Python 3.12 vision environment is downloaded once and then retained in the
   app's persistent `data` directory.
 
-Do not expose ports 55355, 55356, or 8088 to the public internet. Controller
-traffic is intended for a trusted local network; it is authenticated but not
-encrypted.
+Do not expose ports 55355, 55356, 55357, 8088, or 8443 to the public internet.
+Controller traffic is intended for a trusted local network; it is authenticated
+but not encrypted. Pairing traffic uses TLS.
 
 ## Network layout
 
@@ -44,7 +44,9 @@ The normal data paths are:
 Razer Kiyo --USB--> UNO Q --UDP 55355/Wi-Fi--> RetroPie virtual gamepad
                          <--UDP 55356/Wi-Fi-- RetroPie game profile hook
 
-Browser --TCP 8088/Wi-Fi--> UNO Q status and calibration page
+Browser --TCP 8088/Wi-Fi--> UNO Q Learn, Debug and ordinary Setup pages
+Browser --TCP 8443/TLS----> UNO Q secure pairing page
+UNO Q --TCP 55357/TLS-----> temporary RetroPie one-time pairing helper
 ```
 
 The defaults assume:
@@ -53,6 +55,8 @@ The defaults assume:
 - controller-state port on RetroPie: UDP `55355`
 - profile-control port on the UNO Q: UDP `55356`
 - UNO Q status page: TCP `8088`
+- UNO Q secure pairing page: TCP `8443`
+- temporary one-time pairing helper on RetroPie: TCP `55357`
 
 Using `.local` hostnames is preferable to fixed IP addresses. If mDNS is not
 available on the network, reserve addresses in the router and use those
@@ -66,8 +70,14 @@ addresses in the two configuration files instead.
 2. Connect the UNO Q to the computer with a USB data cable.
 3. In App Lab, select the UNO Q and complete its initial setup.
 4. Give the board a recognizable name.
-5. Configure the board to join the same network as the RetroPie console.
-6. Apply any board-system or App Lab updates offered before importing
+5. Open the board's network settings in App Lab, choose the trusted Wi-Fi
+   network, enter its Wi-Fi password locally, and wait for the board to report
+   an address. Neither the Wi-Fi password nor the board password belongs in
+   PowerGlove Vision configuration.
+6. Confirm the computer can resolve the board name with
+   `ping UNO-Q-HOSTNAME.local`. Record the displayed IP as a temporary fallback;
+   the `.local` name is preferred because DHCP addresses can change.
+7. Apply any board-system or App Lab updates offered before importing
    PowerGlove Vision.
 
 Initial provisioning should be done over USB. Once configured, the UNO Q can
@@ -78,6 +88,39 @@ normally be selected and managed over Wi-Fi from App Lab.
 After the first USB setup, install your computer's SSH public key for the
 `arduino` account on the UNO Q. This is a one-time maintenance step; keep the
 private key on your computer and never commit it to the repository.
+
+First, check for an existing key on the computer:
+
+```sh
+ls ~/.ssh/*.pub
+```
+
+If none exists, create one with `ssh-keygen -t ed25519` and accept its protected
+default location. Do not overwrite an existing key. The public file ending in
+`.pub` may be copied; the matching private file must never leave the computer.
+
+With USB still connected, use Arduino App Lab's Linux terminal to create
+`/home/arduino/.ssh/authorized_keys`, paste the single public-key line into it,
+and set these permissions:
+
+```sh
+install -d -m 0700 /home/arduino/.ssh
+chmod 0600 /home/arduino/.ssh/authorized_keys
+```
+
+Alternatively, advanced users can use App Lab's bundled `adb` command to push
+the public file over USB and append it to the same authorized-keys file. Never
+push the private-key file.
+
+Confirm the maintenance connection from the computer, replacing the hostname:
+
+```sh
+ssh -o BatchMode=yes arduino@UNO-Q-HOSTNAME.local hostname
+```
+
+The command should print the board name without asking for a password. SSH is
+only the maintenance channel; the controller itself continues to use the
+authenticated UDP protocol.
 
 Once key-based access works, deploy a development checkout from the repository
 root with:
@@ -98,6 +141,17 @@ currently requires the board password as an upload field, so use App Lab's
 credential prompt for wireless sketch updates or connect USB for a passwordless
 recovery upload. Never place that password in this script, a shell-history
 command, or GitHub.
+
+From any development checkout, the complete command is:
+
+```sh
+cd /path/to/PowerGlove-Vision
+scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-HOSTNAME.local
+```
+
+Successful output ends with the Learn, Debug and secure Setup URLs. A failed
+camera does not make deployment fail because the web supervisor is designed to
+remain available while it waits for a UVC camera.
 
 ### 2. Connect the camera
 
@@ -126,6 +180,9 @@ In Arduino App Lab:
 5. Allow several minutes for the first run. The board installs a private
    Python 3.12 runtime, MediaPipe 0.10.18, and headless OpenCV.
 6. Enable **Run at startup** after the first successful initialization.
+7. Disconnect USB temporarily and confirm
+   `http://UNO-Q-HOSTNAME.local:8088/debug` opens over Wi-Fi. Reconnect USB only
+   if the one-time SSH-key bootstrap or firmware recovery is needed.
 
 The package contains both sides of the UNO Q application:
 
@@ -223,6 +280,11 @@ If you select **Generate a new private pairing token** in the browser, copy the
 new value from `data/device.json` into `/etc/powerglove/token` on RetroPie and
 restart `powerglove-receiver.service` before playing.
 
+The setup page looks like this over ordinary HTTP. Pairing controls beneath the
+visible area remain disabled until the page is opened through HTTPS:
+
+![PowerGlove Vision Setup page](docs/images/setup-page.png)
+
 ## Part 2: Install the RetroPie receiver
 
 The examples below keep the repository in `/opt/powerglove-src` and put its
@@ -253,10 +315,10 @@ printf '%s\n' uinput | sudo tee /etc/modules-load.d/powerglove.conf
 
 ### 2. Install the repository and Python package
 
-For a public GitHub repository, replace `YOUR-USER` below:
+Clone the public GitHub repository:
 
 ```sh
-sudo git clone https://github.com/YOUR-USER/PowerGlove.git /opt/powerglove-src
+sudo git clone https://github.com/mathan416/PowerGlove-Vision.git /opt/powerglove-src
 sudo python3 -m venv /opt/powerglove
 sudo /opt/powerglove/bin/python -m pip install --upgrade pip
 sudo /opt/powerglove/bin/python -m pip install -e '/opt/powerglove-src[receiver]'
@@ -277,7 +339,7 @@ sudo install -m 0755 /opt/powerglove-src/retropie/bin/* /opt/powerglove/bin/
 This also installs `/opt/powerglove/bin/powerglove-pair`, used for password-free
 one-time-code pairing.
 
-### 3. Install the pairing token and configuration
+### 3. Install configuration and choose a pairing method
 
 Create the protected configuration directory:
 
@@ -289,10 +351,11 @@ sudo install -o root -g input -m 0640 /dev/null /etc/powerglove/token
 sudo nano /etc/powerglove/token
 ```
 
-Paste only the UNO Q token value into the final file, save it, and exit. The
-`input` group permits RetroPie's unprivileged game-launch hooks to read the
-token while keeping it unavailable to other users. There
-must be no quotation marks. A trailing newline is harmless.
+Do not paste a token into the file yet when using either friendly pairing
+method below. The pairing process fills it securely. The empty file is retained
+as a recovery target and has restricted permissions. The `input` group permits
+RetroPie's unprivileged game-launch hooks to read it while keeping it
+unavailable to other users.
 
 Edit the launcher settings:
 
@@ -315,7 +378,7 @@ example:
 
 Do not change `port` unless the UNO Q profile port is changed at the same time.
 
-### Optional: pair with a one-time code
+#### Recommended: pair with a one-time code
 
 After the receiver files are installed, open a terminal on RetroPie and run:
 
@@ -323,17 +386,59 @@ After the receiver files are installed, open a terminal on RetroPie and run:
 sudo /opt/powerglove/bin/powerglove-pair
 ```
 
-RetroPie displays a 20-character code valid for two minutes. On the UNO Q's
-HTTPS setup page, enter the RetroPie address and code, then choose **Prepare
-one-time-code pairing**. Verify the matrix certificate ID, enter its six-digit
-approval PIN, and complete pairing. The helper presents an
-ephemeral TLS certificate authenticated by part of the code, accepts the token
-through that pinned encrypted connection, restarts the receiver, and exits.
-The code works once and the helper stops after five rejected attempts.
+RetroPie displays a 20-character code valid for two minutes. Leave this command
+running and then:
+
+1. Open `https://UNO-Q-HOSTNAME.local:8443/setup`.
+2. A browser may warn about the board's locally generated certificate. Continue
+   only on your trusted local network; do not enter credentials yet.
+3. Enter the RetroPie hostname and the 20-character code.
+4. Choose **Prepare one-time-code pairing**.
+5. The UNO Q matrix cycles through `ID`, seven fingerprint characters, `PN`,
+   and a six-digit PIN. Compare the matrix `ID` with the beginning of the
+   certificate's SHA-256 fingerprint shown by the browser.
+6. If they match, enter the six-digit matrix PIN and finish pairing. If they do
+   not match, stop and investigate the network before sending anything.
+
+The helper presents an ephemeral TLS certificate authenticated by part of the
+code, accepts the private controller token through that pinned encrypted
+connection, restarts the receiver, and exits. The code works once, expires
+after two minutes and stops accepting attempts after five failures.
 
 Allow TCP port `55357` between the UNO Q and RetroPie if the local firewall
 blocks it. The helper is not a permanent network service and listens only while
 the command above is running.
+
+#### Alternative: pair with a RetroPie username and password
+
+This option is useful when SSH password login is already enabled on RetroPie:
+
+1. Open the same HTTPS setup page.
+2. Enter the RetroPie hostname and username.
+3. Choose **Prepare password pairing** before entering the password.
+4. Compare the matrix `ID` with the browser certificate fingerprint.
+5. Enter the matrix PIN, confirm the fingerprint checkbox, and enter the
+   RetroPie password.
+6. Complete pairing.
+
+The UNO Q uses the credentials for one encrypted SSH operation. The password
+field is cleared immediately and the password is not written to configuration
+or logs. Prefer the one-time code when the console does not otherwise need
+password-based SSH.
+
+#### Recovery: install the token manually
+
+If neither friendly method is available, open the UNO Q app's private
+`data/device.json` through App Lab and copy only its `token` value into
+`/etc/powerglove/token` on RetroPie. Use no quotation marks. Then run:
+
+```sh
+sudo chmod 0640 /etc/powerglove/token
+sudo systemctl restart powerglove-receiver.service
+```
+
+Never place the token in Git, documentation, screenshots, shell history or an
+issue report.
 
 ### 4. Test packets before creating a gamepad
 
@@ -552,6 +657,8 @@ Opening Learn mode automatically stops controller transmission. The camera and
 gesture engine stay active and lead you through ten exercises with live
 recognition and confidence feedback.
 
+![PowerGlove Vision Learn page](docs/images/learn-page.png)
+
 1. Stand where the player will normally stand.
 2. Keep one hand fully visible with some space around it.
 3. Press **Center hand**.
@@ -565,6 +672,8 @@ than glove color.
 The setup and dashboard service starts before the camera worker, so both pages
 remain available while no usable camera is connected. The dashboard reports
 the missing camera and the matrix blinks X until one is attached.
+
+![PowerGlove Vision Debug dashboard](docs/images/debug-dashboard.png)
 
 ## Firewall rules
 
@@ -595,6 +704,16 @@ Back up local changes to `/etc/powerglove/games.json` before replacing it.
 
 ### UNO Q
 
+For a development checkout with the one-time SSH key already installed:
+
+```sh
+cd /path/to/PowerGlove-Vision
+scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-HOSTNAME.local
+```
+
+This is the preferred update path because it preserves `data/`, restarts the
+container and verifies all three web pages. For a release ZIP update instead:
+
 1. Back up the imported app's `data/device.json`.
 2. Stop PowerGlove Vision in App Lab.
 3. Import the newer `PowerGlove-Vision-Uno-Q.zip` release.
@@ -615,6 +734,20 @@ Never publish the backed-up `device.json` or `/etc/powerglove/token`.
 - In an App Lab shell, inspect USB video devices with
   `v4l2-ctl --list-devices` if that utility is installed.
 - The app should remain marked running while it waits for a camera.
+- If `/sys/class/video4linux/video0/name` and `video1/name` report only
+  `qcom-venus-encoder` and `qcom-venus-decoder`, Linux cannot currently see the
+  Kiyo. Reconnect the powered hub or camera; changing Python camera indexes will
+  not fix this hardware-level state.
+
+### Wi-Fi deployment cannot connect
+
+- Confirm the UNO Q and computer are on the same trusted network.
+- Verify the name with `ping UNO-Q-HOSTNAME.local` or use its current IP.
+- Test `ssh -o BatchMode=yes arduino@UNO-Q-HOSTNAME.local hostname`.
+- If SSH asks for a password, repeat the one-time public-key installation over
+  USB. Never copy the private key to the UNO Q.
+- The deploy script preserves `data/device.json`; do not work around a failed
+  connection by replacing the board's `data` directory.
 
 ### First start takes several minutes
 

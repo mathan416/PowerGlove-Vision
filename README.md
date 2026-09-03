@@ -26,6 +26,43 @@ Bad Street Brawler's unusual cartridge-resident Programs A-I and their direct
 camera equivalents are documented in
 [`docs/bad-street-brawler-programs.md`](docs/bad-street-brawler-programs.md).
 
+## Current web interface
+
+The UNO Q hosts three pages. They remain available even when RetroPie is off,
+and the status pages remain available while the camera is disconnected.
+
+| Debug dashboard | Offline gesture lessons |
+| --- | --- |
+| [![PowerGlove Vision debug dashboard](docs/images/debug-dashboard.png)](docs/images/debug-dashboard.png) | [![PowerGlove Vision Learn page](docs/images/learn-page.png)](docs/images/learn-page.png) |
+
+[![PowerGlove Vision connection setup](docs/images/setup-page.png)](docs/images/setup-page.png)
+
+- `/debug` shows the camera, selected profile, recognition state and generated
+  controller output.
+- `/learn` provides ten guided exercises and automatically stops controller
+  transmission so it is safe to practise without RetroPie.
+- `/setup` configures the receiver, profile, camera and controller state. Pairing
+  credentials are accepted only by the HTTPS version on port 8443.
+
+The screenshots show the intentionally recoverable camera-offline state: the
+web interface and pairing controls continue working while the Kiyo is absent.
+
+## Quick start
+
+1. Provision the UNO Q over USB in Arduino App Lab, join the same trusted Wi-Fi
+   network as RetroPie, import the App Lab ZIP, and enable **Run at startup**.
+2. Connect the Razer Kiyo to the UNO Q through a powered USB hub.
+3. Install the receiver on RetroPie and run
+   `sudo /opt/powerglove/bin/powerglove-pair`.
+4. Open `https://<uno-q-name>.local:8443/setup`, compare the browser
+   certificate fingerprint with the `ID` on the matrix, enter the matrix `PN`
+   digits and the RetroPie one-time code, then complete pairing.
+5. Start the controller from Setup or Debug, configure the `PowerGlove Vision`
+   virtual gamepad in RetroArch, and use `/learn` before playing.
+
+Detailed installation, both pairing methods, automatic game profiles and
+recovery procedures are in [`INSTALL_README.md`](INSTALL_README.md).
+
 ## Controls
 
 Eleven profiles are included: Programs A-I plus dedicated mappings for Bad
@@ -121,6 +158,12 @@ to the protected `/etc/powerglove/token` file on RetroPie. Selecting **Generate
 a new private pairing token** invalidates the old pairing, so update RetroPie
 immediately afterward.
 
+For a complete first-install sequence, including the two secure pairing
+methods and USB-to-Wi-Fi bootstrap, follow
+[`INSTALL_README.md`](INSTALL_README.md). The recommended pairing method uses
+the temporary code printed by `powerglove-pair`; username/password pairing is
+also supported and those credentials are never stored.
+
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
@@ -198,6 +241,11 @@ pairing material in `data/` are preserved. The script restarts the container
 and checks the Learn, Debug, and secure Setup pages before reporting success.
 Microcontroller sketch updates remain available through App Lab's private
 credential prompt; USB remains the passwordless recovery path.
+
+The initial SSH key installation is performed once while USB is connected.
+Afterward, application source, container restarts and page verification use
+Wi-Fi only. The deployment deliberately excludes `data/`, so the device token,
+certificate and cached vision runtime are preserved.
 
 ## Raspberry Pi receiver
 

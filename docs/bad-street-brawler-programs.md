@@ -43,3 +43,14 @@ An eventual native Power Glove controller in Libretro Nestopia would still be
 valuable for glove-aware software such as Super Glove Ball and Bad Street
 Brawler's glove-only zap. It is no longer a prerequisite for using Programs
 A-I with conventional NES games.
+
+## Using a program
+
+Select a program from the UNO Q Setup page for manual use, or map a game's
+exact ROM filename in `/etc/powerglove/games.json` so RetroPie's launch hook
+selects it automatically. The UNO Q matrix acknowledges the active program with
+`A` through `I`. Opening `/learn` is safe for practice because it stops
+controller transmission; use `/debug` to inspect the generated NES controls.
+
+See the repository's `INSTALL_README.md` for Wi-Fi setup, secure RetroPie
+pairing and launch-hook installation.

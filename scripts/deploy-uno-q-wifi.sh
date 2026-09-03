@@ -52,6 +52,7 @@ COPYFILE_DISABLE=1 tar \
   --exclude './data' \
   --exclude './output' \
   --exclude './tests' \
+  --exclude './tmp' \
   --exclude '__pycache__' \
   --exclude '*.pyc' \
   --exclude '.DS_Store' \
@@ -84,6 +85,8 @@ if [[ "${ready}" != true ]]; then
   exit 1
 fi
 
+curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HOST}:8088/debug" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HOST}:8088/learn" >/dev/null
 curl --insecure --fail --silent --show-error --max-time 5 \
