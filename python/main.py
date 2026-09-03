@@ -45,7 +45,10 @@ def load_device_config() -> dict:
 def worker_command(settings: dict, controller_enabled: bool = False) -> list[str]:
     wheel = next((APP_ROOT / "python" / "worker-wheels").glob("mediapipe-0.10.18-*.whl"))
     command = [
-        "uv", "run", "--python", "3.12", "--with", str(wheel),
+        # The repository supports the RetroPie receiver on Python 3.7, while
+        # MediaPipe requires a newer interpreter. Keep the worker resolution
+        # independent of project-wide Python compatibility metadata.
+        "uv", "run", "--no-project", "--python", "3.12", "--with", str(wheel),
         "python", "-m", "powerglove_vision.vision_app",
         "--receiver", str(settings["receiver"]),
         "--port", str(settings.get("port", 55355)),

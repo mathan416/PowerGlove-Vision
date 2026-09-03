@@ -749,6 +749,27 @@ Never publish the backed-up `device.json` or `/etc/powerglove/token`.
 - The deploy script preserves `data/device.json`; do not work around a failed
   connection by replacing the board's `data` directory.
 
+### App Lab shows two PowerGlove Vision apps
+
+Importing a newer ZIP may create a timestamped app folder instead of replacing
+the existing installation. This is why two similarly named entries can appear.
+Only one copy should have **Run at startup** enabled. Verify the newer copy's
+pages and private configuration first, stop the older copy, and then remove the
+older app through App Lab. Do not delete an app folder manually until its
+`data/device.json` has been checked or backed up.
+
+Two entries do not necessarily mean two running camera processes. Confirm which
+copy is active before troubleshooting the Kiyo; a stopped older container cannot
+hold the camera.
+
+### The camera appears but the tracker keeps restarting
+
+Check the App Lab log. If dependency resolution mentions Python 3.7 and NumPy
+while the vision worker requests Python 3.12, update PowerGlove Vision to a
+version that launches the worker with an isolated `uv --no-project`
+environment. RetroPie retains Python 3.7 support, while the UNO Q vision worker
+resolves MediaPipe only for Python 3.12.
+
 ### First start takes several minutes
 
 This is expected. The app downloads a compatible Python 3.12 runtime and its
