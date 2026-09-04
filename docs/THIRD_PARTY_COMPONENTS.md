@@ -86,6 +86,16 @@ documentation assets, not runtime dependencies. No game screenshots, scans,
 box art, characters, publisher logos, or other source images were supplied to
 the generator.
 
+The individual gestures and original Pixel Pal mascot under
+`docs/images/gestures/v2/` were generated on September 4, 2026 with the same
+built-in tool, using the project's generated contact sheet as a style reference.
+Their prompts are preserved in `docs/images/gestures/v2/prompts.json`. The
+earlier illustrations remain available in their original locations.
+
+The index-curl illustration was subsequently redrawn using a user-supplied
+hand photograph as its pose reference. Only the illustrated glove is included;
+the reference photograph is not distributed with the project.
+
 The repository applies its MIT License to these curated project assets to the
 extent the project owner has rights in them. Game names and other third-party
 marks remain the property of their respective owners.

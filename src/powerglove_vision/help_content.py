@@ -268,7 +268,7 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
             label=html.escape(label), url=html.escape(url, quote=True)
         )
         for label, url in (
-            ("Dashboard", http_root + "/debug"),
+            ("Dashboard", http_root + "/dashboard"),
             ("Gesture lessons", http_root + "/learn"),
             ("Help center", http_root + "/help"),
             ("Connection setup", http_root + "/setup"),
@@ -423,6 +423,10 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
     while index < len(lines):
         line = lines[index]
         if not line.strip():
+            index += 1
+            continue
+        if _HTML_IMAGE.fullmatch(line.strip()):
+            blocks.append("<p>" + _inline(line.strip()) + "</p>")
             index += 1
             continue
         if line.lstrip().startswith("<"):

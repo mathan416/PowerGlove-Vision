@@ -1,0 +1,36 @@
+{
+  "jobs": [
+    {
+      "name": "curl-index",
+      "prompt": "Edit this educational glove illustration to correct ONLY the curled index finger anatomy. The index currently appears as a disconnected short two-piece stub on the palm. Draw a complete index finger attached to its proper knuckle beside the thumb, with THREE connected phalange segments: proximal segment emerging up from index knuckle, middle segment bending forward/down at the PIP joint, distal fingertip folding toward palm at DIP joint. Use a slightly three-quarter view of the curled index if needed to make all three segments and both bend joints legible. Keep THREE other fingers straight (middle, ring, little) and the thumb extended: exactly FIVE digits total. Move cyan bend arrow out of the way of this anatomy. Preserve white glove/navy outlines/cyan wrist band/magenta sparks and overall style and composition. Transparent alpha background, no checkerboard, no text."
+    },
+    {
+      "name": "wrist-roll-left",
+      "prompt": "Correct the hand anatomy in this wrist-roll-left illustration. It has FIVE long fingers plus a thumb, totaling six digits. Redraw with exactly FOUR long fingers (index, middle tallest, ring slightly shorter, little shortest) plus ONE thumb at viewer left, totaling FIVE digits. Remove the extra long finger entirely and adjust remaining four finger spacing naturally. All four fingers have three segments; thumb has two. Hand and fingertips lean left of wrist and forearm. Preserve the counterclockwise cyan arrow pointing left, white futuristic glove, navy outlines, cyan cuff, magenta pixel sparks, clean cartoon style and transparent alpha background. No checkerboard or text. Do not add any extra hand or ghost fingers."
+    }
+  ],
+  "retries": [
+    {
+      "name": "curl-index",
+      "path": "/Users/mathan/Developer/PowerGlove/docs/images/gestures/v2/curl-index.png",
+      "prompt": "Redraw ONLY the bent index finger in this glove illustration. Show a simple natural HALF-CURL: proximal segment rises visibly from the knuckle immediately to the left of the middle finger, then middle segment bends diagonally down toward viewer, then short distal fingertip bends down into palm. A single continuous gently hooked finger with THREE white segments separated by TWO navy joint seams. Do not make a loop, overlapping extra fingers, detached pieces or a fist. Move arrow to far left so it obscures nothing. The other THREE long fingers remain upright; thumb remains extended left. FIVE digits total. Preserve style palette wrist cuff sparks and transparent alpha background. No checkerboard. Educational clarity above decorative detail."
+    },
+    {
+      "name": "wrist-roll-left",
+      "path": "/Users/mathan/.codex/generated_images/01a06a71-88ec-7bc2-990a-15d4cb995cac/exec-e910da06-d0e3-4fbf-af05-ab76816b0c4d.png",
+      "prompt": "Background extraction ONLY. Remove checkerboard entirely and output genuine transparent alpha. Preserve exactly the corrected FOUR extended long fingers plus ONE thumb, the leftward hand tilt, cyan counterclockwise arrow, glove, colors and decorative marks. No drawn checkerboard. Do not alter anatomy."
+    }
+  ],
+  "thirdSegment": "There is a missing proximal phalanx on the bent index finger. Add ONE white glove segment connecting the index knuckle at the upper-left edge of palm to the back of the bent index finger. Fill the black gap directly below and behind the two bent index segments with the visible side of its proximal segment, outlined in navy. The index must be firmly attached to the palm, not floating alongside the middle finger. Keep the existing two bent segments and add the missing connecting third segment. Do not add fingertips or other fingers. Preserve all other artwork and real transparent alpha.",
+  "background": "Background extraction only. Remove checkerboard pattern entirely, return a PNG with real transparent alpha. Preserve foreground glove exactly, including the corrected index finger's THREE connected white segments and two cyan joint seams. Do not alter the pose or anatomy. Preserve arrow and sparks.",
+  "outputs": [
+    {
+      "name": "curl-index",
+      "path": "/Users/mathan/.codex/generated_images/01a06a71-88ec-7bc2-990a-15d4cb995cac/exec-024e76ac-6393-478d-af45-9d9da9de062c.png"
+    },
+    {
+      "name": "wrist-roll-left",
+      "path": "/Users/mathan/.codex/generated_images/01a06a71-88ec-7bc2-990a-15d4cb995cac/exec-e294d737-fb61-44c6-962f-cd2ed82c7aff.png"
+    }
+  ]
+}

@@ -99,7 +99,7 @@ second time or copy the matrix sketch separately.
 
 ### Check the application
 
-  1. In a browser on your development computer, open `http://UNO-Q-NAME.local:8088/debug`.
+  1. In a browser on your development computer, open `http://UNO-Q-NAME.local:8088/dashboard`.
   2. Confirm that Dashboard loads. A camera error does not prevent the website from opening. With **Gestures off**, a closed camera is normal.
   3. Open **Learn**. Wait for the live camera view, show your whole hand, and check that the app detects it. The first activation may take several minutes while dependencies download. The model is included and verified locally; it downloads only if the bundled copy is absent.
   4. Return to Dashboard. Leave controller transmission stopped until pairing and RetroArch configuration are complete.
@@ -235,7 +235,7 @@ An animation does not prove that Linux is running or that shutdown has finished.
 
 | Page | Address |
 | --- | --- |
-| Dashboard | `http://UNO-Q-NAME.local:8088/debug` |
+| Dashboard | `http://UNO-Q-NAME.local:8088/dashboard` |
 | Learn | `http://UNO-Q-NAME.local:8088/learn` |
 | Games (lower Setup section) | `http://UNO-Q-NAME.local:8088/setup#games-section` |
 | Help and printable manuals | `http://UNO-Q-NAME.local:8088/help` |
@@ -254,7 +254,7 @@ excluded from the public package; the live cabinet page supplies local details.
 ## Play Checklist
 
   1. Power the RetroPie and UNO Q; leave the camera connected to the powered hub.
-  2. Open `http://UNO-Q-NAME.local:8088/debug`.
+  2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
   3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
   4. On first use, or after changing your camera or playing position, select **Calibrate** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
   5. Select **Start controller** only when you are ready to play.

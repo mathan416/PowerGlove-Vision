@@ -5,7 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-04 - Added compact Pixel Pal artwork and the default /dashboard route.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added live Dashboard profile selection and idle presentation.
 #   2026-09-03 - Published shutdown requests atomically for reliable host handoff.
@@ -87,6 +87,14 @@ class ForbiddenActionError(Exception):
 
 def _page(title: str, content: str, script: str) -> bytes:
     """Assemble a complete branded HTML page as UTF-8 bytes."""
+    if title in ("Dashboard", "Learn gestures", "Setup", "Help"):
+        introduction, separator, remainder = content.partition("</p>")
+        if separator:
+            content = (
+                "<div class=pal-intro><div>" + introduction + separator + "</div>"
+                "<img class=pixel-pal src=/help-assets/gestures/v2/pixel-pal-web.png "
+                "alt='Pixel Pal waving hello' width=112 height=112></div>" + remainder
+            )
     started = "<span id=app-started>Application last started: checking…</span>" if title in ("Learn gestures", "Setup") else ""
     metadata_script = """(()=>{const el=document.getElementById('app-started');if(!el)return;async function refresh(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();const date=new Date(s.app_started_at*1000);if(!s.app_started_at||isNaN(date.getTime()))throw Error();el.textContent='Application last started: '+new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'long'}).format(date);el.title='Application start time, shown in your browser time zone';}catch(e){el.textContent='Application last started: unavailable'}}refresh();setInterval(refresh,30000)})();"""
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
@@ -99,6 +107,7 @@ body{{min-height:100vh;display:flex;flex-direction:column}}main{{flex:1}}.app-fo
 header,main{{width:min(1100px,calc(100% - 32px));margin:auto}}header{{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:7px 0;border-bottom:2px solid var(--line)}}
 .brand{{display:block;width:clamp(230px,30vw,300px);max-width:70%}}.brand img{{display:block;width:100%;height:auto}}nav a{{color:var(--ink);text-decoration:none;margin-left:18px}}nav a:hover{{color:var(--cyan)}}
 main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:0 0 6px;letter-spacing:-2px}}h2{{font:800 20px system-ui;margin:0 0 14px}}p.lead{{color:var(--muted);max-width:720px;margin:0 0 18px}}.dashboard-lead{{max-width:none!important;margin-bottom:14px!important}}
+.pal-intro{{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:24px;align-items:center;margin-bottom:18px}}.pal-intro p.lead{{margin-bottom:0!important}}.pixel-pal{{display:block;width:112px;height:112px;object-fit:contain}}.pal-celebration{{width:132px;height:132px;margin:0 auto 12px}}#achievement button,#achievement .button{{display:inline-block;margin:6px 3px 0}}@media(max-width:600px){{.pal-intro{{display:block;position:relative}}.pal-intro h1{{padding-right:84px;min-height:72px;display:flex;align-items:center}}.pal-intro .pixel-pal{{position:absolute;right:0;top:0;width:72px;height:72px}}}}
 .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}}.card{{background:linear-gradient(145deg,#1b2030,#11141d);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 16px 40px #0005}}
 .status-grid{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}}.status-grid .card{{padding:12px;min-height:82px}}.status-grid .value{{font-size:17px}}
 .label{{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px}}.value{{font:800 21px system-ui;margin-top:6px;overflow-wrap:anywhere}}.good{{color:var(--green)}}.warn{{color:#ffd75e}}.bad{{color:#ff6f75}}
@@ -122,7 +131,7 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 @media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera{{height:auto;aspect-ratio:4/3}}}}
 @media(max-width:900px){{.help-layout{{grid-template-columns:1fr}}.help-sidebar{{position:static;max-height:none}}.guide-nav{{grid-template-columns:repeat(2,minmax(0,1fr))}}.toc{{display:none}}}}
 @media(max-width:600px){{header{{align-items:center}}.brand{{max-width:58%}}nav{{display:grid;grid-template-columns:repeat(2,auto);gap:5px 12px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}.guide-nav{{grid-template-columns:1fr}}.markdown-body{{padding:20px 17px}}}}
-</style></head><body><header><a class=brand href=/debug aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/debug>Dashboard</a><a href=/learn>Learn</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}</footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
+</style></head><body><header><a class=brand href=/dashboard aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/dashboard>Dashboard</a><a href=/learn>Learn</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}</footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
 
 
 VISION_STARTUP_SCRIPT = r"""
@@ -188,7 +197,7 @@ LEARN = _page(
     "Learn gestures",
     """<h1>Train your hand.</h1><p class='lead dashboard-lead'>Practice gesture recognition without a RetroPie connection. General controls: index curl is A, thumb curl is B, and a forward push is GLOVE ZAP. Game profiles may map gestures differently. Controller transmission is stopped while this page is open.</p>
 <div class=learn-grid><div class=learn-camera><img class=camera id=learn-camera data-src=/stream alt='Live camera view for gesture practice'><div class=camera-idle id=learn-startup role=status aria-live=polite></div><div class=practice-badge>● PRACTICE ONLY</div></div>
-<section class=card><div id=achievement hidden role=status aria-live=polite style="text-align:center;padding:24px;border:2px solid #36dbe8;border-radius:16px;background:linear-gradient(135deg,#12334b,#261944)"><div style="font-size:48px" aria-hidden=true>🏆</div><h2>Glove Master!</h2><p>All lessons completed. You're ready to play.</p><button id=restart-training type=button>Start again</button><a class=button href=/debug>Go to Dashboard</a></div><div class=lesson-number id=lesson-number>Lesson 1 of 11</div><div class=lesson-title id=lesson-title>Show your hand</div><img id=lesson-image alt="Gesture example" style="display:block;width:100%;height:150px;object-fit:contain;background:#f8f9fc;border-radius:10px"><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
+<section class=card><div id=achievement hidden role=status aria-live=polite style="text-align:center;padding:24px;border:2px solid #36dbe8;border-radius:16px;background:linear-gradient(135deg,#12334b,#261944)"><img class="pixel-pal pal-celebration" src="/help-assets/gestures/v2/pixel-pal-web.png" alt="Pixel Pal celebrates your progress" width="132" height="132"><h2>Glove Master!</h2><p>All lessons completed. You're ready to play.</p><button id=restart-training type=button>Start again</button><a class=button href=/dashboard>Go to Dashboard</a></div><div class=lesson-number id=lesson-number>Lesson 1 of 11</div><div class=lesson-title id=lesson-title>Show your hand</div><img id=lesson-image alt="Gesture example" style="display:block;width:100%;height:150px;object-fit:contain;background:#f8f9fc;border-radius:10px"><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
 <details><summary>Live hand measurements</summary><canvas id=hand-detail width=300 height=220 style="width:100%;max-width:300px;background:#090b11" aria-label="Magnified hand landmarks"></canvas><p id=finger-feedback></p><p id=depth-feedback></p></details><div class=lesson-result id=lesson-result>Waiting for your hand…</div><div class=lesson-progress id=lesson-progress></div>
 <div class=controls><button id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button id=center type=button>Calibrate</button></div>
 <div class=bits id=practice-actions aria-label="Practice actions"></div><div class=live-readout><div><span class=label>Tracking</span><strong id=tracking>—</strong></div><div><span class=label>Recognized</span><strong id=recognized>None</strong></div><div><span class=label>Confidence</span><strong id=confidence>0%</strong></div></div></section></div>""",
@@ -548,9 +557,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
 
         def do_GET(self) -> None:
             path = self.path.split("?", 1)[0]
-            if path == "/":
-                self.send_response(302); self.send_header("Location", "/debug"); self.end_headers()
-            elif path == "/debug":
+            if path in ("/", "/debug"):
+                self.send_response(302); self.send_header("Location", "/dashboard"); self.end_headers()
+            elif path == "/dashboard":
                 _send(self, 200, DASHBOARD, "text/html; charset=utf-8")
             elif path == "/games":
                 self.send_response(302)

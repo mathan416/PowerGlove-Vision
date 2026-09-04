@@ -187,7 +187,7 @@ finger measurements for future native-glove support.
 
 | Page | What it does |
 | --- | --- |
-| Dashboard, `/debug` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
+| Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
 | Learn, `/learn` | Provides eleven practice lessons and guided gesture tuning, with game input paused. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |

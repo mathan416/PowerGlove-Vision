@@ -30,7 +30,7 @@ Open these pages on a computer or phone connected to the same trusted network.
 
 | Page | Address |
 | --- | --- |
-| Dashboard: camera and controller output | [Open Dashboard](http://UNO-Q-NAME.local:8088/debug) |
+| Dashboard: camera and controller output | [Open Dashboard](http://UNO-Q-NAME.local:8088/dashboard) |
 | Learn: practice and tune gestures | [Open Learn](http://UNO-Q-NAME.local:8088/learn) |
 | Games: edit game mappings | [Open Games](http://UNO-Q-NAME.local:8088/setup#games-section) |
 | Help: manuals and live cabinet reference | [Open Help](http://UNO-Q-NAME.local:8088/help) |

@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Honoured explicit widths for standalone manual illustrations.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added changelog, configuration, security, and contributor editions.
@@ -256,6 +257,20 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
             continue
 
         image_match = re.fullmatch(r"!\[([^]]*)\]\(([^)]+)\)", line)
+        html_image = re.fullmatch(
+            r'<img\s+src="([^"]+)"\s+alt="([^"]*)"\s+width="([0-9]+)"\s*/?>', line,
+        )
+        if html_image:
+            image_path = (source.parent / html_image.group(1)).resolve()
+            if image_path.exists():
+                width = min(int(html_image.group(3)) * 0.75, 6.1 * inch)
+                story.append(KeepTogether([
+                    image_flowable(image_path, width, 2.85 * inch),
+                    paragraph(html_image.group(2), styles["caption"]),
+                    Spacer(1, 10),
+                ]))
+            index += 1
+            continue
         if image_match:
             image_path = (source.parent / image_match.group(2)).resolve()
             if image_path.exists():

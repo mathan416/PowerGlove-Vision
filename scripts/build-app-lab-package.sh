@@ -53,6 +53,8 @@ rsync -a \
   --exclude 'docs/cheatsheet.md' \
   "${PROJECT_DIR}/" "${PACKAGE_TMP}/PowerGlove-Vision/"
 
+python3 "${SCRIPT_DIR}/stamp-build-version.py" "${PACKAGE_TMP}/PowerGlove-Vision/src/powerglove_vision/_build_info.json"
+
 mkdir -p "${PACKAGE_TMP}/PowerGlove-Vision/output/pdf"
 for PDF_NAME in "${PUBLIC_PDFS[@]}"; do
   cp "${PROJECT_DIR}/output/pdf/${PDF_NAME}" \

@@ -6,7 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-04 - Verified current guide titles, individual gestures, and Pixel Pal.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified Help guides and artwork; added an IP fallback for mDNS pauses.
 #   2026-09-03 - Used staged SFTP uploads and terminal-backed UNO Q commands.
@@ -58,6 +58,7 @@ readonly UNO_HOST="${UNO_TARGET#*@}"
 readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
 readonly REMOTE_ARCHIVE="/tmp/powerglove-vision-deploy.tar"
 readonly LOCAL_ARCHIVE="$(mktemp)"
+readonly LOCAL_METADATA_DIR="$(mktemp -d)"
 readonly -a SSH_OPTIONS=(
   -o BatchMode=yes
   -o ConnectTimeout=30
@@ -68,6 +69,7 @@ readonly -a SSH_OPTIONS=(
 # Always remove the local staging archive, including after an interrupted upload.
 cleanup() {
   rm -f "${LOCAL_ARCHIVE}"
+  rm -rf "${LOCAL_METADATA_DIR}"
 }
 trap cleanup EXIT
 
@@ -87,6 +89,7 @@ readonly UNO_CONNECTION UNO_HEALTH_HOST UNO_HEALTH_AUTHORITY
 echo "Uploading PowerGlove Vision over Wi-Fi..."
 COPYFILE_DISABLE=1 tar \
   --exclude './.git' \
+  --exclude './src/powerglove_vision/_build_info.json' \
   --exclude './.cache' \
   --exclude './.venv' \
   --exclude './data' \
@@ -99,6 +102,8 @@ COPYFILE_DISABLE=1 tar \
   --exclude '.DS_Store' \
   --exclude './docs/cheatsheet.md' \
   -C "${PROJECT_DIR}" -cf "${LOCAL_ARCHIVE}" .
+python3 "${SCRIPT_DIR}/stamp-build-version.py" "${LOCAL_METADATA_DIR}/src/powerglove_vision/_build_info.json"
+tar -rf "${LOCAL_ARCHIVE}" -C "${LOCAL_METADATA_DIR}" ./src/powerglove_vision/_build_info.json
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "mkdir -p '${REMOTE_APP_DIR}' && tar --warning=no-unknown-keyword -C '${REMOTE_APP_DIR}' -xf '${REMOTE_ARCHIVE}' && rm -f '${REMOTE_ARCHIVE}'"
@@ -117,7 +122,7 @@ ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
 
 echo "Restarting the UNO Q application..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "arduino-app-cli properties set default '${REMOTE_APP_DIR}' && docker compose -f '${REMOTE_COMPOSE}' up -d --force-recreate"
+  "arduino-app-cli properties set default '${REMOTE_APP_DIR}' && APP_HOME='${REMOTE_APP_DIR}' docker compose -f '${REMOTE_COMPOSE}' up -d --force-recreate"
 
 echo "Waiting for the dashboard..."
 ready=false
@@ -136,7 +141,7 @@ if [[ "${ready}" != true ]]; then
 fi
 
 curl --fail --silent --show-error --max-time 5 \
-  "http://${UNO_HEALTH_AUTHORITY}:8088/debug" >/dev/null
+  "http://${UNO_HEALTH_AUTHORITY}:8088/dashboard" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/learn" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
@@ -158,7 +163,7 @@ curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/actions/v-sign.png" >/dev/null
 GAMEPLAY_MARKDOWN="$(curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/gameplay.md")"
-if [[ "${GAMEPLAY_MARKDOWN}" != *"Take Power Glove Vision off-script"* ]]; then
+if [[ "${GAMEPLAY_MARKDOWN}" != *"Take PowerGlove Vision off-script"* ]]; then
   echo "error: deployed gameplay Help is not the current edition" >&2
   exit 1
 fi
@@ -166,8 +171,8 @@ GAMEPLAY_HTML="$(curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/gameplay")"
 PROGRAMS_HTML="$(curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/programs")"
-for EXPECTED_IMAGE in v-sign.png thumbs-up.png finger-curl.png wrist-roll.png push-toward-camera.png; do
-  if [[ "${GAMEPLAY_HTML}" != *"/help-assets/gestures/actions/${EXPECTED_IMAGE}"* ]]; then
+for EXPECTED_IMAGE in v2/v-sign.png v2/thumbs-up.png v2/curl-index.png v2/wrist-roll-left.png v2/push-toward-camera.png v2/pixel-pal-web.png actions/finger-curl.png actions/wrist-roll.png; do
+  if [[ "${GAMEPLAY_HTML}" != *"/help-assets/gestures/${EXPECTED_IMAGE}"* ]]; then
     echo "error: gameplay Help is missing ${EXPECTED_IMAGE}" >&2
     exit 1
   fi
@@ -179,8 +184,19 @@ fi
 curl --insecure --fail --silent --show-error --max-time 5 \
   "https://${UNO_HEALTH_AUTHORITY}:8443/setup" >/dev/null
 
+for PAL_PAGE in dashboard learn setup help; do
+  PAL_HTML="$(curl --fail --silent --show-error --max-time 5 \
+    "http://${UNO_HEALTH_AUTHORITY}:8088/${PAL_PAGE}")"
+  if [[ "${PAL_HTML}" != *"/help-assets/gestures/v2/pixel-pal-web.png"* ]]; then
+    echo "error: ${PAL_PAGE} is missing Pixel Pal" >&2
+    exit 1
+  fi
+done
+curl --fail --silent --show-error --max-time 10 \
+  "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/v2/pixel-pal-web.png" >/dev/null
+
 echo "Deployment complete."
 echo "  Learn:  http://${UNO_HOST}:8088/learn"
-echo "  Debug:  http://${UNO_HOST}:8088/debug"
+echo "  Dashboard:  http://${UNO_HOST}:8088/dashboard"
 echo "  Help:   http://${UNO_HOST}:8088/help"
 echo "  Setup:  https://${UNO_HOST}:8443/setup"

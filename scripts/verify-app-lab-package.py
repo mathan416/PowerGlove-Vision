@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import stat
 from pathlib import Path, PurePosixPath
 from zipfile import BadZipFile, ZipFile
@@ -40,6 +41,8 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/src/powerglove_vision/_build_info.json",
+    "PowerGlove-Vision/src/powerglove_vision/versioning.py",
     "PowerGlove-Vision/models/hand_landmarker.task",
     "PowerGlove-Vision/models/SHA256SUMS",
     "PowerGlove-Vision/licenses/Apache-2.0.txt",
@@ -115,6 +118,14 @@ def archive_errors(path: Path) -> list[str]:
                     errors.append(f"unapproved PDF included: {info.filename}")
             for name in sorted(REQUIRED_FILES - names):
                 errors.append(f"required package file is missing: {name}")
+            stamp = "PowerGlove-Vision/src/powerglove_vision/_build_info.json"
+            if stamp in names:
+                try:
+                    identity = json.loads(archive.read(stamp))
+                    if not identity.get("version") or not identity.get("branch") or identity["branch"] == "unknown":
+                        errors.append("build version or branch is missing")
+                except (ValueError, AttributeError):
+                    errors.append("invalid build identity")
             model = "PowerGlove-Vision/models/hand_landmarker.task"
             if model in names and hashlib.sha256(archive.read(model)).hexdigest() != "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1":
                 errors.append("bundled Hand Landmarker checksum mismatch")

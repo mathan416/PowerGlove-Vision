@@ -11,4 +11,6 @@
 
 """PowerGlove Vision camera controller."""
 
-__version__ = "0.2.5"
+from .versioning import current_version
+
+__version__ = current_version()

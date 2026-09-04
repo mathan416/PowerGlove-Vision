@@ -6,3 +6,4 @@ __pycache__/
 .pytest_cache/
 data/
 output/app-lab/*.zip
+src/powerglove_vision/_build_info.json
