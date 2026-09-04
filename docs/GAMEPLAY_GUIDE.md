@@ -15,8 +15,11 @@ If the system is not installed yet, start with the [Installation Guide](INSTALL_
 
 Select a profile on Dashboard, or open Learn for practice. If you see
 **Starting camera and gesture tracking**, wait for the camera view to appear.
-The first startup may take longer than later profile changes. The elapsed-time
-display lets you follow progress while the camera and tracker initialize. **Calibrate** becomes available when vision is active.
+The app prepares its tracking software in the background after startup, keeping
+the camera off until needed. If you begin straight after boot, you may wait for
+that preparation to finish. The elapsed-time display covers the remaining
+preparation, camera startup, and tracking initialization. **Calibrate** becomes
+available when vision is active.
 
   1. Stand where the camera can see your whole hand with a little room on every side.
   2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.

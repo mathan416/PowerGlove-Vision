@@ -110,7 +110,7 @@ explains the build and verification scripts.
   2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
   3. If repackaging another wheel, record every difference from upstream and retain its license files.
   4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
-  5. Test first-launch offline model installation, download fallback, and checksum verification, camera initialization, tracking, the Learn and Debug pages, and controller output on the UNO Q before publishing the package.
+  5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Learn and Dashboard pages, and controller output on the UNO Q before publishing the package.
 
 ### Application screenshots
 

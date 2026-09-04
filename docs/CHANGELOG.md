@@ -9,9 +9,17 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+  - Added startup stage timings for library imports, model preparation, camera initialization, and first inference.
+  - Added individual gesture illustrations and Pixel Pal to the website and friendly manuals, with a smaller PNG for web use.
   - Preserved and bundled the unmodified Google Hand Landmarker model with Apache 2.0 license text, provenance, and checksum.
   - Added offline model-cache installation and recovery from the bundled copy, with verified download fallback only when the bundle is absent.
   - Made package builds verify the model and required license files before reporting success.
+
+### Changed
+
+  - Preloaded OpenCV and MediaPipe in the background when the vision worker starts, keeping controls responsive and the camera off until requested. On the tested cabinet, first activation after a reboot took 1.21 seconds once preloading completed.
+  - Made `/dashboard` the default page, retaining redirects from `/` and `/debug`.
+  - Made web footers use the release version, with a development indicator on dev builds.
 
 ## [0.2.5] - 2026-09-04
 

@@ -192,6 +192,13 @@ finger measurements for future native-glove support.
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
+The application preloads OpenCV and MediaPipe in the background while the
+website is available. This prepares gesture tracking without opening the
+camera. With **Gestures off** selected, capture starts only when you choose an
+active profile or open Learn. If preloading is still underway, activation waits
+for it to finish. See the [startup details](docs/CONFIGURATION_REFERENCE.md#vision-startup-and-timing)
+for measured results and troubleshooting.
+
 **Stop controller** pauses delivery while leaving active tracking available.
 **Gestures off** closes the camera. **Shutdown** requests a Linux halt, but
 the tested UNO Q restarts afterward. A disappearing website is not proof that

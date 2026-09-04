@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Preloaded vision libraries while keeping idle capture off.
+#   2026-09-04 - Logged camera and first-frame startup stage durations.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added lazy vision activation and a persistent camera-free idle state.
@@ -19,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import signal
 import sys
@@ -36,7 +39,7 @@ from .matrix import MatrixStatus, UnoQMatrix
 from .model import ControllerState
 from .profile_control import ProfileCommandServer, read_token
 from .runtime_assets import ensure_hand_landmarker_model
-from .tracker import MediaPipeTracker
+from .tracker import MediaPipeTracker, log_startup_stage
 from .transport import UdpSender
 
 
@@ -85,20 +88,31 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _open_camera(args: argparse.Namespace):
     """Open and warm the selected UVC camera only when gestures are active."""
+    started = time.monotonic()
     import cv2
+    log_startup_stage("OpenCV import", started)
+    started = time.monotonic()
+    candidates = camera_candidates(args.camera)
+    log_startup_stage("camera discovery", started)
 
-    for camera_device in camera_candidates(args.camera):
+    for camera_device in candidates:
         backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
+        started = time.monotonic()
         candidate = cv2.VideoCapture(camera_device, backend)
+        log_startup_stage("camera open", started)
+        started = time.monotonic()
         candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
         candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
         candidate.set(cv2.CAP_PROP_FPS, args.fps)
         candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        log_startup_stage("camera settings", started)
+        started = time.monotonic()
         warmup_deadline = time.monotonic() + 5.0
         while candidate.isOpened() and time.monotonic() < warmup_deadline:
             ok, _frame = candidate.read()
             if ok:
+                log_startup_stage("first camera frame", started)
                 return cv2, candidate
             time.sleep(0.1)
         candidate.release()
@@ -138,8 +152,23 @@ def _background_call(function, *args):
     return future
 
 
+def _preload_vision_libraries() -> None:
+    """Warm library imports without opening the camera or constructing a tracker."""
+    try:
+        for module in ("cv2", "mediapipe"):
+            started = time.monotonic()
+            importlib.import_module(module)
+            log_startup_stage(f"preload {module}", started)
+    except Exception as exc:
+        # Activation retries normally and reports an actionable error if needed.
+        print(f"Vision preload unavailable; will retry on activation: {exc}",
+              file=sys.stderr, flush=True)
+
+
 def _prepare_vision(args):
-    """Download the model and open the camera/tracker in the single I/O job."""
+    """Resolve the model and log camera/tracker startup stages in one I/O job."""
+    preparation_started = time.monotonic()
+    print("Vision startup: preparation started", file=sys.stderr, flush=True)
     capture = tracker = None
     try:
         model_path = args.model
@@ -148,8 +177,10 @@ def _prepare_vision(args):
             model_path = ensure_hand_landmarker_model(data_directory)
         elif not model_path.is_file():
             raise RuntimeError(f"MediaPipe hand model not found: {model_path}")
+        log_startup_stage("model verification/recovery", preparation_started)
         cv2, capture = _open_camera(args)
         tracker = MediaPipeTracker(args.glove_color, mirror=not args.no_mirror, model_path=model_path)
+        log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
     except Exception:
         _close_vision(capture, tracker)
@@ -210,9 +241,10 @@ def main() -> int:
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
     server = start_debug_server(shared, args.web_host, args.web_port)
     capture = tracker = engine = cv2 = None
-    vision_job = None
-    vision_operation = None
+    vision_job = _background_call(_preload_vision_libraries)
+    vision_operation = "preload"
     vision_started_at = time.time()
+    startup_timer = None
     retry_at = 0.0
     read_failures = 0
     preview_at = 0.0
@@ -332,6 +364,7 @@ def main() -> int:
                     status.update({"vision_state": "error", "vision_error": vision_error or "Camera unavailable; retrying"})
                 else:
                     if vision_job is None:
+                        startup_timer = time.monotonic()
                         vision_job = _background_call(_prepare_vision, args)
                         vision_operation = "open"
                         vision_started_at = time.time()
@@ -374,6 +407,8 @@ def main() -> int:
             read_failures = 0
             inference_started = time.monotonic()
             result = tracker.process(frame)
+            if startup_timer is not None:
+                log_startup_stage("first inference", inference_started)
             engine.config = shared.tuning.configuration(engine_base_config)
             state = engine.update(result.observation)
             shared.tuning.observe(result.observation, engine.calibration, engine.config, engine.calibrated)
@@ -427,6 +462,9 @@ def main() -> int:
             status.update(result.diagnostics)
             # Publish control feedback every inference; encode video at most 15 fps.
             shared.update_status(status)
+            if startup_timer is not None:
+                log_startup_stage("activation to active status", startup_timer)
+                startup_timer = None
             if time.monotonic() < preview_at:
                 continue
             preview_at = time.monotonic() + 1.0 / 15.0

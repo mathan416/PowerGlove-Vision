@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Logged hand-tracker startup stage durations.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Used 3D world landmarks for camera finger curl.
@@ -15,12 +16,19 @@
 from __future__ import annotations
 
 import math
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from .model import HandObservation
+
+
+def log_startup_stage(label: str, started: float) -> None:
+    """Record startup durations without camera imagery or configuration secrets."""
+    print(f"Vision startup: {label}: {time.monotonic() - started:.3f}s",
+          file=sys.stderr, flush=True)
 
 
 CONNECTIONS = (
@@ -149,7 +157,10 @@ class MediaPipeTracker:
     ) -> None:
         try:
             import cv2
+            started = time.monotonic()
             import mediapipe as mp
+            log_startup_stage("MediaPipe import", started)
+            started = time.monotonic()
         except ImportError as exc:
             raise RuntimeError(
                 "camera tracking requires the 'vision' dependencies; "
@@ -187,6 +198,8 @@ class MediaPipeTracker:
                 min_detection_confidence=0.55,
                 min_tracking_confidence=0.55,
             )
+
+        log_startup_stage("tracker construction", started)
 
     def close(self) -> None:
         """Release the underlying MediaPipe hand tracker."""

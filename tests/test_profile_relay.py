@@ -115,13 +115,13 @@ class HookTests(unittest.TestCase):
 
 
 class VisionControlTests(unittest.TestCase):
-    def test_off_applies_during_blocked_camera_open_or_read(self):
+    def test_off_applies_during_blocked_preload_camera_open_or_read(self):
         from types import SimpleNamespace
         from unittest.mock import MagicMock
         from powerglove_vision import vision_app
         from powerglove_vision.profile_control import ProfileRequest
 
-        for operation in ("open", "read"):
+        for operation in ("preload", "open", "read"):
             blocked = threading.Event()
             release = threading.Event()
             finished = threading.Event()
@@ -134,6 +134,9 @@ class VisionControlTests(unittest.TestCase):
                 finished.set()
                 return False, None
             capture.read.side_effect = wait_for_release
+            def preload():
+                if operation == "preload":
+                    wait_for_release()
             def prepare(_args):
                 if operation == "open":
                     wait_for_release()
@@ -158,13 +161,16 @@ class VisionControlTests(unittest.TestCase):
                                    profile_listen="127.0.0.1", profile_port=55356,
                                    web_host="127.0.0.1", web_port=8089, config=None)
             try:
-                with patch.object(vision_app, "build_parser") as parser, patch.object(vision_app, "load_calibration", return_value=None), patch.object(vision_app, "UnoQMatrix"), patch.object(vision_app, "UdpSender"), patch.object(vision_app, "ProfileCommandServer", return_value=server), patch.object(vision_app, "SharedDebugState", return_value=shared), patch.object(vision_app, "start_debug_server"), patch.object(vision_app.signal, "signal"), patch.object(vision_app, "_prepare_vision", side_effect=prepare):
+                with patch.object(vision_app, "build_parser") as parser, patch.object(vision_app, "load_calibration", return_value=None), patch.object(vision_app, "UnoQMatrix"), patch.object(vision_app, "UdpSender"), patch.object(vision_app, "ProfileCommandServer", return_value=server), patch.object(vision_app, "SharedDebugState", return_value=shared), patch.object(vision_app, "start_debug_server"), patch.object(vision_app.signal, "signal"), patch.object(vision_app, "_preload_vision_libraries", side_effect=preload), patch.object(vision_app, "_prepare_vision", side_effect=prepare) as prepare_mock:
                     parser.return_value.parse_args.return_value = args
                     started = time.monotonic()
                     self.assertEqual(vision_app.main(), 0)
                     self.assertLess(time.monotonic() - started, 1)
                     self.assertTrue(sent)
                     self.assertFalse(release.is_set())
+                    if operation == "preload":
+                        prepare_mock.assert_not_called()
+                        capture.read.assert_not_called()
             finally:
                 release.set()
                 self.assertTrue(finished.wait(1))
