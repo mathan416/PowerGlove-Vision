@@ -100,6 +100,36 @@ The repository applies its MIT License to these curated project assets to the
 extent the project owner has rights in them. Game names and other third-party
 marks remain the property of their respective owners.
 
+## Modified Nestopia libretro core
+
+The optional `lr-nestopia-powerglove` core is built from libretro Nestopia
+revision `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`. Nestopia identifies its
+license as the GNU General Public License, version 2. PowerGlove Vision's MIT
+license does not replace the license of Nestopia or the resulting modified core.
+
+| Property | Value |
+| --- | --- |
+| Component | libretro Nestopia with the PowerGlove Vision native-state patch |
+| Upstream project | <https://github.com/libretro/nestopia> |
+| Pinned revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
+| Upstream license | GNU General Public License, version 2 |
+| Local modification | `native/nestopia-powerglove/nestopia-powerglove.patch` |
+| Build recipe | `scripts/build-nestopia-powerglove.sh` |
+
+Ordinary releases contain the patch and build recipe, not a compiled Nestopia
+core. If the user accepts the RetroPie installer's optional native-core step,
+the target machine downloads the pinned upstream source, including its author
+notices and `COPYING` file, applies the patch, and builds for its own processor.
+The core installer places `COPYING` and the local distribution note beside the
+installed binary. Stock Nestopia remains untouched and FCEUmm remains available.
+
+If prebuilt cores are published in the future, produce separately identified
+artifacts for every tested RetroPie architecture. Accompany each binary with
+the exact complete corresponding source archive used to build it, the local
+patch and build instructions, all upstream notices, and the GPLv2 license. A
+Git commit or patch URL alone is not the project's binary-distribution plan.
+ROM images are never part of a source or binary core artifact.
+
 ## Updating either component
 
 Before publishing a wheel or model update, complete these steps. The

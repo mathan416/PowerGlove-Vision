@@ -19,14 +19,14 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
-from .gesture import GestureConfig, MENU_FINGERS, finger_pose_feedback
+from .gesture import GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
 
 CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
             "roll_left", "roll_right", "push", "pull")
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
 GESTURES = {key: {key: True} for key in CHANNELS}
 GESTURES.update(**MENU_FINGERS, hand_setup={key: True for key in FINGERS},
-                closed_hand={key: True for key in FINGERS}, menu_guard={"thumb": True, "ring": True})
+                closed_hand={key: True for key in FINGERS}, menu_guard=MENU_GUARD_FINGERS)
 LABELS = {key: key.replace("_", " ").capitalize() for key in GESTURES}
 LABELS.update({key: "Curl " + key + " finger" for key in FINGERS})
 LABELS["thumb"] = "Curl thumb"

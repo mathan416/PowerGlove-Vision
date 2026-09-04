@@ -148,15 +148,17 @@ Glove Academy is the renamed Learn section. Existing `/learn` bookmarks still
 work. The matrix continues to show **L** for lessons and **T** for tuning.
 Older screenshots may still show the former Learn label.
 
-Glove Academy starts the camera even when **Gestures off** is selected and uses Program H
-for practice. It pauses controller delivery and restores the selected profile
+Glove Academy starts the camera even when **Gestures off** is selected and uses a
+mapping-independent practice profile. It pauses controller delivery and restores the selected profile
 when you leave. With several Glove Academy tabs open, practice remains active until the
 last tab closes or its lease expires. A six-second lease timeout handles an
 unexpected browser close. Loading Dashboard also clears a stale session;
 reload Glove Academy if you want to begin practice again.
 
-The twelve lessons include A (index curl), B (thumb curl), Glove Zap (forward
-push), Pull Back, Start, and Select. Completing every lesson earns Glove Master; skipped
+The sixteen lessons include A (index curl), B (thumb curl), Glove Zap (forward
+push), Pull Back, Start, Select, roll left, roll right, close hand, and menu guard.
+Menu guard requires curled thumb/ring with index, middle, and pinky extended and
+suppresses movement plus A/B. Completing every lesson earns Glove Master; skipped
 lessons must be revisited. **Start again** clears session progress. The practice
 indicators do not change a game's gesture mapping.
 
@@ -467,7 +469,9 @@ not calibrate them. For directions and wrist rolls, likewise return to your
 starting position, distance, and wrist orientation for the final recording.
 
 Use **Glove Academy → Tune gestures** to adjust sensitivity. You do not need to edit
-`config/profiles.json`; it remains the supplied defaults for each profile.
+`config/profiles.json`; it is the release-owned shared baseline. Updates back up
+and replace it. Personal adjustments belong in `data/gesture-tuning.json`, which
+remains untouched.
 
   1. Show your whole hand in the camera and wait for tracking. Calibrate your comfortable resting position if necessary.
   2. Switch on **Tune gestures** and select a gesture, or choose **Set up my hand** for optional calibration of all five fingers. Instructions and action buttons stay beside the camera; the Activation and Release table sits beneath the camera. Directions, finger curls, wrist rolls, push/pull, and compound gestures are available.
@@ -494,7 +498,7 @@ remain unchanged.
 Hand setup learns open and curled thresholds for all five fingers. Individual tuning can be used without setup; it only learns new thresholds for fingers observed both open and curled. Fingers extended throughout retain hand-setup thresholds or existing settings. Feedback uses the same V-sign and thumbs-up checks as recognition. Hand setup reset restores all five finger components; individual reset restores only the selected components.
 
 Only adjusted components override all game profiles. Untuned components retain
-their profile's supplied values. Personal adjustments are saved atomically in
+the shared supplied values. Personal adjustments are saved atomically in
 `data/gesture-tuning.json` and survive application restarts and normal updates.
 No images or recordings are saved. Existing version-1 files remain compatible;
 hand setup adds ordinary finger pairs rather than a new file format. The versioned format is:
@@ -518,7 +522,7 @@ a disconnected browser's session expires after six seconds. Return to Dashboard
 and explicitly start controller delivery when ready to play. **Recalibrate neutral**
 changes the resting reference separately and invalidates any current recordings.
 
-### Supplied profile defaults
+### Supplied shared recognition defaults
 
 The following fields describe the shipped `config/profiles.json`. They remain
 useful for understanding the defaults; personal tuning is managed through Glove Academy.
@@ -542,12 +546,12 @@ For each gesture, keep the `_off` value lower than its `_on` value. The gap is
 hysteresis: it prevents a value near the activation point from rapidly turning
 on and off. A very large gap can make the control feel sticky.
 
-The supplied defaults are:
+The supplied shared recognition defaults are:
 
 ```json
 {
-  "move_on": 0.38,
-  "move_off": 0.24,
+  "move_on": 0.28,
+  "move_off": 0.14,
   "curl_on": 0.50,
   "curl_off": 0.35,
   "roll_on": 0.58,
@@ -559,23 +563,23 @@ The supplied defaults are:
 }
 ```
 
-The `super_glove_ball` profile uses movement activation and release thresholds
-of `0.32` and `0.20`, making movement more responsive. Its wrist-roll thresholds
-are `0.70` and `0.50`, its pulse rate is `8.0` Hz, and its push thresholds are
-slightly higher than the defaults. Profiles A through I use `program_defaults` unless an
-exact profile object such as `program_b` is added.
+The `recognition` object applies to every game profile. During neutral calibration,
+the worker records ordinary X/Y jitter and raises only the relevant movement
+thresholds when necessary; it never lowers the `0.28` activation or `0.14` release
+baselines. Programs A-I and dedicated game profiles only decide how those shared
+recognition states map to controller output.
 
 When adjusting numeric values in Tune, change one pair at a time in steps of approximately `0.02` to `0.05`, then test
 from the same camera position. Useful adjustments include:
 
-  - Lower `move_on` if directional movement requires too much travel.
-  - Raise `move_off` if a direction remains held after returning toward center.
+  - Recalibrate first if directional movement requires too much travel or moves at rest.
+  - Keep `move_off` below `move_on` so a direction releases promptly near center.
   - Raise an `_on` value when an action triggers unintentionally.
   - Increase `pulse_hz` when a repeating action is too slow.
   - Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
 
-Saved personal tuning applies without reopening the camera. The saved neutral
-calibration is reused; recalibrate only if your physical setup has changed or
+Saved personal tuning applies without reopening the camera and across every profile.
+The saved neutral calibration is reused; recalibrate only if your physical setup has changed or
 your resting hand position produces unwanted movement. Gesture-to-button assignments are implemented by each profile in
 the application; threshold changes adjust sensitivity but do not remap buttons.
 
@@ -745,7 +749,8 @@ Back up custom configuration before replacing an installation:
 | --- | --- |
 | UNO Q `data/calibration.json` | Preserves your neutral hand position, size, and wrist angle; recalibrate if the physical setup changes |
 | UNO Q `data/device.json` | Contains device settings and the private token |
-| UNO Q `config/profiles.json` | Contains any custom sensitivity values |
+| UNO Q `config/profiles.json` | Release-owned shared defaults; updates back up and replace this file |
+| UNO Q `data/gesture-tuning.json` | Contains saved personal gesture sensitivity values and is preserved |
 | RetroPie `/etc/powerglove/games.json` | Contains local ROM mappings |
 | RetroPie `/etc/powerglove/launcher.json` | Contains local host and path settings |
 | RetroPie `/etc/powerglove/token` | Contains the matching private token |
@@ -770,8 +775,8 @@ not automatically migrate active configuration.
 | Gestures off shows a blinking X | Update PowerGlove Vision; Gestures off should show the glove attract animation and must not open the camera. |
 | Camera disappears after reboot | Check `lsusb` and `/dev/v4l/by-id/`, reconnect the camera or hub if absent, and keep Camera set to `auto` unless selecting a specific device. See [startup diagnostics](#vision-startup-and-timing). |
 | First activation is slow | Allow background preloading to finish and inspect the startup stage logs before attributing the delay to the camera. |
-| Movement triggers too late | Center again first; if repeatable, lower `move_on` slightly for the active profile. |
-| Direction remains stuck | Raise `move_off` slightly, keep it below `move_on`, and verify tracking-loss release. |
+| Movement triggers too late | Recalibrate neutral first and verify the hand is steady; all profiles share the responsive movement thresholds. |
+| Direction remains stuck | Recalibrate neutral, verify return toward center and tracking-loss release, then review the shared `move_off` value. |
 | Pairing suddenly fails after a Setup change | A rotated token invalidates the old pairing; run the pairing flow again. |
 | EmulationStation pauses or another USB device behaves unexpectedly at boot | Verify receiver startup is controlled by the 45-second timer and the service is not independently enabled at boot. |
 
@@ -832,7 +837,7 @@ See the installation guide for the investigation status and Arduino guidance.
 
 ## Saved neutral-hand calibration
 
-The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, and wrist angle; it is not a personally trained gesture model. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating position.
+The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, wrist angle, and normal X/Y positional jitter; it is not a personally trained gesture model. The jitter estimate can raise the shared movement thresholds above their baseline, but never makes them more sensitive. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating position.
 
 On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Hold your hand in a comfortable neutral position, then use **Calibrate** if necessary. A storage failure is reported as `calibration_save_error` in status; the reference remains usable in memory but will not survive a worker restart. The file is local runtime data, not a source or release-package file.
 
@@ -883,6 +888,7 @@ history.
 | `--token VALUE` | None | Supplies the shared token directly. Use only as an advanced alternative; the value can appear in process arguments. |
 | `--token-file PATH` | None | Reads the shared token from a protected file. Supply exactly one of this flag and `--token`. The token must contain at least 16 characters. |
 | `--timeout-ms NUMBER` | `250` | Socket receive timeout in milliseconds; a timeout releases held controls. Use a positive value. |
+| `--native-state PATH` | `/run/powerglove/native-state` | Versioned latest-sample record for the optional custom Nestopia research core. Failure to create it does not disable FCEUmm/uinput. |
 | `--dry-run` | Off | Prints received controls instead of creating a virtual input device. |
 | `-h`, `--help` | — | Prints usage and exits. |
 
@@ -1034,6 +1040,12 @@ they may still perform their normal work.
 | `scripts/check-documentation.py` | `--require-pdfs`; `-h`, `--help` | Checks Markdown, links, and coverage. The optional flag also inspects the PDF set and needs `pypdf`. Returns `0` on success, `1` on failure. |
 | `scripts/check-source-docs.py` | No flags or positional arguments | Checks source headers and docstrings; returns `0` on success or `1` on failure. |
 | `scripts/build-docs-pdf.py` | No flags or positional arguments | Rebuilds all registered PDF editions; requires ReportLab. Use only when ready to regenerate the PDFs. |
+| `scripts/build-nestopia-powerglove.sh` | Optional build-directory positional argument | Clones a pinned official Nestopia revision, applies the isolated research patch, and builds a separately named core. It does not install or promote the core. |
+| `scripts/build-fceumm-benchmark.sh` | Optional build-directory positional argument | Builds a pinned stock FCEUmm core in an isolated directory for the direction-response comparison. It does not install the core. |
+| `scripts/install-nestopia-powerglove.sh` | Optional build-directory positional argument | Run with `sudo` on RetroPie after exact-ROM validation. Builds and installs only `lr-nestopia-powerglove`, plus its upstream GPLv2 license and distribution note; stock Nestopia remains untouched. The normal RetroPie installer offers this step when a registered Super Glove Ball ROM is found. |
+| `scripts/configure-super-glove-ball-core.py` | `--rom PATH --mode MODE [--apply]`, where MODE is `native` or `fceumm` | Previews or atomically selects the custom core for one Super Glove Ball ROM. `--mode fceumm` is the explicit rollback. |
+| `scripts/run-nestopia-powerglove-trace.py` | Core, exact ROM, trace/state/scratch paths | Runs controlled native phases, records the ROM digest and packet evidence, and can save temporary validation frames. |
+| `scripts/benchmark-direction-response.py` | Paths to both cores and the exact Super Glove Ball ROM, scratch path, optional FCEUmm reference ROM, frame count, and JSON output | Runs matched-savestate activation and release comparisons for the same ROM in native and FCEUmm modes. The optional reference lane uses Gun.Smoke. ROMs and scratch output remain outside the project. |
 | `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
 | `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Installs and verifies the bundled model into project `data/models/`; downloads only if absent. Requires Python 3, plus curl for fallback downloads. |
 | `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |
@@ -1682,10 +1694,10 @@ to detect drift without changing files.
 
 `scripts/application-payload.py DESTINATION` stages the public application into an empty
 directory. Both App Lab packaging and Wi-Fi deployment use this selection, excluding
-private settings, artwork masters, and generated installer archives. Existing
-`config/profiles.json` is preserved during updates; review release defaults separately
-when adopting new configuration fields. Runtime calibration, pairing, tuning, and
-cabinet settings remain in place.
+private settings, artwork masters, and generated installer archives.
+`config/profiles.json` is release-owned and is backed up and replaced during updates,
+so tested shared defaults and new fields take effect consistently. Runtime calibration,
+pairing, tuning, and cabinet settings remain in place.
 
 ### Installation ownership manifest
 
@@ -1697,8 +1709,9 @@ remain under their existing installers; the payload manifest does not prune them
 
 Each root contains `.powerglove-install.json` with format version 1, the absolute
 installation root, release identity, and relative paths with SHA-256 hashes and
-permission modes. Private data, caches, and existing `config/profiles.json` and
-`docs/cheatsheet.md` are excluded from managed ownership.
+permission modes. Private data, caches, and the local `docs/cheatsheet.md` are
+excluded from managed ownership. `config/profiles.json` is deliberately managed
+and replaced from the release; its previous copy is retained in the update backup.
 
 On the first manifest-enabled update, incoming package paths are installed using
 the existing backup-and-replace behavior. Unknown files absent from the package

@@ -100,8 +100,9 @@ empty first frame as completed initialization.
 | Ordinary Glove Academy | General practice profile; camera requested | Paused | Scanning L |
 | Tune gestures | Practice with selected tuning scope and preview | Paused, including after a game-launch request | Scanning T |
 
-Glove Academy preserves the selected game profile while using the general practice
-profile for its twelve lessons, including **Glove Zap** and **Pull Back**.
+Glove Academy preserves the selected game profile while using a mapping-independent
+practice profile for its sixteen lessons, including **Glove Zap**, **Pull Back**,
+both wrist rolls, close hand, and menu guard.
 Browser leases support multiple Glove Academy tabs; the last lease ending restores the
 selected vision mode. Leases expire after six seconds without refresh. Dashboard
 also clears abandoned practice sessions. Ordinary Glove Academy restores its prior
@@ -188,7 +189,7 @@ camera recording from this process.
 
 ![Threshold precedence and the separate neutral-calibration reference](images/architecture/settings.png)
 
-Effective settings are resolved component by component: shipped profile defaults,
+Effective settings are resolved component by component: shipped shared recognition defaults,
 then saved personal overrides, then temporary Tune preview. The gesture engine
 receives the resulting configuration during frame processing, so saved values
 also apply when controlling a game. Adjusting a finger changes other gestures
@@ -196,7 +197,7 @@ that use that finger; it does not change the button assignments in a game profil
 
 | Data | Owner and lifetime | Purpose |
 | --- | --- | --- |
-| `config/profiles.json` | Shipped project source | Profile defaults and recognition parameters |
+| `config/profiles.json` | Shipped project source | One shared set of recognition parameters; profiles remain output mappings |
 | `data/gesture-tuning.json` | UNO Q, persistent | Global personal activation/release pairs; version-1 format |
 | `data/calibration.json` | UNO Q, persistent | Neutral palm position, apparent scale, and wrist angle |
 | `data/device.json` | UNO Q, private persistent settings | Destination, selected settings, pairing-related configuration |
@@ -206,7 +207,8 @@ that use that finger; it does not change the button assignments in a game profil
 | `data/models/hand_landmarker.task` | UNO Q, verified cache | Reusable pretrained hand-landmark model |
 
 Neutral calibration is distinct from hand setup. It centers position, depth,
-and roll; hand setup establishes finger thresholds. The app reuses valid neutral
+and roll, records ordinary X/Y jitter, and lets movement thresholds rise only
+when needed to remain safely above that noise; hand setup establishes finger thresholds. The app reuses valid neutral
 calibration across Glove Academy, profile changes, camera reconnects, and worker restarts.
 Recalibrate after moving the camera or changing playing position. Ordinary
 updates preserve `data/` rather than replacing it with example configuration.
@@ -227,6 +229,27 @@ protect registry operations; revision checks prevent stale edits and atomic
 replacement preserves a previous valid copy. Saving a registry mapping affects
 the next launch; it does not rewrite the running game's mapping immediately.
 
+### Optional native Super Glove Ball path
+
+The supported FCEUmm path consumes the same virtual gamepad as every other game.
+For native research, the authenticated RetroPie receiver also publishes a
+versioned, fixed-size latest-sample record in `/run/powerglove/native-state`.
+The separately built `lr-nestopia-powerglove` core maps that file read-only,
+copies at most one coherent current sample per emulated frame, and adds no queue
+or smoothing. Invalid, stale, uncalibrated, lost, or wrong-profile samples leave
+the emulated glove neutral.
+
+Exact-ROM traces now confirm the ten-byte packet boundary, MSB-first reads,
+native Start, and continuous X/Y response. A matched same-ROM test confirms
+that FCEUmm requests only ordinary joypad input while both cores visibly respond
+to all four directions by frame 3. Stale, uncalibrated, lost, and
+wrong-profile samples produce a neutral packet. Z, roll, fingers, and remaining
+buttons stay evidence-gated. Stock Nestopia remains untouched; the custom core
+is enabled only through a Super Glove Ball per-ROM emulator choice after it is
+built locally from pinned GPLv2 source and verified on the cabinet. The ordinary
+release carries the patch and build recipe, not a compiled core. See the
+[native compatibility record](super-glove-ball-native.md).
+
 ## Interfaces and recovery
 
 | Interface | Direction | Contract |
@@ -236,6 +259,7 @@ the next launch; it does not rewrite the running game's mapping immediately.
 | HTTP 8089, loopback | Supervisor/web proxy to worker | Internal status, frame and control requests |
 | UDP 55355 | UNO Q to RetroPie | Controller states, shared token, session and sequence |
 | UDP 55356 | RetroPie to UNO relay to worker | Signed profile requests and acknowledgements |
+| `/run/powerglove/native-state` | Authenticated RetroPie receiver to custom core | Read-only, guarded latest sample for experimental native input |
 | TCP 55357 | Pairing participants | Temporary one-time-code pairing service |
 | TCP 55358 | UNO Q to RetroPie | Paired game-registry service |
 | Private Unix sockets | App resolver to host Avahi | Local hostname resolution |

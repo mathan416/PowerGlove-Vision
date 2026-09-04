@@ -30,12 +30,18 @@ def load_calibration(path: Path) -> Calibration | None:
     """Read a finite, versioned neutral reference; reject missing or corrupt data."""
     try:
         data = json.loads(path.read_text())
-        if data["version"] != 1:
+        if data["version"] not in (1, 2):
             return None
-        value = Calibration(**data["neutral"])
+        neutral = data["neutral"]
+        value = Calibration(
+            palm_x=neutral["palm_x"], palm_y=neutral["palm_y"],
+            palm_scale=neutral["palm_scale"], roll=neutral["roll"],
+            noise_x=neutral.get("noise_x", 0.0), noise_y=neutral.get("noise_y", 0.0),
+        )
         if not all(type(v) in (int, float) and math.isfinite(v) for v in asdict(value).values()):
             return None
-        if value.palm_scale <= 0:
+        if (value.palm_scale <= 0 or not 0 <= value.noise_x <= 1
+                or not 0 <= value.noise_y <= 1):
             return None
         return value
     except (OSError, ValueError, TypeError, KeyError):
@@ -49,7 +55,7 @@ def save_calibration(path: Path, calibration: Calibration) -> None:
     try:
         with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as handle:
             name = handle.name
-            json.dump({"version": 1, "neutral": asdict(calibration)}, handle, allow_nan=False)
+            json.dump({"version": 2, "neutral": asdict(calibration)}, handle, allow_nan=False)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(name, path)
@@ -61,13 +67,14 @@ def save_calibration(path: Path, calibration: Calibration) -> None:
 PROGRAM_PROFILES = tuple(f"program_{letter}" for letter in "abcdefghi")
 GAME_PROFILES = ("bad_street_brawler", "super_glove_ball")
 SUPPORTED_PROFILES = PROGRAM_PROFILES + GAME_PROFILES
+RECOGNITION_PROFILES = SUPPORTED_PROFILES + ("practice",)
 
 
 @dataclass(frozen=True)
 class GestureConfig:
     """Hold movement, curl, roll, depth, pulse, and tracking-loss thresholds."""
-    move_on: float = 0.38
-    move_off: float = 0.24
+    move_on: float = 0.28
+    move_off: float = 0.14
     curl_on: float = 0.50
     curl_off: float = 0.35
     roll_on: float = 0.58
@@ -92,10 +99,21 @@ class GestureConfig:
         """Keep legacy menu cutoffs until this finger has a personal adjustment."""
         return self.pair(finger)[0 if closed else 1] if finger in self.thresholds else default
 
+    def movement_pair(self, channel: str, calibration: Calibration) -> tuple[float, float]:
+        """Protect responsive shared movement thresholds from measured neutral jitter."""
+        on, off = self.pair(channel)
+        noise = calibration.noise_x if channel in ("left", "right") else calibration.noise_y
+        effective_on = max(on, noise + 0.05)
+        effective_off = min(effective_on - 0.02, max(off, noise + 0.02))
+        return effective_on, max(0.0, effective_off)
+
 
 MENU_FINGERS = {
     "start": {"index": False, "middle": False, "ring": True, "pinky": True},
     "select": {"thumb": False, "index": True, "middle": True, "ring": True, "pinky": True},
+}
+MENU_GUARD_FINGERS = {
+    "thumb": True, "index": False, "middle": False, "ring": True, "pinky": False,
 }
 
 
@@ -171,6 +189,12 @@ class HeldGesture:
             self.pulse_until = now + self.pulse_seconds
         return now < self.pulse_until
 
+    def cancel(self) -> None:
+        """Discard both a forming pose and any pulse that is still active."""
+        self.started_at = None
+        self.pulse_until = 0.0
+        self.fired = False
+
 
 class GestureEngine:
     """Turns continuous landmark measurements into stable controller state."""
@@ -182,7 +206,7 @@ class GestureEngine:
         calibration_frames: int = 24,
         calibration: Calibration | None = None,
     ) -> None:
-        if profile not in SUPPORTED_PROFILES:
+        if profile not in RECOGNITION_PROFILES:
             raise ValueError(f"unknown profile: {profile}")
         self.profile = profile
         self.config = config or GestureConfig()
@@ -199,6 +223,7 @@ class GestureEngine:
         self._zap_until = 0.0
         self._start_gesture = HeldGesture()
         self._select_gesture = HeldGesture()
+        self._menu_guard_active = False
         self._switches = {
             name: Hysteresis()
             for name in (
@@ -232,6 +257,7 @@ class GestureEngine:
         self._pull_was_active = False
         self._program_toggle = False
         self._zap_until = 0.0
+        self._menu_guard_active = False
 
     def _collect_calibration(self, observation: HandObservation) -> None:
         """Accumulate valid frames and derive a stable neutral-hand reference."""
@@ -242,11 +268,19 @@ class GestureEngine:
         count = len(self._samples)
         sin_roll = sum(math.sin(item.roll) for item in self._samples)
         cos_roll = sum(math.cos(item.roll) for item in self._samples)
+        palm_x = sum(item.palm_x for item in self._samples) / count
+        palm_y = sum(item.palm_y for item in self._samples) / count
+        palm_scale = max(0.01, sum(item.palm_scale for item in self._samples) / count)
+        percentile_index = max(0, math.ceil(count * .95) - 1)
+        noise_x = sorted(abs(item.palm_x - palm_x) / palm_scale for item in self._samples)[percentile_index]
+        noise_y = sorted(abs(item.palm_y - palm_y) / palm_scale for item in self._samples)[percentile_index]
         self.calibration = Calibration(
-            palm_x=sum(item.palm_x for item in self._samples) / count,
-            palm_y=sum(item.palm_y for item in self._samples) / count,
-            palm_scale=max(0.01, sum(item.palm_scale for item in self._samples) / count),
+            palm_x=palm_x,
+            palm_y=palm_y,
+            palm_scale=palm_scale,
             roll=math.atan2(sin_roll, cos_roll),
+            noise_x=min(1.0, noise_x),
+            noise_y=min(1.0, noise_y),
         )
         self._calibrating = False
 
@@ -281,6 +315,18 @@ class GestureEngine:
                         "held_seconds": max(0.0, state.timestamp - gesture.started_at)}
         return {"pose": None, "recognized": False, "held_seconds": 0.0}
 
+    def recognition_feedback(self) -> dict:
+        """Expose compound and roll recognition independently of output mappings."""
+        switches = self._switches
+        return {
+            "roll_left": switches["roll_left"].active,
+            "roll_right": switches["roll_right"].active,
+            "closed_hand": all(
+                switches[name].active for name in ("thumb", "index", "middle", "ring", "pinky")
+            ),
+            "menu_guard": self._menu_guard_active,
+        }
+
     def update(self, observation: HandObservation) -> ControllerState:
         """Map one observation to a debounced controller state with safe tracking-loss release."""
         self._sequence += 1
@@ -299,6 +345,7 @@ class GestureEngine:
             self._pull_was_active = False
             self._start_gesture.update(False, observation.timestamp)
             self._select_gesture.update(False, observation.timestamp)
+            self._menu_guard_active = False
             for switch in self._switches.values():
                 switch.active = False
             self._last_state = ControllerState.released(
@@ -334,10 +381,10 @@ class GestureEngine:
 
         cfg = self.config
         dpad = {
-            "left": self._switches["left"].negative(dx, *cfg.pair("left")),
-            "right": self._switches["right"].positive(dx, *cfg.pair("right")),
-            "up": self._switches["up"].negative(dy, *cfg.pair("up")),
-            "down": self._switches["down"].positive(dy, *cfg.pair("down")),
+            "left": self._switches["left"].negative(dx, *cfg.movement_pair("left", reference)),
+            "right": self._switches["right"].positive(dx, *cfg.movement_pair("right", reference)),
+            "up": self._switches["up"].negative(dy, *cfg.movement_pair("up", reference)),
+            "down": self._switches["down"].positive(dy, *cfg.movement_pair("down", reference)),
         }
         thumb = self._switches["thumb"].positive(
             observation.thumb_curl, *cfg.pair("thumb")
@@ -364,14 +411,42 @@ class GestureEngine:
             events.append("glove_zap")
         self._push_was_active = pushing
 
+        # Menu guard uses the activation boundary for its two curled fingers
+        # and the lower release boundary for its three extended fingers. This
+        # leaves an intentional deadband before a partly curled pinky can count
+        # as the V-sign's curled pinky. Guard has priority and cancels any Start
+        # pulse already forming or active.
+        if self._menu_guard_active:
+            # Retain the two curled fingers through their release band. The
+            # three extended fingers stay strict: as soon as the pinky leaves
+            # its clearly-straight range, guard releases into the deliberate
+            # deadband before that finger can help form a V-sign.
+            curled_hold = all(
+                observation.fingers[name] >= cfg.pair(name)[1]
+                for name in ("thumb", "ring")
+            )
+            extended_hold = all(
+                observation.fingers[name] <= cfg.pair(name)[1]
+                for name in ("index", "middle", "pinky")
+            )
+            self._menu_guard_active = curled_hold and extended_hold
+        else:
+            self._menu_guard_active = all(item["matches"] for item in finger_pose_feedback(
+                cfg, "menu_guard", MENU_GUARD_FINGERS, observation.fingers).values())
+
         # Deliberate, held menu poses avoid needing an electronic glove.
         # V sign = Start; thumbs-up with the four fingers closed = Select.
-        start_pose = all(item["matches"] for item in finger_pose_feedback(
+        start_pose = not self._menu_guard_active and all(item["matches"] for item in finger_pose_feedback(
             cfg, "start", MENU_FINGERS["start"], observation.fingers).values())
-        select_pose = all(item["matches"] for item in finger_pose_feedback(
+        select_pose = not self._menu_guard_active and all(item["matches"] for item in finger_pose_feedback(
             cfg, "select", MENU_FINGERS["select"], observation.fingers).values())
-        start = self._start_gesture.update(start_pose, observation.timestamp)
-        select = self._select_gesture.update(select_pose, observation.timestamp)
+        if self._menu_guard_active:
+            self._start_gesture.cancel()
+            self._select_gesture.cancel()
+            start = select = False
+        else:
+            start = self._start_gesture.update(start_pose, observation.timestamp)
+            select = self._select_gesture.update(select_pose, observation.timestamp)
         menu_pose = start_pose or select_pose or start or select
         if menu_pose:
             dpad = {name: False for name in dpad}
@@ -411,6 +486,15 @@ class GestureEngine:
                 observation, dpad,
                 thumb, index, middle, pulse_on, menu_pose, start, select,
             )
+
+        # Menu guard is a shared recognition safety pose, not a Program G
+        # mapping. Keep its state available to practice/native consumers while
+        # suppressing ordinary game movement and action buttons everywhere.
+        menu_guard = self._menu_guard_active
+        if menu_guard:
+            dpad = {name: False for name in dpad}
+            buttons["a"] = buttons["b"] = buttons["start"] = buttons["select"] = False
+        buttons["menu_guard"] = menu_guard
 
         fingers = {
             name: round(_clamp(value, 0.0, 1.0) * 3)
@@ -507,15 +591,13 @@ class GestureEngine:
             a = moving and not closed
             b = closed
         elif profile == "program_g":
-            # Gun.Smoke: position moves; index fires; thumb+ring is a menu guard.
-            guarded = thumb and self._switches["ring"].active
+            # Gun.Smoke: position moves and index/push fire. Shared menu guard
+            # suppression is applied after every profile mapping.
             if (roll_left or roll_right):
                 dpad["left"] = roll_left
                 dpad["right"] = roll_right
-            a = index and not guarded
-            b = pushing and not guarded
-            if guarded:
-                dpad = {name: False for name in dpad}
+            a = index
+            b = pushing
         elif profile == "program_h":
             # General play/training: conventional motion and pulsed buttons.
             a = index and pulse_on

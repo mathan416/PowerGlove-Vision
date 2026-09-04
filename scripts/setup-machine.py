@@ -23,6 +23,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
@@ -119,7 +120,7 @@ def install_retropie(peer):
     destination = Path("/opt/powerglove-src")
     if SOURCE.resolve() != destination.resolve():
         names = [str(path.relative_to(SOURCE))
-                 for directory in ("src", "retropie", "config", "scripts", "licenses")
+                 for directory in ("src", "retropie", "config", "scripts", "native", "licenses")
                  for path in (SOURCE / directory).rglob("*")
                  if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"]
         names += [name for name in ("install-release.json", "LICENSE", "THIRD_PARTY_NOTICES.md")
@@ -260,7 +261,7 @@ def registered_roms():
 
 
 def configure_games(confirm):
-    """Offer supported emulator installation and prepare registered Bad Street Brawler games."""
+    """Prepare FCEUmm games and offer the optional source-built native core."""
     prefix = Path("/opt/retropie")
     core = prefix / "libretrocores/lr-fceumm/fceumm_libretro.so"
     retroarch = prefix / "emulators/retroarch/bin/retroarch"
@@ -276,8 +277,27 @@ def configure_games(confirm):
         else:
             print("ACTION  Install lr-fceumm using RetroPie Setup, then rerun this installer.")
     import runpy
+    roms = registered_roms()
+    super_glove_ball_roms = [rom for rom, profile in roms if profile == "super_glove_ball"]
+    native = prefix / "libretrocores/lr-nestopia-powerglove/nestopia_powerglove_libretro.so"
+    if super_glove_ball_roms and not native.is_file():
+        prompt = ("Build and register optional lr-nestopia-powerglove for Super Glove Ball? "
+                  "This installs build tools and downloads pinned GPLv2 source")
+        if confirm(prompt):
+            run("apt-get", "install", "-y", "git", "build-essential")
+            with tempfile.TemporaryDirectory(prefix="powerglove-nestopia-", dir="/var/tmp") as build:
+                run("bash", SOURCE / "scripts/install-nestopia-powerglove.sh", build)
+    if super_glove_ball_roms and native.is_file():
+        selector = runpy.run_path(str(SOURCE / "scripts/configure-super-glove-ball-core.py"))
+        system_path, system_text, option_path, option_text = selector["native_registration"](prefix)
+        write_file(system_path, system_text)
+        write_file(option_path, option_text)
+        print("PASS  Both Super Glove Ball emulators are available; FCEUmm remains selected until you choose native mode.")
+    elif super_glove_ball_roms:
+        print("INFO  Super Glove Ball will use FCEUmm; the optional native core was not installed.")
+
     zap = runpy.run_path(str(SOURCE / "scripts/configure-bsb-zap.py"))
-    for rom, profile in registered_roms():
+    for rom, profile in roms:
         if profile != "bad_street_brawler":
             continue
         try:
@@ -381,6 +401,15 @@ def check_retropie(report):
         report.check("Configured UNO Q hostname resolves", False)
     report.check("RetroArch installed", Path("/opt/retropie/emulators/retroarch/bin/retroarch").is_file(), pending=True)
     report.check("FCEUmm installed for supported NES games", Path("/opt/retropie/libretrocores/lr-fceumm/fceumm_libretro.so").is_file(), pending=True)
+    native = Path("/opt/retropie/libretrocores/lr-nestopia-powerglove/nestopia_powerglove_libretro.so")
+    if native.is_file():
+        import runpy
+        selector = runpy.run_path(str(SOURCE / "scripts/configure-super-glove-ball-core.py"))
+        system = selector["settings"](Path("/opt/retropie/configs/nes/emulators.cfg"))
+        option = Path("/opt/retropie/configs/nes/powerglove-native.cfg")
+        report.check("Optional native Super Glove Ball core registered",
+                     "lr-nestopia-powerglove" in system and option.is_file())
+        report.check("Native core GPLv2 license installed", native.with_name("COPYING").is_file())
     try:
         roms = registered_roms()
         report.check("Registered ROMs found (supply your own games)", bool(roms), pending=True)

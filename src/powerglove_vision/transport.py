@@ -56,7 +56,7 @@ def decode_state(payload: bytes) -> dict:
     for name, keys, maximum in (
         ("axes", {"x", "y", "z", "roll"}, 32767),
         ("dpad", {"up", "down", "left", "right"}, None),
-        ("buttons", {"a", "b", "start", "select", "glove_zap"}, None),
+        ("buttons", {"a", "b", "start", "select", "glove_zap", "menu_guard"}, None),
         ("fingers", {"thumb", "index", "middle", "ring", "pinky"}, 3),
     ):
         values = data.get(name, {})

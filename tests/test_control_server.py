@@ -151,6 +151,8 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"/help-assets/gestures/v2/v-sign.png", page)
         self.assertIn(b"/help-assets/gestures/v2/thumbs-up.png", page)
         self.assertGreaterEqual(page.count(b"<img loading=lazy"), 46)
+        self.assertIn(b"<table class=program-starters>", page)
+        self.assertIn(b"width='176'", page)
         self.assertIn(b"/help/gameplay.md", page)
         self.assertIn(b"/help-pdf/gameplay.pdf", page)
 
@@ -172,13 +174,21 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn("href='#'", rendered)
 
         table, _headings = render_markdown(
-            '| Pose |\n| --- |\n| <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72"> |'
+            '| Name | Pose |\n| --- | --- |\n| Start | <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72"> |'
         )
         self.assertIn("<img loading=lazy", table)
         self.assertIn("/help-assets/gestures/actions/v-sign.png", table)
+        self.assertIn("<th class=art-column>", table)
+        self.assertIn("<td class=art-cell>", table)
+
+        mixed_table, _headings = render_markdown(
+            '| State | See it |\n| --- | --- |\n| Pairing | — |\n'
+            '| Ready | <img src="images/matrix/A.jpg" alt="A" width="104"> |'
+        )
+        self.assertEqual(mixed_table.count("<td class=art-cell>"), 2)
 
         unsafe_table, _headings = render_markdown(
-            '| Pose |\n| --- |\n| <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72" onerror="alert(1)"> |'
+            '| Name | Pose |\n| --- | --- |\n| Start | <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72" onerror="alert(1)"> |'
         )
         self.assertNotIn("<img loading=lazy", unsafe_table)
         self.assertIn("&lt;img", unsafe_table)
@@ -237,7 +247,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"keepalive:true", LEARN)
         self.assertIn(b"data-src=/stream", LEARN)
         self.assertNotIn(b"/api/controller", LEARN)
-        self.assertIn(b"Lesson 1 of 12", LEARN)
+        self.assertIn(b"Lesson 1 of 16", LEARN)
 
     def test_dashboard_load_clears_practice_and_restores_selected_mode(self):
         self.assertIn(b"/api/practice", DASHBOARD)
@@ -277,15 +287,15 @@ class ControlStateTests(unittest.TestCase):
             self.assertIs(shared.take_practice_request(), False)
 
     def test_practice_uses_general_tracking_without_changing_selected_off_mode(self):
-        self.assertEqual(_effective_profile(None, True), "program_h")
+        self.assertEqual(_effective_profile(None, True), "practice")
         self.assertIsNone(_effective_profile(None, False))
-        self.assertEqual(_effective_profile("bad_street_brawler", True), "program_h")
+        self.assertEqual(_effective_profile("bad_street_brawler", True), "practice")
         self.assertEqual(_effective_profile("bad_street_brawler", False), "bad_street_brawler")
         status = _base_status(
             None, "Startup default", "startup", True, practice_mode=True,
         )
         self.assertEqual(status["active_profile"], "off")
-        self.assertEqual(status["vision_profile"], "program_h")
+        self.assertEqual(status["vision_profile"], "practice")
         self.assertTrue(status["practice_mode"])
         self.assertIn("Practice mode", status["receiver_error"])
 
@@ -352,6 +362,11 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"image:'thumbs-up.png'", LEARN)
         self.assertIn(b"image:'thumb-curl.png'", LEARN)
         self.assertIn(b"Glove Zap recognized!", LEARN)
+        self.assertIn(b"image:'wrist-roll-left.png'", LEARN)
+        self.assertIn(b"image:'wrist-roll-right.png'", LEARN)
+        self.assertIn(b"image:'close-all-fingers.png'", LEARN)
+        self.assertIn(b"image:'menu-guard.png'", LEARN)
+        self.assertIn(b"setInterval(update,75)", LEARN)
         self.assertIn(b"id=practice-actions", LEARN)
         self.assertIn(b"s.menu_gesture?.recognized", LEARN)
         self.assertIn(b"lessons[index].instant?0", LEARN)

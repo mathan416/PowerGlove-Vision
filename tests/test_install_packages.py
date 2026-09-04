@@ -50,8 +50,12 @@ class ArchiveTests(unittest.TestCase):
         with zipfile.ZipFile(archive, 'w') as output:
             output.writestr('PowerGlove-Vision/install-release.json', json.dumps(
                 dict(format=1, machine=machine, version='dev-test')))
-            for name in ('scripts/setup-machine.py', 'scripts/installation-manifest.py', 'src/powerglove_vision/receiver.py',
-                         'config/games.json', 'retropie/powerglove-receiver.service'):
+            for name in ('scripts/setup-machine.py', 'scripts/installation-manifest.py',
+                         'scripts/install-nestopia-powerglove.sh',
+                         'src/powerglove_vision/receiver.py', 'config/games.json',
+                         'retropie/powerglove-receiver.service',
+                         'native/nestopia-powerglove/nestopia-powerglove.patch',
+                         'native/nestopia-powerglove/README.md'):
                 output.writestr('PowerGlove-Vision/' + name, 'test')
             if extra:
                 output.writestr(*extra)
@@ -237,6 +241,55 @@ class GameSetupTests(unittest.TestCase):
                 self.assertIn('install_bin', command.call_args_list[0][0])
             else:
                 command.assert_not_called()
+
+    def test_native_core_offer_builds_and_registers_without_selecting_rom(self):
+        setup = installer.load_setup(ROOT)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+
+            def mapped(value):
+                path = Path(value)
+                if str(path).startswith("/opt/retropie"):
+                    return root / str(path).lstrip("/")
+                return path
+
+            prefix = mapped("/opt/retropie")
+            fceumm = prefix / "libretrocores/lr-fceumm/fceumm_libretro.so"
+            native = prefix / "libretrocores/lr-nestopia-powerglove/nestopia_powerglove_libretro.so"
+            retroarch = prefix / "emulators/retroarch/bin/retroarch"
+            system = prefix / "configs/nes/emulators.cfg"
+            for path in (fceumm, retroarch):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"binary")
+            system.parent.mkdir(parents=True, exist_ok=True)
+            system.write_text('default = "lr-fceumm"\nlr-fceumm = "/retroarch -L ' + str(fceumm) + ' %ROM%"\n')
+            rom = root / "home/pi/RetroPie/roms/nes/Super Glove Ball (USA).nes"
+            rom.parent.mkdir(parents=True)
+            rom.write_bytes(b"test-only")
+
+            def command(*args):
+                if args[0] == "bash" and "install-nestopia-powerglove.sh" in str(args[1]):
+                    native.parent.mkdir(parents=True, exist_ok=True)
+                    native.write_bytes(b"native")
+
+            real_temporary_directory = tempfile.TemporaryDirectory
+            with patch.object(setup, "Path", side_effect=mapped), \
+                 patch.object(setup, "BACKUPS", root / "backups"), \
+                 patch.object(setup, "registered_roms", return_value=[(rom, "super_glove_ball")]), \
+                 patch.object(setup.tempfile, "TemporaryDirectory",
+                              side_effect=lambda **kwargs: real_temporary_directory(
+                                  prefix=kwargs.get("prefix"), dir=str(root))), \
+                 patch.object(setup, "run", side_effect=command) as run:
+                setup.configure_games(lambda _message: True)
+
+            run.assert_any_call("apt-get", "install", "-y", "git", "build-essential")
+            self.assertIn("lr-nestopia-powerglove", system.read_text())
+            games = prefix / "configs/all/emulators.cfg"
+            self.assertFalse(games.exists())
+            self.assertEqual(
+                (prefix / "configs/nes/powerglove-native.cfg").read_text(),
+                'input_libretro_device_p1 = "517"\n',
+            )
 
     def test_helper_failure_is_not_silently_accepted(self):
         setup = installer.load_setup(ROOT)

@@ -389,7 +389,7 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
             target, caption, width = standalone_image.groups()
             if target.startswith("images/matrix/") and 24 <= int(width) <= 320:
                 blocks.append(
-                    "<figure style='margin:1em 0;max-width:320px'>"
+                    "<figure style='margin:1em auto;max-width:320px'>"
                     + _inline(line.strip())
                     + "<figcaption style='text-align:center;font-size:0.9em'>"
                     + html.escape(caption) + "</figcaption></figure>"
@@ -431,9 +431,33 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
             while index < len(lines) and "|" in lines[index] and lines[index].strip():
                 rows.append(_table_cells(lines[index]))
                 index += 1
-            head = "".join(f"<th>{_inline(cell)}</th>" for cell in headers)
-            body = "".join("<tr>{}</tr>".format("".join(f"<td>{_inline(cell)}</td>" for cell in row)) for row in rows)
-            blocks.append(f"<div class=table-scroll><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>")
+            image_columns = {
+                column for row in rows for column, cell in enumerate(row)
+                if _HTML_IMAGE.fullmatch(cell)
+            }
+            table_class = (
+                " class=program-starters"
+                if headers == ["Program", "See it", "Try it with", "Know before playing"]
+                else ""
+            )
+            head = "".join(
+                "<th{css}>{content}</th>".format(
+                    css=" class=art-column" if column in image_columns else "",
+                    content=_inline(cell),
+                )
+                for column, cell in enumerate(headers)
+            )
+            body = "".join(
+                "<tr>{}</tr>".format("".join(
+                    "<td{css}>{content}</td>".format(
+                        css=" class=art-cell" if column in image_columns else "",
+                        content=_inline(cell),
+                    )
+                    for column, cell in enumerate(row)
+                ))
+                for row in rows
+            )
+            blocks.append(f"<div class=table-scroll><table{table_class}><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>")
             continue
         list_match = _BULLET.match(line) or _NUMBERED.match(line)
         if list_match:

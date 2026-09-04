@@ -122,15 +122,18 @@ complete wall of tiles, and follow the revealed arrows through the maze.
 
 | Do this | See it | Controller result |
 | --- | --- | --- |
-| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Steer the Robo-Glove with the D-pad fallback |
-| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | A: move the glove into the room |
-| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | B: punch, grab, or launch a new ball |
-| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
-| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select: doorway or Robo-Bullet action |
+| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | FCEUmm: held digital steering. Native core: absolute continuous X/Y. |
+| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | FCEUmm: A, move the glove into the room. Native finger/action encoding is not yet implemented. |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | FCEUmm: B, punch, grab, or launch a new ball. Native finger/action encoding is not yet implemented. |
+| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause; native Start is confirmed. |
+| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | FCEUmm: Select, doorway or Robo-Bullet action. Native Select remains unconfirmed. |
 
 **Play smart:** Pick one wall and finish it. When its arrow appears, use Select
-to take the exit. The current profile also preserves analogue hand position,
-depth, wrist roll, and individual finger values for future native glove support.
+to take the exit. The separately named native Nestopia core has passed exact-ROM
+detection, native Start, continuous X/Y, four-direction activation/release, and
+safe-neutral tests. The same-ROM comparison confirms FCEUmm remains a pure
+standard-joypad session. Use FCEUmm for complete actions while native finger and
+remaining button fields are still being established.
 
 **First round:**
 
@@ -272,7 +275,7 @@ each wanted poster, and collect the bounty by beating the stage boss.
 | Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | A: shoot diagonally right |
 | Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | B: shoot diagonally left |
 | Curl index while pushing | <img src="images/gestures/actions/index-push-combination.png" alt="Combine a finger curl with a push toward the camera" width="96"> | A+B: shoot straight ahead |
-| Curl thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress D-pad and A/B output |
+| Curl thumb and ring finger | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="96"> | Suppress D-pad and A/B output |
 
 **Play smart:** A stage keeps looping until you obtain its wanted poster. Keep
 your palm level while walking; wrist roll can add a left/right movement command.
@@ -326,9 +329,9 @@ ROM assignment and are useful starting points for these experiments.
 
 | Program | See it | Try it with | Know before playing |
 | --- | --- | --- | --- |
-| **A - Pinball** | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist for the pinball tilt action" width="96"> | Pinball and games driven by two independent actions | Index curl is A, thumb curl is Up, wrist tilt is B, and pulling back toggles combined flippers. Ordinary directional movement is disabled. |
-| **D - Mirror world** | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | A game you already know well, a party challenge, or an inverted-direction accessibility experiment | Every direction is reversed. Thumb and index provide A and B. Expect your muscle memory to complain loudly. |
-| **H - General play** | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger for a general-purpose action button" width="72"> | Two-button platform, maze, puzzle, and action games | Hand movement supplies the D-pad. Index and thumb pulse A and B, so games that require a long held button may be a poor fit. |
+| **A - Pinball** | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist for the pinball tilt action" width="176"> | Pinball and games driven by two independent actions | Index curl is A, thumb curl is Up, wrist tilt is B, and pulling back toggles combined flippers. Ordinary directional movement is disabled. |
+| **D - Mirror world** | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="176"> | A game you already know well, a party challenge, or an inverted-direction accessibility experiment | Every direction is reversed. Thumb and index provide A and B. Expect your muscle memory to complain loudly. |
+| **H - General play** | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger for a general-purpose action button" width="176"> | Two-button platform, maze, puzzle, and action games | Hand movement supplies the D-pad. Index and thumb pulse A and B, so games that require a long held button may be a poor fit. |
 
 Try Program H first for general play, or Program A for pinball controls.
 Program D turns a familiar game into a new coordination challenge without
@@ -453,25 +456,25 @@ mapping, validate, and save. Restart the game to use the new mapping. The
 
 ### Check the result in a game
 
-Ordinary Glove Academy includes twelve lessons, including **Glove Zap** (forward push)
-and **Pull Back** (away from the camera). Saved tuning values also drive actual
-controller recognition. Activation starts an action; the lower Release value
-keeps it active until you return far enough. This applies to finger controls,
-directions, wrist rolls, forward push, Pull Back, and movement-based braking.
-The selected game still decides button assignments, timed pulses, and toggles.
+Ordinary Glove Academy includes sixteen lessons. Alongside **Glove Zap** and
+**Pull Back**, it teaches roll left, roll right, close hand, and **Menu guard**.
+Menu guard means curling the thumb and ring finger while the other three fingers
+remain extended; it suppresses controls while you reposition. Saved tuning values
+drive gameplay recognition globally, while each game profile only decides button
+assignments, pulses, and toggles.
 
-You can tune one difficult gesture without hand setup. Fingers that stay extended
-throughout keep their existing thresholds; use hand setup if those boundaries
-need adjustment. Follow the live finger feedback, retry overlapping measurements,
-and try the preview before saving. **Discard / record again** clears unsaved
-work; **Restore defaults** resets the selected components, or all five fingers
-when hand setup is selected. Start controller delivery from Dashboard when ready.
+Tune one difficult gesture without repeating hand setup. Follow the live finger
+feedback and preview before saving. **Discard / record again** clears unsaved work;
+**Restore defaults** resets the selected components, or all five fingers for hand
+setup. Start controller delivery from Dashboard when ready.
 
-Automatic tuning also checks the complete recorded finger pose before offering
-values: at least 90% of clear samples must match together. If a required finger
-is too bent or not curled enough, the message identifies it and asks for a retry.
-V-sign requires both straight index/middle fingers and curled ring/pinky fingers;
-thumbs-up requires a straight thumb and four curled fingers. The thumb need not
-point to the top of the camera image. No strong finger can compensate for another
-finger failing its requirement. Hand setup can adjust comfortable extension
-thresholds; individual tuning preserves boundaries it did not measure.
+Automatic tuning requires at least 90% of clear samples to match the complete
+pose and identifies any finger that needs a retry. V-sign requires straight
+index/middle and curled ring/pinky fingers; thumbs-up requires a straight thumb
+and four curled fingers. No strong finger can compensate for a failed finger.
+
+Menu guard has priority over the V-sign and cancels a pending Start press. Its
+pinky must be clearly extended, while the V-sign's pinky must be clearly curled;
+the space between those thresholds deliberately recognizes neither pose. Menu
+guard also suppresses Start and Select while active, so repositioning cannot
+accidentally open or pause a game menu.

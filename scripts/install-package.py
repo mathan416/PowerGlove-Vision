@@ -62,7 +62,12 @@ def unpack(archive, destination, machine, version):
         required = ["scripts/setup-machine.py", "scripts/installation-manifest.py", "src/powerglove_vision/receiver.py", "config/games.json"]
         required += (["app.yaml", "sketch/sketch.yaml", "sketch/sketch.ino", "scripts/uno-q-early-start.py",
                       "uno-q/powerglove-early-start.service", "uno-q/powerglove-system-shutdown.path"]
-                     if machine == "uno-q" else ["retropie/powerglove-receiver.service"])
+                     if machine == "uno-q" else [
+                         "retropie/powerglove-receiver.service",
+                         "scripts/install-nestopia-powerglove.sh",
+                         "native/nestopia-powerglove/nestopia-powerglove.patch",
+                         "native/nestopia-powerglove/README.md",
+                     ])
         for relative in required:
             if "PowerGlove-Vision/" + relative not in seen:
                 raise ValueError("Incomplete package: " + relative)

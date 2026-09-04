@@ -139,7 +139,7 @@ Use this profile for Sesame Street 1-2-3 and simple choice-driven games.
 | Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Walk using horizontal and vertical hand movement |
 | Curl the index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Fire |
 | Roll the wrist | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Add left or right movement |
-| Curl the thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress D-pad and A/B output |
+| Curl the thumb and ring finger | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="96"> | Suppress D-pad and A/B output |
 
 A forward push sends B. Combine it with index curl (A) to send A+B.
 
@@ -230,7 +230,8 @@ to their respective owners. No ROM images are distributed with this project.
 
 ### Personal sensitivity and practice
 
-Glove Academy has twelve lessons, including **Glove Zap** and **Pull Back**. Tune an
+Glove Academy has sixteen lessons, including **Glove Zap**, **Pull Back**, both wrist
+rolls, close hand, and menu guard. Tune an
 individual gesture with open hand → gesture → open hand, three seconds per step.
 Optional **Set up my hand** uses a gentle fist with the thumb outside for the
 middle step. Open means fingers and thumb gently extended, wrist straight, with

@@ -118,7 +118,7 @@ class AuditRegressionTests(unittest.TestCase):
             engine=GestureEngine(profile,calibration=CAL)
             for t,c in [(1,.8),(1.18,.4)]:
                 state=engine.update(HandObservation(t,True,1,.8,.5,.2,
-                    thumb_curl=.8,ring_curl=c))
+                    thumb_curl=.8 if profile == 'program_g' else 0,ring_curl=c))
             if profile == 'program_e':
                 self.assertTrue(state.dpad['left'])
                 self.assertFalse(state.dpad['right'])
@@ -200,7 +200,7 @@ class AuditRegressionTests(unittest.TestCase):
         for session, sequence in sent[terminal:sent.index(resumed)]:
             if sequence == 2147483647: self.assertNotEqual(session,resumed[0])
 
-    def test_install_preserves_custom_profiles_but_updates_code(self):
+    def test_install_updates_release_profiles_and_code(self):
         import importlib.util
         spec=importlib.util.spec_from_file_location('audit_install',ROOT/'scripts/install-package.py')
         installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installer)
@@ -216,8 +216,10 @@ class AuditRegressionTests(unittest.TestCase):
                  patch.object(installer.pwd,'getpwnam',return_value=SimpleNamespace(pw_uid=0,pw_gid=0)), \
                  patch.object(installer.os,'chown'),patch.object(setup,'run'):
                 installer.stage_unoq(source,setup)
-            self.assertEqual((app/'config/profiles.json').read_text(),'personal values')
+            self.assertEqual((app/'config/profiles.json').read_text(),'new defaults')
             self.assertEqual((app/'code.py').read_text(),'updated code')
+            self.assertTrue(any(path.read_text() == 'personal values'
+                                for path in (root/'backups').rglob('profiles.json')))
 
     def test_shared_payload_excludes_exports_and_artwork_masters(self):
         module=runpy.run_path(str(ROOT/'scripts/application-payload.py'))

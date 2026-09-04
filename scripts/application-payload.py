@@ -17,7 +17,7 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_ROOTS = {"src", "python", "scripts", "sketch", "config", "docs", "models", "licenses", "retropie", "uno-q", "bricks"}
+PUBLIC_ROOTS = {"src", "python", "scripts", "sketch", "config", "docs", "models", "licenses", "retropie", "native", "uno-q", "bricks"}
 PUBLIC_FILES = {"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "app.yaml", "assets/powerglove-vision-logo.png"}
 
 

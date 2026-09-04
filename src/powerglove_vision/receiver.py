@@ -19,6 +19,7 @@ import socket
 import time
 from pathlib import Path
 
+from .native_state import DEFAULT_PATH as DEFAULT_NATIVE_STATE_PATH, NativeStateWriter
 from .transport import MAX_PACKET_BYTES, decode_state
 
 
@@ -104,6 +105,8 @@ def build_parser() -> argparse.ArgumentParser:
     tokens.add_argument("--token")
     tokens.add_argument("--token-file", type=Path)
     parser.add_argument("--timeout-ms", type=int, default=250)
+    parser.add_argument("--native-state", type=Path, default=DEFAULT_NATIVE_STATE_PATH,
+                        help="latest validated sample for the custom Nestopia core")
     parser.add_argument("--dry-run", action="store_true")
     return parser
 
@@ -117,6 +120,12 @@ def main() -> int:
     # Keep an idle virtual controller out of frontend startup. Create the real
     # uinput device only after an authenticated controller packet arrives.
     device = DryRunDevice() if args.dry_run else None
+    native = None
+    try:
+        native = NativeStateWriter(args.native_state)
+    except OSError as exc:
+        # The standard uinput path remains usable on systems without the optional core.
+        print(f"Native Power Glove state unavailable: {exc}", flush=True)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
     if args.timeout_ms <= 0:
@@ -133,6 +142,8 @@ def main() -> int:
             now = time.monotonic()
             if last_valid_at is not None and not released and now - last_valid_at >= timeout:
                 device.release()
+                if native is not None:
+                    native.release(last_sequence + 1)
                 released = True
             remaining = timeout if released or last_valid_at is None else timeout - (now - last_valid_at)
             sock.settimeout(max(0.001, remaining))
@@ -156,6 +167,8 @@ def main() -> int:
                 if device is None:
                     device = UInputDevice()
                 device.write_state(state)
+                if native is not None:
+                    native.write(state)
                 released = False
                 last_valid_at = time.monotonic()
             except socket.timeout:
@@ -168,6 +181,8 @@ def main() -> int:
         if device is not None:
             device.release()
             device.close()
+        if native is not None:
+            native.close()
         sock.close()
 
 

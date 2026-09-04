@@ -53,7 +53,10 @@ class TuningTests(unittest.TestCase):
         phases = self.phases()
         for sample in phases[1]: sample['index'] = sample['middle'] = .1
         self.assertEqual(set(suggest('start', phases)), {'ring','pinky'})
-        self.assertEqual(set(suggest('menu_guard', self.phases())), {'thumb','ring'})
+        guard = self.phases()
+        for sample in guard[1]:
+            sample['index'] = sample['middle'] = sample['pinky'] = .1
+        self.assertEqual(set(suggest('menu_guard', guard)), {'thumb','ring'})
 
     def test_preview_expiry_and_session_ownership(self):
         self.command('preview', thresholds={'index': {'on':.3, 'off':.2}})

@@ -15,8 +15,12 @@ controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
 profile automatically when you launch a registered game. Glove Academy mode lets you
 practise without sending input to the cabinet.
 
-The cabinet currently uses `lr-fceumm` as its default NES emulator.
-`lr-nestopia` has not been tested with PowerGlove Vision.
+The cabinet supports two Super Glove Ball paths. `lr-fceumm` is the complete,
+standard-joystick fallback and remains the safe default. The separately named
+`lr-nestopia-powerglove` core supplies native absolute X/Y coordinates; exact-ROM
+traces and deterministic headless tests confirm detection, Start, four-direction
+activation/release, small continuous movement, and safe neutralization. Native Z,
+roll, finger/action fields, and physical cabinet behavior are not yet complete.
 
 ## Choose a guide
 
@@ -36,6 +40,7 @@ The cabinet currently uses `lr-fceumm` as its default NES emulator.
 | --- | --- |
 | Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
+| Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
 | Check dependency provenance or release history | [Third-party components](docs/THIRD_PARTY_COMPONENTS.md) and [Changelog](docs/CHANGELOG.md) |
@@ -57,15 +62,26 @@ import or helper installation is needed.
 
 Follow the [Installation Guide](docs/INSTALL_README.md) for copyable commands,
 pairing, calibration, and your first game. Both scripts also support `--check`
-and repeatable updates while preserving personal settings. Installer assets
+and repeatable updates while preserving personal settings. The release-owned
+`config/profiles.json` baseline is backed up and replaced, while calibration and
+personal tuning under `data/` remain in place. Installer assets
 must be published before the release download commands become available.
+
+When a registered Super Glove Ball ROM is present, the RetroPie installer offers
+to build the optional native core locally from pinned GPLv2 Nestopia source. If
+you decline, nothing changes and FCEUmm remains available. If you accept, both
+cores appear in RetroPie's per-ROM launch menu; FCEUmm stays selected until you
+choose the native entry. The project does not distribute ROMs or a compiled
+Nestopia core in its ordinary installation archive.
 
 ## Controls
 
 Calibration records the resting hand position that the app treats as the
 centre of movement. Move away from that position to give a direction and
 return to it to release that direction. Recalibrate after moving the camera or
-changing your playing position. Some profiles replace ordinary hand movement
+changing your playing position. Direction activation and release are shared by
+all FCEUmm profiles and automatically rise above measured resting-hand jitter;
+you do not normally calibrate each direction. Some profiles replace ordinary hand movement
 with wrist steering or other controls, as shown below.
 
 Across the profiles, briefly show a **V sign** to send Start and
@@ -118,15 +134,24 @@ see the [configuration reference](docs/CONFIGURATION_REFERENCE.md#bad-street-bra
 | Curl your index finger | A |
 | Curl your thumb | B |
 
-The protocol also carries hand position, estimated depth, wrist roll, and
-finger measurements for future native-glove support.
+The same responsive mapping remains the explicit FCEUmm fallback. Headless tests
+using the same exact ROM show that both paths visibly activate and release every
+direction by frame 3. Their semantics differ: FCEUmm supplies held digital
+directions, while the native core supplies an absolute target position. The
+native path has passed exact-ROM detection, Start, continuous X/Y, and safe
+neutralization tests. Z, roll, fingers, and untested buttons remain neutral; see
+the [native compatibility record](docs/super-glove-ball-native.md).
+
+The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that the
+other listed games consume standard NES controller bits. They continue to use
+FCEUmm and the same global recognition settings.
 
 ## Use the web interface
 
 | Page | What it does |
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
-| Glove Academy, `/learn` | Provides twelve practice lessons and guided gesture tuning, with game input paused. |
+| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
@@ -169,6 +194,8 @@ covers tests, documentation, package verification, and releases. Printable
 editions are stored in [output/pdf/](output/pdf/).
 
 PowerGlove Vision is an independent project licensed under the [MIT License](LICENSE).
+The modified Nestopia core is GPLv2 software and is documented separately from
+the MIT application; see its [distribution and license record](native/nestopia-powerglove/README.md).
 Nintendo, NES, Power Glove, and the named games belong to their respective
 owners. Third-party software and models retain their own terms, documented in
 [Third-party components](docs/THIRD_PARTY_COMPONENTS.md).

@@ -43,7 +43,7 @@ from .tracker import MediaPipeTracker, log_startup_stage
 from .transport import UdpSender
 
 
-PRACTICE_PROFILE = "program_h"
+PRACTICE_PROFILE = "practice"
 
 
 def _shutdown_on_signal(_signum: int, _frame: object) -> None:
@@ -52,14 +52,14 @@ def _shutdown_on_signal(_signum: int, _frame: object) -> None:
 
 
 def _load_config(profile: str, path: Path | None) -> GestureConfig:
-    """Load profile thresholds from an explicit or default configuration file."""
+    """Load shared recognition thresholds while accepting legacy profile files."""
     if path is None:
         candidate = Path(__file__).resolve().parents[2] / "config" / "profiles.json"
         path = candidate if candidate.exists() else None
     if path is None:
         return GestureConfig()
     data = json.loads(path.read_text())
-    return GestureConfig(**data.get(profile, data.get("program_defaults", {})))
+    return GestureConfig(**data.get("recognition", data.get(profile, data.get("program_defaults", {}))))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -458,6 +458,7 @@ def main() -> int:
             status["push_gesture"] = engine.push_feedback(result.observation)
             status["pull_gesture"] = engine.pull_feedback(result.observation)
             status["finger_active"] = engine.curl_feedback(result.observation)
+            status["recognition"] = engine.recognition_feedback()
             status["finger_curls"] = result.observation.fingers
             status["curl_threshold"] = engine.config.pair("index")[0]
             status["tuning"] = shared.tuning.snapshot()

@@ -27,3 +27,20 @@ NOTICE. No model modifications were made and no Google endorsement is implied.
 The repackaged MediaPipe wheel retains its upstream Apache 2.0 license inside
 the wheel. Its modifications and checksums are described in
 [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md).
+
+## Optional modified Nestopia core
+
+`lr-nestopia-powerglove` is a modified build of the libretro Nestopia core,
+licensed under the GNU General Public License, version 2. It is not covered by
+PowerGlove Vision's MIT license. Ordinary release packages provide a pinned
+source-build recipe and the local patch rather than a compiled core. The
+downloaded upstream source supplies its full `COPYING` text and author notices;
+the local core installer copies that license beside the installed binary.
+
+Upstream: https://github.com/libretro/nestopia
+
+Pinned revision: `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`
+
+Modification and distribution details are recorded in
+[`native/nestopia-powerglove/README.md`](native/nestopia-powerglove/README.md)
+and [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md).

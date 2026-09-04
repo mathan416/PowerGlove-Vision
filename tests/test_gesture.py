@@ -104,9 +104,20 @@ class GestureTests(unittest.TestCase):
 
     def test_direction_uses_hysteresis(self):
         engine = calibrated_engine()
-        self.assertTrue(engine.update(hand(0.1, palm_x=0.60)).dpad["right"])
+        self.assertFalse(engine.update(hand(0.1, palm_x=0.55)).dpad["right"])
         self.assertTrue(engine.update(hand(0.2, palm_x=0.56)).dpad["right"])
-        self.assertFalse(engine.update(hand(0.3, palm_x=0.53)).dpad["right"])
+        self.assertTrue(engine.update(hand(0.3, palm_x=0.53)).dpad["right"])
+        self.assertFalse(engine.update(hand(0.4, palm_x=0.52)).dpad["right"])
+
+    def test_calibration_noise_raises_only_unsafe_movement_thresholds(self):
+        engine = GestureEngine("program_h", calibration_frames=5)
+        for t, x in enumerate((.47, .53, .48, .52, .50)):
+            engine.update(hand(t / 30, palm_x=x))
+        self.assertGreater(engine.calibration.noise_x, .1)
+        on, off = engine.config.movement_pair("right", engine.calibration)
+        self.assertGreaterEqual(on, engine.calibration.noise_x + .05)
+        self.assertGreater(off, engine.config.move_off)
+        self.assertEqual(engine.config.movement_pair("up", engine.calibration), (.28, .14))
 
     def test_middle_finger_is_a_plus_b(self):
         state = calibrated_engine().update(hand(0.1, middle_curl=0.9))
@@ -277,6 +288,66 @@ class GestureTests(unittest.TestCase):
         engine.update(hand(1.10, **pose))
         self.assertEqual(engine.menu_feedback()["pose"], "select")
         self.assertTrue(engine.menu_feedback()["recognized"])
+
+    def test_menu_guard_is_exact_and_suppresses_every_mapping(self):
+        from powerglove_vision.gesture import SUPPORTED_PROFILES
+        pose = dict(thumb_curl=.9, ring_curl=.9)
+        for profile in SUPPORTED_PROFILES:
+            engine = calibrated_engine(profile)
+            guarded = engine.update(hand(.1, palm_x=.62, index_curl=.1, middle_curl=.1,
+                                         pinky_curl=.1, **pose))
+            self.assertTrue(engine.recognition_feedback()["menu_guard"], profile)
+            self.assertTrue(guarded.buttons["menu_guard"], profile)
+            self.assertFalse(any(guarded.dpad.values()), profile)
+            self.assertFalse(guarded.buttons["a"] or guarded.buttons["b"], profile)
+            self.assertFalse(guarded.buttons["start"] or guarded.buttons["select"], profile)
+            released = engine.update(hand(.2, palm_x=.62, index_curl=.9, **pose))
+            self.assertFalse(engine.recognition_feedback()["menu_guard"], profile)
+            self.assertFalse(released.buttons["menu_guard"], profile)
+
+    def test_menu_guard_and_v_sign_have_a_deadband_and_never_overlap(self):
+        engine = calibrated_engine("program_g")
+        common = dict(thumb_curl=.9, index_curl=.1, middle_curl=.1, ring_curl=.9)
+
+        guard = engine.update(hand(.10, pinky_curl=.34, **common))
+        self.assertTrue(guard.buttons["menu_guard"])
+        self.assertFalse(guard.buttons["start"])
+
+        deadband = engine.update(hand(.20, pinky_curl=.40, **common))
+        self.assertFalse(deadband.buttons["menu_guard"])
+        self.assertFalse(deadband.buttons["start"])
+        self.assertIsNone(engine.menu_feedback()["pose"])
+
+        forming_v = engine.update(hand(.30, pinky_curl=.45, **common))
+        start = engine.update(hand(.46, pinky_curl=.45, **common))
+        self.assertFalse(forming_v.buttons["menu_guard"])
+        self.assertTrue(start.buttons["start"])
+        self.assertFalse(start.buttons["menu_guard"])
+
+    def test_menu_guard_retains_curled_fingers_through_release_hysteresis(self):
+        engine = calibrated_engine("program_g")
+        common = dict(palm_x=.8, index_curl=0, middle_curl=0, pinky_curl=0)
+        active = engine.update(hand(.10, thumb_curl=.8, ring_curl=.8, **common))
+        self.assertTrue(active.buttons["menu_guard"])
+        held = engine.update(hand(.20, thumb_curl=.4, ring_curl=.4, **common))
+        self.assertTrue(held.buttons["menu_guard"])
+        self.assertFalse(any(held.dpad.values()))
+        released = engine.update(hand(.30, thumb_curl=.3, ring_curl=.3, **common))
+        self.assertFalse(released.buttons["menu_guard"])
+        self.assertTrue(released.dpad["right"])
+
+    def test_menu_guard_cancels_a_forming_or_active_start_pulse(self):
+        engine = calibrated_engine("super_glove_ball")
+        v = dict(index_curl=.1, middle_curl=.1, ring_curl=.9, pinky_curl=.9)
+        engine.update(hand(.10, **v))
+        self.assertTrue(engine.update(hand(.26, **v)).buttons["start"])
+
+        guard = engine.update(hand(.27, thumb_curl=.9, index_curl=.1,
+                                   middle_curl=.1, ring_curl=.9, pinky_curl=.1))
+        self.assertTrue(guard.buttons["menu_guard"])
+        self.assertFalse(guard.buttons["start"])
+        self.assertFalse(guard.buttons["select"])
+        self.assertIsNone(engine.menu_feedback()["pose"])
 
 
 if __name__ == "__main__":

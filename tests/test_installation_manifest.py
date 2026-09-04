@@ -38,9 +38,9 @@ class ManifestTests(unittest.TestCase):
         self.put('config/profiles.json','defaults');self.put('config/profiles.json','personal',self.root)
         self.apply()
         self.assertEqual((self.root/'old-unknown.txt').read_text(),'keep')
-        self.assertEqual((self.root/'config/profiles.json').read_text(),'personal')
+        self.assertEqual((self.root/'config/profiles.json').read_text(),'defaults')
         manifest=self.module['read_manifest'](self.root)
-        self.assertNotIn('config/profiles.json',manifest['files'])
+        self.assertIn('config/profiles.json',manifest['files'])
         self.assertNotIn('old-unknown.txt',manifest['files'])
 
     def test_upgrade_prunes_unchanged_files_and_backs_them_up(self):
@@ -68,7 +68,7 @@ class ManifestTests(unittest.TestCase):
     def test_invalid_manifest_and_symlinks_fail_before_changing_payload(self):
         self.put('src/a.py','one');self.apply();self.put('src/a.py','two')
         manifest=self.root/self.module['MANIFEST'];original=manifest.read_text()
-        for name in ('../escape','data/token','/etc/passwd','.powerglove-install.json','config/profiles.json'):
+        for name in ('../escape','data/token','/etc/passwd','.powerglove-install.json','docs/cheatsheet.md'):
             value=json.loads(original);value['files'][name]=next(iter(value['files'].values()));manifest.write_text(json.dumps(value))
             with self.assertRaises(ValueError):self.apply()
             self.assertEqual((self.root/'src/a.py').read_text(),'one')
@@ -139,3 +139,10 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual((self.root/'src/a.py').read_text(),'one')
         self.assertFalse((self.root/'config/profiles.json').exists())
         self.assertEqual(self.module['check'](self.root),[])
+
+    def test_release_profiles_replace_local_copy_and_are_backed_up(self):
+        self.put('config/profiles.json','one');self.apply()
+        self.put('config/profiles.json','local',self.root);self.put('config/profiles.json','two')
+        self.apply()
+        self.assertEqual((self.root/'config/profiles.json').read_text(),'two')
+        self.assertEqual((self.base/'backup2/config/profiles.json').read_text(),'local')

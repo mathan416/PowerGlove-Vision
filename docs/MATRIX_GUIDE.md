@@ -31,11 +31,9 @@ A typical startup with **Gestures off** selected is:
 2. The hourglass appears while PowerGlove Vision starts.
 3. Once startup finishes, the glove animation appears when gestures are off.
 
-<img src="images/matrix/Boot.jpg" alt="Arduino boot logo: system startup before the app display." width="320">
-
-<img src="images/matrix/Heart.jpg" alt="System heart animation: startup is progressing; the app may still be loading." width="320">
-
-<img src="images/matrix/Hourglass.jpg" alt="Hourglass: PowerGlove Vision is starting." width="320">
+| Arduino boot logo | System heart | PowerGlove Vision hourglass |
+| --- | --- | --- |
+| <img src="images/matrix/Boot.jpg" alt="Arduino boot logo: system startup before the app display." width="190"> | <img src="images/matrix/Heart.jpg" alt="System heart animation: startup is progressing; the app may still be loading." width="190"> | <img src="images/matrix/Hourglass.jpg" alt="Hourglass: PowerGlove Vision is starting." width="190"> |
 
 With an active startup profile, the later display can instead be its profile
 letters. Opening Glove Academy selects **L**; enabling tuning selects **T**.
@@ -120,13 +118,13 @@ live pairing digits. Never publish an active PIN or connection credentials. See
 
 ## Errors, pauses, and a blank display
 
-<img src="images/matrix/X.jpg" alt="X: error display. Check Dashboard for the cause." width="320">
+| Flashing X | Blank matrix |
+| --- | --- |
+| <img src="images/matrix/X.jpg" alt="X: error display. Check Dashboard for the cause." width="230"> | <img src="images/matrix/Blank.jpg" alt="Blank matrix: no LEDs are illuminated." width="230"> |
 
 A blinking **X** means the app needs attention. Read Dashboard's error message
 for the cause and the next step. Check Dashboard whenever something is not
 working, even if the matrix still shows a normal mode.
-
-<img src="images/matrix/Blank.jpg" alt="Blank matrix: no LEDs are illuminated." width="320">
 
 A blank display alone does not prove the board is safe to unplug. Use the normal
 Shutdown procedure and its completion guidance. If the board should be running,

@@ -25,7 +25,8 @@ MANIFEST = '.powerglove-install.json'
 JOURNAL = '.powerglove-install-pending.json'
 LOCK = '.powerglove-install.lock'
 PRIVATE = {'data', '.cache', '.git', '.venv', '__pycache__'}
-PRESERVED = {'config/profiles.json', 'docs/cheatsheet.md'}
+PRESERVED = {'docs/cheatsheet.md'}
+REPLACED = {'config/profiles.json'}
 
 
 def relative(name):
@@ -183,7 +184,7 @@ def apply(source, root, backup, names=None):
             target = safe(root / name)
             old = previous['files'].get(name)
             current = fingerprint(target) if target.exists() else None
-            if old and current is not None and current != old and current != record:
+            if old and current is not None and current != old and current != record and name not in REPLACED:
                 inventory[name] = old
                 kept.append(name)
             else:

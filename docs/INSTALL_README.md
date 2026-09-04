@@ -45,7 +45,9 @@ curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/latest/downloa
 The script verifies its download, installs the app and sketch, and configures
 automatic startup. It includes the early-start hourglass helper and the Shutdown
 button's system helper. No separate helper commands are needed. Existing pairing,
-calibration, and personal tuning are preserved when updating.
+calibration, and personal tuning are preserved when updating. The supplied
+`config/profiles.json` baseline is backed up and replaced so current shared
+recognition defaults take effect.
 
 If the script reports a failure, stop and follow its message. If `curl` is missing,
 install it with `sudo apt-get install curl ca-certificates`, then retry. The
@@ -76,6 +78,15 @@ Follow any emulator or game ACTION messages. Missing games do not prevent the
 base installation. If asked to launch and exit FCEUmm once, do that and rerun the
 installer. If you use another emulator, the installer asks before selecting
 FCEUmm for Bad Street Brawler.
+
+If a registered Super Glove Ball ROM is present, the installer also offers the
+optional `lr-nestopia-powerglove` core. Accepting installs Git and the standard
+build tools, downloads the pinned GPLv2 Nestopia source, applies the included
+patch, builds on that RetroPie, and registers a second emulator entry. It does
+not change the ROM's saved emulator: FCEUmm remains selected until you choose
+`lr-nestopia-powerglove` from RetroPie's per-ROM launch menu. Declining is safe
+and leaves the tested joystick fallback unchanged. The build needs internet
+access and may take several minutes; no ROM is read or copied by the build.
 
 **Checkpoint:** The report confirms that receiver startup is configured.
 Pairing and live gameplay checks will still be listed as actions.
@@ -125,6 +136,12 @@ standard gamepad path. The RetroPie installer checks the game-specific FCEUmm op
 remaining ACTION message and rerun the installer after resolving it. See [Glove Zap setup](CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
 No extra-trigger assignment or receiver change is required.
 
+For Super Glove Ball testing, enter RetroPie's launch menu while starting the
+ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the
+ordinary D-pad and buttons for the whole session. The native core uses absolute
+X/Y and currently keeps unconfirmed native fields neutral. A per-ROM selection
+is remembered, so choose FCEUmm again whenever you want the complete fallback.
+
 
 ## 6. Confirm startup and finish
 
@@ -150,7 +167,8 @@ before trying again.
 To update, repeat the same single-line commands on both machines. Each selects
 the latest published stable release. Changed managed files are backed up, and the installer prints their
 location. It asks before interrupting an active UNO Q session. Close RetroArch
-before updating RetroPie.
+before updating RetroPie. `config/profiles.json` is intentionally replaced;
+saved personal tuning remains in `data/gesture-tuning.json`.
 
 For checks only, use the script you already downloaded:
 

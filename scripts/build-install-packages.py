@@ -56,7 +56,7 @@ def build(version, destination):
                     if not relative or relative == ("install-release.json",):
                         continue
                     if machine == "retropie" and relative[0] not in (
-                            "scripts", "src", "retropie", "config", "licenses", "LICENSE", "THIRD_PARTY_NOTICES.md"):
+                            "scripts", "src", "retropie", "config", "native", "licenses", "LICENSE", "THIRD_PARTY_NOTICES.md"):
                         continue
                     package.writestr(copy.copy(item), original.read(item.filename))
                 package.writestr("PowerGlove-Vision/install-release.json", json.dumps(

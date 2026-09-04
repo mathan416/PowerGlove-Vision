@@ -118,7 +118,9 @@ def image_flowable(path: Path, max_width: float, max_height: float) -> Image:
     reader = ImageReader(str(path))
     width, height = reader.getSize()
     scale = min(max_width / width, max_height / height)
-    return Image(str(path), width=width * scale, height=height * scale)
+    image = Image(str(path), width=width * scale, height=height * scale)
+    image.hAlign = "CENTER"
+    return image
 
 
 def table_cell(
@@ -136,7 +138,16 @@ def table_cell(
         image_path = (source.parent / image_match.group(1)).resolve()
         if image_path.exists():
             if "images/matrix/" in cell and int(image_match.group(3) or 104) > 104:
-                return image_flowable(image_path, 2.6 * inch, 1.7 * inch)
+                requested = int(image_match.group(3) or 104)
+                return image_flowable(
+                    image_path,
+                    (1.75 if requested <= 200 else 2.6) * inch,
+                    (1.2 if requested <= 200 else 1.7) * inch,
+                )
+            if int(image_match.group(3) or 0) >= 160:
+                return image_flowable(image_path, 1.78 * inch, 1.08 * inch)
+            if int(image_match.group(3) or 0) >= 128:
+                return image_flowable(image_path, 1.35 * inch, 0.78 * inch)
             return image_flowable(image_path, 0.92 * inch, 0.48 * inch)
     return Paragraph(inline(cell), style)
 
@@ -155,9 +166,22 @@ def parse_table(
         index += 1
     if len(rows) > 1:
         rows.pop(1)
+    image_cells = [
+        (column, row_number)
+        for row_number, row in enumerate(rows[1:], start=1)
+        for column, cell in enumerate(row)
+        if re.fullmatch(r'<img\s+src="[^"]+"\s+alt="[^"]*"(?:\s+width="[0-9]+")?\s*/?>', cell)
+    ]
+    image_columns = {column for column, _row in image_cells}
+    centered_head = ParagraphStyle("TableHeadCentered", parent=styles["table_head"], alignment=TA_CENTER)
+    centered_body = ParagraphStyle("TableCentered", parent=styles["table"], alignment=TA_CENTER)
     formatted = [
-        [table_cell(cell, source, styles["table_head"] if row_number == 0 else styles["table"])
-         for cell in row]
+        [table_cell(
+            cell, source,
+            centered_head if row_number == 0 and column in image_columns else
+            centered_body if row_number > 0 and column in image_columns else
+            styles["table_head"] if row_number == 0 else styles["table"],
+        ) for column, cell in enumerate(row)]
         for row_number, row in enumerate(rows)
     ]
     columns = max(len(row) for row in formatted)
@@ -184,7 +208,17 @@ def parse_table(
         widths = [3.3 * inch, 3.3 * inch]
     if rows[0] == ["Profile", "Matrix code", "See it"]:
         widths = [3.7 * inch, 1.85 * inch, 1.05 * inch]
+    elif rows[0] == ["Program", "See it", "Try it with", "Know before playing"]:
+        widths = [1.05 * inch, 2.05 * inch, 1.75 * inch, 1.75 * inch]
     table = Table(formatted, colWidths=widths, repeatRows=1, hAlign="LEFT")
+    alignment = [
+        ("VALIGN", (column, row_number), (column, row_number), "MIDDLE")
+        for column, row_number in image_cells
+    ]
+    alignment.extend(
+        ("ALIGN", (column, 0), (column, -1), "CENTER")
+        for column in image_columns
+    )
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), NIGHT),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -196,7 +230,7 @@ def parse_table(
         ("RIGHTPADDING", (0, 0), (-1, -1), 7),
         ("TOPPADDING", (0, 0), (-1, -1), 6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-    ]))
+    ] + alignment))
     return table, index
 
 

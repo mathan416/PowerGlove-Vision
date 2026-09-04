@@ -1,5 +1,14 @@
 # Changelog
 
+- Confirmed the exact Super Glove Ball ROM's ten-byte native packet, MSB-first reads, `$A0`/`$5F` detection, `$3F` terminator, native `$82` Start, and continuous X/Y behavior in a deterministic headless trace.
+- Corrected the custom Nestopia core to wrap the exact ROM's stream at ten bytes, center zero precisely, and neutralize stale, lost, uncalibrated, and wrong-profile samples instead of retaining a prior coordinate.
+- Added reversible per-ROM native Nestopia/FCEUmm selection plus a RetroPie-only isolated core installer; stock Nestopia remains untouched.
+- Audited all eight listed US ROMs: only Super Glove Ball consumes native multi-byte glove packets; the other games use standard controller-bit mappings through FCEUmm.
+- Added a reproducible matched-savestate direction benchmark. Native Super Glove Ball visibly activates and releases every axis by frame 3, including a 3.1% X step; FCEUmm Gun.Smoke polls input on frame 1 and visibly activates and releases every direction by frame 2.
+- Compared the exact Super Glove Ball ROM in both cores, confirmed that FCEUmm remains standard-joypad-only, and corrected native Y wrapping so its packet and screen position span bottom, center, and top.
+- Added an optional RetroPie installer offer that builds the pinned GPLv2 native core locally, registers both per-ROM launch choices without changing the saved FCEUmm selection, and installs the upstream license beside the core.
+- Made `config/profiles.json` release-owned and replaceable during updates so the shared recognition defaults supersede legacy per-game thresholds; the previous file is backed up and personal calibration and tuning under `data/` remain preserved.
+
 This file records user-visible PowerGlove Vision changes. The project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) categories and uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
@@ -15,6 +24,23 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+- Made Menu Guard and the V-sign mutually exclusive with a clear pinky deadband.
+  Menu Guard now has priority, cancels pending Start pulses, and suppresses every
+  ordinary controller button while the safety pose is active.
+- Centered gesture, profile, and matrix artwork in Help and printable table
+  columns. Grouped related startup and attention-state matrix photographs into
+  compact visual rows where side-by-side comparison is clearer.
+- Made recognition settings global across game mappings, reduced movement travel
+  with `0.28` activation and `0.14` release baselines, and recorded neutral X/Y
+  jitter so only noisy setups automatically receive higher safe thresholds.
+- Expanded Glove Academy from twelve to sixteen mapping-independent lessons with
+  roll left/right, close hand, and a shared menu-guard pose. Practice polls every
+  75 ms and controller delivery remains paused.
+- Added a dedicated menu-guard illustration and substantially enlarged the A/D/H
+  experiment artwork in built-in Help and the gameplay PDF, with balanced text columns.
+- Added the isolated `lr-nestopia-powerglove` research patch, reproducible pinned
+  build, tracing, and a guarded latest-sample bridge. Only candidate X/Y is wired;
+  exact-ROM validation and promotion remain explicitly gated, with FCEUmm retained.
 - Added installation manifests shared by both package installers and Wi-Fi deployment. Updates back up and remove unchanged obsolete application files, preserve local edits, and provide interrupted-update recovery and read-only inventory checks.
 
 - Reduced Start and Select pose debounce to 0.15 seconds, retaining one press per pose and release before repeating.
