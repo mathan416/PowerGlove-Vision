@@ -29,6 +29,7 @@ gamepad path does not provide every original glove feature.
 | Find a command or connection reminder | [Quick Reference](docs/cheatsheet.md) |
 | Learn a game's gestures and try a short challenge | [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) |
 | Choose or experiment with Programs A–I | [Programs A–I manual](docs/bad-street-brawler-programs.md) |
+| Recognize matrix animations and letters | [Matrix display guide](docs/MATRIX_GUIDE.md) |
 | Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |

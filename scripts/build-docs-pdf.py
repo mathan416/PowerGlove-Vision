@@ -167,7 +167,9 @@ def parse_table(
         widths = [1.25 * inch, 1.25 * inch, 1.25 * inch, 2.85 * inch]
     else:
         widths = [6.6 * inch / columns] * columns
-    if source.name == "ARCHITECTURE.md" and columns == 3:
+    if source.name == "MATRIX_GUIDE.md" and columns == 3:
+        widths = [1.8 * inch, 2.3 * inch, 2.5 * inch]
+    elif source.name == "ARCHITECTURE.md" and columns == 3:
         widths = [1.4 * inch, 2.6 * inch, 2.6 * inch]
     elif source.name == "ARCHITECTURE.md" and columns == 4:
         widths = [1.2 * inch, 1.8 * inch, 1.8 * inch, 1.8 * inch]
@@ -544,7 +546,11 @@ def main():
           "PowerGlove Vision Architecture",
           "System boundaries, recognition, tuning, game input, and deployment.",
           "Architecture and flows")
-    print(f"Built 11 PDF guides on {date.today().isoformat()}")
+    build(docs / "MATRIX_GUIDE.md", OUTPUT / "PowerGlove-Vision-Matrix-Guide.pdf",
+          "PowerGlove Vision Matrix Display Guide",
+          "Recognize animations, mode letters, pairing, and startup feedback.",
+          "Display reference")
+    print(f"Built 12 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

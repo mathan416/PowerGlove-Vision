@@ -19,6 +19,7 @@ readonly OUTPUT_DIR="${PROJECT_DIR}/output/app-lab"
 readonly OUTPUT_ZIP="${OUTPUT_DIR}/PowerGlove-Vision-Uno-Q.zip"
 readonly PACKAGE_TMP="$(mktemp -d)"
 readonly -a PUBLIC_PDFS=(
+  PowerGlove-Vision-Matrix-Guide.pdf
   PowerGlove-Vision-Architecture.pdf
   Bad-Street-Brawler-Power-Glove-Programs.pdf
   PowerGlove-Vision-Changelog.pdf
