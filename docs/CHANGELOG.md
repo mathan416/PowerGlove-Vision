@@ -5,6 +5,14 @@ This file records user-visible PowerGlove Vision changes. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
+## Two-script installation
+
+- Added versioned UNO Q and RetroPie installers with verified downloads, repeatable updates, backups, and read-only checks.
+- Included the early-start and shutdown helpers in UNO Q installation; App Lab's command-line tools install the app and Arduino sketch.
+- Added optional emulator installation and registered-game checks, including Bad Street Brawler's game-specific Glove Zap setting.
+- Simplified installation instructions and moved manual repair and packaging details into the technical reference.
+- Added release packaging and automated installer tests. Fresh-device and physical gameplay validation remain required before a stable release.
+
 ## Unreleased
 
 ## [0.3.0] - Unreleased

@@ -47,7 +47,7 @@ you used to open it.
 ## Install and deploy over Wi-Fi
 
 For a first installation, follow these sections in order, then pair the devices
-and complete the [Installation Guide's gameplay checks](INSTALL_README.md#stage-5-connect-the-virtual-gamepad-to-retroarch).
+and complete the [Installation Guide's gameplay checks](INSTALL_README.md#5-calibrate-and-test-a-game).
 All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#command-line-reference).
 
 ### Download and package on your computer
@@ -122,7 +122,7 @@ If that address has changed, update `/etc/powerglove/launcher.json` on RetroPie.
 
 ### Update the UNO Q from your computer
 
-Complete the [SSH key setup](INSTALL_README.md#set-up-ssh-key-access-once) first. From the full project
+Complete the [SSH key setup](CONFIGURATION_REFERENCE.md#set-up-ssh-key-access-once) first. From the full project
 checkout **on your development computer**, verify access and deploy:
 
 ```sh

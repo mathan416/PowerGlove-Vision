@@ -358,7 +358,12 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
             index += 1
             code: list[str] = []
             while index < len(lines) and not lines[index].strip().startswith("```"):
-                code.append(normalize(lines[index]).replace("\t", "    "))
+                rendered = normalize(lines[index]).replace("\t", "    ")
+                # Preserve a copyable shell command while fitting long installer URLs.
+                if language in ("sh", "bash") and rendered.startswith("curl -fLO https://"):
+                    rendered = rendered.replace("curl -fLO ", "curl -fLO " + chr(92) + "\n  ", 1)
+                    rendered = rendered.replace(" && bash ", " \\" + "\n  && bash ", 1)
+                code.append(rendered)
                 index += 1
             index += 1
             label = f"{language.upper()}\n" if language and language != "text" else ""
@@ -502,7 +507,7 @@ def main():
     build(
         install, OUTPUT / "PowerGlove-Vision-Guide.pdf",
         "Power Glove Vision Installation Guide",
-        "Build, pair, and play with camera-based hand controls on Arduino UNO Q and RetroPie.",
+        "Install, pair, and play on Arduino UNO Q and RetroPie.",
         "Installation instructions",
     )
     build(

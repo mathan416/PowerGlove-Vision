@@ -1,7 +1,7 @@
 # Early sketch startup (UNO Q)
 
-This optional host helper runs on every boot when installed. Install it separately
-from the App Lab application. It leaves the Arduino sketch, hourglass frames, and
+The UNO Q installer includes this host helper and enables it for every boot.
+The manual procedure below is for repair or an older installation. It leaves the Arduino sketch, hourglass frames, and
 normal App Lab services unchanged.
 
 The installed Arduino platform 1.0.0 loader clears the matrix after the system

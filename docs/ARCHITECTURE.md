@@ -267,6 +267,12 @@ error, receiver/gamepad state, then emulator/game mapping.
 
 ![Separate Linux application and microcontroller firmware deployment paths](images/architecture/deployment.png)
 
+The versioned `install-uno-q.sh` and `install-retropie.sh` entry points download
+matching packages and call the shared host installer. The UNO route uses App
+Lab CLI to build/upload the sketch and start the app; it installs both startup
+and shutdown helpers. The RetroPie route installs the receiver and launch
+integration, then checks emulator and registered-game configuration.
+
 There are two deployable parts. Python, website, documentation, assets, and
 service support run on Linux. The **Arduino sketch** is the microcontroller source
 code; its compiled and installed version is the **matrix firmware**. That firmware
@@ -289,7 +295,7 @@ builds against it but does not flash hardware. App Lab **Run**, or its supported
 app-restart command, compiles the Arduino sketch and uploads the matrix firmware. Back up the installed source
 and firmware cache, verify compilation, upload, then check application health,
 bridge response, physical matrix appearance, and actual controls. Keep private
-settings intact. Detailed commands are in the [Installation Guide](INSTALL_README.md#build-and-install-matrix-firmware).
+settings intact. Detailed commands are in the [Installation Guide](CONFIGURATION_REFERENCE.md#build-and-install-matrix-firmware).
 
 Documentation has an editable Markdown source, generated diagrams, built-in Help
 rendering, and a PDF edition. `scripts/build-architecture-diagrams.py` regenerates

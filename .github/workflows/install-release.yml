@@ -1,0 +1,75 @@
+# Project: PowerGlove Vision
+# File: .github/workflows/install-release.yml
+# Purpose: Validate two-machine release assets and publish only on explicit request.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added versioned two-machine release packaging.
+# Full history: docs/CHANGELOG.md and Git history.
+
+name: Build installation release
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Existing branch, commit or tag to build
+        required: true
+        default: feature/gesture-tuning-0.3.0
+      version:
+        description: New release tag (for example dev-COMMIT for a development build)
+        required: true
+      publish:
+        description: Publish a GitHub release after validation
+        type: boolean
+        default: false
+      prerelease:
+        description: Mark as a development prerelease
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.revision }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prepare build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes rsync zip
+          python -m pip install reportlab pypdf
+      - name: Test and build
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          PYTHONPATH: src
+        run: |
+          python -m unittest discover -s tests -q
+          python scripts/check-source-docs.py
+          python scripts/build-docs-pdf.py
+          python scripts/check-documentation.py --require-pdfs
+          bash scripts/build-app-lab-package.sh
+          python scripts/build-install-packages.py --version "$RELEASE_VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installation-packages
+          path: output/install/*
+          if-no-files-found: error
+      - name: Publish requested release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          args=()
+          if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_VERSION" output/install/* --target "$(git rev-parse HEAD)" --title "PowerGlove Vision $RELEASE_VERSION" --generate-notes "${args[@]}"

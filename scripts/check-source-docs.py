@@ -33,6 +33,7 @@ HEADER_MARKERS = (
 SOURCE_SUFFIXES = {".py", ".sh", ".ino", ".service", ".timer", ".path", ".cfg"}
 COMMENTED_CONFIGS = {
     ".github/workflows/quality.yml",
+    ".github/workflows/install-release.yml",
     "app.yaml",
     "sketch/sketch.yaml",
     "pyproject.toml",

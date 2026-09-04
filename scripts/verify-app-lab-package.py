@@ -43,6 +43,13 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/scripts/install-uno-q.sh",
+    "PowerGlove-Vision/scripts/install-retropie.sh",
+    "PowerGlove-Vision/scripts/install-package.py",
+    "PowerGlove-Vision/scripts/setup-machine.py",
+    "PowerGlove-Vision/scripts/uno-q-early-start.py",
+    "PowerGlove-Vision/uno-q/powerglove-early-start.service",
+    "PowerGlove-Vision/sketch/sketch.yaml",
     "PowerGlove-Vision/docs/MATRIX_GUIDE.md",
     "PowerGlove-Vision/src/powerglove_vision/_build_info.json",
     "PowerGlove-Vision/src/powerglove_vision/versioning.py",

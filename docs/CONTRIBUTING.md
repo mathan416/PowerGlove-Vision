@@ -232,7 +232,19 @@ recognition quality or visually confirm the physical matrix animation.
 
 Use the complete pinned Zephyr 1.0.0 configuration for compile-only validation,
 then explicitly upload through App Lab. See the installation guide's
-[firmware workflow](INSTALL_README.md#build-and-install-matrix-firmware).
+[firmware workflow](CONFIGURATION_REFERENCE.md#build-and-install-matrix-firmware).
 Regenerate all PDF editions after documentation updates. Reference screenshots
 may show earlier labels; keep instructions authoritative and refresh screenshots
 with camera imagery blurred when the interface layout changes.
+
+
+## Two-machine installer releases
+
+Use [Build and publish installation assets](CONFIGURATION_REFERENCE.md#build-and-publish-installation-assets)
+to package an explicit release tag. Both installers share `setup-machine.py` and
+`install-package.py`; changes to host integration must cover first installation,
+repeat updates, private-settings preservation, and read-only checks. Run
+`test_install_packages.py` and `test_setup_machine.py`, plus the full test suite.
+Keep development builds as prereleases. Workflow artifacts are not published
+release downloads. Physical fresh-device and upgrade tests, cold boot, pairing,
+and gameplay remain release gates; simulated filesystem tests do not replace them.

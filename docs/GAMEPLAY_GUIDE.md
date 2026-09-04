@@ -26,8 +26,8 @@ appears and **Calibrate** becomes available before continuing.
 
 | Matrix code | See it | Selected game |
 | --- | --- | --- |
-| **BS** | <img src="images/matrix/BS.png" alt="BS matrix display" width="104"> | Bad Street Brawler |
-| **GB** | <img src="images/matrix/GB.png" alt="GB matrix display" width="104"> | Super Glove Ball |
+| **BS** | <img src="images/matrix/BS.jpg" alt="BS matrix display" width="104"> | Bad Street Brawler |
+| **GB** | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> | Super Glove Ball |
 
 Confirm the profile on Dashboard and select **Start controller** when ready.
 
@@ -81,7 +81,7 @@ The glove is an illustration: PowerGlove Vision tracks your bare hand.
 
 | Profile | Matrix code | See it |
 | --- | --- | --- |
-| `bad_street_brawler` | **BS** | <img src="images/matrix/BS.png" alt="BS matrix display" width="104"> |
+| `bad_street_brawler` | **BS** | <img src="images/matrix/BS.jpg" alt="BS matrix display" width="104"> |
 
 **Your mission:** Guide Duke Davis through each stage, discover that stage's
 three fighting moves at the practice bag, and clear the street before time or
@@ -115,7 +115,7 @@ once-per-round availability. If Zap does not work, check the
 
 | Profile | Matrix code | See it |
 | --- | --- | --- |
-| `super_glove_ball` | **GB** | <img src="images/matrix/GB.png" alt="GB matrix display" width="104"> |
+| `super_glove_ball` | **GB** | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> |
 
 **Your mission:** Control the Robo-Glove, keep the energy ball in play, break a
 complete wall of tiles, and follow the revealed arrows through the maze.
@@ -440,8 +440,8 @@ Camera imagery in this screenshot is blurred for privacy.
 
 | Mode | See it | Controller output |
 | --- | --- | --- |
-| Glove Academy lessons | <img src="images/matrix/L.png" alt="L matrix display" width="104"> | Paused while you practice |
-| Tune gestures | <img src="images/matrix/T.png" alt="T matrix display" width="104"> | Paused while you record or preview thresholds |
+| Glove Academy lessons | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Paused while you practice |
+| Tune gestures | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Paused while you record or preview thresholds |
 
 See the [Matrix display guide](MATRIX_GUIDE.md) for all startup and profile displays.
 

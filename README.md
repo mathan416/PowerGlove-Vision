@@ -38,92 +38,21 @@ gamepad path does not provide every original glove feature.
 
 ## Quick start
 
-These steps describe the current `dev` version. You need a working RetroPie
-installation, an UNO Q, a UVC-compatible camera, a powered USB hub, and a
-development computer with Arduino App Lab. Both devices need the same trusted
-network and internet access during setup. Keep a physical controller available
-for RetroArch configuration. Replace the example hostnames with your own.
+Prepare your UNO Q with Arduino App Lab and use an existing RetroPie installation.
+Connect both to the same trusted network and attach the camera through a powered
+USB hub. Keep a physical controller available for RetroArch setup.
 
-### 1. Download the source on your development computer
+Download `install-uno-q.sh` and `install-retropie.sh` from the same published
+[release](https://github.com/mathan416/PowerGlove-Vision/releases). Run the first
+on the UNO Q and the second on RetroPie as your normal login user. Each verifies
+its package and requests sudo access when needed. The UNO installer includes
+the Arduino sketch, early-start helper, and shutdown helper; no separate App Lab
+import or helper installation is needed.
 
-  1. Open a macOS or Linux terminal in the folder where you keep projects.
-  2. Run `command -v git python3 bash rsync zip`. Install any missing tools before continuing.
-  3. Run the commands below. `git clone` downloads the repository from GitHub; `cd` opens the downloaded folder.
-
-```sh
-git clone --branch dev https://github.com/mathan416/PowerGlove-Vision.git
-cd PowerGlove-Vision
-```
-
-### 2. Build the UNO Q package
-
-  1. In the same terminal and project folder, run the commands below.
-  2. Confirm that verification reports **App Lab installation ZIP verified**.
-
-```sh
-scripts/build-app-lab-package.sh
-python3 scripts/verify-app-lab-package.py
-```
-
-The package is `output/app-lab/PowerGlove-Vision-Uno-Q.zip`. It is separate
-from the GitHub source download and is the file you import into App Lab.
-
-### 3. Install on the UNO Q
-
-  1. Connect the UNO Q by USB, open App Lab, and complete board setup. Record the board's hostname and join the same network as RetroPie.
-  2. Import the ZIP from step 2, open **PowerGlove Vision**, and select **Run**. App Lab transfers the application and matrix sketch to the board.
-  3. Connect the camera to the UNO Q through the powered hub. Use App Lab over the network as needed.
-  4. From your computer, connect with `ssh arduino@UNO-Q-NAME.local`. In that remote terminal, run the commands below. If the directory does not exist, stop and check the imported app's location; setup requires this exact path.
-
-```sh
-cd /home/arduino/ArduinoApps/powerglove-vision
-sudo python3 scripts/setup-machine.py uno-q
-```
-
-The installer completes host setup, installs the shutdown helper, and sets the
-app to start at boot. Correct any **FAIL** result. Pairing and gameplay
-**ACTION** messages are expected. Run `exit` to leave the remote terminal.
-
-### 4. Install on the Raspberry Pi
-
-  1. Open a terminal on the Raspberry Pi running RetroPie, using its keyboard and display or an existing SSH connection.
-  2. Run the commands below on that Raspberry Pi. This downloads a second checkout and installs the receiver; the copy on your development computer cannot receive game input for RetroPie.
-  3. Correct any **FAIL** result before pairing. If the checkout already exists, open it instead of cloning again.
-
-```sh
-sudo apt update
-sudo apt install -y git
-cd ~
-git clone --branch dev https://github.com/mathan416/PowerGlove-Vision.git
-cd PowerGlove-Vision
-sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local
-```
-
-The installer copies the required files into `/opt/powerglove-src`, installs
-commands under `/opt/powerglove/bin`, and adds the receiver, timer, RetroArch
-mapping, and launch hooks. No separate file copy is needed. Existing settings
-and tokens are preserved.
-
-### 5. Pair the devices
-
-  1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running.
-  2. In your computer's browser, open `https://UNO-Q-NAME.local:8443/setup`.
-  3. Enter the RetroPie hostname and the printed one-time code. Select **Prepare one-time code**.
-  4. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint. If they match, select the confirmation checkbox, enter the six-digit matrix PIN, and complete pairing.
-  5. Confirm that the RetroPie command reports completion. If the code expires, restart the pairing command and prepare another attempt.
-
-### 6. Check the camera and game controls
-
-  1. Open `http://UNO-Q-NAME.local:8088/learn`. Wait for the camera view and practise the gestures. The first activation can take several minutes to prepare the runtime.
-  2. Return to Dashboard, select a profile, and use **Calibrate** if your resting hand position causes unwanted movement. Select **Start controller** when ready.
-  3. In RetroArch, use your physical controller to open **Settings > Input > RetroPad Binds > Port 1 Controls**. Select **PowerGlove Vision**, check the bindings, and save any changes.
-  4. Launch a registered game. Confirm its profile on Dashboard and test movement, A, B, Start, and Select. End the game and confirm that gestures turn off.
-  5. Check that the app returns after a normal reboot and that the RetroPie receiver timer is enabled. The receiver starts 45 seconds after boot; controller transmission still requires **Start controller**.
-
-The [Installation Guide](docs/INSTALL_README.md) provides checkpoints, recovery
-steps, alternative pairing, and the exact startup checks. The
-[command reference](docs/CONFIGURATION_REFERENCE.md#command-line-reference)
-explains every project flag and the system-command options used in these steps.
+Follow the [Installation Guide](docs/INSTALL_README.md) for copyable commands,
+pairing, calibration, and your first game. Both scripts also support `--check`
+and repeatable updates while preserving personal settings. Installer assets
+must be published before the release download commands become available.
 
 ## Controls
 
@@ -227,7 +156,7 @@ Saving affects the next game launch, not the game already running.
 
 ## Maintain or extend the project
 
-Use the [Installation Guide's maintenance section](docs/INSTALL_README.md#workshop-updates-and-maintenance)
+Use the [Installation Guide's maintenance section](docs/INSTALL_README.md#updates-and-checks)
 for updates, and the [Configuration Reference](docs/CONFIGURATION_REFERENCE.md)
 for settings and all command options. The [Contributing guide](docs/CONTRIBUTING.md)
 covers tests, documentation, package verification, and releases. Printable
