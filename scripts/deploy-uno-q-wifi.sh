@@ -58,6 +58,7 @@ readonly UNO_HOST="${UNO_TARGET#*@}"
 readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
 readonly REMOTE_ARCHIVE="/tmp/powerglove-vision-deploy.tar"
 readonly LOCAL_ARCHIVE="$(mktemp)"
+readonly LOCAL_METADATA_DIR="$(mktemp -d)"
 readonly -a SSH_OPTIONS=(
   -o BatchMode=yes
   -o ConnectTimeout=30
@@ -68,6 +69,7 @@ readonly -a SSH_OPTIONS=(
 # Always remove the local staging archive, including after an interrupted upload.
 cleanup() {
   rm -f "${LOCAL_ARCHIVE}"
+  rm -rf "${LOCAL_METADATA_DIR}"
 }
 trap cleanup EXIT
 
@@ -87,6 +89,7 @@ readonly UNO_CONNECTION UNO_HEALTH_HOST UNO_HEALTH_AUTHORITY
 echo "Uploading PowerGlove Vision over Wi-Fi..."
 COPYFILE_DISABLE=1 tar \
   --exclude './.git' \
+  --exclude './src/powerglove_vision/_build_info.json' \
   --exclude './.cache' \
   --exclude './.venv' \
   --exclude './data' \
@@ -99,6 +102,8 @@ COPYFILE_DISABLE=1 tar \
   --exclude '.DS_Store' \
   --exclude './docs/cheatsheet.md' \
   -C "${PROJECT_DIR}" -cf "${LOCAL_ARCHIVE}" .
+python3 "${SCRIPT_DIR}/stamp-build-version.py" "${LOCAL_METADATA_DIR}/src/powerglove_vision/_build_info.json"
+tar -rf "${LOCAL_ARCHIVE}" -C "${LOCAL_METADATA_DIR}" ./src/powerglove_vision/_build_info.json
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "mkdir -p '${REMOTE_APP_DIR}' && tar --warning=no-unknown-keyword -C '${REMOTE_APP_DIR}' -xf '${REMOTE_ARCHIVE}' && rm -f '${REMOTE_ARCHIVE}'"
@@ -117,7 +122,7 @@ ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
 
 echo "Restarting the UNO Q application..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "arduino-app-cli properties set default '${REMOTE_APP_DIR}' && docker compose -f '${REMOTE_COMPOSE}' up -d --force-recreate"
+  "arduino-app-cli properties set default '${REMOTE_APP_DIR}' && APP_HOME='${REMOTE_APP_DIR}' docker compose -f '${REMOTE_COMPOSE}' up -d --force-recreate"
 
 echo "Waiting for the dashboard..."
 ready=false
