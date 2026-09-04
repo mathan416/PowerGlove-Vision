@@ -39,6 +39,7 @@ CONFIGURATION_FILES = (
     "retropie/retroarch/PowerGlove Vision.cfg",
     "retropie/powerglove-receiver.service",
     "retropie/powerglove-receiver.timer",
+    "retropie/powerglove-games.service",
     "uno-q/powerglove-system-shutdown.path",
     "uno-q/powerglove-system-shutdown.service",
     "uno-q/powerglove-system-shutdown.conf",
@@ -131,7 +132,7 @@ def check_gameplay_coverage(errors: list[str]) -> None:
         for filename in registry
     }
     for title in sorted(titles):
-        display_title = {"Gun.Smoke": "Gun Smoke"}.get(title, title)
+        display_title = {"Gun.Smoke": "Gun Smoke", "Sesame Street 123": "Sesame Street 1-2-3"}.get(title, title)
         if f"## {display_title}" not in gameplay:
             errors.append(f"registered game is missing from the gameplay guide: {title}")
 

@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
 name: PowerGlove Vision
@@ -16,4 +17,5 @@ ports:
   - 8443
 bricks:
   - local:avahi_resolver:
+  - local:profile_control:
 icon: "✋"

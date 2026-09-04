@@ -61,6 +61,7 @@ class SharedDebugState:
         self.profile_request: tuple[str | None, str, str] | None = None
         self.practice_sessions: dict[str, float] = {}
         self.invalidated_practice_sessions: dict[str, float] = {}
+        self.tuning = None
         self.practice_active = False
         self.practice_request: bool | None = None
 
@@ -125,7 +126,7 @@ class SharedDebugState:
             for session, refreshed in self.invalidated_practice_sessions.items()
             if now - refreshed < PRACTICE_LEASE_SECONDS
         }
-        active = bool(self.practice_sessions)
+        active = bool(self.practice_sessions) or bool(self.tuning and self.tuning.active())
         if active != self.practice_active:
             self.practice_active = active
             self.practice_request = active
@@ -168,11 +169,21 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
             return
 
         def do_GET(self) -> None:
-            if self.path == "/":
+            if self.path == "/tuning" and shared.tuning is not None:
+                body = json.dumps(shared.tuning.snapshot()).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/":
                 self.send_response(200); self.send_header("Content-Type", "text/html"); self.end_headers(); self.wfile.write(PAGE)
             elif self.path == "/status":
                 with shared.lock:
-                    body = json.dumps(shared.status, indent=2).encode()
+                    status = dict(shared.status)
+                if shared.tuning is not None:
+                    status["tuning"] = shared.tuning.snapshot()
+                body = json.dumps(status, indent=2).encode()
                 self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body)
             elif self.path == "/stream":
                 self.send_response(200); self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame"); self.end_headers()
@@ -189,7 +200,28 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                 self.send_error(404)
 
         def do_POST(self) -> None:
-            if self.path == "/calibrate":
+            if self.path == "/tuning" and shared.tuning is not None:
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if not 0 < length <= 8192:
+                        raise ValueError("Invalid tuning request size")
+                    data = json.loads(self.rfile.read(length))
+                    if not isinstance(data, dict):
+                        raise ValueError("Expected a tuning operation")
+                    result = shared.tuning.command(data)
+                    if shared.tuning.active():
+                        shared.request_controller(False)
+                    body, code = json.dumps(result).encode(), 200
+                except (ValueError, OSError) as exc:
+                    body, code = json.dumps({"error": str(exc)}).encode(), 400
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/calibrate":
+                if shared.tuning is not None:
+                    shared.tuning.invalidate()
                 shared.request_calibration()
                 self.send_response(204); self.end_headers()
             elif self.path == "/controller":

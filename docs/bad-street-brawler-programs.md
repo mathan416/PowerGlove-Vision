@@ -15,6 +15,12 @@ worked and how PowerGlove Vision recreates their controls with a camera.
   3. Select **Start controller** when ready to play. Use the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game objectives and first-round exercises.
   4. If the mapping suits another game, add its exact filename to the registry using [Register games and select profiles](CONFIGURATION_REFERENCE.md#register-games-and-select-profiles).
 
+![Dashboard profile selector and controller diagnostics](images/debug-dashboard.png)
+
+To change sensitivity without changing a program's button assignments, open
+**Learn → Tune gestures**. The threshold table is beneath the camera and the
+matrix shows **T**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
+
 ## Where the programs came from
 
 Bad Street Brawler contained nine configuration programs labelled A through I.

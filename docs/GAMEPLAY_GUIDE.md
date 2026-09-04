@@ -66,7 +66,7 @@ vitality runs out.
 **Play smart:** The available force moves change with each stage. Test the
 thumb curl, middle-finger curl, and wrist rolls on the punching bag before
 leaving practice. The Glove
-Zap signal is preserved, but the ordinary `lr-nestopia` controller path cannot
+Zap signal is preserved, but the current standard-gamepad integration cannot
 unlock the cartridge's native glove-only zap yet.
 
 **First round:**
@@ -185,6 +185,9 @@ rolls trigger the smart-bomb action, so make them deliberate.
 <!-- PAGEBREAK -->
 
 ## Sesame Street 1-2-3
+
+The same game may appear in your library as **Sesame Street 123**. The registry
+includes both filename spellings, with `.nes`, `.zip`, and `.7z` extensions.
 
 **Profile:** `program_f` / matrix code `F`
 
@@ -359,3 +362,23 @@ D-pad, button, and axis readings on Dashboard.
 
 Learn uses the same saved resting-position reference as gameplay. It helps
 you practise gestures but does not train or save a personal recognition model.
+
+## Make the controls fit your hand
+
+If a gesture needs too much movement or fires accidentally, open **Learn** and
+switch on **Tune gestures**. Record your relaxed hand, then three repetitions of
+the gesture and its release. Preview the suggested thresholds before choosing
+**Save for all profiles**. Your games keep their button assignments; the selected
+gesture becomes easier or harder to activate everywhere it is used.
+
+![Tune mode with a blurred camera view and editable thresholds](images/tune-page.png)
+
+The threshold table is below the camera; recording instructions are beside it.
+The matrix shows **T** during tuning, and controller delivery stays paused.
+Camera imagery in this screenshot is blurred for privacy.
+
+For a different automatic profile, open **Setup → Games**, edit the exact ROM filename's
+mapping, validate, and save. Restart the game to use the new mapping. The
+[configuration reference](CONFIGURATION_REFERENCE.md) explains both workflows.
+
+![Games mappings in the lower section of Setup](images/games-section.png)

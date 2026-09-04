@@ -51,6 +51,26 @@ class ProfileTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_registry(path)
 
+    def test_request_is_acknowledged_while_worker_is_busy(self):
+        server = ProfileCommandServer("127.0.0.1", 0, "a-long-test-token")
+        try:
+            # No worker consumes the queue while the caller waits for its reply.
+            ack = send_request("127.0.0.1", server.socket.getsockname()[1],
+                               "a-long-test-token", "program_h", "nes", "Example.7z", 0.2)
+            self.assertTrue(ack["accepted"])
+            self.assertTrue(ack["queued"])
+            self.assertEqual(server.take().profile, "program_h")
+        finally:
+            server.close()
+
+    def test_shipped_registry_covers_archive_names(self):
+        registry = load_registry(Path(__file__).resolve().parents[1] / "config/games.json")
+        for name, expected in (("Joust (USA)", "program_b"),
+                               ("Gyruss (USA)", "program_c"),
+                               ("Sesame Street 123 (USA)", "program_f")):
+            for extension in (".nes", ".zip", ".7z"):
+                self.assertEqual(select_profile(registry, "nes", name + extension), expected)
+
     def test_command_server_acknowledges_profile(self):
         token = "a-long-test-token"
         server = ProfileCommandServer("127.0.0.1", 0, token)

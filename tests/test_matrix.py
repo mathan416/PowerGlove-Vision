@@ -67,6 +67,15 @@ class MatrixTests(unittest.TestCase):
             "vision_state": "error",
         }), MatrixStatus.ERROR)
 
+    def test_tuning_has_its_own_matrix_state_even_before_camera_frames(self):
+        for vision in ("starting", "active", "error", "idle"):
+            self.assertEqual(status_from_worker({"vision_state": vision,
+                "practice_mode": True, "tuning": {"active": True}}), MatrixStatus.TUNING)
+        calls = []
+        matrix = UnoQMatrix(call=lambda *args: calls.append(args))
+        matrix.set_status(MatrixStatus.TUNING)
+        self.assertEqual(calls[-1], ("set_powerglove_status", 8))
+
     def test_duplicate_status_is_not_resent(self):
         calls = []
         matrix = UnoQMatrix(call=lambda *args: calls.append(args))

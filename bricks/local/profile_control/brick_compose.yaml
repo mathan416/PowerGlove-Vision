@@ -1,0 +1,25 @@
+# Project: PowerGlove Vision
+# File: bricks/local/profile_control/brick_compose.yaml
+# Purpose: Publish UDP 55356 without host networking or container privileges.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added bounded UDP relay on the private Compose network.
+# Full history: docs/CHANGELOG.md and Git history.
+services:
+  profile-relay:
+    image: ghcr.io/arduino/app-bricks/python-apps-base:0.12.0
+    entrypoint: [python3, /profile-relay.py]
+    restart: unless-stopped
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    ports:
+      - "55356:55356/udp"
+    volumes:
+      - type: bind
+        source: ${APP_HOME}/scripts/profile-relay.py
+        target: /profile-relay.py
+        read_only: true

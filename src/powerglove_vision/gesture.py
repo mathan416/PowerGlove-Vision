@@ -21,7 +21,7 @@ import os
 import tempfile
 from pathlib import Path
 from collections import deque
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 
 from .model import AXIS_MAX, Calibration, ControllerState, HandObservation
 
@@ -76,6 +76,21 @@ class GestureConfig:
     push_off: float = 0.18
     pulse_hz: float = 7.0
     loss_release_ms: int = 120
+    thresholds: dict = field(default_factory=dict)
+
+    def pair(self, channel: str) -> tuple[float, float]:
+        """Resolve independent personal thresholds over existing profile defaults."""
+        if channel in self.thresholds:
+            value = self.thresholds[channel]
+            return value["on"], value["off"]
+        prefix = ("move" if channel in ("left", "right", "up", "down") else
+                  "roll" if channel.startswith("roll_") else
+                  "push" if channel in ("push", "pull") else "curl")
+        return getattr(self, prefix + "_on"), getattr(self, prefix + "_off")
+
+    def menu_limit(self, finger: str, closed: bool, default: float) -> float:
+        """Keep legacy menu cutoffs until this finger has a personal adjustment."""
+        return self.pair(finger)[0 if closed else 1] if finger in self.thresholds else default
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -169,6 +184,8 @@ class GestureEngine:
                 "thumb",
                 "index",
                 "middle",
+                "ring",
+                "pinky",
                 "roll_left",
                 "roll_right",
             )
@@ -210,14 +227,14 @@ class GestureEngine:
         """Expose held finger switches to Learn, independent of game button pulses."""
         ready = self.calibrated and observation.detected
         return {name: bool(ready and self._switches[name].active)
-                for name in ("thumb", "index", "middle")}
+                for name in ("thumb", "index", "middle", "ring", "pinky")}
 
     def push_feedback(self, observation: HandObservation) -> dict:
         """Expose continuous depth state so Learn cannot miss a one-frame push event."""
         ready = self.calibrated and observation.detected
         depth = observation.palm_scale / self.calibration.palm_scale - 1 if ready else 0.0
         return {"active": bool(ready and self._push_was_active),
-                "depth": depth, "threshold": self.config.push_on}
+                "depth": depth, "threshold": self.config.pair("push")[0]}
 
     def menu_feedback(self) -> dict:
         """Expose held menu recognition to Learn independently of short button pulses."""
@@ -276,29 +293,31 @@ class GestureEngine:
 
         cfg = self.config
         dpad = {
-            "left": self._switches["left"].negative(dx, cfg.move_on, cfg.move_off),
-            "right": self._switches["right"].positive(dx, cfg.move_on, cfg.move_off),
-            "up": self._switches["up"].negative(dy, cfg.move_on, cfg.move_off),
-            "down": self._switches["down"].positive(dy, cfg.move_on, cfg.move_off),
+            "left": self._switches["left"].negative(dx, *cfg.pair("left")),
+            "right": self._switches["right"].positive(dx, *cfg.pair("right")),
+            "up": self._switches["up"].negative(dy, *cfg.pair("up")),
+            "down": self._switches["down"].positive(dy, *cfg.pair("down")),
         }
         thumb = self._switches["thumb"].positive(
-            observation.thumb_curl, cfg.curl_on, cfg.curl_off
+            observation.thumb_curl, *cfg.pair("thumb")
         )
         index = self._switches["index"].positive(
-            observation.index_curl, cfg.curl_on, cfg.curl_off
+            observation.index_curl, *cfg.pair("index")
         )
         middle = self._switches["middle"].positive(
-            observation.middle_curl, cfg.curl_on, cfg.curl_off
+            observation.middle_curl, *cfg.pair("middle")
         )
+        for finger in ("ring", "pinky"):
+            self._switches[finger].positive(observation.fingers[finger], *cfg.pair(finger))
         roll_left = self._switches["roll_left"].negative(
-            roll, cfg.roll_on, cfg.roll_off
+            roll, *cfg.pair("roll_left")
         )
         roll_right = self._switches["roll_right"].positive(
-            roll, cfg.roll_on, cfg.roll_off
+            roll, *cfg.pair("roll_right")
         )
 
         events: list[str] = []
-        pushing = depth >= (cfg.push_off if self._push_was_active else cfg.push_on)
+        pushing = depth >= cfg.pair("push")[1 if self._push_was_active else 0]
         if pushing and not self._push_was_active:
             events.append("glove_zap")
         self._push_was_active = pushing
@@ -306,17 +325,17 @@ class GestureEngine:
         # Deliberate, held menu poses avoid needing an electronic glove.
         # V sign = Start; thumbs-up with the four fingers closed = Select.
         start_pose = (
-            observation.index_curl < 0.28
-            and observation.middle_curl < 0.28
-            and observation.ring_curl > 0.42
-            and observation.pinky_curl > 0.42
+            observation.index_curl < cfg.menu_limit("index", False, 0.28)
+            and observation.middle_curl < cfg.menu_limit("middle", False, 0.28)
+            and observation.ring_curl > cfg.menu_limit("ring", True, 0.42)
+            and observation.pinky_curl > cfg.menu_limit("pinky", True, 0.42)
         )
         select_pose = (
-            observation.thumb_curl < 0.32
-            and observation.index_curl > 0.42
-            and observation.middle_curl > 0.42
-            and observation.ring_curl > 0.42
-            and observation.pinky_curl > 0.42
+            observation.thumb_curl < cfg.menu_limit("thumb", False, 0.32)
+            and observation.index_curl > cfg.menu_limit("index", True, 0.42)
+            and observation.middle_curl > cfg.menu_limit("middle", True, 0.42)
+            and observation.ring_curl > cfg.menu_limit("ring", True, 0.42)
+            and observation.pinky_curl > cfg.menu_limit("pinky", True, 0.42)
         )
         start = self._start_gesture.update(start_pose, observation.timestamp)
         select = self._select_gesture.update(select_pose, observation.timestamp)
@@ -403,14 +422,14 @@ class GestureEngine:
         if profile == "program_a":
             # Pinball: index/right flipper, thumb/left flipper, roll/tilt.
             dpad = {name: False for name in dpad}
-            pulling = depth <= -(self.config.push_off if self._pull_was_active else self.config.push_on)
+            pulling = depth <= -self.config.pair("pull")[1 if self._pull_was_active else 0]
             if pulling and not self._pull_was_active:
                 self._program_toggle = not self._program_toggle
             self._pull_was_active = pulling
             combined = self._program_toggle and (index or thumb)
             a = index or combined
             dpad["up"] = thumb or combined
-            b = abs(roll) >= self.config.roll_on
+            b = (roll <= -self.config.pair("roll_left")[0] or roll >= self.config.pair("roll_right")[0])
         elif profile == "program_b":
             # Joust: lateral steering and pulsed finger flap.
             dpad["up"] = dpad["down"] = False
@@ -419,10 +438,10 @@ class GestureEngine:
         elif profile == "program_c":
             # Gyruss: wrist rotation, straight index fires, pull back bombs.
             dpad = {name: False for name in dpad}
-            dpad["left"] = roll <= -self.config.roll_on
-            dpad["right"] = roll >= self.config.roll_on
-            a = observation.index_curl < self.config.curl_off
-            b = depth <= -self.config.push_on
+            dpad["left"] = roll <= -self.config.pair("roll_left")[0]
+            dpad["right"] = roll >= self.config.pair("roll_right")[0]
+            a = observation.index_curl < self.config.pair("index")[1]
+            b = depth <= -self.config.pair("pull")[0]
         elif profile == "program_d":
             # Reverse all four directions.
             dpad = {
@@ -433,25 +452,26 @@ class GestureEngine:
         elif profile == "program_e":
             # Defender II: hand position, thumb fire, wrist smart bomb.
             a = thumb
-            b = abs(roll) >= self.config.roll_on
-            if observation.ring_curl >= self.config.curl_on:
+            b = (roll <= -self.config.pair("roll_left")[0] or roll >= self.config.pair("roll_right")[0])
+            if observation.ring_curl >= self.config.pair("ring")[0]:
                 dpad["left"] = int(observation.timestamp * 12) % 2 == 0
                 dpad["right"] = not dpad["left"]
         elif profile == "program_f":
             # Sesame Street: moving an open hand = Yes, closed hand = No.
-            moving = abs(dx) >= self.config.move_on or abs(dy) >= self.config.move_on
-            closed = all(value >= self.config.curl_on for value in observation.fingers.values())
+            moving = (dx <= -self.config.pair("left")[0] or dx >= self.config.pair("right")[0]
+                      or dy <= -self.config.pair("up")[0] or dy >= self.config.pair("down")[0])
+            closed = all(value >= self.config.pair(name)[0] for name, value in observation.fingers.items())
             dpad = {name: False for name in dpad}
             a = moving and not closed
             b = closed
         elif profile == "program_g":
             # Gun.Smoke: position moves; index fires; thumb+ring is a menu guard.
-            guarded = thumb and observation.ring_curl >= self.config.curl_on
-            if abs(roll) >= self.config.roll_on:
+            guarded = thumb and observation.ring_curl >= self.config.pair("ring")[0]
+            if (roll <= -self.config.pair("roll_left")[0] or roll >= self.config.pair("roll_right")[0]):
                 dpad["left"] = roll < 0
                 dpad["right"] = roll > 0
             a = index and not guarded
-            b = depth >= self.config.push_on and not guarded
+            b = depth >= self.config.pair("push")[0] and not guarded
             if guarded:
                 dpad = {name: False for name in dpad}
         elif profile == "program_h":
@@ -461,10 +481,10 @@ class GestureEngine:
         elif profile == "program_i":
             # Knight Rider/driving: wrist steering, finger throttle, hand brake.
             dpad = {name: False for name in dpad}
-            dpad["left"] = roll <= -self.config.roll_on
-            dpad["right"] = roll >= self.config.roll_on
-            dpad["down"] = dy >= self.config.move_on
-            turbo = depth >= self.config.push_on
+            dpad["left"] = roll <= -self.config.pair("roll_left")[0]
+            dpad["right"] = roll >= self.config.pair("roll_right")[0]
+            dpad["down"] = dy >= self.config.pair("down")[0]
+            turbo = depth >= self.config.pair("push")[0]
             dpad["up"] = index or turbo
             a = turbo
             b = thumb

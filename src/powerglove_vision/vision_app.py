@@ -11,6 +11,7 @@
 #   2026-09-03 - Added temporary Learn-page vision with automatic state restoration.
 #   2026-09-03 - Published startup timing for browser elapsed-time feedback.
 #   2026-09-03 - Retain neutral calibration across worker and profile restarts.
+#   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output."""
@@ -22,8 +23,12 @@ import json
 import signal
 import sys
 import time
+import threading
+import queue
+from concurrent.futures import Future
 from pathlib import Path
 
+from .tuning import TuningManager
 from .camera import CameraUnavailableError, camera_candidates
 from .debug_server import SharedDebugState, start_debug_server
 from .gesture import GestureConfig, GestureEngine, load_calibration, save_calibration
@@ -108,6 +113,49 @@ def _close_vision(capture, tracker) -> None:
         tracker.close()
 
 
+_VISION_JOBS = queue.Queue(maxsize=1)
+_VISION_IO_THREAD = None
+
+
+def _background_call(function, *args):
+    """Run serialized camera I/O on one daemon thread, leaving control responsive."""
+    global _VISION_IO_THREAD
+    future = Future()
+
+    def run():
+        """Complete jobs serially; a blocked driver cannot spawn additional workers."""
+        while True:
+            result, operation, arguments = _VISION_JOBS.get()
+            try:
+                result.set_result(operation(*arguments))
+            except Exception as exc:
+                result.set_exception(exc)
+
+    if _VISION_IO_THREAD is None:
+        _VISION_IO_THREAD = threading.Thread(target=run, name="vision-io", daemon=True)
+        _VISION_IO_THREAD.start()
+    _VISION_JOBS.put_nowait((future, function, args))
+    return future
+
+
+def _prepare_vision(args):
+    """Download the model and open the camera/tracker in the single I/O job."""
+    capture = tracker = None
+    try:
+        model_path = args.model
+        if model_path is None or model_path.name == "hand_landmarker.task":
+            data_directory = model_path.parent.parent if model_path is not None else Path("data")
+            model_path = ensure_hand_landmarker_model(data_directory)
+        elif not model_path.is_file():
+            raise RuntimeError(f"MediaPipe hand model not found: {model_path}")
+        cv2, capture = _open_camera(args)
+        tracker = MediaPipeTracker(args.glove_color, mirror=not args.no_mirror, model_path=model_path)
+        return cv2, capture, tracker
+    except Exception:
+        _close_vision(capture, tracker)
+        raise
+
+
 def _effective_profile(profile: str | None, practice_mode: bool) -> str | None:
     """Choose a tracking profile while preserving an intentionally selected off state."""
     return PRACTICE_PROFILE if practice_mode else profile
@@ -159,8 +207,12 @@ def main() -> int:
     sender = UdpSender(args.receiver, args.port, args.token)
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
     shared = SharedDebugState(controller_enabled)
+    shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
     server = start_debug_server(shared, args.web_host, args.web_port)
     capture = tracker = engine = cv2 = None
+    vision_job = None
+    vision_operation = None
+    vision_started_at = time.time()
     retry_at = 0.0
     read_failures = 0
     preview_at = 0.0
@@ -203,8 +255,8 @@ def main() -> int:
 
                 vision_profile = _effective_profile(current_profile, practice_mode)
                 if vision_profile != old_vision_profile:
-                    _close_vision(capture, tracker)
-                    capture = tracker = engine = cv2 = None
+                    # Reuse camera/tracker between active profiles; I/O cleanup is asynchronous.
+                    engine = None
                     shared.update_status(
                         _base_status(
                             current_profile, current_game, profile_source,
@@ -218,17 +270,17 @@ def main() -> int:
                     vision_error = None
                 matrix.set_profile(None if practice_mode else current_profile)
                 if practice_mode:
-                    matrix.set_status(MatrixStatus.LEARNING)
+                    matrix.set_status(MatrixStatus.TUNING if shared.tuning.active() else MatrixStatus.LEARNING)
                 elif vision_profile is None:
                     matrix.set_status(MatrixStatus.GESTURES_IDLE)
                 elif vision_profile != old_vision_profile:
                     matrix.set_status(MatrixStatus.LOADING)
                 elif engine is not None:
                     matrix.set_status(MatrixStatus.READY)
-                if request is not None:
-                    profile_server.acknowledge(request, True, current_profile)
 
             controller_request = shared.take_controller_request()
+            if shared.tuning.active():
+                controller_request = False
             if controller_request is not None and controller_request != controller_enabled:
                 if not controller_request and engine is not None and not practice_mode:
                     sender.send(ControllerState.released(
@@ -241,7 +293,31 @@ def main() -> int:
                 engine.begin_calibration()
 
             vision_profile = _effective_profile(current_profile, practice_mode)
+            completed_frame = None
+            if vision_job is not None and vision_job.done():
+                try:
+                    result = vision_job.result()
+                    if vision_operation == "open":
+                        cv2, capture, tracker = result
+                        vision_error = None
+                    elif vision_operation == "read":
+                        completed_frame = result
+                except Exception as exc:
+                    if vision_operation == "read":
+                        completed_frame = (False, None)
+                    vision_error = str(exc)
+                    retry_at = time.monotonic() + 5.0
+                    print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
+                finally:
+                    vision_job = None
+                    vision_operation = None
+
             if vision_profile is None:
+                # Do not wait for an in-flight camera open/read/close to apply off.
+                if capture is not None and vision_job is None:
+                    vision_job = _background_call(_close_vision, capture, tracker)
+                    vision_operation = "close"
+                    capture = tracker = engine = cv2 = None
                 status = _base_status(None, current_game, profile_source, controller_enabled)
                 status["vision_state"] = "idle"
                 shared.update_status(status, clear_frame=True)
@@ -249,61 +325,39 @@ def main() -> int:
                 time.sleep(0.1)
                 continue
 
-            if capture is None or tracker is None or engine is None or cv2 is None:
-                now = time.monotonic()
-                status = _base_status(
-                    current_profile, current_game, profile_source,
-                    controller_enabled, practice_mode=practice_mode,
-                )
-                if now < retry_at:
-                    status.update({
-                        "vision_state": "error",
-                        "vision_error": vision_error or "Camera or tracker unavailable; retrying",
-                    })
-                    shared.update_status(status, clear_frame=True)
-                    time.sleep(0.1)
-                    continue
-                status["vision_state"] = "starting"
-                status["vision_started_at"] = time.time()
+            if capture is None or tracker is None or cv2 is None:
+                status = _base_status(current_profile, current_game, profile_source,
+                                      controller_enabled, practice_mode=practice_mode)
+                if time.monotonic() < retry_at:
+                    status.update({"vision_state": "error", "vision_error": vision_error or "Camera unavailable; retrying"})
+                else:
+                    if vision_job is None:
+                        vision_job = _background_call(_prepare_vision, args)
+                        vision_operation = "open"
+                        vision_started_at = time.time()
+                    status.update({"vision_state": "starting", "vision_started_at": vision_started_at})
                 shared.update_status(status, clear_frame=True)
-                matrix.set_status(
-                    MatrixStatus.LEARNING if practice_mode else MatrixStatus.LOADING
-                )
-                try:
-                    model_path = args.model
-                    if model_path is None or model_path.name == "hand_landmarker.task":
-                        data_directory = model_path.parent.parent if model_path is not None else Path("data")
-                        model_path = ensure_hand_landmarker_model(data_directory)
-                    elif not model_path.is_file():
-                        raise RuntimeError(f"MediaPipe hand model not found: {model_path}")
-                    cv2, capture = _open_camera(args)
-                    tracker = MediaPipeTracker(
-                        args.glove_color, mirror=not args.no_mirror, model_path=model_path
-                    )
-                    engine = GestureEngine(
-                        vision_profile, _load_config(vision_profile, args.config),
-                        calibration=retained_calibration,
-                    )
-                    vision_error = None
-                    matrix.set_status(
-                        MatrixStatus.LEARNING if practice_mode else MatrixStatus.READY
-                    )
-                except (CameraUnavailableError, OSError, RuntimeError) as exc:
-                    _close_vision(capture, tracker)
-                    capture = tracker = engine = cv2 = None
-                    retry_at = time.monotonic() + 5.0
-                    vision_error = str(exc)
-                    status.update({"vision_state": "error", "vision_error": vision_error})
-                    shared.update_status(status, clear_frame=True)
-                    matrix.set_status(MatrixStatus.ERROR)
-                    print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
+                matrix.set_status(MatrixStatus.ERROR if vision_error else (
+                    (MatrixStatus.TUNING if shared.tuning.active() else MatrixStatus.LEARNING) if practice_mode else MatrixStatus.LOADING))
+                time.sleep(0.01)
                 continue
 
-            ok, frame = capture.read()
+            if engine is None:
+                engine_base_config = _load_config(vision_profile, args.config)
+                engine = GestureEngine(vision_profile, shared.tuning.configuration(engine_base_config),
+                                       calibration=retained_calibration)
+            if completed_frame is None:
+                if vision_job is None:
+                    vision_job = _background_call(capture.read)
+                    vision_operation = "read"
+                time.sleep(0.01)
+                continue
+            ok, frame = completed_frame
             if not ok:
                 read_failures += 1
                 if read_failures >= max(10, args.fps * 2):
-                    _close_vision(capture, tracker)
+                    vision_job = _background_call(_close_vision, capture, tracker)
+                    vision_operation = "close"
                     capture = tracker = engine = cv2 = None
                     retry_at = time.monotonic() + 1.0
                     vision_error = "Camera stopped delivering frames; reconnecting"
@@ -320,7 +374,9 @@ def main() -> int:
             read_failures = 0
             inference_started = time.monotonic()
             result = tracker.process(frame)
+            engine.config = shared.tuning.configuration(engine_base_config)
             state = engine.update(result.observation)
+            shared.tuning.observe(result.observation, engine.calibration, engine.config, engine.calibrated)
             if engine.calibrated and engine.calibration is not retained_calibration:
                 retained_calibration = engine.calibration
                 try:
@@ -331,10 +387,10 @@ def main() -> int:
                     print(f"Calibration retained in memory but not saved: {exc}", file=sys.stderr, flush=True)
             inference_finished = time.monotonic()
             # Gameplay output takes priority over matrix RPC and browser preview work.
-            receiver_available = sender.send(state) if controller_enabled and not practice_mode else False
+            receiver_available = sender.send(state) if controller_enabled and not practice_mode and not shared.tuning.active() else False
             sent_at = time.monotonic()
             matrix.set_status(
-                MatrixStatus.LEARNING
+                (MatrixStatus.TUNING if shared.tuning.active() else MatrixStatus.LEARNING)
                 if practice_mode
                 else (
                     MatrixStatus.TRACKING
@@ -366,7 +422,8 @@ def main() -> int:
             status["push_gesture"] = engine.push_feedback(result.observation)
             status["finger_active"] = engine.curl_feedback(result.observation)
             status["finger_curls"] = result.observation.fingers
-            status["curl_threshold"] = engine.config.curl_on
+            status["curl_threshold"] = engine.config.pair("index")[0]
+            status["tuning"] = shared.tuning.snapshot()
             status.update(result.diagnostics)
             # Publish control feedback every inference; encode video at most 15 fps.
             shared.update_status(status)
@@ -396,7 +453,10 @@ def main() -> int:
             sender.send(ControllerState.released(
                 2_147_483_647, time.monotonic(), engine.profile, engine.calibrated
             ))
-        _close_vision(capture, tracker)
+        # A driver call may be stuck. The process owns its resources and the supervisor
+        # can terminate it; never race cleanup against an in-flight I/O operation.
+        if vision_job is None:
+            _close_vision(capture, tracker)
         sender.close()
         profile_server.close()
         server.shutdown()

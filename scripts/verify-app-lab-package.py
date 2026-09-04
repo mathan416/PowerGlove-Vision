@@ -10,6 +10,7 @@
 #   2026-09-03 - Required the offline Help renderer in every installation ZIP.
 #   2026-09-03 - Required only the allowlisted public PDF editions.
 #   2026-09-03 - Required the complete host shutdown-helper installation set.
+#   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify the generated UNO Q App Lab installation ZIP before publication."""
@@ -39,6 +40,14 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/src/powerglove_vision/game_registry.py",
+    "PowerGlove-Vision/src/powerglove_vision/tuning.py",
+    "PowerGlove-Vision/src/powerglove_vision/web_features.py",
+    "PowerGlove-Vision/retropie/powerglove-games.service",
+    "PowerGlove-Vision/retropie/bin/powerglove-games",
+    "PowerGlove-Vision/bricks/local/profile_control/brick_config.yaml",
+    "PowerGlove-Vision/bricks/local/profile_control/brick_compose.yaml",
+    "PowerGlove-Vision/scripts/profile-relay.py",
     "PowerGlove-Vision/LICENSE",
     "PowerGlove-Vision/README.md",
     "PowerGlove-Vision/app.yaml",
@@ -59,7 +68,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/uno-q/powerglove-system-shutdown.service",
 } | {f"PowerGlove-Vision/{path}" for path in PUBLIC_PDF_PATHS}
 FORBIDDEN_PARTS = {".git", ".venv", "__pycache__", "data", "tests", "tmp"}
-FORBIDDEN_NAMES = {".DS_Store", "cheatsheet.md", "hand_landmarker.task"}
+FORBIDDEN_NAMES = {"CODE_REVIEW_MAP.txt", ".DS_Store", "cheatsheet.md", "hand_landmarker.task"}
 FORBIDDEN_SUFFIXES = {".pyc"}
 
 

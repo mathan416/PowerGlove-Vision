@@ -11,6 +11,21 @@
     "Defender II (USA).nes": "program_e",
     "Sesame Street 1-2-3 (USA).nes": "program_f",
     "Gun.Smoke (USA).nes": "program_g",
-    "Knight Rider (USA).nes": "program_i"
+    "Knight Rider (USA).nes": "program_i",
+    "Joust (USA).zip": "program_b",
+    "Joust (USA).7z": "program_b",
+    "Gyruss (USA).zip": "program_c",
+    "Gyruss (USA).7z": "program_c",
+    "Defender II (USA).zip": "program_e",
+    "Defender II (USA).7z": "program_e",
+    "Sesame Street 1-2-3 (USA).zip": "program_f",
+    "Sesame Street 1-2-3 (USA).7z": "program_f",
+    "Gun.Smoke (USA).zip": "program_g",
+    "Gun.Smoke (USA).7z": "program_g",
+    "Knight Rider (USA).zip": "program_i",
+    "Knight Rider (USA).7z": "program_i",
+    "Sesame Street 123 (USA).nes": "program_f",
+    "Sesame Street 123 (USA).zip": "program_f",
+    "Sesame Street 123 (USA).7z": "program_f"
   }
 }

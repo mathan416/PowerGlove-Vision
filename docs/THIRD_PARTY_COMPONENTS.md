@@ -98,3 +98,11 @@ explains the build and verification scripts.
   3. If repackaging another wheel, record every difference from upstream and retain its license files.
   4. Build the App Lab installation ZIP and confirm it contains one wheel, no model file, and only the root `sketch/` application sketch.
   5. Test first-launch download and checksum verification, camera initialization, tracking, the Learn and Debug pages, and controller output on the UNO Q before publishing the package.
+
+### Application screenshots
+
+The interface screenshots in `docs/images/` were refreshed from the running
+PowerGlove Vision application on September 4, 2026. They cover Dashboard, Learn,
+Tune, Setup, Games, and Help. Camera imagery is blurred for privacy; gesture
+illustrations remain unchanged. These screenshots are project documentation
+assets and add no runtime dependencies.

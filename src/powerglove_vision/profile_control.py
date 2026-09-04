@@ -7,6 +7,7 @@
 # Change log:
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
+#   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Authenticate profile commands and coordinate per-game profile selection between RetroPie and UNO Q."""
@@ -111,7 +112,10 @@ class ProfileCommandServer:
                 if request_id in self._seen:
                     ack = self._acks.get(request_id)
                     if ack is not None:
-                        self.socket.sendto(ack, peer)
+                        try:
+                            self.socket.sendto(ack, peer)
+                        except OSError:
+                            pass
                     continue
                 profile = data.get("profile")
                 if profile is not None and profile not in SUPPORTED_PROFILES:
@@ -120,13 +124,16 @@ class ProfileCommandServer:
                 if len(self._seen) > 256:
                     self._seen.clear()
                     self._acks.clear()
-                self.requests.put(ProfileRequest(
+                request = ProfileRequest(
                     request_id=request_id,
                     profile=profile,
                     system=str(data.get("system", ""))[:64],
                     rom=Path(str(data.get("rom", ""))).name[:255],
                     peer=peer,
-                ))
+                )
+                self.requests.put(request)
+                # Camera/model startup may block the consumer; acknowledge queue admission.
+                self.acknowledge(request, True, profile, queued=True)
             except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
                 continue
 
@@ -137,7 +144,7 @@ class ProfileCommandServer:
         except queue.Empty:
             return None
 
-    def acknowledge(self, request: ProfileRequest, accepted: bool, profile: str | None) -> None:
+    def acknowledge(self, request: ProfileRequest, accepted: bool, profile: str | None, queued: bool = False) -> None:
         """Sign, cache, and send an explicit response to a profile request."""
         data = sign_message({
             "protocol": PROTOCOL,
@@ -145,10 +152,15 @@ class ProfileCommandServer:
             "request_id": request.request_id,
             "accepted": accepted,
             "profile": profile,
+            "queued": queued,
         }, self.token)
         payload = json.dumps(data, separators=(",", ":")).encode()
         self._acks[request.request_id] = payload
-        self.socket.sendto(payload, request.peer)
+        try:
+            self.socket.sendto(payload, request.peer)
+        except OSError:
+            # Keep the listener alive; retries can retrieve the cached acknowledgement.
+            pass
 
     def close(self) -> None:
         """Stop the receiver thread and close its socket."""

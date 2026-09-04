@@ -7,7 +7,34 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+No changes yet.
+
+## [0.2.5] - 2026-09-04
+
+This release adds web game mappings, personal gesture tuning, reliable game-launch
+profile selection, and refreshed illustrated manuals.
+
+### Added
+
+  - Added a dedicated T on the UNO Q matrix while gesture tuning is active.
+
+  - Added a Games JSON editor with paired RetroPie access, duplicate-name validation, conflict detection, verified saves, backup download, and restoration.
+  - Added guided Learn tuning with camera measurements, independent gesture thresholds, temporary previews, and persistent personal adjustments shared across profiles.
+  - Added a confined RetroPie Games service on TCP 55358 and included it in installation and health checks.
+
+### Fixed
+
+  - Moved game mapping editing into Setup and compacted Learn tuning, placing threshold values beneath the camera.
+
+  - Published UDP profile control through a persistent App Lab brick, acknowledged queued requests independently of camera startup, and corrected launch-hook rejection reporting and configuration-error handling.
+  - Kept profile changes responsive during blocked camera startup or reads, and reused the camera and tracker when switching between active profiles.
+  - Added exact compressed ROM filenames to the default registry so supported `.zip` and `.7z` games can select their profiles.
+
 ### Documentation
+
+  - Refreshed all six interface screenshots on September 4, 2026, blurring camera imagery before capture.
+  - Illustrated Setup's Games section and Learn's compact Tune layout across the guides, including the T matrix indicator.
+  - Regenerated the printable manuals to match the updated Markdown and screenshots.
 
   - Reorganized the overview and installation guide around a complete, numbered setup path: Git download, App Lab package import, UNO Q host setup, RetroPie installation, pairing, and gameplay checks.
   - Added Programs A–I controls to the overview and a complete command-line reference with project flags, defaults, arguments, and the system-command options used in the guides.

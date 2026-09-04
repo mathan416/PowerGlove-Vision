@@ -30,10 +30,13 @@ class MatrixStatus(IntEnum):
     PAIRING = 5
     GESTURES_IDLE = 6
     LEARNING = 7
+    TUNING = 8
 
 
 def status_from_worker(status: dict) -> MatrixStatus:
     """Map a worker status snapshot to the physical matrix display state."""
+    if status.get("tuning", {}).get("active"):
+        return MatrixStatus.TUNING
     vision_state = status.get("vision_state")
     if status.get("practice_mode") and vision_state != "error":
         return MatrixStatus.LEARNING

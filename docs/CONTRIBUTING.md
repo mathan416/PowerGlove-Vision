@@ -141,6 +141,13 @@ python3 scripts/build-docs-pdf.py
 scripts/check-documentation.py --require-pdfs
 ```
 
+When the interface changes, refresh the affected screenshots in `docs/images/`.
+Capture Dashboard, Learn practice, Learn tuning, Setup, the Games section, and Help
+from the running application. Blur the entire camera image before saving a
+screenshot, keeping instructions and controls readable. Check that no passwords,
+pairing codes, tokens, or identifying camera details remain. Do not commit
+unblurred originals. Update image captions and inspect the corresponding PDFs.
+
 Treat Markdown as the documentation source of truth. For publication, commit
 the approved Markdown and matching regenerated PDFs together.
 Inspect the affected PDF pages for clipped text, broken tables, missing images,

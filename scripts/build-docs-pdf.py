@@ -32,6 +32,7 @@ from reportlab.lib.units import inch
 from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     Image,
+    KeepTogether,
     CondPageBreak,
     ListFlowable,
     ListItem,
@@ -258,9 +259,18 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
         if image_match:
             image_path = (source.parent / image_match.group(2)).resolve()
             if image_path.exists():
-                image = image_flowable(image_path, 6.1 * inch, 2.85 * inch)
-                image.keepWithNext = True
-                story.extend([image, paragraph(image_match.group(1), styles["caption"]), Spacer(1, 10)])
+                # Interface screenshots need enough space for labels to remain readable.
+                screenshot = image_path.name in {
+                    "debug-dashboard.png", "learn-page.png", "tune-page.png",
+                    "setup-page.png", "games-section.png", "help-page.png",
+                }
+                image = image_flowable(image_path, 6.6 * inch if screenshot else 6.1 * inch,
+                                       5.7 * inch if screenshot else 2.85 * inch)
+                group = [image, paragraph(image_match.group(1), styles["caption"])]
+                # Keep a directly preceding heading with its illustration, too.
+                if story and isinstance(story[-1], Paragraph) and story[-1].style.name in {"H2", "H3", "H4"}:
+                    group.insert(0, story.pop())
+                story.extend([KeepTogether(group), Spacer(1, 10)])
             index += 1
             continue
 
