@@ -147,9 +147,10 @@ class ControlStateTests(unittest.TestCase):
         assert page is not None
         self.assertIn(b"Play with PowerGlove Vision", page)
         self.assertIn(b"On this page", page)
+        self.assertIn(b"/help-assets/gestures/v2/pixel-pal-web.png", page)
         self.assertIn(b"/help-assets/gestures/actions/whole-hand-movement.png", page)
-        self.assertIn(b"/help-assets/gestures/actions/v-sign.png", page)
-        self.assertIn(b"/help-assets/gestures/actions/thumbs-up.png", page)
+        self.assertIn(b"/help-assets/gestures/v2/v-sign.png", page)
+        self.assertIn(b"/help-assets/gestures/v2/thumbs-up.png", page)
         self.assertGreaterEqual(page.count(b"<img loading=lazy"), 46)
         self.assertIn(b"/help/gameplay.md", page)
         self.assertIn(b"/help-pdf/gameplay.pdf", page)
@@ -207,6 +208,31 @@ class ControlStateTests(unittest.TestCase):
                 self.assertEqual(response.status, 200, path)
                 self.assertTrue(response.getheader("Content-Type").startswith(expected_type), path)
                 connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_dashboard_is_default_and_legacy_url_redirects(self):
+        """Keep the canonical dashboard and existing bookmarks working."""
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            for path in ("/", "/debug"):
+                connection = http.client.HTTPConnection("127.0.0.1", port)
+                connection.request("GET", path)
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, 302)
+                self.assertEqual(response.getheader("Location"), "/dashboard")
+                connection.close()
+            connection = http.client.HTTPConnection("127.0.0.1", port)
+            connection.request("GET", "/dashboard")
+            response = connection.getresponse()
+            body = response.read()
+            self.assertEqual(response.status, 200)
+            self.assertIn(b"class=pal-intro", body)
+            self.assertIn(b"/help-assets/gestures/v2/pixel-pal-web.png", body)
+            self.assertIn(b"href=/dashboard>Dashboard", body)
+            connection.close()
         finally:
             servers.shutdown()
 

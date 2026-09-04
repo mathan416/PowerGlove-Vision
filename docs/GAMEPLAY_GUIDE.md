@@ -24,14 +24,14 @@ display lets you follow progress while the camera and tracker initialize. **Cali
   4. Move your whole hand away from center for directions. Return to center to stop.
   5. Make one gesture at a time. Clean poses beat frantic motion.
 
-![Whole-hand movement controls](images/gestures/actions/whole-hand-movement.png)
+<img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
 
 ### The two gestures that work everywhere
 
 | Gesture | See it | Result |
 | --- | --- | --- |
-| Hold a V sign for about 0.7 seconds | <img src="images/gestures/actions/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause |
-| Hold a thumbs-up with the other fingers closed for about 0.7 seconds | <img src="images/gestures/actions/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
+| Hold a V sign for about 0.7 seconds | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause |
+| Hold a thumbs-up with the other fingers closed for about 0.7 seconds | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
 
 The menu poses suppress A/B attacks while they form. Some profiles can still
 produce directional or auxiliary output from wrist, depth, or finger gestures;
@@ -46,6 +46,32 @@ gesture.
 **Comfort tip:** If the character moves while your hand is resting, recalibrate
 in that position. Keep movements small enough to repeat comfortably.
 
+<!-- PAGEBREAK -->
+
+## Your gesture reference
+
+Practice one movement at a time. Your selected profile decides what each
+gesture does in the game; the play cards below show the mapping.
+
+| Gesture | See it | Try it |
+| --- | --- | --- |
+| Move left | <img src="images/gestures/v2/move-left.png" alt="Move left" width="96"> | Slide your whole hand left. |
+| Move right | <img src="images/gestures/v2/move-right.png" alt="Move right" width="96"> | Slide your whole hand right. |
+| Move up | <img src="images/gestures/v2/move-up.png" alt="Move up" width="96"> | Raise your whole hand. |
+| Move down | <img src="images/gestures/v2/move-down.png" alt="Move down" width="96"> | Lower your whole hand. |
+| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl index finger" width="96"> | Bend your index finger toward your palm. |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl thumb" width="96"> | Fold your thumb across your palm. |
+| V sign | <img src="images/gestures/v2/v-sign.png" alt="V sign" width="96"> | Hold for about 0.7 seconds to Start or pause. |
+| Thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up" width="96"> | Close the other fingers; hold for about 0.7 seconds for Select. |
+| Roll wrist left | <img src="images/gestures/v2/wrist-roll-left.png" alt="Roll wrist left" width="96"> | Tilt your hand left at the wrist. |
+| Roll wrist right | <img src="images/gestures/v2/wrist-roll-right.png" alt="Roll wrist right" width="96"> | Tilt your hand right at the wrist. |
+| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push toward camera" width="96"> | Move your hand closer to the camera. |
+| Pull away from camera | <img src="images/gestures/v2/pull-away-from-camera.png" alt="Pull away from camera" width="96"> | Move your hand farther from the camera. |
+
+The glove is an illustration: PowerGlove Vision tracks your bare hand.
+
+<!-- PAGEBREAK -->
+
 ## Bad Street Brawler
 
 **Profile:** `bad_street_brawler` / matrix code `BS`
@@ -58,10 +84,10 @@ vitality runs out.
 | --- | --- | --- |
 | Move hand left / right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Walk left / right |
 | Raise / lower hand | <img src="images/gestures/actions/vertical-movement.png" alt="Raise or lower the whole hand" width="96"> | Jump / crouch |
-| Curl thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | Pulsed B move |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Pulsed B move |
 | Curl middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | A+B force move |
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | A plus that direction |
-| Push toward camera | <img src="images/gestures/actions/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap auxiliary event |
+| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap auxiliary event |
 
 **Play smart:** The available force moves change with each stage. Test the
 thumb curl, middle-finger curl, and wrist rolls on the punching bag before
@@ -87,10 +113,10 @@ complete wall of tiles, and follow the revealed arrows through the maze.
 | Do this | See it | Controller result |
 | --- | --- | --- |
 | Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Steer the Robo-Glove with the D-pad fallback |
-| Curl index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | A: move the glove into the room |
-| Curl thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | B: punch, grab, or launch a new ball |
-| Hold V sign | <img src="images/gestures/actions/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
-| Hold thumbs-up | <img src="images/gestures/actions/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select: doorway or Robo-Bullet action |
+| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | A: move the glove into the room |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | B: punch, grab, or launch a new ball |
+| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
+| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select: doorway or Robo-Bullet action |
 
 **Play smart:** Pick one wall and finish it. When its arrow appears, use Select
 to take the exit. The current profile also preserves analogue hand position,
@@ -115,9 +141,9 @@ their eggs before they hatch, and stay clear of the lava.
 | --- | --- | --- |
 | Move hand left / right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Steer left / right |
 | Curl index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | Pulsed A: steady flap |
-| Curl thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | B: faster flap |
-| Hold V sign | <img src="images/gestures/actions/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
-| Hold thumbs-up | <img src="images/gestures/actions/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select game mode |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | B: faster flap |
+| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
+| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select game mode |
 
 **Play smart:** Height wins jousts. Use the faster thumb flap to climb, then the
 pulsed finger flap to hold position. Sweep up eggs quickly; every ignored egg is
@@ -142,9 +168,9 @@ warp zones, and fight from planet to planet toward the Sun.
 | --- | --- | --- |
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Orbit counter-clockwise / clockwise |
 | Keep index finger straight | <img src="images/gestures/actions/keep-index-straight.png" alt="Keep the index finger straight" width="72"> | Continuous A fire |
-| Pull hand away from camera | <img src="images/gestures/actions/pull-away-from-camera.png" alt="Pull the hand away from the camera" width="72"> | B bomb |
-| Hold V sign | <img src="images/gestures/actions/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
-| Hold thumbs-up | <img src="images/gestures/actions/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select control mode |
+| Pull hand away from camera | <img src="images/gestures/v2/pull-away-from-camera.png" alt="Pull the hand away from the camera" width="72"> | B bomb |
+| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
+| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select control mode |
 
 **Before launching:** Choose **Attack Control B** at the title screen. This
 profile expects left/right rotation rather than eight-direction movement.
@@ -167,10 +193,10 @@ humanoids before abductors carry them away and turn them into mutants.
 | Do this | See it | Result |
 | --- | --- | --- |
 | Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Fly up, down, left, or right |
-| Curl thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | A: fire |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | A: fire |
 | Roll wrist either way | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist in either direction" width="96"> | B: smart bomb |
 | Curl ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | Rapid left/right evasive thrash |
-| Hold V sign | <img src="images/gestures/actions/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
+| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
 
 **Play smart:** Watch the scanner as much as the ship. Intercept abductors early;
 if one lifts a humanoid, shoot the alien and catch the falling person. Wrist
@@ -198,8 +224,8 @@ physical Yes or No answer.
 | --- | --- | --- |
 | Move an open hand in any direction | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move an open hand in any direction" width="96"> | A: Yes |
 | Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Close all fingers" width="72"> | B: No |
-| Hold V sign | <img src="images/gestures/actions/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
-| Hold thumbs-up | <img src="images/gestures/actions/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select |
+| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
+| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select |
 
 **Play smart:** Directional output is intentionally disabled in this profile.
 Make the open-hand answer broad and obvious; make the fist complete. Return to a
@@ -223,8 +249,8 @@ each wanted poster, and collect the bounty by beating the stage boss.
 | Do this | See it | Result |
 | --- | --- | --- |
 | Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Walk in that direction |
-| Curl index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | A: shoot diagonally right |
-| Push toward camera | <img src="images/gestures/actions/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | B: shoot diagonally left |
+| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | A: shoot diagonally right |
+| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | B: shoot diagonally left |
 | Curl index while pushing | <img src="images/gestures/actions/index-push-combination.png" alt="Combine a finger curl with a push toward the camera" width="96"> | A+B: shoot straight ahead |
 | Curl thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress D-pad and A/B output |
 
@@ -250,10 +276,10 @@ the criminals ahead, and reach each destination before the timer expires.
 | Do this | See it | Result |
 | --- | --- | --- |
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Steer left / right |
-| Curl index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | Accelerate |
-| Lower hand | <img src="images/gestures/actions/move-down.png" alt="Lower the whole hand" width="72"> | Brake |
-| Push toward camera | <img src="images/gestures/actions/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Accelerate plus turbo boost |
-| Curl thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | Fire weapons |
+| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Accelerate |
+| Lower hand | <img src="images/gestures/v2/move-down.png" alt="Lower the whole hand" width="72"> | Brake |
+| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Accelerate plus turbo boost |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Fire weapons |
 
 **Play smart:** Keep the wrist near center on straight roads; large steering
 rolls are for real turns. Keep your index finger curled for normal speed and reserve the
