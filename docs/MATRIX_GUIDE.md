@@ -59,9 +59,9 @@ profile letters visible.
 
 ## Glove Academy: L and T
 
-<img src="images/matrix/L.png" alt="L: Glove Academy lessons; controller output is paused." width="320">
-
-<img src="images/matrix/T.png" alt="T: personal gesture tuning; controller output is paused." width="320">
+| L: Glove Academy lessons | T: Gesture tuning |
+| --- | --- |
+| <img src="images/matrix/L.png" alt="Glove Academy lessons" width="230"> | <img src="images/matrix/T.png" alt="Gesture tuning" width="230"> |
 
 **L** means Glove Academy lessons are active. **T** means gesture tuning is
 active, including **Set up my hand**, individual adjustments, and previews.
@@ -75,17 +75,11 @@ being spelled out on the matrix.
 
 ## Game profile letters
 
-<img src="images/matrix/A.png" alt="A: Program A is selected." width="320">
-
 | Letters | See it | Selected profile |
 | --- | --- | --- |
 | **A** through **I** | <img src="images/matrix/A.png" alt="A matrix display" width="104"> | The corresponding reusable Program A-I profile; A is shown |
 | **BS** | <img src="images/matrix/BS.png" alt="BS matrix display" width="104"> | Bad Street Brawler |
 | **GB** | <img src="images/matrix/GB.png" alt="GB matrix display" width="104"> | Super Glove Ball |
-
-<img src="images/matrix/BS.png" alt="BS: Bad Street Brawler is selected." width="320">
-
-<img src="images/matrix/GB.png" alt="GB: Super Glove Ball is selected." width="320">
 
 For example, **GB** is what you should expect with Super Glove Ball selected.
 It stays steady until a calibrated hand is being tracked, then gently pulses. The characters remain the same: the animation does not

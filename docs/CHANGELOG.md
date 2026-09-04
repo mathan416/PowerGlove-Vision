@@ -52,7 +52,7 @@ Live camera, gameplay, and physical matrix checks remain release requirements.
 
   - Standardized Glove Zap and Pull Back labels across Learn, Tune, and the guides.
 
-### September 4 documentation and firmware reconciliation
+### Documentation and firmware reconciliation
 
   - Documented optional five-finger hand setup, three recordings of three seconds, preview/save/discard/reset, extended-only finger handling, and unchanged version-1 saved settings.
   - Updated ordinary Learn to twelve lessons with Glove Zap and Pull Back, and documented shared gameplay activation/release states while retaining profile mappings and menu holds.

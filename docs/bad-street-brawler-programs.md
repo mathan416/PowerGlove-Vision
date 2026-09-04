@@ -40,17 +40,17 @@ open Bad Street Brawler first.
 
 ## Quick selector
 
-| Program | Best fit | Main controls |
-| --- | --- | --- |
-| **A** | Pinball | Two finger flippers, wrist tilt, combined-flipper mode |
-| **B** | Joust | Steer by position; curl a finger to flap |
-| **C** | Gyruss | Rotate by wrist angle; fire and bomb gestures |
-| **D** | Challenge mode | Reversed directions with thumb/index buttons |
-| **E** | Defender II | Ship movement, fire, smart bomb, evasive movement |
-| **F** | Sesame Street 1-2-3 | Open-hand Yes and closed-hand No |
-| **G** | Gun Smoke | Walk by position; combine index curl and a forward push to fire |
-| **H** | Training / general play | Familiar controls with pulsed buttons |
-| **I** | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
+| Program | See it | Best fit | Main controls |
+| --- | --- | --- | --- |
+| **A** | <img src="images/matrix/A.png" alt="A matrix display" width="104"> | Pinball | Two finger flippers, wrist tilt, combined-flipper mode |
+| **B** | <img src="images/matrix/programs/B.png" alt="B matrix display illustration" width="104"> | Joust | Steer by position; curl a finger to flap |
+| **C** | <img src="images/matrix/programs/C.png" alt="C matrix display illustration" width="104"> | Gyruss | Rotate by wrist angle; fire and bomb gestures |
+| **D** | <img src="images/matrix/programs/D.png" alt="D matrix display illustration" width="104"> | Challenge mode | Reversed directions with thumb/index buttons |
+| **E** | <img src="images/matrix/programs/E.png" alt="E matrix display illustration" width="104"> | Defender II | Ship movement, fire, smart bomb, evasive movement |
+| **F** | <img src="images/matrix/programs/F.png" alt="F matrix display illustration" width="104"> | Sesame Street 1-2-3 | Open-hand Yes and closed-hand No |
+| **G** | <img src="images/matrix/programs/G.png" alt="G matrix display illustration" width="104"> | Gun Smoke | Walk by position; combine index curl and a forward push to fire |
+| **H** | <img src="images/matrix/programs/H.png" alt="H matrix display illustration" width="104"> | Training / general play | Familiar controls with pulsed buttons |
+| **I** | <img src="images/matrix/programs/I.png" alt="I matrix display illustration" width="104"> | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
 
 ## Menu gestures shared by every program
 

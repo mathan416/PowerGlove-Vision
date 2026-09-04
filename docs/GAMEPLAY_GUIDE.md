@@ -79,7 +79,9 @@ The glove is an illustration: PowerGlove Vision tracks your bare hand.
 
 ## Bad Street Brawler
 
-**Profile:** `bad_street_brawler` / matrix code `BS`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `bad_street_brawler` | **BS** | <img src="images/matrix/BS.png" alt="BS matrix display" width="104"> |
 
 **Your mission:** Guide Duke Davis through each stage, discover that stage's
 three fighting moves at the practice bag, and clear the street before time or
@@ -111,7 +113,9 @@ once-per-round availability. If Zap does not work, check the
 
 ## Super Glove Ball
 
-**Profile:** `super_glove_ball` / matrix code `GB`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `super_glove_ball` | **GB** | <img src="images/matrix/GB.png" alt="GB matrix display" width="104"> |
 
 **Your mission:** Control the Robo-Glove, keep the energy ball in play, break a
 complete wall of tiles, and follow the revealed arrows through the maze.
@@ -138,7 +142,9 @@ depth, wrist roll, and individual finger values for future native glove support.
 
 ## Joust
 
-**Profile:** `program_b` / matrix code `B`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `program_b` | **B** | <img src="images/matrix/programs/B.png" alt="B matrix display illustration" width="104"> |
 
 **Your mission:** Ride the ostrich, strike enemy riders from above, collect
 their eggs before they hatch, and stay clear of the lava.
@@ -165,7 +171,9 @@ an enemy preparing a return engagement.
 
 ## Gyruss
 
-**Profile:** `program_c` / matrix code `C`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `program_c` | **C** | <img src="images/matrix/programs/C.png" alt="C matrix display illustration" width="104"> |
 
 **Your mission:** Circle the tunnel, destroy incoming formations, survive the
 warp zones, and fight from planet to planet toward the Sun.
@@ -191,7 +199,9 @@ profile expects left/right rotation rather than eight-direction movement.
 
 ## Defender II
 
-**Profile:** `program_e` / matrix code `E`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `program_e` | **E** | <img src="images/matrix/programs/E.png" alt="E matrix display illustration" width="104"> |
 
 **Your mission:** Patrol the planet, destroy alien raiders, and rescue the
 humanoids before abductors carry them away and turn them into mutants.
@@ -221,7 +231,9 @@ rolls trigger the smart-bomb action, so make them deliberate.
 The same game may appear in your library as **Sesame Street 123**. The registry
 includes both filename spellings, with `.nes`, `.zip`, and `.7z` extensions.
 
-**Profile:** `program_f` / matrix code `F`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `program_f` | **F** | <img src="images/matrix/programs/F.png" alt="F matrix display illustration" width="104"> |
 
 **Your mission:** Play the counting activities by giving the game a simple,
 physical Yes or No answer.
@@ -247,7 +259,9 @@ relaxed open hand between questions so one answer does not run into the next.
 
 ## Gun Smoke
 
-**Profile:** `program_g` / matrix code `G`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `program_g` | **G** | <img src="images/matrix/programs/G.png" alt="G matrix display illustration" width="104"> |
 
 **Your mission:** Walk the scrolling frontier, defeat the bandits, find or buy
 each wanted poster, and collect the bounty by beating the stage boss.
@@ -274,7 +288,9 @@ Use index-plus-push when you need the straight-ahead shot.
 
 ## Knight Rider
 
-**Profile:** `program_i` / matrix code `I`
+| Profile | Matrix code | See it |
+| --- | --- | --- |
+| `program_i` | **I** | <img src="images/matrix/programs/I.png" alt="I matrix display illustration" width="104"> |
 
 **Your mission:** Drive KITT from city to city, avoid roadside hazards, destroy
 the criminals ahead, and reach each destination before the timer expires.

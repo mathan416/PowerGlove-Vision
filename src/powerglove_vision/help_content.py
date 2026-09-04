@@ -29,72 +29,18 @@ DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
-    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Install, inspect, and remove the optional UNO Q startup helper.", "group": "Maintain the project"},
-    {"slug": "matrix", "title": "Matrix display guide", "file": "MATRIX_GUIDE.md", "description": "Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.", "group": "Use PowerGlove Vision"},
-    {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Maintain the project"},
-    {
-        "slug": "cabinet",
-        "title": "This cabinet",
-        "file": None,
-        "description": "Live UNO Q links and the active RetroPie connection, generated for this cabinet.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "installation",
-        "title": "Build and operate",
-        "file": "INSTALL_README.md",
-        "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "gameplay",
-        "title": "Game and gesture guide",
-        "file": "GAMEPLAY_GUIDE.md",
-        "description": "Illustrated controls and play tips for every configured game.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "programs",
-        "title": "Programs A-I",
-        "file": "bad-street-brawler-programs.md",
-        "description": "The original Power Glove programs and their camera-based equivalents.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "configuration",
-        "title": "Configuration reference",
-        "file": "CONFIGURATION_REFERENCE.md",
-        "description": "Every public setting, template, generated file, and installed location.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "security",
-        "title": "Security and privacy",
-        "file": "SECURITY.md",
-        "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "components",
-        "title": "Third-party components",
-        "file": "THIRD_PARTY_COMPONENTS.md",
-        "description": "MediaPipe, model, license, checksum, and runtime provenance.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "contributing",
-        "title": "Contributing",
-        "file": "CONTRIBUTING.md",
-        "description": "Source formatting, tests, documentation, packaging, and review expectations.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "changelog",
-        "title": "Changelog",
-        "file": "CHANGELOG.md",
-        "description": "User-visible additions, fixes, security changes, and documentation updates.",
-        "group": "Maintain the project",
-    },
+    {"slug": "cabinet", "title": "This cabinet", "file": None, "description": "Live UNO Q links and the active RetroPie connection, generated for this cabinet.", "group": "User manuals"},
+    {"slug": "gameplay", "title": "Game and gesture guide", "file": "GAMEPLAY_GUIDE.md", "description": "Illustrated controls and play tips for every configured game.", "group": "User manuals"},
+    {"slug": "programs", "title": "Programs A-I", "file": "bad-street-brawler-programs.md", "description": "The original Power Glove programs and their camera-based equivalents.", "group": "User manuals"},
+    {"slug": "matrix", "title": "Matrix display guide", "file": "MATRIX_GUIDE.md", "description": "Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.", "group": "User manuals"},
+    {"slug": "installation", "title": "Installation and setup", "file": "INSTALL_README.md", "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.", "group": "User manuals"},
+    {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Technical documentation"},
+    {"slug": "configuration", "title": "Configuration reference", "file": "CONFIGURATION_REFERENCE.md", "description": "Every public setting, template, generated file, and installed location.", "group": "Technical documentation"},
+    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Install, inspect, and remove the optional UNO Q startup helper.", "group": "Technical documentation"},
+    {"slug": "security", "title": "Security and privacy", "file": "SECURITY.md", "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.", "group": "Technical documentation"},
+    {"slug": "components", "title": "Third-party components", "file": "THIRD_PARTY_COMPONENTS.md", "description": "MediaPipe, model, license, checksum, and runtime provenance.", "group": "Technical documentation"},
+    {"slug": "contributing", "title": "Contributing", "file": "CONTRIBUTING.md", "description": "Source formatting, tests, documentation, packaging, and review expectations.", "group": "Technical documentation"},
+    {"slug": "changelog", "title": "Changelog", "file": "CHANGELOG.md", "description": "User-visible additions, fixes, security changes, and documentation updates.", "group": "Technical documentation"},
 )
 GUIDES_BY_SLUG = {str(guide["slug"]): guide for guide in HELP_GUIDES}
 LEGACY_SLUGS = {"field-guide": "installation"}
@@ -177,7 +123,7 @@ def help_asset(relative_name: str) -> tuple[bytes, str] | None:
 def help_index_content() -> str:
     """Build the Help landing-page body from the public guide registry."""
     sections = []
-    for group in ("Use PowerGlove Vision", "Maintain the project"):
+    for group in ("User manuals", "Technical documentation"):
         cards = []
         for guide in HELP_GUIDES:
             if guide["group"] != group:
@@ -195,9 +141,9 @@ def help_index_content() -> str:
     return (
         "<h1>Help, without leaving the glove.</h1>"
         "<p class=lead>Read the maintained PowerGlove Vision guides directly on this UNO Q. "
-        "The manuals work offline from their Markdown sources, while This cabinet fills in the live connection details.</p>"
-        "<p><a class=button href='/help-pdf/overview.pdf'>Open project overview PDF</a></p>"
+        "Start with This cabinet for your current connections, or choose a guide below. The manuals are available offline.</p>"
         + "".join(sections)
+        + "<p><a href='/help-pdf/overview.pdf'>Project overview PDF</a></p>"
     )
 
 
@@ -433,8 +379,18 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
         if not line.strip():
             index += 1
             continue
-        if _HTML_IMAGE.fullmatch(line.strip()):
-            blocks.append("<p>" + _inline(line.strip()) + "</p>")
+        standalone_image = _HTML_IMAGE.fullmatch(line.strip())
+        if standalone_image:
+            target, caption, width = standalone_image.groups()
+            if target.startswith("images/matrix/") and 24 <= int(width) <= 320:
+                blocks.append(
+                    "<figure style='margin:1em 0;max-width:320px'>"
+                    + _inline(line.strip())
+                    + "<figcaption style='text-align:center;font-size:0.9em'>"
+                    + html.escape(caption) + "</figcaption></figure>"
+                )
+            else:
+                blocks.append("<p>" + _inline(line.strip()) + "</p>")
             index += 1
             continue
         if line.lstrip().startswith("<"):

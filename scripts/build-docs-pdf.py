@@ -135,6 +135,8 @@ def table_cell(
     if image_match:
         image_path = (source.parent / image_match.group(1)).resolve()
         if image_path.exists():
+            if "images/matrix/" in cell and int(image_match.group(3) or 104) > 104:
+                return image_flowable(image_path, 2.6 * inch, 1.7 * inch)
             return image_flowable(image_path, 0.92 * inch, 0.48 * inch)
     return Paragraph(inline(cell), style)
 
@@ -178,6 +180,10 @@ def parse_table(
             widths = [1.85 * inch, 1.05 * inch, 3.7 * inch]
         elif columns == 4:
             widths = [1.4 * inch, 1.0 * inch, 2.1 * inch, 2.1 * inch]
+    if columns == 2 and any("images/matrix/" in cell for row in rows for cell in row):
+        widths = [3.3 * inch, 3.3 * inch]
+    if rows[0] == ["Profile", "Matrix code", "See it"]:
+        widths = [3.7 * inch, 1.85 * inch, 1.05 * inch]
     table = Table(formatted, colWidths=widths, repeatRows=1, hAlign="LEFT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), NIGHT),

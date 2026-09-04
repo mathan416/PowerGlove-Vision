@@ -33,6 +33,14 @@ fix into `main`, publish the corrective release, and then merge `main` back into
 `dev`. Keep both branches protected against unreviewed or failing changes when
 the repository host supports branch protection.
 
+## Guide layout and audience
+
+Keep user guides focused on what people see and what they should do. Put timing,
+rendering, protocol, and other implementation details in the technical references.
+Use small contextual images in tables, place related images side by side, and
+avoid repeating large images when a nearby table already identifies the display.
+Keep headings, images, and captions together where practical when checking PDFs.
+
 ## Source style and documentation
 
 Every executable script, source file, service unit, and application
