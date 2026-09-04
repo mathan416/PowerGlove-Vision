@@ -14,19 +14,42 @@ No changes yet.
 This release adds web game mappings, personal gesture tuning, reliable game-launch
 profile selection, and refreshed illustrated manuals.
 
-### Documentation
-
-  - Refreshed all six interface screenshots on September 4, 2026, blurring camera imagery before capture.
-  - Illustrated Setup's Games section and Learn's compact Tune layout across the guides, including the T matrix indicator.
-  - Regenerated the printable manuals to match the updated Markdown and screenshots.
-
 ### Added
 
-  - Added a dedicated T on the UNO Q matrix while gesture tuning is active.
+- Added a dedicated T on the UNO Q matrix while gesture tuning is active.
 
   - Added a Games JSON editor with paired RetroPie access, duplicate-name validation, conflict detection, verified saves, backup download, and restoration.
   - Added guided Learn tuning with camera measurements, independent gesture thresholds, temporary previews, and persistent personal adjustments shared across profiles.
   - Added a confined RetroPie Games service on TCP 55358 and included it in installation and health checks.
+
+### Fixed
+
+- Moved game mapping editing into Setup and compacted Learn tuning, placing threshold values beneath the camera.
+
+  - Published UDP profile control through a persistent App Lab brick, acknowledged queued requests independently of camera startup, and corrected launch-hook rejection reporting and configuration-error handling.
+  - Kept profile changes responsive during blocked camera startup or reads, and reused the camera and tracker when switching between active profiles.
+  - Added exact compressed ROM filenames to the default registry so supported `.zip` and `.7z` games can select their profiles.
+
+### Documentation
+
+- Refreshed all six interface screenshots on September 4, 2026, blurring camera imagery before capture.
+  - Illustrated Setup's Games section and Learn's compact Tune layout across the guides, including the T matrix indicator.
+  - Regenerated the printable manuals to match the updated Markdown and screenshots.
+
+- Reorganized the overview and installation guide around a complete, numbered setup path: Git download, App Lab package import, UNO Q host setup, RetroPie installation, pairing, and gameplay checks.
+  - Added Programs A–I controls to the overview and a complete command-line reference with project flags, defaults, arguments, and the system-command options used in the guides.
+  - Applied reader-focused writing conventions across the guides, added first-round game exercises, and corrected the RetroPie update path. PDF regeneration remains a separate publication step.
+
+  - Reviewed all Markdown guides for natural English, replacing sentence fragments and compressed notes with complete explanations while retaining concise tables and release entries.
+
+  - Revised the Quick Reference with complete installation prerequisites, camera inspection commands, embedded screenshots, calibration explanations, and step-by-step game registration. Clarified shutdown readiness and local tests.
+  - Corrected stale lesson counts, profile descriptions, calibration behaviour, pairing guidance, reboot verification status, and receiver removal steps.
+  - Proofread the Quick Reference and normalized Markdown list indentation and continuation text for consistent rendering.
+  - Regenerated all ten PDF editions, repaired internal section links, and improved heading and image pagination.
+
+## [0.2.0] - 2026-09-03
+
+### Added
 
   - Added an app-owned Avahi resolver brick that survives App Lab Compose regeneration, replacing the temporary direct socket mount.
 
@@ -81,16 +104,6 @@ profile selection, and refreshed illustrated manuals.
 
 ### Documentation
 
-  - Reorganized the overview and installation guide around a complete, numbered setup path: Git download, App Lab package import, UNO Q host setup, RetroPie installation, pairing, and gameplay checks.
-  - Added Programs A–I controls to the overview and a complete command-line reference with project flags, defaults, arguments, and the system-command options used in the guides.
-  - Applied reader-focused writing conventions across the guides, added first-round game exercises, and corrected the RetroPie update path. PDF regeneration remains a separate publication step.
-
-  - Reviewed all Markdown guides for natural English, replacing sentence fragments and compressed notes with complete explanations while retaining concise tables and release entries.
-
-  - Revised the Quick Reference with complete installation prerequisites, camera inspection commands, embedded screenshots, calibration explanations, and step-by-step game registration. Clarified shutdown readiness and local tests.
-  - Corrected stale lesson counts, profile descriptions, calibration behaviour, pairing guidance, reboot verification status, and receiver removal steps.
-  - Proofread the Quick Reference and normalized Markdown list indentation and continuation text for consistent rendering.
-
   - Documented the UNO Q matrix as an eight-level monochrome DMD/BitPixel-style design target, including silhouette, contrast, motion, pulse, and physical review guidance for future animations.
   - Standardized source headers with each file's purpose, author, copyright, SPDX license identifier, local history, and links to the complete history.
   - Documented public interfaces and non-obvious security, lifecycle, tracking, packaging, and rendering functions.
@@ -123,12 +136,6 @@ profile selection, and refreshed illustrated manuals.
 
 ### Fixed
 
-  - Moved game mapping editing into Setup and compacted Learn tuning, placing threshold values beneath the camera.
-
-  - Published UDP profile control through a persistent App Lab brick, acknowledged queued requests independently of camera startup, and corrected launch-hook rejection reporting and configuration-error handling.
-  - Kept profile changes responsive during blocked camera startup or reads, and reused the camera and tracker when switching between active profiles.
-  - Added exact compressed ROM filenames to the default registry so supported `.zip` and `.7z` games can select their profiles.
-
   - Changed Wi-Fi deployment to use SFTP staging and terminal-backed remote commands for UNO Q systems that stall non-terminal SSH sessions.
   - Allowed the UNO Q deployment health check to use the board's current IP when its `.local` name pauses during a container restart.
   - Published the host shutdown request atomically so a filesystem observer cannot consume the request between file creation and the final content write.
@@ -136,12 +143,6 @@ profile selection, and refreshed illustrated manuals.
   - Corrected Program I so index curl accelerates in Knight Rider, a forward push accelerates with turbo, and thumb curl fires the weapons.
 
 ## 0.1.0 - 2026-09-03
-
-### Documentation
-
-  - Refreshed all six interface screenshots on September 4, 2026, blurring camera imagery before capture.
-  - Illustrated Setup's Games section and Learn's compact Tune layout across the guides, including the T matrix indicator.
-  - Regenerated the printable manuals to match the updated Markdown and screenshots.
 
 ### Added
 
