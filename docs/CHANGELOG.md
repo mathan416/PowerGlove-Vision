@@ -15,6 +15,15 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+- Added installation manifests shared by both package installers and Wi-Fi deployment. Updates back up and remove unchanged obsolete application files, preserve local edits, and provide interrupted-update recovery and read-only inventory checks.
+
+- Reduced Start and Select pose debounce to 0.15 seconds, retaining one press per pose and release before repeating.
+- Fixed controller session resets, malformed packet rejection, and timeout release during rejected network traffic.
+- Applied finger release thresholds consistently in Programs E, F, and G.
+- Matched tuning feedback to each recording step and made failed matrix commands retry.
+- Preserved existing profile configuration during installation and Wi-Fi updates.
+- Unified release/deployment payload selection and installer templates; removed unused helpers and state.
+
 ## [0.3.0] - Unreleased
 
 Planned feature release: simplified personal tuning, shared gameplay recognition,

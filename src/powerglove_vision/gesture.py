@@ -151,7 +151,7 @@ class Hysteresis:
 class HeldGesture:
     """Turns a deliberately held pose into one short button pulse."""
 
-    def __init__(self, hold_seconds: float = 0.7, pulse_seconds: float = 0.18) -> None:
+    def __init__(self, hold_seconds: float = 0.15, pulse_seconds: float = 0.18) -> None:
         self.hold_seconds = hold_seconds
         self.pulse_seconds = pulse_seconds
         self.started_at: float | None = None
@@ -408,7 +408,7 @@ class GestureEngine:
             }
         else:
             dpad, buttons = self._program_mapping(
-                observation, dx, dy, depth, roll, dpad,
+                observation, dpad,
                 thumb, index, middle, pulse_on, menu_pose, start, select,
             )
 
@@ -439,10 +439,6 @@ class GestureEngine:
     def _program_mapping(
         self,
         observation: HandObservation,
-        dx: float,
-        dy: float,
-        depth: float,
-        roll: float,
         dpad: dict[str, bool],
         thumb: bool,
         index: bool,
@@ -500,19 +496,19 @@ class GestureEngine:
             # Defender II: hand position, thumb fire, wrist smart bomb.
             a = thumb
             b = (roll_left or roll_right)
-            if observation.ring_curl >= self.config.pair("ring")[0]:
+            if self._switches["ring"].active:
                 dpad["left"] = int(observation.timestamp * 12) % 2 == 0
                 dpad["right"] = not dpad["left"]
         elif profile == "program_f":
             # Sesame Street: moving an open hand = Yes, closed hand = No.
             moving = any(self._switches[name].active for name in ("left", "right", "up", "down"))
-            closed = all(value >= self.config.pair(name)[0] for name, value in observation.fingers.items())
+            closed = all(self._switches[name].active for name in observation.fingers)
             dpad = {name: False for name in dpad}
             a = moving and not closed
             b = closed
         elif profile == "program_g":
             # Gun.Smoke: position moves; index fires; thumb+ring is a menu guard.
-            guarded = thumb and observation.ring_curl >= self.config.pair("ring")[0]
+            guarded = thumb and self._switches["ring"].active
             if (roll_left or roll_right):
                 dpad["left"] = roll_left
                 dpad["right"] = roll_right

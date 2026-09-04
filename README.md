@@ -71,7 +71,7 @@ return to it to release that direction. Recalibrate after moving the camera or
 changing your playing position. Some profiles replace ordinary hand movement
 with wrist steering or other controls, as shown below.
 
-Across the profiles, hold a **V sign** for about 0.7 seconds to send Start and
+Across the profiles, briefly show a **V sign** to send Start and
 a **thumbs-up with the other fingers closed** to send Select. These poses
 suppress A/B attacks; some profiles can still generate directional or auxiliary
 input, so keep your hand near its resting position while using them.

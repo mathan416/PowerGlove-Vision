@@ -37,6 +37,10 @@ def build(version, destination):
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", version):
         raise ValueError("Use a release tag without slashes or whitespace")
     import runpy
+    generator = runpy.run_path(str(ROOT / "scripts/build-installer-scripts.py"))
+    for machine in ("uno-q", "retropie"):
+        if (ROOT / ("scripts/install-" + machine + ".sh")).read_text() != generator["render"](machine):
+            raise ValueError("Regenerate installer scripts before packaging")
     archive = ROOT / "output/app-lab/PowerGlove-Vision-Uno-Q.zip"
     errors = runpy.run_path(str(ROOT / "scripts/verify-app-lab-package.py"))["archive_errors"](archive)
     if errors:

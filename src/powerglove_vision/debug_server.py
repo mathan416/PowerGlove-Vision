@@ -19,7 +19,6 @@ import json
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Callable
 
 from .gesture import SUPPORTED_PROFILES
 
@@ -51,12 +50,11 @@ source.textContent=s.profile_source||'Startup';}catch(e){}},250)</script></body>
 
 class SharedDebugState:
     """Share the latest frame, diagnostics, and one-shot operator requests across threads."""
-    def __init__(self, controller_enabled: bool = False) -> None:
+    def __init__(self) -> None:
         self.lock = threading.Lock()
         self.jpeg: bytes | None = None
         self.status: dict = {}
         self.calibrate_requested = False
-        self.controller_enabled = controller_enabled
         self.controller_request: bool | None = None
         self.profile_request: tuple[str | None, str, str] | None = None
         self.practice_sessions: dict[str, float] = {}

@@ -50,7 +50,7 @@ class ArchiveTests(unittest.TestCase):
         with zipfile.ZipFile(archive, 'w') as output:
             output.writestr('PowerGlove-Vision/install-release.json', json.dumps(
                 dict(format=1, machine=machine, version='dev-test')))
-            for name in ('scripts/setup-machine.py', 'src/powerglove_vision/receiver.py',
+            for name in ('scripts/setup-machine.py', 'scripts/installation-manifest.py', 'src/powerglove_vision/receiver.py',
                          'config/games.json', 'retropie/powerglove-receiver.service'):
                 output.writestr('PowerGlove-Vision/' + name, 'test')
             if extra:

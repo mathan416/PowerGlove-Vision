@@ -50,7 +50,7 @@ def unpack(archive, destination, machine, version):
                     or str(path) != item.filename.rstrip("/")
                     or (stat.S_IFMT(mode) not in (0, stat.S_IFREG, stat.S_IFDIR))):
                 raise ValueError("Unsafe or duplicate package member: " + item.filename)
-            if set(path.parts[1:]) & {"data", ".cache", ".git", ".venv", "__pycache__"} or path.name == "cheatsheet.md":
+            if set(path.parts[1:]) & {"data", ".cache", ".git", ".venv", "__pycache__"} or path.name == "cheatsheet.md" or any(part.startswith(".powerglove-install") for part in path.parts):
                 raise ValueError("Package contains private or generated files")
             total += item.file_size
             if total > 2 * 1024 ** 3:
@@ -59,7 +59,7 @@ def unpack(archive, destination, machine, version):
         meta = json.loads(package.read("PowerGlove-Vision/install-release.json"))
         if meta != {"format": 1, "machine": machine, "version": version}:
             raise ValueError("Package version or target does not match the requested release")
-        required = ["scripts/setup-machine.py", "src/powerglove_vision/receiver.py", "config/games.json"]
+        required = ["scripts/setup-machine.py", "scripts/installation-manifest.py", "src/powerglove_vision/receiver.py", "config/games.json"]
         required += (["app.yaml", "sketch/sketch.yaml", "sketch/sketch.ino", "scripts/uno-q-early-start.py",
                       "uno-q/powerglove-early-start.service", "uno-q/powerglove-system-shutdown.path"]
                      if machine == "uno-q" else ["retropie/powerglove-receiver.service"])
@@ -146,14 +146,16 @@ def stage_unoq(source, setup):
     if (APP / ".cache/app-compose.yaml").exists():
         setup.run("runuser", "-u", "arduino", "--", "arduino-app-cli", "app", "stop", APP)
     APP.mkdir(parents=True, exist_ok=True)
+    setup.installation_manifest()["apply"](source, APP, setup.BACKUPS / "application-payload")
     for path in files:
         target = APP / path.relative_to(source)
-        setup.write_file(target, path.read_bytes(), path.stat().st_mode & 0o777)
         os.chown(str(target), user.pw_uid, user.pw_gid)
         for parent in target.parents:
             if parent == APP.parent:
                 break
             os.chown(str(parent), user.pw_uid, user.pw_gid)
+    for name in (".powerglove-install.json", ".powerglove-install.lock"):
+        os.chown(str(APP / name), user.pw_uid, user.pw_gid)
     setup.SOURCE = APP
     # Starting an app directory is supported by App Lab; no UI import is required.
     setup.run("runuser", "-u", "arduino", "--", "arduino-app-cli", "app", "start", APP)

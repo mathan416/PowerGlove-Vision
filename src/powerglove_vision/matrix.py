@@ -68,6 +68,8 @@ class UnoQMatrix:
         self.last_error: str | None = None
         self.last_profile: str | None = None
         self.pairing_until = 0.0
+        self._status_retry_at = 0.0
+        self._profile_retry_at = 0.0
         self._call = call
         if enabled and self._call is None:
             try:
@@ -90,15 +92,19 @@ class UnoQMatrix:
             return self.available
         if status == self.last_status:
             return self.available
-        self.last_status = status
+        if time.monotonic() < self._status_retry_at:
+            return False
         if not self.available:
             return False
         try:
             assert self._call is not None
             self._call("set_powerglove_status", int(status))
+            self.last_status = status
+            self._status_retry_at = 0.0
             self.last_error = None
             return True
         except Exception as exc:  # Bridge errors vary by App Lab release.
+            self._status_retry_at = time.monotonic() + 1.0
             self.last_error = str(exc)
             return False
 
@@ -108,13 +114,13 @@ class UnoQMatrix:
             raise ValueError("invalid certificate identity")
         if len(pin) != 6 or not pin.isdigit():
             raise ValueError("invalid pairing PIN")
-        self.pairing_until = time.monotonic() + seconds
-        self.last_status = MatrixStatus.PAIRING
         if not self.available:
             return False
         try:
             assert self._call is not None
             self._call("set_powerglove_pairing", int(certificate_id, 16), int(pin))
+            self.pairing_until = time.monotonic() + seconds
+            self.last_status = MatrixStatus.PAIRING
             self.last_error = None
             return True
         except Exception as exc:
@@ -130,14 +136,18 @@ class UnoQMatrix:
         }
         if profile == self.last_profile:
             return self.available
-        self.last_profile = profile
+        if time.monotonic() < self._profile_retry_at:
+            return False
         if not self.available:
             return False
         try:
             assert self._call is not None
             self._call("set_powerglove_profile", codes.get(profile, 0))
+            self.last_profile = profile
+            self._profile_retry_at = 0.0
             self.last_error = None
             return True
         except Exception as exc:
+            self._profile_retry_at = time.monotonic() + 1.0
             self.last_error = str(exc)
             return False

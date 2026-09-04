@@ -142,6 +142,11 @@ a disconnected website or blank matrix is not proof that power can be removed.
 
 ## Updates and checks
 
+Updates keep an inventory of installed application files. After the first inventory
+is created, unchanged obsolete files are backed up and removed; your own changes
+are kept and reported. If an update is interrupted, follow its recovery instructions
+before trying again.
+
 To update, repeat the same single-line commands on both machines. Each selects
 the latest published stable release. Changed managed files are backed up, and the installer prints their
 location. It asks before interrupting an active UNO Q session. Close RetroArch

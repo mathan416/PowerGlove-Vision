@@ -190,6 +190,15 @@ class ControlStateTests(unittest.TestCase):
         self.assertEqual(asset[1], "image/png")
         self.assertIsNone(help_asset("../../data/device.json"))
 
+    def test_gesture_http_assets_use_compact_copies_without_changing_originals(self):
+        root = Path(__file__).resolve().parents[1] / "docs/images"
+        for name in ("v2/v-sign.png", "v2/thumbs-up.png", "actions/v-sign.png"):
+            asset = help_asset("gestures/" + name)
+            self.assertEqual(asset[1], "image/png")
+            self.assertEqual(asset[0], (root / "web/gestures" / name).read_bytes())
+            self.assertLess(len(asset[0]), 40000)
+            self.assertLess(len(asset[0]), (root / "gestures" / name).stat().st_size // 4)
+
     def test_help_pdfs_are_allowlisted_and_exclude_the_cabinet_reference(self):
         document = guide_pdf("gameplay")
         self.assertIsNotNone(document)

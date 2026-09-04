@@ -217,7 +217,10 @@ class TuningManager:
             self.base_config = replace(config, thresholds={})
             self.ready = calibrated and observation.detected and observation.confidence >= .7
             self.latest = measurements(observation, calibration)
-            self.finger_feedback = finger_pose_feedback(config, self.gesture, GESTURES[self.gesture], self.latest)
+            requirements = GESTURES[self.gesture]
+            if len(self.phases) in (0, 2):
+                requirements = dict.fromkeys(requirements, False)
+            self.finger_feedback = finger_pose_feedback(config, self.gesture, requirements, self.latest)
             self.effective = {key: dict(zip(("on", "off"), config.pair(key))) for key in CHANNELS}
             if self.calibration is not None and calibration != self.calibration and self.session:
                 self.invalidate()

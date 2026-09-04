@@ -18,20 +18,6 @@ readonly PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly OUTPUT_DIR="${PROJECT_DIR}/output/app-lab"
 readonly OUTPUT_ZIP="${OUTPUT_DIR}/PowerGlove-Vision-Uno-Q.zip"
 readonly PACKAGE_TMP="$(mktemp -d)"
-readonly -a PUBLIC_PDFS=(
-  PowerGlove-Vision-Matrix-Guide.pdf
-  PowerGlove-Vision-Architecture.pdf
-  Bad-Street-Brawler-Power-Glove-Programs.pdf
-  PowerGlove-Vision-Changelog.pdf
-  PowerGlove-Vision-Configuration-Reference.pdf
-  PowerGlove-Vision-Contributing.pdf
-  PowerGlove-Vision-Gameplay-Guide.pdf
-  PowerGlove-Vision-Guide.pdf
-  PowerGlove-Vision-Overview.pdf
-  PowerGlove-Vision-Security.pdf
-  PowerGlove-Vision-Third-Party-Components.pdf
-)
-
 # Remove the private staging directory regardless of build success or failure.
 cleanup() {
   rm -rf "${PACKAGE_TMP}"
@@ -39,30 +25,7 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "${OUTPUT_DIR}" "${PACKAGE_TMP}/PowerGlove-Vision"
-rsync -a \
-  --exclude '.git/' \
-  --exclude '/assets/matrix/' \
-  --exclude '.cache/' \
-  --exclude '.venv/' \
-  --exclude 'data/' \
-  --exclude 'output/' \
-  --exclude 'tests/' \
-  --exclude 'tmp/' \
-  --exclude '__pycache__/' \
-  --exclude '*.pyc' \
-  --exclude '*.pdf' \
-  --exclude '.DS_Store' \
-  --exclude 'docs/CODE_REVIEW_MAP.txt' \
-  --exclude 'docs/cheatsheet.md' \
-  "${PROJECT_DIR}/" "${PACKAGE_TMP}/PowerGlove-Vision/"
-
-python3 "${SCRIPT_DIR}/stamp-build-version.py" "${PACKAGE_TMP}/PowerGlove-Vision/src/powerglove_vision/_build_info.json"
-
-mkdir -p "${PACKAGE_TMP}/PowerGlove-Vision/output/pdf"
-for PDF_NAME in "${PUBLIC_PDFS[@]}"; do
-  cp "${PROJECT_DIR}/output/pdf/${PDF_NAME}" \
-    "${PACKAGE_TMP}/PowerGlove-Vision/output/pdf/${PDF_NAME}"
-done
+python3 "${SCRIPT_DIR}/application-payload.py" "${PACKAGE_TMP}/PowerGlove-Vision"
 
 cd "${PACKAGE_TMP}"
 zip -qr "${PACKAGE_TMP}/verified-package.zip" PowerGlove-Vision

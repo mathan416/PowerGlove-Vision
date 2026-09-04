@@ -57,6 +57,7 @@ jobs:
           python scripts/build-docs-pdf.py
           python scripts/check-documentation.py --require-pdfs
           bash scripts/build-app-lab-package.sh
+          python scripts/build-installer-scripts.py --check
           python scripts/build-install-packages.py --version "$RELEASE_VERSION"
       - uses: actions/upload-artifact@v4
         with:

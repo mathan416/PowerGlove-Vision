@@ -105,7 +105,7 @@ class TuningTests(unittest.TestCase):
         self.assertEqual(self.manager.snapshot()['completed_phases'],0)
 
     def test_tuning_keeps_practice_active_despite_dashboard_reset(self):
-        shared = SharedDebugState(True)
+        shared = SharedDebugState()
         shared.tuning = self.manager
         self.assertTrue(shared.take_practice_request())
         shared.request_profile('program_g', 'RetroPie launch hook', 'Gun.Smoke')
@@ -191,6 +191,7 @@ class TuningTests(unittest.TestCase):
                     held = engine._start_gesture if gesture == 'start' else engine._select_gesture
                     self.assertEqual(held.started_at is not None, failure is None)
                     self.command('select', gesture=gesture)
+                    self.manager.phases = self.phases()[:1]
                     self.manager.observe(hand, self.calibration, cfg, True)
                     self.assertEqual(self.manager.snapshot()['finger_feedback'], feedback)
 

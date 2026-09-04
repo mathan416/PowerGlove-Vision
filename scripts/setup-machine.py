@@ -31,6 +31,12 @@ SOURCE = Path(__file__).resolve().parents[1]
 BACKUPS = Path("/var/backups/powerglove-vision") / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
 
 
+def installation_manifest():
+    """Load the shared payload ownership and recovery implementation."""
+    import runpy
+    return runpy.run_path(str(Path(__file__).resolve().parent / "installation-manifest.py"))
+
+
 def run(*args):
     """Run one installation step and stop on failure without invoking a shell."""
     subprocess.run(list(map(str, args)), check=True)
@@ -111,14 +117,14 @@ def install_retropie(peer):
     run("modprobe", "uinput")
     write_file("/etc/modules-load.d/powerglove.conf", "uinput\n")
     destination = Path("/opt/powerglove-src")
-    for directory in ("src", "retropie", "config", "scripts"):
-        for source in (SOURCE / directory).rglob("*"):
-            if source.is_file() and "__pycache__" not in source.parts and source.suffix != ".pyc":
-                target = destination / source.relative_to(SOURCE)
-                if source.resolve() != target.resolve():
-                    write_file(target, source.read_bytes(), source.stat().st_mode & 0o777)
-    if (SOURCE / "install-release.json").is_file():
-        write_file(destination / "install-release.json", (SOURCE / "install-release.json").read_bytes())
+    if SOURCE.resolve() != destination.resolve():
+        names = [str(path.relative_to(SOURCE))
+                 for directory in ("src", "retropie", "config", "scripts", "licenses")
+                 for path in (SOURCE / directory).rglob("*")
+                 if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"]
+        names += [name for name in ("install-release.json", "LICENSE", "THIRD_PARTY_NOTICES.md")
+                  if (SOURCE / name).is_file()]
+        installation_manifest()["apply"](SOURCE, destination, BACKUPS / "application-payload", names)
     for source in (SOURCE / "retropie/bin").iterdir():
         write_file(Path("/opt/powerglove/bin") / source.name, source.read_bytes(), 0o755)
     for action in ("start", "end"):
@@ -336,8 +342,19 @@ class Report:
         return 1 if self.failures else 2 if self.pending else 0
 
 
+def check_inventory(report, root):
+    """Verify the installed payload rather than a temporary release staging tree."""
+    issues = installation_manifest()["check"](root)
+    if not issues:
+        report.check("Installation manifest matches managed files", True)
+    for issue in issues:
+        report.check("Installation manifest: " + issue, False,
+                     pending=issue.startswith(("Locally modified:", "No installation manifest;")))
+
+
 def check_retropie(report):
     """Inspect boot configuration, receiver prerequisites and launch integration."""
+    check_inventory(report, Path("/opt/powerglove-src"))
     report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
     report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])
     report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
@@ -380,6 +397,7 @@ def check_retropie(report):
 
 def check_unoq(report):
     """Check boot persistence, the app-owned resolver and public application health."""
+    check_inventory(report, Path("/home/arduino/ArduinoApps/powerglove-vision"))
     report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
     report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
     report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])

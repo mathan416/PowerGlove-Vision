@@ -163,8 +163,8 @@ indicators do not change a game's gesture mapping.
 | Reading or control | Meaning |
 | --- | --- |
 | Finger curl | Glove Academy shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Default ordinary curl actions engage at 0.50 and release below 0.35; saved personal pairs override these values. |
-| V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold for about 0.7 seconds to send Start. |
-| Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for about 0.7 seconds to send Select. |
+| V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold for 0.15 seconds to send Start. |
+| Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for 0.15 seconds to send Select. |
 | Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward or backward movement relative to the calibrated hand size. |
 | Calibrate | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
 | `inference_ms` and `send_ms` | Tracking calculation and local send time; neither measures the full delay from camera movement to game response. |
@@ -1673,3 +1673,68 @@ sudo run. A provisioned spare UNO Q and RetroPie system, real pairing,
 live gameplay, and a cold boot are required before declaring the installers
 validated for release. Run read-only checks on both devices after installation;
 no automated check proves that a hand gesture controls a game correctly.
+
+### Shared installer and application sources
+
+Both installer entry points are generated from `scripts/templates/install.sh.in`. Run
+`python3 scripts/build-installer-scripts.py` after editing that template; use `--check`
+to detect drift without changing files.
+
+`scripts/application-payload.py DESTINATION` stages the public application into an empty
+directory. Both App Lab packaging and Wi-Fi deployment use this selection, excluding
+private settings, artwork masters, and generated installer archives. Existing
+`config/profiles.json` is preserved during updates; review release defaults separately
+when adopting new configuration fields. Runtime calibration, pairing, tuning, and
+cabinet settings remain in place.
+
+### Installation ownership manifest
+
+`scripts/installation-manifest.py` manages the application payload in
+`/home/arduino/ArduinoApps/powerglove-vision` on UNO Q and `/opt/powerglove-src`
+on RetroPie. Package installation and Wi-Fi deployment use the same implementation.
+Host service units, launch hooks, controller assignments, and system configuration
+remain under their existing installers; the payload manifest does not prune them.
+
+Each root contains `.powerglove-install.json` with format version 1, the absolute
+installation root, release identity, and relative paths with SHA-256 hashes and
+permission modes. Private data, caches, and existing `config/profiles.json` and
+`docs/cheatsheet.md` are excluded from managed ownership.
+
+On the first manifest-enabled update, incoming package paths are installed using
+the existing backup-and-replace behavior. Unknown files absent from the package
+are left alone: the installer does not infer an old inventory from the directory.
+Subsequent updates back up and remove obsolete files only when their bytes and
+permissions still match the previous manifest. Local changes, including permission
+changes, are retained and reported, whether or not the new package contains that
+path. Their old baseline remains recorded so later updates cannot silently adopt
+or delete them. Restore the previous installed version of a locally modified file
+before retrying if you want the installer to replace it with the new release.
+
+Updates take an exclusive lock, validate all paths before writing, back up changed
+and removed files, and publish the new manifest last. A failed write rolls back
+the payload. A process interruption leaves `.powerglove-install-pending.json`;
+another update refuses to proceed until recovery. Backups include the old manifest,
+changed files, `transaction.json`, and `RESTORE.txt`. An installation failure after
+payload staging (for example, host setup or App Lab startup) does not undo a
+successfully committed payload; use the reported backup or previous release.
+
+The normal installer `--check` reports missing or modified managed files and an
+unfinished transaction without changing anything. For payload-only checks:
+
+```sh
+python3 scripts/installation-manifest.py /home/arduino/ArduinoApps/powerglove-vision --check
+```
+
+For an interrupted update, stop the application, then use the script from a trusted
+release staging directory (the installed copy may have been interrupted):
+
+```sh
+sudo python3 scripts/installation-manifest.py /home/arduino/ArduinoApps/powerglove-vision --recover
+```
+
+On RetroPie, use `/opt/powerglove-src` and run recovery with `sudo`. Restart and run
+installer checks afterward. Do not remove the pending journal or manifest to bypass
+recovery. The manifest never scans or deletes unknown user files or directories.
+`--source STAGING --backup BACKUP` applies a staged payload; BACKUP must be a new
+location outside both source and installation trees. This is used by the deployment
+script; normal users should use the two standard installers.

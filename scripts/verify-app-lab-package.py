@@ -47,6 +47,9 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/scripts/install-retropie.sh",
     "PowerGlove-Vision/scripts/install-package.py",
     "PowerGlove-Vision/scripts/setup-machine.py",
+    "PowerGlove-Vision/scripts/installation-manifest.py",
+    "PowerGlove-Vision/docs/images/web/gestures/v2/v-sign.png",
+    "PowerGlove-Vision/docs/images/web/gestures/actions/v-sign.png",
     "PowerGlove-Vision/scripts/uno-q-early-start.py",
     "PowerGlove-Vision/uno-q/powerglove-early-start.service",
     "PowerGlove-Vision/sketch/sketch.yaml",
@@ -128,6 +131,11 @@ def archive_errors(path: Path) -> list[str]:
                     errors.append(f"unapproved output file included: {info.filename}")
                 if member.suffix == ".pdf" and str(relative) not in PUBLIC_PDF_PATHS:
                     errors.append(f"unapproved PDF included: {info.filename}")
+            for name in names:
+                if name.startswith("PowerGlove-Vision/docs/images/gestures/") and name.endswith(".png") and not name.endswith("-web.png"):
+                    compact = name.replace("/docs/images/gestures/", "/docs/images/web/gestures/", 1)
+                    if compact not in names:
+                        errors.append("missing compact gesture image: " + compact)
             for name in sorted(REQUIRED_FILES - names):
                 errors.append(f"required package file is missing: {name}")
             stamp = "PowerGlove-Vision/src/powerglove_vision/_build_info.json"

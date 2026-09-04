@@ -103,11 +103,16 @@ def guide_pdf(slug: str) -> tuple[bytes, str] | None:
 
 
 def help_asset(relative_name: str) -> tuple[bytes, str] | None:
-    """Read an image below docs/images while rejecting traversal and unknown types."""
+    """Read documentation images, preferring compact web copies of gesture artwork."""
     root = HELP_ASSETS_ROOT.resolve()
     try:
         requested = (root / relative_name).resolve()
         requested.relative_to(root)
+        if requested.relative_to(root).parts[:1] == ("gestures",):
+            compact = (root / "web" / requested.relative_to(root)).resolve()
+            compact.relative_to(root / "web")
+            if compact.is_file():
+                requested = compact
     except (OSError, ValueError):
         return None
     content_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml"}

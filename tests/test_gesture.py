@@ -68,7 +68,7 @@ class GestureTests(unittest.TestCase):
     def test_comfortable_v_requires_both_curled_and_both_straight_fingers(self):
         pose = dict(index_curl=.23, middle_curl=.22, ring_curl=.50, pinky_curl=.45)
         engine = calibrated_engine("program_h")
-        for t in (.1, .5, .85):
+        for t in (.1, .2, .26):
             state = engine.update(hand(t, palm_x=.8, **pose))
             self.assertFalse(any(state.dpad.values()))
         self.assertTrue(state.buttons["start"])
@@ -87,7 +87,7 @@ class GestureTests(unittest.TestCase):
         pose = dict(thumb_curl=.21, index_curl=.46, middle_curl=.58,
                     ring_curl=.47, pinky_curl=.46)
         engine = calibrated_engine("program_h")
-        for t in (.1, .5, .85):
+        for t in (.1, .2, .26):
             state = engine.update(hand(t, palm_x=.8, **pose))
             self.assertFalse(any(state.dpad.values()))
         self.assertTrue(state.buttons["select"])
