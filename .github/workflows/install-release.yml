@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Made dev the default source for release-candidate builds.
 #   2026-09-04 - Added versioned two-machine release packaging.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -15,7 +16,7 @@ on:
       revision:
         description: Existing branch, commit or tag to build
         required: true
-        default: feature/gesture-tuning-0.3.0
+        default: dev
       version:
         description: New release tag (for example dev-COMMIT for a development build)
         required: true

@@ -16,10 +16,7 @@ profile automatically when you launch a registered game. Glove Academy mode lets
 practise without sending input to the cabinet.
 
 The cabinet currently uses `lr-fceumm` as its default NES emulator.
-`lr-nestopia` has not been tested with PowerGlove Vision. Native Power Glove
-support remains planned work. The software preserves
-analogue and finger measurements for that future integration, but the current
-gamepad path does not provide every original glove feature.
+`lr-nestopia` has not been tested with PowerGlove Vision.
 
 ## Choose a guide
 
