@@ -151,17 +151,17 @@ last tab closes or its lease expires. A six-second lease timeout handles an
 unexpected browser close. Loading Dashboard also clears a stale session;
 reload Learn if you want to begin practice again.
 
-The eleven lessons include A (index curl), B (thumb curl), GLOVE ZAP (forward
-push), Start, and Select. Completing every lesson earns Glove Master; skipped
+The twelve lessons include A (index curl), B (thumb curl), Glove Zap (forward
+push), Pull Back, Start, and Select. Completing every lesson earns Glove Master; skipped
 lessons must be revisited. **Start again** clears session progress. The practice
 indicators do not change a game's gesture mapping.
 
 | Reading or control | Meaning |
 | --- | --- |
-| Finger curl | Learn shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Ordinary curl actions engage at 0.50 and release below 0.35. |
-| V sign | Index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold for about 0.7 seconds to send Start. |
-| Thumbs-up | Thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for about 0.7 seconds to send Select. |
-| Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward movement relative to the calibrated hand size. |
+| Finger curl | Learn shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Default ordinary curl actions engage at 0.50 and release below 0.35; saved personal pairs override these values. |
+| V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold for about 0.7 seconds to send Start. |
+| Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for about 0.7 seconds to send Select. |
+| Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward or backward movement relative to the calibrated hand size. |
 | Calibrate | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
 | `inference_ms` and `send_ms` | Tracking calculation and local send time; neither measures the full delay from camera movement to game response. |
 
@@ -172,8 +172,8 @@ uses normalized depth with image aspect-ratio correction; palm movement still
 uses image coordinates. The legacy Arduino landmark bridge keeps its 2D
 interpretation because its depth units differ.
 
-Learn uses the same held finger state as gameplay. Push remains recognized
-until movement falls below its release threshold, and a confirmed menu pose
+Learn and gameplay share held finger and movement states. Glove Zap and Pull Back
+remain recognized until movement falls below their respective release thresholds, and a confirmed menu pose
 still satisfies its lesson after the short controller pulse ends. The browser
 preview is capped at 15 fps; status updates follow each tracking calculation.
 
@@ -449,35 +449,51 @@ add missing names while preserving your custom mappings.
 
 ## Tune gesture sensitivity
 
+Tuning is optional: adjust only controls that are difficult or trigger accidentally.
+The selector features hand setup, V-sign, thumbs-up, finger curls, Glove Zap, and
+Pull Back. Directions, wrist rolls, closed hand, and menu guard are under **More
+adjustments**. Try neutral calibration first if basic directions feel wrong.
+
+For **Glove Zap**, record starting position → push toward camera and hold → return
+to the starting position and distance. For **Pull Back**, record starting position
+→ pull away and hold → return to the starting position and distance. Keep your
+hand comfortably open and palm facing the camera. Each recording lasts three
+seconds. Forward push and pull-back have independent thresholds; hand setup does
+not calibrate them. For directions and wrist rolls, likewise return to your
+starting position, distance, and wrist orientation for the final recording.
+
 Use **Learn → Tune gestures** to adjust sensitivity. You do not need to edit
 `config/profiles.json`; it remains the supplied defaults for each profile.
 
   1. Show your whole hand in the camera and wait for tracking. Calibrate your comfortable resting position if necessary.
-  2. Switch on **Tune gestures** and select a gesture. Instructions and action buttons stay beside the camera; the Activation and Release table sits beneath the camera. Directions, finger curls, wrist rolls, push/pull, and compound gestures are available.
-  3. Hold your centered, relaxed hand still and select **Record baseline**. Each recording lasts three seconds.
-  4. Follow the prompt to perform and hold the gesture, then record its release. Repeat this pair three times: seven recordings including the baseline.
+  2. Switch on **Tune gestures** and select a gesture, or choose **Set up my hand** for optional calibration of all five fingers. Instructions and action buttons stay beside the camera; the Activation and Release table sits beneath the camera. Directions, finger curls, wrist rolls, push/pull, and compound gestures are available.
+  3. Select **Record open hand** with fingers and thumb gently extended, wrist straight, and hand centered at a consistent camera distance. Do not stretch or spread forcefully. Each recording lasts three seconds.
+  4. Record the selected gesture, then open your hand again and record it: three recordings total. For **Set up my hand**, the middle step is a gentle fist with your thumb curled outside your fingers.
   5. Select **Analyze and preview**. The app uses clear, fresh camera measurements to suggest activation and release values. If resting and performed measurements overlap, repeat the recordings with a clearer gesture and a complete release.
-  6. Try the temporary preview. You may adjust the numeric values and select **Preview adjustments** before deciding whether to save.
+  6. Try the temporary preview. Live finger feedback shows which required fingers are extended, curled, or not yet matching the pose. You may adjust the numeric values and select **Preview adjustments** before deciding whether to save.
   7. Select **Save for all profiles** to keep the adjustment. **Discard / record again** removes unsaved changes. **Restore defaults** removes saved adjustments for the selected gesture's components.
 
 ![Tune mode with the Activation and Release table beneath the blurred camera](images/tune-page.png)
 
 The camera imagery is blurred in this reference screenshot. On a wide screen,
 instructions and buttons sit beside the camera; on a narrow screen, they appear
-first. The matrix shows **T** while tuning and **L** in ordinary practice.
+first. The matrix shows a scanning **T** while tuning and a matching scanning **L** in ordinary practice.
 
 Activation is the point where a gesture begins; release is the lower point where
-it stops. Separate values prevent rapid on/off flickering. Directions and fingers
+it stops. Separate values prevent rapid on/off flickering. Gameplay movement mappings use these same held states, including wrist steering, push, pull-back, and braking; game-specific button assignments and pulses still apply. Directions and fingers
 can be adjusted independently. Compound gestures share component thresholds, so
 changing a finger also affects other gestures that use it. Suggested menu-pose
 adjustments tune the closed fingers; already extended fingers retain their existing
-settings unless you adjust them manually. Button assignments and menu hold timing
+settings from hand setup or existing personal/default values. Button assignments and menu hold timing
 remain unchanged.
+
+Hand setup learns open and curled thresholds for all five fingers. Individual tuning can be used without setup; it only learns new thresholds for fingers observed both open and curled. Fingers extended throughout retain hand-setup thresholds or existing settings. Feedback uses the same V-sign and thumbs-up checks as recognition. Hand setup reset restores all five finger components; individual reset restores only the selected components.
 
 Only adjusted components override all game profiles. Untuned components retain
 their profile's supplied values. Personal adjustments are saved atomically in
 `data/gesture-tuning.json` and survive application restarts and normal updates.
-No images or recordings are saved. The versioned format is:
+No images or recordings are saved. Existing version-1 files remain compatible;
+hand setup adds ordinary finger pairs rather than a new file format. The versioned format is:
 
 ```json
 {
@@ -662,7 +678,8 @@ The built-in display is a 13-by-8 monochrome blue LED matrix with eight
 brightness levels. Treat it as a very small dot-matrix display in the spirit of
 a pinball DMD or monochrome BitPixel display, rather than as a miniature screen.
 The sketch encodes status, pairing, profile identifiers, and the gestures-idle
-Power Glove attract sequence.
+Power Glove attract sequence. Learn and Tune share a dim letter, bright scan line,
+and trailing glow: eight frames at 160 milliseconds each (a 1.28-second cycle).
 
 Matrix artwork should use broad motion, recognizable silhouettes, and strong
 separation between the subject and its brightest effect. A moving spark needs a
@@ -701,7 +718,7 @@ output/app-lab/PowerGlove-Vision-Uno-Q.zip
 
 The installation ZIP includes the verified model at `models/hand_landmarker.task`, its Apache 2.0 license, and third-party notices. It excludes private `data/`,
 caches, tests, Git metadata, and the cabinet-specific quick-reference PDF. It
-includes only the nine allowlisted public PDF editions used by Help. When an active profile first needs vision, the application installs the bundled Google Hand Landmarker model into its private cache and verifies its SHA-256 checksum. A download is attempted only if the bundle is absent.
+includes only the allowlisted public PDF editions used by Help. When an active profile first needs vision, the application installs the bundled Google Hand Landmarker model into its private cache and verifies its SHA-256 checksum. A download is attempted only if the bundle is absent.
 The model stays unopened while **Gestures off** is selected.
 
 ### Automated quality and package verification
@@ -1012,7 +1029,7 @@ they may still perform their normal work.
 | `scripts/verify-app-lab-package.py` | Optional `ARCHIVE` path; `-h`, `--help` | Checks the supplied ZIP or the default ZIP above; prints its SHA-256. Returns `0` on success, `1` on verification failure. |
 | `scripts/check-documentation.py` | `--require-pdfs`; `-h`, `--help` | Checks Markdown, links, and coverage. The optional flag also inspects the PDF set and needs `pypdf`. Returns `0` on success, `1` on failure. |
 | `scripts/check-source-docs.py` | No flags or positional arguments | Checks source headers and docstrings; returns `0` on success or `1` on failure. |
-| `scripts/build-docs-pdf.py` | No flags or positional arguments | Rebuilds all ten PDF editions; requires ReportLab. Use only when ready to regenerate the PDFs. |
+| `scripts/build-docs-pdf.py` | No flags or positional arguments | Rebuilds all registered PDF editions; requires ReportLab. Use only when ready to regenerate the PDFs. |
 | `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
 | `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Installs and verifies the bundled model into project `data/models/`; downloads only if absent. Requires Python 3, plus curl for fallback downloads. |
 | `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |
@@ -1083,3 +1100,132 @@ installed versions; use `man TOOL` or that tool's `--help` for its full manual.
 
 Commands shown inside a source script may use additional internal options.
 Those are implementation details, not extra arguments accepted by the wrapper.
+
+### Tuning measurements and interface contract
+
+Each three-second step needs at least twelve accepted measurements. Sampling
+requires a calibrated, detected hand with confidence at least 0.7; duplicate
+frames and non-finite measurements are excluded. Missing or low-confidence
+tracking does not contribute samples. Insufficient samples require retrying the
+step. Changing neutral calibration clears recordings and preview values.
+
+Suggestions use the 95th percentile of the two open/rest recordings and the 10th
+percentile of the performed recording. The gap must be at least 0.08; activation
+is placed 65% into that gap and release 30% into it. An overlap error identifies
+the affected component, and no suggestion is retained. Fully return to the
+starting pose and distance before recording the final step.
+
+For V-sign and thumbs-up, extended-only fingers retain existing thresholds;
+these samples cannot establish their curled boundary. Personal activation values
+check curled fingers and personal release values check extended fingers. Without
+personal settings, the legacy menu cutoffs in the table above apply. Live feedback
+and actual pose recognition use the same checks, with the existing deliberate
+hold retained. Before accepting an automatic suggestion, the app applies the
+candidate thresholds to all required fingers in the recordings. At least 90% of
+accepted samples must match the complete gesture together; the first and final
+recordings must likewise show all selected fingers extended. This allows limited
+tracking noise without letting a strong curl compensate for a bent extended
+finger. A failed check identifies the finger and phase and clears the preview.
+
+V-sign requires extended index/middle and curled ring/pinky; thumbs-up requires
+an extended thumb and four curled fingers. Thumb extension measures straightness,
+not direction toward the top of the image. Individual tuning keeps extended-only
+thresholds; use Set up my hand if comfortable extension needs adjustment. Preview
+and live gameplay testing still matter, and manual numerical edits remain a
+separate path rather than an automatically verified recording.
+
+The status response's `tuning` object reports `mode` (`hand_setup` or `gesture`),
+`gesture`, `total_phases` (3), `completed_phases`, and `finger_feedback`. Each finger
+entry contains `expected` (`extended` or `curled`), `matches`, `value`, and
+`threshold`. `saved`, `effective`, and `preview` distinguish persisted values,
+currently used pairs, and temporary adjustments. The six-second browser lease
+expires temporary recordings and previews; it does not delete saved thresholds.
+Manual preview/save validates numerical ranges and component membership, but
+cannot prove that a hand pose was performed correctly.
+
+### Verified sketch dependencies
+
+`sketch/sketch.yaml` pins Arduino Zephyr **1.0.0** for `arduino:zephyr:unoq`,
+Arduino_RouterBridge **0.4.3**, Arduino_RPClite **0.3.0**, ArxContainer **0.7.0**,
+ArxTypeTraits **0.3.2**, DebugLog **0.8.4**, and MsgPack **0.4.2**. Keep this complete
+configuration synchronized with the installed app. Platform installation,
+compile-only validation, and firmware upload are separate operations; see
+[Build and install matrix firmware](INSTALL_README.md#build-and-install-matrix-firmware).
+
+## Bad Street Brawler Glove Zap
+
+The dedicated `bad_street_brawler` profile translates each forward-push activation
+into simultaneous Left + Right for 180 milliseconds. It suppresses other D-pad
+directions and A/B during that pulse. Holding the push does not repeat it; cross
+the saved push Release threshold before activating again. Menu poses, tracking
+loss, and recalibration cancel the pulse. Other game profiles are unchanged.
+The game, rather than the gesture engine, enforces its once-per-round allowance.
+
+FCEUmm normally removes opposing directions. For this game, set
+`fceumm_up_down_allowed = "enabled"` in its game-specific options file. On the
+cabinet this is `/opt/retropie/configs/all/retroarch/config/FCEUmm/Bad Street Brawler (USA).opt`.
+The filename omits the ROM/archive extension. Preserve any existing game options;
+when creating the file, start from the current FCEUmm options to avoid changing
+unrelated sound, video, or input settings. Leave the global value unchanged.
+
+In RetroArch, the equivalent workflow is to load the game, open Quick Menu's
+Core Options, allow opposing directions, and save a Game Options file. Verify
+that the game-specific file is loaded on the next launch. The existing receiver
+and PowerGlove gamepad mapping already carry separate Left and Right buttons;
+no R2/extra-trigger binding is needed. Disable the option for this game or remove
+its new options file to undo that part of the change.
+
+The secret Left + Right attack is documented by the runner in
+[Speed Demos Archive](https://speeddemosarchive.com/BadStreetBrawler.html).
+[FCEUmm's input code](https://github.com/libretro/libretro-fceumm/blob/master/src/drivers/libretro/libretro.c)
+shows the opposing-direction filter. Headless startup can verify options loading;
+confirm the attack, normal movement, and once-per-round behaviour in live play.
+
+
+### Repeatable RetroPie check and setup
+
+The installer copies `scripts/configure-bsb-zap.py` and installs the
+`powerglove-bsb-zap` command. For an existing installation, copy the helper into
+`/opt/powerglove-src/scripts/` and its matching wrapper from `retropie/bin/` into
+`/opt/powerglove/bin/`. This is a separate, explicit game setup step; the main
+installer does not change game options automatically.
+
+Run on RetroPie, using the exact ROM/archive path installed on your system:
+
+```sh
+/opt/powerglove/bin/powerglove-bsb-zap --check \
+  --rom "/home/pi/RetroPie/roms/nes/Bad Street Brawler (USA).7z"
+```
+
+To make the change, exit any running RetroArch game first:
+
+```sh
+sudo /opt/powerglove/bin/powerglove-bsb-zap --apply \
+  --rom "/home/pi/RetroPie/roms/nes/Bad Street Brawler (USA).7z"
+```
+
+Without `--apply`, the command is read-only. Exit code 0 means the checked
+configuration is ready; 2 means action is required. The helper checks the ROM,
+installed RetroArch and FCEUmm files, NES default and current/legacy per-game
+emulator selections, and explicit disabling of automatic game options. If
+FCEUmm is missing, install `lr-fceumm` through RetroPie Setup. If another core is
+selected, choose `lr-fceumm` for this ROM in the launch menu. The helper does not
+install emulators or change emulator selections.
+
+Existing game options are preserved. A new file copies the first available
+options set in game, content-folder, core, then global order; only FCEUmm entries
+are copied from the global file. Only `fceumm_up_down_allowed` is changed. Updates
+are atomic, preserve existing file ownership/permissions, and create a
+`powerglove-bsb-backup-*` directory beside the options file with `RESTORE.txt`.
+Follow that file to restore the previous options or remove a newly created file.
+Running the helper again when enabled makes no changes or extra backups.
+
+The default layout is `/opt/retropie`. `--prefix` supports a different installation
+root, and `--options-dir` specifies a different FCEUmm options directory. Custom
+core-option path redirects are rejected for manual review. This checks standard
+RetroPie files; it does not launch the core, resolve arbitrary custom launch
+scripts/includes, or prove the game loaded the option. Relaunch Bad Street Brawler,
+confirm its game-specific options are loaded, then test Glove Zap and normal
+movement. [RetroArch documents game options as complete option sets](https://docs.libretro.com/guides/overrides/),
+which is why the helper preserves the inherited settings instead of writing only
+one option.

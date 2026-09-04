@@ -29,6 +29,7 @@ gamepad path does not provide every original glove feature.
 | Find a command or connection reminder | [Quick Reference](docs/cheatsheet.md) |
 | Learn a game's gestures and try a short challenge | [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) |
 | Choose or experiment with Programs A–I | [Programs A–I manual](docs/bad-street-brawler-programs.md) |
+| Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
@@ -167,10 +168,14 @@ illustrations; the [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) adds objectives and 
 | Curl your thumb | Pulsed B |
 | Curl your middle finger | A+B |
 | Roll your wrist left or right | A plus that direction |
-| Push toward the camera | Auxiliary Glove Zap signal |
+| Push toward the camera | Glove Zap: short simultaneous Left + Right pulse |
 
-The zap signal is preserved as `BTN_TR2`; it does not unlock the cartridge's
-glove-only zap through the current standard-gamepad integration.
+Glove Zap uses the cartridge's simultaneous Left + Right command. The Bad Street
+Brawler profile emits a 180 ms pulse per forward push; release before trying again.
+FCEUmm must allow opposing directions for this game only. See the
+[configuration reference](docs/CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
+The extra `BTN_TR2` signal remains available, but needs no RetroArch assignment
+for this action.
 
 ### Super Glove Ball
 
@@ -188,7 +193,7 @@ finger measurements for future native-glove support.
 | Page | What it does |
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
-| Learn, `/learn` | Provides eleven practice lessons and guided gesture tuning, with game input paused. |
+| Learn, `/learn` | Provides twelve practice lessons and guided gesture tuning, with game input paused. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
@@ -211,7 +216,14 @@ The screenshots below show the current interface. Camera imagery is blurred for 
 ![Learn in Tune mode, with thresholds below the blurred camera](docs/images/tune-page.png)
 
 In **Learn**, switch on **Tune gestures** to adjust sensitivity. The UNO Q shows
-**T** during tuning and **L** during ordinary practice. Both modes pause game input.
+a scanning **T** during tuning and a matching scanning **L** during ordinary practice. Both modes pause game input.
+
+Tuning uses three recordings of three seconds each: open hand, gesture, open hand.
+Optional **Set up my hand** uses open hand, gentle fist with the thumb outside,
+open hand to measure all five fingers. Preview before saving. Saved Activation
+and Release thresholds apply in gameplay across profiles. **Glove Zap** and
+**Pull Back** have separate practice lessons and tuning controls; movement tuning
+ends by returning to the starting position and camera distance.
 
 ![Games editor in the lower part of Setup](docs/images/games-section.png)
 

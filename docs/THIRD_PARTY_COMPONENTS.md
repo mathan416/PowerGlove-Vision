@@ -119,3 +119,14 @@ PowerGlove Vision application on September 4, 2026. They cover Dashboard, Learn,
 Tune, Setup, Games, and Help. Camera imagery is blurred for privacy; gesture
 illustrations remain unchanged. These screenshots are project documentation
 assets and add no runtime dependencies.
+
+## Verified UNO Q sketch toolchain
+
+The September 4, 2026 sketch build and firmware deployment used the pinned
+`sketch/sketch.yaml`: Arduino Zephyr platform **1.0.0**, Arduino_RouterBridge
+**0.4.3**, Arduino_RPClite **0.3.0**, ArxContainer **0.7.0**, ArxTypeTraits
+**0.3.2**, DebugLog **0.8.4**, and MsgPack **0.4.2**. The build resolved
+Arduino_LED_Matrix **0.1.3** from that platform. Preserve the dependency pins when
+synchronizing with App Lab; its shortened generated configuration is not a
+replacement for the project's complete configuration. Revalidate compilation
+and device operation before changing a pin.

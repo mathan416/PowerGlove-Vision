@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="620">
-</p>
-
 # Programs A-I: The Cartridge-Free Field Manual
 
 Bad Street Brawler supplied nine programs that configured the original
@@ -24,7 +20,7 @@ For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE
 
 To change sensitivity without changing a program's button assignments, open
 **Learn → Tune gestures**. The threshold table is beneath the camera and the
-matrix shows **T**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
+matrix shows a scanning **T**, matching ordinary Learn’s scanning **L**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
 
 ## Where the programs came from
 
@@ -217,9 +213,11 @@ place to build muscle memory without changing the saved or active selection.
 ## What remains special
 
 The nine profiles emit useful conventional controller inputs, so ordinary NES
-cores can use them today. Native Power Glove packets are still needed for the original glove-specific
-features of games such as Super Glove Ball and Bad Street Brawler. PowerGlove Vision preserves the richer analogue and finger data
-needed for that future emulator integration; it does not modify ROM images.
+cores can use them today. Bad Street Brawler's Glove Zap also works through
+standard inputs: its dedicated profile emits a short simultaneous Left + Right
+pulse. FCEUmm must allow opposing directions for that game. Richer native glove
+integration remains separate work; PowerGlove Vision preserves analogue and
+finger data for it and does not modify ROM images.
 
 For installation, secure pairing, RetroArch mapping, and troubleshooting, see
 the [Installation Guide](INSTALL_README.md).
@@ -229,3 +227,17 @@ the [Installation Guide](INSTALL_README.md).
 PowerGlove Vision is an independent MIT-licensed hobbyist project by Iain
 Bennett. Nintendo, NES, Power Glove, Bad Street Brawler, and other marks belong
 to their respective owners. No ROM images are distributed with this project.
+
+### Personal sensitivity and practice
+
+Learn has twelve lessons, including **Glove Zap** and **Pull Back**. Tune an
+individual gesture with open hand → gesture → open hand, three seconds per step.
+Optional **Set up my hand** uses a gentle fist with the thumb outside for the
+middle step. Open means fingers and thumb gently extended, wrist straight, with
+the hand centered at a consistent camera distance. For push or Pull Back, return
+to the starting distance for the final recording. Preview before saving.
+
+Saved thresholds apply across profiles, including these programs. Movement
+controls use separate activation and release thresholds, while program-specific
+button pulses and mappings remain in effect. Extended-only fingers retain their
+existing settings. Practice and tuning pause controller delivery.

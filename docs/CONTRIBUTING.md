@@ -179,7 +179,7 @@ scripts/verify-app-lab-package.py
 ```
 
 The App Lab installation ZIP must contain public source, configuration
-examples, documentation, the nine allowlisted public PDF guides, and the
+examples, documentation, the allowlisted public PDF guides, and the
 required custom UNO Q MediaPipe wheel, verified Google model, Apache 2.0 license,
 and third-party notices. It must exclude private `data/`, tests, the cabinet quick-reference PDF, caches, and Git
 history. Do not force-add the generated ZIP to Git. GitHub Actions publishes a
@@ -195,3 +195,36 @@ releases may attach a verified ZIP for long-term distribution.
   - Do not claim hardware verification unless the change was tested on the named device. Automated tests and simulated input should be described accurately.
   - Wait for the GitHub Actions quality workflow to pass before merging.
   - Target ordinary pull requests at `dev`; reserve pull requests into `main` for reviewed releases and urgent release fixes.
+
+## Gesture tuning and firmware validation
+
+Keep Learn and gameplay on the same threshold checks and activation/release
+states. Preserve the deliberate menu hold and game-specific pulses/toggles. Use
+**Glove Zap** and **Pull Back** consistently in user-facing labels. Learn and Tune
+share the scanning-letter matrix renderer and its 160-millisecond frame timing.
+
+Before releasing recognition changes, validate three-step hand setup and
+individual tuning, including users who skip setup. Exercise V-sign and thumbs-up
+with different curl ranges, incorrect extended fingers, and incomplete releases.
+Check insufficient samples, tracking loss, overlapping ranges, and calibration
+changes. Verify preview expiry, save/reload, selected-component reset, existing
+version-1 files, and controller suppression throughout tuning. Automatic
+suggestions must check separation and a simultaneous full-pose match in at least
+90% of accepted samples in each phase, using candidate values and existing
+personal extension thresholds. Test each extended finger, exact threshold
+boundaries, default/personal ranges, tolerated noise, and failures occurring in
+different frames. Failed analysis must clear previews without changing saved
+settings. Extended-only samples still cannot learn a curled boundary. Manual
+numerical editing and live-camera validation remain separate concerns.
+
+Perform live camera checks of both menu poses, ordinary finger controls, Glove
+Zap, Pull Back, and actual game input before release. Successful automated tests,
+compilation, firmware upload, and bridge calls do not establish real-world
+recognition quality or visually confirm the physical matrix animation.
+
+Use the complete pinned Zephyr 1.0.0 configuration for compile-only validation,
+then explicitly upload through App Lab. See the installation guide's
+[firmware workflow](INSTALL_README.md#build-and-install-matrix-firmware).
+Regenerate all PDF editions after documentation updates. Reference screenshots
+may show earlier labels; keep instructions authoritative and refresh screenshots
+with camera imagery blurred when the interface layout changes.

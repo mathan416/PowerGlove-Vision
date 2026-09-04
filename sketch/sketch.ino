@@ -5,6 +5,7 @@
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
 // Change log:
+//   2026-09-04 - Share the scanning letter animation between Learn and Tune.
 //   2026-09-02 - Added to PowerGlove Vision.
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
 //   2026-09-03 - Added the gestures-idle Power Glove attract animation.
@@ -240,18 +241,17 @@ void drawProfile(int profile, bool pulse) {
   matrix.draw(pixels);
 }
 
-// Show a legible L with a bright scan line so Learn mode remains visually
-// active without resembling a game-profile code or an error condition.
-void drawLearning(uint8_t frame) {
+// Keep Learn and Tune legible with the same bright scan line and trailing glow.
+void drawModeLetter(const uint8_t glyph[7], uint8_t frame) {
   uint8_t pixels[104] = {0};
-  placeGlyph(pixels, glyphL, 4, 3);
+  placeGlyph(pixels, glyph, 4, 3);
   const int scanRow = frame % 8;
   for (int x = 4; x < 9; ++x) {
-    if (scanRow < 7 && (glyphL[scanRow] & (1 << (8 - x)))) {
+    if (scanRow < 7 && (glyph[scanRow] & (1 << (8 - x)))) {
       setPixelMax(pixels, x, scanRow, 7);
     }
     if (scanRow > 0 && scanRow - 1 < 7 &&
-        (glyphL[scanRow - 1] & (1 << (8 - x)))) {
+        (glyph[scanRow - 1] & (1 << (8 - x)))) {
       setPixelMax(pixels, x, scanRow - 1, 5);
     }
   }
@@ -458,13 +458,8 @@ void loop() {
     nextFrameAt = now + idleFrameDurations[animationFrame];
     animationFrame = (animationFrame + 1) %
       (sizeof(idleFrameDurations) / sizeof(idleFrameDurations[0]));
-  } else if (status == PG_TUNING) {
-    uint8_t pixels[104] = {0};
-    placeGlyph(pixels, glyphT, 4, 7);
-    matrix.draw(pixels);
-    nextFrameAt = now + 250;
-  } else if (status == PG_LEARNING) {
-    drawLearning(animationFrame);
+  } else if (status == PG_LEARNING || status == PG_TUNING) {
+    drawModeLetter(status == PG_LEARNING ? glyphL : glyphT, animationFrame);
     animationFrame = (animationFrame + 1) % 8;
     nextFrameAt = now + 160;
   }

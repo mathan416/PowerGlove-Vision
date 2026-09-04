@@ -167,6 +167,10 @@ def parse_table(
         widths = [1.25 * inch, 1.25 * inch, 1.25 * inch, 2.85 * inch]
     else:
         widths = [6.6 * inch / columns] * columns
+    if source.name == "ARCHITECTURE.md" and columns == 3:
+        widths = [1.4 * inch, 2.6 * inch, 2.6 * inch]
+    elif source.name == "ARCHITECTURE.md" and columns == 4:
+        widths = [1.2 * inch, 1.8 * inch, 1.8 * inch, 1.8 * inch]
     table = Table(formatted, colWidths=widths, repeatRows=1, hAlign="LEFT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), NIGHT),
@@ -279,8 +283,9 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
                     "debug-dashboard.png", "learn-page.png", "tune-page.png",
                     "setup-page.png", "games-section.png", "help-page.png",
                 }
-                image = image_flowable(image_path, 6.6 * inch if screenshot else 6.1 * inch,
-                                       5.7 * inch if screenshot else 2.85 * inch)
+                architecture = image_path.parent.name == "architecture"
+                image = image_flowable(image_path, 6.6 * inch if screenshot or architecture else 6.1 * inch,
+                                       5.7 * inch if screenshot else 4.1 * inch if architecture else 2.85 * inch)
                 group = [image, paragraph(image_match.group(1), styles["caption"])]
                 # Keep a directly preceding heading with its illustration, too.
                 if story and isinstance(story[-1], Paragraph) and story[-1].style.name in {"H2", "H3", "H4"}:
@@ -535,7 +540,11 @@ def main():
         "Eight ready-made play cards, nine reusable programs, and a whole library to rediscover.",
         "Illustrated game handbook",
     )
-    print(f"Built 10 PDF guides on {date.today().isoformat()}")
+    build(docs / "ARCHITECTURE.md", OUTPUT / "PowerGlove-Vision-Architecture.pdf",
+          "PowerGlove Vision Architecture",
+          "System boundaries, recognition, tuning, game input, and deployment.",
+          "Architecture and flows")
+    print(f"Built 11 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

@@ -5,14 +5,17 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Upgrade the build platform to Zephyr 1.0.0 after compile validation.
+#   2026-09-04 - Pin the verified UNO Q board and installed platform version.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 
 profiles:
   default:
+    fqbn: arduino:zephyr:unoq
     platforms:
-      - platform: arduino:zephyr
+      - platform: arduino:zephyr (1.0.0)
     libraries:
       - Arduino_RouterBridge (0.4.3)
       - dependency: Arduino_RPClite (0.3.0)

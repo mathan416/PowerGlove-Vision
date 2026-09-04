@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ARCHIVE = ROOT / "output" / "app-lab" / "PowerGlove-Vision-Uno-Q.zip"
 PACKAGE_ROOT = PurePosixPath("PowerGlove-Vision")
 PUBLIC_PDF_NAMES = {
+    "PowerGlove-Vision-Architecture.pdf",
     "Bad-Street-Brawler-Power-Glove-Programs.pdf",
     "PowerGlove-Vision-Changelog.pdf",
     "PowerGlove-Vision-Configuration-Reference.pdf",

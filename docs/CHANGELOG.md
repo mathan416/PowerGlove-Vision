@@ -7,6 +7,12 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+## [0.3.0] - Unreleased
+
+Planned feature release: simplified personal tuning, shared gameplay recognition,
+Bad Street Brawler Glove Zap, and illustrated architecture documentation.
+Live camera, gameplay, and physical matrix checks remain release requirements.
+
 ### Added
 
   - Added startup stage timings for library imports, model preparation, camera initialization, and first inference.
@@ -20,6 +26,54 @@ authoritative record for line-level and file-level history.
   - Preloaded OpenCV and MediaPipe in the background when the vision worker starts, keeping controls responsive and the camera off until requested. On the tested cabinet, first activation after a reboot took 1.21 seconds once preloading completed.
   - Made `/dashboard` the default page, retaining redirects from `/` and `/debug`.
   - Made web footers use the release version, with a development indicator on dev builds.
+
+### Gesture tuning simplification
+
+  - Replaced seven recordings with open hand, gesture, open hand (three seconds each).
+  - Added optional all-finger hand setup using a gentle fist with the thumb outside.
+  - Added live extended/curled finger feedback sharing V-sign and thumbs-up recognition checks. Existing saved thresholds remain compatible.
+  - Live camera validation is required before release.
+
+  - Featured common tuning controls and grouped directions, wrist rolls, and other combinations under More adjustments. Added explicit movement-specific starting-position and return instructions for Glove Zap, pull-back, directions, and wrist rolls.
+
+  - Added pull-back as the twelfth ordinary Learn lesson, with a live action indicator, backward-distance feedback, and personal pull thresholds.
+
+  - Gameplay movement mappings now use shared activation/release states for wrist controls, forward push, pull-back, movement answers, and braking. Preserved game button mappings, pulses, and pull-toggle edges; clear depth activation on tracking loss.
+
+  - Matched Tune’s T animation to Learn’s L using the same scan line, trailing glow, brightness, and frame timing.
+
+  - Standardized Glove Zap and Pull Back labels across Learn, Tune, and the guides.
+
+### September 4 documentation and firmware reconciliation
+
+  - Documented optional five-finger hand setup, three recordings of three seconds, preview/save/discard/reset, extended-only finger handling, and unchanged version-1 saved settings.
+  - Updated ordinary Learn to twelve lessons with Glove Zap and Pull Back, and documented shared gameplay activation/release states while retaining profile mappings and menu holds.
+  - Documented matching scanning L/T animations and consistent action names.
+  - Recorded the verified Zephyr 1.0.0 platform and pinned sketch libraries, distinguishing platform installation, compile-only validation, and firmware upload.
+  - Refreshed maintained guides and their PDF editions. Historical entries above retain the behaviour and names at the time of each change.
+  - Retained live camera, game-control, and physical display checks as release validation requirements; automated checks and deployment alone do not satisfy them.
+
+### Complete-pose validation before tuning suggestions
+
+  - Automatic analysis now requires all selected fingers to match together in at least 90% of accepted samples, including opening and final release phases.
+  - V-sign validates extended index/middle alongside curled ring/pinky; thumbs-up validates extended thumb alongside four curled fingers, using shared recognition checks and existing personal extension thresholds.
+  - Failed analysis identifies the finger/phase and clears the preview without modifying saved settings. Existing holds and orientation-flexible thumb extension remain unchanged.
+  - Added regressions for invalid extended fingers in each phase, personal thresholds, exact boundaries, noise tolerance, simultaneous pose failures, invalid samples, and saved-value preservation. Live camera and gameplay validation remain required.
+
+### Bad Street Brawler Glove Zap
+
+  - Mapped forward-push activation to a 180 ms simultaneous Left + Right pulse in the Bad Street Brawler profile. Require release before retriggering; cancel on menu poses, tracking loss, and recalibration.
+  - Enabled opposing directions in Bad Street Brawler's FCEUmm game options while preserving global settings. The existing RetroPie receiver and gamepad mapping need no changes.
+  - Corrected the earlier documentation claim that this attack required native glove support. Added pulse, cancellation, rearming, and other-profile regressions; all 155 tests passed. A two-frame headless test confirmed the game-specific options load. Live attack validation remains outstanding.
+
+
+### Repeatable RetroPie Glove Zap configuration
+
+  - Added `powerglove-bsb-zap` with read-only checks and explicit `--apply` setup.
+  - Checks installed FCEUmm/RetroArch and game emulator selection; reports missing dependencies or incompatible selection without silently changing either.
+  - Preserves inherited options and global settings; backs up and atomically updates the game file, with repeat-run detection and rollback instructions.
+  - Added six isolated tests for creation, preservation, inheritance, missing cores, wrong emulator selection, read-only mode, running games, redirects, and symlinks.
+  - Documented installation, use, limitations, and the remaining live gameplay check.
 
 ## [0.2.5] - 2026-09-04
 

@@ -455,6 +455,7 @@ def main() -> int:
             status["vision_state"] = "active"
             status["menu_gesture"] = engine.menu_feedback()
             status["push_gesture"] = engine.push_feedback(result.observation)
+            status["pull_gesture"] = engine.pull_feedback(result.observation)
             status["finger_active"] = engine.curl_feedback(result.observation)
             status["finger_curls"] = result.observation.fingers
             status["curl_threshold"] = engine.config.pair("index")[0]

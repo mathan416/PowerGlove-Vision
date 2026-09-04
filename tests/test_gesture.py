@@ -124,6 +124,28 @@ class GestureTests(unittest.TestCase):
         engine.begin_calibration()
         self.assertFalse(engine.push_feedback(hand(.4, palm_scale=.28))["active"])
 
+    def test_pull_learning_feedback_uses_personal_thresholds_and_releases(self):
+        engine = calibrated_engine()
+        engine.config = GestureConfig(thresholds={"pull": {"on": .25, "off": .10}})
+        for t, scale, expected in ((.1, .2, False), (.2, .14, True),
+                                   (.3, .17, True), (.4, .19, False), (.5, .14, True)):
+            observation = hand(t, palm_scale=scale)
+            state = engine.update(observation)
+            feedback = engine.pull_feedback(observation)
+            self.assertEqual(feedback["active"], expected)
+            self.assertEqual(feedback["threshold"], .25)
+            self.assertEqual(state.events, [])
+            self.assertFalse(state.buttons.get("glove_zap", False))
+        missing = HandObservation(.8, False)
+        engine.update(missing)
+        self.assertFalse(engine.pull_feedback(missing)["active"])
+        observation = hand(.9, palm_scale=.17)
+        engine.update(observation)
+        self.assertFalse(engine.pull_feedback(observation)["active"])
+        engine.update(hand(1, palm_scale=.14))
+        engine.begin_calibration()
+        self.assertFalse(engine.pull_feedback(hand(1.1, palm_scale=.14))["active"])
+
     def test_tracking_loss_releases_controls(self):
         engine = calibrated_engine()
         engine.update(hand(0.1, palm_x=0.62))
@@ -178,6 +200,56 @@ class GestureTests(unittest.TestCase):
 
         steering = engine.update(hand(0.50, roll=-1.2))
         self.assertTrue(steering.dpad["left"])
+
+    def test_game_movements_hold_between_personal_activation_and_release(self):
+        import math
+        # Exercise every mapping that previously bypassed movement release.
+        cases = [
+            ("program_a", "roll_left", "buttons", "b"),
+            ("program_e", "roll_right", "buttons", "b"),
+            ("program_c", "roll_left", "dpad", "left"),
+            ("program_c", "roll_right", "dpad", "right"),
+            ("program_c", "pull", "buttons", "b"),
+            ("program_g", "roll_left", "dpad", "left"),
+            ("program_g", "roll_right", "dpad", "right"),
+            ("program_g", "push", "buttons", "b"),
+            ("program_i", "roll_left", "dpad", "left"),
+            ("program_i", "roll_right", "dpad", "right"),
+            ("program_i", "down", "dpad", "down"),
+            ("program_i", "push", "buttons", "a"),
+        ] + [("program_f", direction, "buttons", "a") for direction in ("left", "right", "up", "down")]
+        for profile, channel, output, button in cases:
+            with self.subTest(profile=profile, channel=channel):
+                engine = calibrated_engine(profile)
+                engine.config = GestureConfig(thresholds={channel: {"on": .6, "off": .2}})
+                for t, magnitude, expected in ((.1,.4,False),(.2,.7,True),(.3,.4,True),(.4,.1,False),(.5,.4,False)):
+                    changes = {}
+                    if channel.startswith('roll'):
+                        changes['roll'] = magnitude * math.pi / 2 * (-1 if channel == 'roll_left' else 1)
+                    elif channel in ('push','pull'):
+                        changes['palm_scale'] = .2 * (1 + magnitude * (-1 if channel == 'pull' else 1))
+                    else:
+                        changes['palm_x' if channel in ('left','right') else 'palm_y'] = .5 + .2*magnitude*(-1 if channel in ('left','up') else 1)
+                    observation = hand(t, **changes)
+                    state = engine.update(observation)
+                    self.assertEqual(getattr(state, output)[button], expected)
+                    if channel in ('push','pull'):
+                        feedback = getattr(engine, channel+'_feedback')(observation)
+                        self.assertEqual(feedback['active'], expected)
+
+    def test_pinball_pull_toggle_requires_release_before_retrigger(self):
+        engine = calibrated_engine('program_a')
+        for t, scale, toggled in ((.1,.12,True),(.2,.15,True),(.3,.12,True),(.4,.2,True),(.5,.12,False)):
+            state = engine.update(hand(t, palm_scale=scale, index_curl=.8))
+            self.assertEqual(state.dpad['up'], toggled)
+
+    def test_movement_state_resets_after_tracking_loss(self):
+        engine = calibrated_engine('program_i')
+        engine.update(hand(.1,palm_scale=.28))
+        engine.update(HandObservation(.5,False))
+        state = engine.update(hand(.6,palm_scale=.25))
+        self.assertFalse(state.buttons['a'])
+        self.assertFalse(engine.push_feedback(hand(.6,palm_scale=.25))['active'])
 
     def test_held_v_sign_pulses_start_without_attacking(self):
         engine = calibrated_engine()
@@ -243,3 +315,40 @@ class CalibrationRetentionTests(unittest.TestCase):
             for value in ('broken', '{}', '{"version":1,"neutral":{"palm_x":0,"palm_y":0,"palm_scale":0,"roll":0}}'):
                 path.write_text(value)
                 self.assertIsNone(load_calibration(path))
+
+
+
+    def test_brawler_zap_pulses_both_directions_once_per_push(self):
+        engine = calibrated_engine()
+        engine.config = GestureConfig(thresholds={"push": {"on": .3, "off": .1}})
+        first = engine.update(hand(1., palm_scale=.28, middle_curl=.8))
+        self.assertTrue(first.dpad['left'] and first.dpad['right'])
+        self.assertFalse(first.buttons['a'] or first.buttons['b'])
+        self.assertTrue(engine.update(hand(1.1, palm_scale=.25)).dpad['left'])
+        held = engine.update(hand(1.3, palm_scale=.28))
+        self.assertFalse(held.dpad['left'] or held.dpad['right'])
+        engine.update(hand(1.4, palm_scale=.20))
+        again = engine.update(hand(1.5, palm_scale=.28))
+        self.assertTrue(again.dpad['left'] and again.dpad['right'])
+
+    def test_brawler_zap_cancels_on_menu_tracking_loss_and_calibration(self):
+        for interrupt in ('menu', 'loss', 'calibrate'):
+            engine = calibrated_engine()
+            engine.update(hand(1., palm_scale=.35))
+            if interrupt == 'menu':
+                result = engine.update(hand(1.03, palm_scale=.35, ring_curl=.8, pinky_curl=.8))
+                self.assertFalse(result.dpad['left'] and result.dpad['right'])
+                result = engine.update(hand(1.06, palm_scale=.35))
+            elif interrupt == 'loss':
+                result = engine.update(hand(1.03, detected=False))
+            else:
+                engine.begin_calibration()
+                result = engine.update(hand(1.03, palm_scale=.35))
+            self.assertFalse(result.dpad['left'] and result.dpad['right'], interrupt)
+
+    def test_other_profiles_do_not_emit_brawler_zap_combination(self):
+        from powerglove_vision.gesture import SUPPORTED_PROFILES
+        for profile in SUPPORTED_PROFILES:
+            if profile == 'bad_street_brawler': continue
+            result = calibrated_engine(profile).update(hand(1., palm_scale=.35))
+            self.assertFalse(result.dpad['left'] and result.dpad['right'], profile)

@@ -29,6 +29,7 @@ DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
+    {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Maintain the project"},
     {
         "slug": "cabinet",
         "title": "This cabinet",
@@ -101,6 +102,7 @@ SLUG_BY_FILE = {
     if guide["file"] is not None
 }
 HELP_PDFS = {
+    "architecture": "PowerGlove-Vision-Architecture.pdf",
     "overview": "PowerGlove-Vision-Overview.pdf",
     "installation": "PowerGlove-Vision-Guide.pdf",
     "gameplay": "PowerGlove-Vision-Gameplay-Guide.pdf",
@@ -342,6 +344,8 @@ def _anchor(text: str, used: set[str]) -> str:
 def _safe_target(target: str, image: bool = False) -> str:
     """Translate known documentation links and reject unsafe URL schemes."""
     target = target.strip()
+    if image and target in {"../assets/powerglove-vision-logo.png", "assets/powerglove-vision-logo.png"}:
+        return "/assets/powerglove-vision-logo.png"
     if image and target.startswith("images/"):
         return "/help-assets/" + target[len("images/"):]
     filename = target.split("#", 1)[0].rsplit("/", 1)[-1]
@@ -366,7 +370,8 @@ def _inline(text: str) -> str:
                 target, alt, width_text = image_match.groups()
                 safe_target = _safe_target(target, image=True)
                 width = int(width_text)
-                if safe_target != "#" and 24 <= width <= 320:
+                maximum_width = 760 if safe_target == "/assets/powerglove-vision-logo.png" else 320
+                if safe_target != "#" and 24 <= width <= maximum_width:
                     output.append(
                         "<img loading=lazy src='{src}' alt='{alt}' width='{width}'>".format(
                             src=html.escape(safe_target, quote=True),

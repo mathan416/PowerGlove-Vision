@@ -1,0 +1,11 @@
+#!/bin/sh
+# Project: PowerGlove Vision
+# File: retropie/bin/powerglove-bsb-zap
+# Purpose: Launch the repeatable Bad Street Brawler Glove Zap configuration helper.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added FCEUmm checks and game-option setup entry point.
+# Full history: docs/CHANGELOG.md and Git history.
+exec /usr/bin/python3 /opt/powerglove-src/scripts/configure-bsb-zap.py "$@"

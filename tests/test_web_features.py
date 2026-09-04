@@ -70,5 +70,5 @@ class WebFeatureTests(unittest.TestCase):
         self.assertNotIn(b'<a href=/games>',SETUP)
         self.assertLess(LEARN.index(b'id=learn-camera'),LEARN.index(b'id=tune-thresholds'))
         self.assertIn(b'id=practice-lessons',LEARN)
-        self.assertIn(b'Lesson 1 of 11',LEARN)
+        self.assertIn(b'Lesson 1 of 12',LEARN)
         self.assertLess(LEARN.index(b'id=learn-camera'),LEARN.index(b'<section class=card id=tune-panel'))

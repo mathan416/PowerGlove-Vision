@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
-</p>
-
 # PowerGlove Vision Installation Guide
 
 Follow this guide to download PowerGlove Vision, install it on both computers,
@@ -178,8 +174,10 @@ pairing route works, follow the [token-management reference](CONFIGURATION_REFER
 
 **Checkpoint:** A gesture changes the intended control in the running game.
 Seeing the device name or a running service alone is not an end-to-end test.
-The extra Glove Zap signal is preserved for future native-glove integration;
-the standard gamepad path does not unlock Bad Street Brawler's native zap.
+Bad Street Brawler's Glove Zap uses simultaneous Left + Right through the
+standard gamepad path. Enable FCEUmm's opposing-directions option in a game-specific
+options file, not globally. See [Glove Zap setup](CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
+No extra-trigger assignment or receiver change is required.
 
 ## Stage 6 - Check automatic profiles and startup
 
@@ -226,7 +224,7 @@ sudo python3 scripts/setup-machine.py uno-q --check
 | Animated hand | The app or vision runtime is loading. |
 | Animated glove | Gestures are off. |
 | Scanning `L` | Learn practice is active. |
-| `T` | Tune gestures is active. |
+| Scanning `T` | Tune gestures is active, with the same scan and trailing glow as Learn. |
 | `A`–`I`, `BS`, or `GB` | The corresponding profile is active. |
 | Pulsing profile code | A calibrated hand is being tracked. |
 | Blinking X | The camera or vision runtime needs attention. |
@@ -282,12 +280,15 @@ gestures off releases them but retains the loaded libraries for the next use.
 
 Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
 controller transmission, starts the camera when necessary, and guides you
-through eleven exercises with live feedback on the gestures it recognizes. RetroPie does not need to be
+through twelve exercises, including forward push and pull-back, with live feedback on the gestures it recognizes. RetroPie does not need to be
 online. Leaving Learn restores the selected profile and its camera state;
 loading or refreshing the Dashboard also reapplies the selected mode.
 
-Switch on **Tune gestures** to record a baseline and three gesture-and-release
-repetitions, preview suggested thresholds, and save them across all profiles.
+Switch on **Tune gestures** to record open hand → gesture → open hand (three seconds each), preview suggested thresholds, and save them across all profiles.
+You can first choose **Set up my hand**: open hand → gentle fist with thumb outside → open hand. Keep fingers and thumb gently extended during the open-hand steps, wrist straight, and hand centered at a consistent camera distance.
+Tune only controls that need adjustment. Directions and wrist rolls are under **More adjustments**.
+For Glove Zap and Pull Back, return to your starting position and camera distance for the final recording.
+Optionally choose **Set up my hand** first: open hand → gentle fist with thumb outside → open hand.
 See [Tune gesture sensitivity](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity)
 for the numbered walkthrough. Tuning keeps controller delivery stopped; explicitly
 start it again from Dashboard when ready to play.
@@ -303,9 +304,10 @@ Camera imagery in these screenshots is blurred for privacy.
 
 ![Tune mode, with thresholds below the camera and recording controls alongside](images/tune-page.png)
 
-In Tune mode the matrix shows **T**; ordinary Learn practice shows **L**. The
+In Tune mode the matrix shows a scanning **T**; ordinary Learn practice shows
+a matching scanning **L**. The
 Activation and Release table sits below the camera. Use the instructions and
-recording buttons beside it to work through the seven recordings.
+recording buttons beside it to work through the three recordings.
 
 ![Games editor in the lower part of Setup](images/games-section.png)
 
@@ -586,3 +588,42 @@ other marks belong to their respective owners. No ROM images are distributed
 with this project. Third-party runtime components retain their own licenses and
 terms as documented in
 [THIRD_PARTY_COMPONENTS.md](THIRD_PARTY_COMPONENTS.md).
+
+### Build and install matrix firmware
+
+The verified sketch profile is `arduino:zephyr:unoq` with Arduino Zephyr platform
+**1.0.0**. Keep the complete pinned `sketch/sketch.yaml`; installing a newer
+platform by itself does not rebuild or flash PowerGlove. A compile-only check
+builds the sketch but does not change the running firmware.
+
+From the application directory on the UNO Q, validate the pinned configuration:
+
+```sh
+arduino-cli compile --profile default sketch
+```
+
+After a successful compile, use **Run** in App Lab to build and upload the sketch,
+or restart the app through App Lab's command-line tool:
+
+```sh
+arduino-app-cli app restart /home/arduino/ArduinoApps/powerglove-vision
+```
+
+The Wi-Fi deployment script updates Linux files and restarts containers; it does
+not flash the matrix sketch. Keep a backup before firmware updates. After upload,
+check Dashboard, ordinary Learn's scanning L, Tune's scanning T, and normal
+controller operation. Preserve the installed `data/` directory and verify that
+personal tuning and neutral calibration remain available.
+
+
+## Bad Street Brawler Glove Zap setup
+
+After installing the RetroPie receiver, run `powerglove-bsb-zap --check --rom`
+with the exact installed Bad Street Brawler ROM path. If the check requests a
+change, close RetroArch and repeat with `sudo` and `--apply`. The helper verifies
+that FCEUmm is installed and selected, backs up existing game options, and enables
+opposing directions only for this game. It is safe to repeat and does not install
+emulators. See [the commands, checks, and rollback instructions](CONFIGURATION_REFERENCE.md#repeatable-retropie-check-and-setup).
+The helper is included in new installations; that section also gives the paths
+for adding it to an existing installation. A successful check still requires
+live gameplay verification.

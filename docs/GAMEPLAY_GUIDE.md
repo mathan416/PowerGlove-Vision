@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
-</p>
-
 # Play with PowerGlove Vision
 
 This guide provides eight game-specific play cards and explains how to use
@@ -90,13 +86,15 @@ vitality runs out.
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Pulsed B move |
 | Curl middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | A+B force move |
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | A plus that direction |
-| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap auxiliary event |
+| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap: simultaneous Left + Right pulse |
 
 **Play smart:** The available force moves change with each stage. Test the
 thumb curl, middle-finger curl, and wrist rolls on the punching bag before
-leaving practice. The Glove
-Zap signal is preserved, but the current standard-gamepad integration cannot
-unlock the cartridge's native glove-only zap yet.
+leaving practice. Forward push now sends Glove Zap as a 180 ms Left + Right pulse.
+Return to your starting distance before another attempt. The game controls its
+once-per-round availability. FCEUmm must allow opposing directions for Bad Street
+Brawler; other games retain their existing setting. Menu poses and tracking loss
+cancel an active zap pulse. Verify the actual attack against an enemy in gameplay.
 
 **First round:**
 
@@ -394,16 +392,29 @@ you practise gestures but does not train or save a personal recognition model.
 
 ## Make the controls fit your hand
 
+Tuning is optional: adjust only controls that are difficult or trigger accidentally.
+The selector features hand setup, V-sign, thumbs-up, finger curls, Glove Zap, and
+Pull Back. Directions, wrist rolls, closed hand, and menu guard are under **More
+adjustments**. Try neutral calibration first if basic directions feel wrong.
+
+For **Glove Zap**, record starting position → push toward camera and hold → return
+to the starting position and distance. For **Pull Back**, record starting position
+→ pull away and hold → return to the starting position and distance. Keep your
+hand comfortably open and palm facing the camera. Each recording lasts three
+seconds. Forward push and pull-back have independent thresholds; hand setup does
+not calibrate them. For directions and wrist rolls, likewise return to your
+starting position, distance, and wrist orientation for the final recording.
+
 If a gesture needs too much movement or fires accidentally, open **Learn** and
-switch on **Tune gestures**. Record your relaxed hand, then three repetitions of
-the gesture and its release. Preview the suggested thresholds before choosing
+switch on **Tune gestures**. Record open hand → gesture → open hand, three seconds each. Keep your open hand comfortable, fingers and thumb gently extended, wrist straight, centered at a consistent distance. Optionally choose **Set up my hand** first and use a gentle fist with the thumb outside for the middle step. Live feedback identifies fingers that do not yet match the gesture. Preview the suggested thresholds before choosing
 **Save for all profiles**. Your games keep their button assignments; the selected
 gesture becomes easier or harder to activate everywhere it is used.
 
 ![Tune mode with a blurred camera view and editable thresholds](images/tune-page.png)
 
 The threshold table is below the camera; recording instructions are beside it.
-The matrix shows **T** during tuning, and controller delivery stays paused.
+The matrix shows a scanning **T** during tuning, matching Learn’s scanning **L**,
+and controller delivery stays paused.
 Camera imagery in this screenshot is blurred for privacy.
 
 For a different automatic profile, open **Setup → Games**, edit the exact ROM filename's
@@ -411,3 +422,28 @@ mapping, validate, and save. Restart the game to use the new mapping. The
 [configuration reference](CONFIGURATION_REFERENCE.md) explains both workflows.
 
 ![Games mappings in the lower section of Setup](images/games-section.png)
+
+### Check the result in a game
+
+Ordinary Learn includes twelve lessons, including **Glove Zap** (forward push)
+and **Pull Back** (away from the camera). Saved tuning values also drive actual
+controller recognition. Activation starts an action; the lower Release value
+keeps it active until you return far enough. This applies to finger controls,
+directions, wrist rolls, forward push, Pull Back, and movement-based braking.
+The selected game still decides button assignments, timed pulses, and toggles.
+
+You can tune one difficult gesture without hand setup. Fingers that stay extended
+throughout keep their existing thresholds; use hand setup if those boundaries
+need adjustment. Follow the live finger feedback, retry overlapping measurements,
+and try the preview before saving. **Discard / record again** clears unsaved
+work; **Restore defaults** resets the selected components, or all five fingers
+when hand setup is selected. Start controller delivery from Dashboard when ready.
+
+Automatic tuning also checks the complete recorded finger pose before offering
+values: at least 90% of clear samples must match together. If a required finger
+is too bent or not curled enough, the message identifies it and asks for a retry.
+V-sign requires both straight index/middle fingers and curled ring/pinky fingers;
+thumbs-up requires a straight thumb and four curled fingers. The thumb need not
+point to the top of the camera image. No strong finger can compensate for another
+finger failing its requirement. Hand setup can adjust comfortable extension
+thresholds; individual tuning preserves boundaries it did not measure.

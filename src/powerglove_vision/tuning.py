@@ -19,18 +19,20 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
+from .gesture import GestureConfig, MENU_FINGERS, finger_pose_feedback
+
 CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
             "roll_left", "roll_right", "push", "pull")
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
 GESTURES = {key: {key: True} for key in CHANNELS}
-GESTURES.update(start={"index": False, "middle": False, "ring": True, "pinky": True},
-                select={"thumb": False, "index": True, "middle": True, "ring": True, "pinky": True},
+GESTURES.update(**MENU_FINGERS, hand_setup={key: True for key in FINGERS},
                 closed_hand={key: True for key in FINGERS}, menu_guard={"thumb": True, "ring": True})
 LABELS = {key: key.replace("_", " ").capitalize() for key in GESTURES}
 LABELS.update({key: "Curl " + key + " finger" for key in FINGERS})
 LABELS["thumb"] = "Curl thumb"
+LABELS["hand_setup"] = "Set up my hand"
 LABELS.update(start="Start — V sign", select="Select — thumbs-up", closed_hand="Closed hand",
-              menu_guard="Menu guard — thumb and ring", push="Push toward camera", pull="Pull away from camera",
+              menu_guard="Menu guard — thumb and ring", push="Glove Zap — push toward camera", pull="Pull Back — away from camera",
               roll_left="Roll wrist left", roll_right="Roll wrist right")
 
 
@@ -68,16 +70,45 @@ def percentile(values, fraction):
     return ordered[min(len(ordered) - 1, int((len(ordered) - 1) * fraction))]
 
 
-def suggest(gesture: str, phases: list) -> dict:
-    """Separate rest noise from three consistent performed-and-released gestures."""
-    if len(phases) != 7 or any(len(phase) < 12 for phase in phases):
-        raise ValueError("Record the baseline and all three gesture-and-release repetitions.")
+def validate_recorded_pose(gesture: str, phases: list, config: GestureConfig) -> None:
+    """Require complete finger poses, allowing at most ten percent tracking noise."""
+    fingers = {key: closed for key, closed in GESTURES[gesture].items() if key in FINGERS}
+    if not fingers:
+        return
+    for index, phase in enumerate(phases):
+        requirements = fingers if index == 1 else dict.fromkeys(fingers, False)
+        label = ("first open-hand", "gesture", "final open-hand")[index]
+        feedback = [finger_pose_feedback(config, gesture, requirements, sample) for sample in phase]
+        minimum = math.ceil(len(phase) * .9)
+        for finger, closed in requirements.items():
+            matches = sum(frame[finger]["matches"] for frame in feedback)
+            if matches < minimum:
+                expected = "curled" if closed else "extended"
+                raise ValueError(
+                    f"Keep your {finger} {expected} during the {label} recording "
+                    f"({matches}/{len(phase)} measurements matched; at least 90% required). "
+                    "Record again. If comfortable extension is not recognized, try Set up my hand first.")
+        if sum(all(item["matches"] for item in frame.values()) for frame in feedback) < minimum:
+            raise ValueError(f"Hold all required fingers in position together during the {label} recording. "
+                             "At least 90% of measurements must match the complete pose. Record again.")
+
+
+def suggest(gesture: str, phases: list, config: GestureConfig | None = None) -> dict:
+    """Separate rest noise from one performed gesture and two open-hand recordings."""
+    if len(phases) != 3 or any(len(phase) < 12 for phase in phases):
+        raise ValueError("Record open hand, the gesture, and open hand again.")
+    required = GESTURES[gesture]
+    for phase in phases:
+        for sample in phase:
+            if any(not isinstance(sample.get(key), (int, float)) or isinstance(sample.get(key), bool)
+                   or not math.isfinite(sample[key]) for key in required):
+                raise ValueError("Missing or invalid finger measurements. Record all three steps again.")
     suggestion = {}
     for channel, positive in GESTURES[gesture].items():
         # Extended fingers in a menu pose often also remain extended at rest.
         # Keep their current thresholds rather than inventing an unsupported adjustment.
-        rest = [sample[channel] for i in (0, 2, 4, 6) for sample in phases[i]]
-        active = [[sample[channel] for sample in phases[i]] for i in (1, 3, 5)]
+        rest = [sample[channel] for i in (0, 2) for sample in phases[i]]
+        active = [[sample[channel] for sample in phases[i]] for i in (1,)]
         if not positive:
             continue
         low = max(0.0, percentile(rest, .95))
@@ -86,7 +117,11 @@ def suggest(gesture: str, phases: list) -> dict:
         if gap < .08:
             raise ValueError("The resting and performed measurements overlap for " + channel + ". Try a clearer movement and fully release it.")
         suggestion[channel] = {"on": round(low + gap * .65, 4), "off": round(low + gap * .30, 4)}
-    return validate_overrides(suggestion)
+    suggestion = validate_overrides(suggestion)
+    current = config if config is not None else GestureConfig()
+    candidate = replace(current, thresholds=dict(current.thresholds, **suggestion))
+    validate_recorded_pose(gesture, phases, candidate)
+    return suggestion
 
 
 class TuningManager:
@@ -114,9 +149,11 @@ class TuningManager:
         self.last_observed = -100.0
         self.ready = False
         self.effective = {}
+        self.base_config = GestureConfig()
         self.revision = 0
         self.last_frame = None
         self.calibration = None
+        self.finger_feedback = {}
 
     def _expire(self):
         """Discard temporary state when the browser lease ends."""
@@ -154,6 +191,9 @@ class TuningManager:
         with self.lock:
             self._expire()
             return {"active": bool(self.session), "gesture": self.gesture,
+                    "mode": "hand_setup" if self.gesture == "hand_setup" else "gesture",
+                    "total_phases": 3,
+                    "finger_feedback": copy.deepcopy(self.finger_feedback) if self.ready and self.clock() - self.last_observed < 2 else {},
                     "gestures": LABELS, "components": list(GESTURES[self.gesture]),
                     "saved": copy.deepcopy(self.saved), "effective": copy.deepcopy(self.effective),
                     "preview": copy.deepcopy(self.preview), "measurements": dict(self.latest),
@@ -167,15 +207,17 @@ class TuningManager:
         with self.lock:
             self.phases, self.recording, self.preview = [], None, None
             self.revision += 1
-            self.error = "Neutral calibration changed. Record a new baseline."
+            self.error = "Neutral calibration changed. Record your open hand again."
 
     def observe(self, observation, calibration, config, calibrated):
         """Sample each worker frame once, accepting only calibrated high-confidence hands."""
         with self.lock:
             self._expire()
             self.last_observed = self.clock()
+            self.base_config = replace(config, thresholds={})
             self.ready = calibrated and observation.detected and observation.confidence >= .7
             self.latest = measurements(observation, calibration)
+            self.finger_feedback = finger_pose_feedback(config, self.gesture, GESTURES[self.gesture], self.latest)
             self.effective = {key: dict(zip(("on", "off"), config.pair(key))) for key in CHANNELS}
             if self.calibration is not None and calibration != self.calibration and self.session:
                 self.invalidate()
@@ -223,14 +265,21 @@ class TuningManager:
                     raise ValueError("Choose a supported gesture.")
                 self.gesture, self.phases, self.recording, self.preview = gesture, [], None, None
                 self.error = None
+                self.finger_feedback = {}
                 self.revision += 1
             elif action == "record":
-                if self.recording or len(self.phases) >= 7:
+                if self.recording or len(self.phases) >= 3:
                     raise ValueError("Finish or restart this recording first.")
+                if not self.ready or self.clock() - self.last_observed >= 2:
+                    raise ValueError("Show your whole hand clearly and wait for tracking.")
+                self.preview = None
+                self.revision += 1
                 self.error = None
                 self.recording = (self.clock(), [])
             elif action == "suggest":
-                self.preview = suggest(self.gesture, self.phases)
+                self.preview = None
+                self.revision += 1
+                self.preview = suggest(self.gesture, self.phases, self.configuration(self.base_config))
                 self.revision += 1
             elif action in ("preview", "save"):
                 values = validate_overrides(data.get("thresholds"))
