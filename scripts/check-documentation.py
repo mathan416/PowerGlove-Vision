@@ -154,7 +154,8 @@ def main() -> int:
     errors: list[str] = []
     markdown = tracked_markdown()
     for path in markdown:
-        if path != Path("README.md") and path.parts[0] != "docs":
+        # Distribution-wide licensing notices stay beside the root LICENSE.
+        if path not in {Path("README.md"), Path("THIRD_PARTY_NOTICES.md")} and path.parts[0] != "docs":
             errors.append(f"project Markdown must be under docs/: {path}")
         for target in local_targets(path):
             if not (ROOT / target).exists():
