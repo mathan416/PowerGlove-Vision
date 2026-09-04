@@ -15,6 +15,8 @@ Live camera, gameplay, and physical matrix checks remain release requirements.
 
 ### Added
 
+  - Added a pulsing startup hourglass before Router Bridge initialization. A dedicated Arduino sketch display task keeps it moving while Linux is starting; ordinary app status then selects the glove, profile, or Academy display. The protected system boot display remains unchanged.
+
   - Renamed the Learn section to Glove Academy in navigation, the page heading, and current guides. Kept `/learn` links, lesson/tuning behaviour, and L/T matrix indicators unchanged.
 
   - Added startup stage timings for library imports, model preparation, camera initialization, and first inference.

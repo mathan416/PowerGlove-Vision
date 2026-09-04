@@ -15,6 +15,7 @@
 
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
+#include <zephyr/kernel.h>
 
 // App Lab starts this sketch after the UNO Q's protected system-boot display
 // has finished. The Python vision process then selects one of these states.
@@ -39,61 +40,20 @@ int drawnStatus = -1;
 int drawnProfile = -1;
 unsigned long nextFrameAt = 0;
 uint8_t animationFrame = 0;
+struct k_thread displayThread;
+k_thread_stack_t* displayStack = nullptr;
+k_tid_t displayThreadId = nullptr;
 
 // Original 8-bit artwork sized for the UNO Q's 8x13 blue matrix. Characters
 // encode brightness: '.' is off, '1' through '7' select exact grayscale
 // levels, 'o' is legacy dim, and 'O' is full brightness.
+// A distinct hourglass means startup/loading; the glove remains the idle display.
 const char* const loadingFrames[][8] = {
-  {
-    "..O.O.O.O....",
-    "..o.o.o.o....",
-    "..oooooooo...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..O.O.O.O....",
-    "..oooooooo...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..o.o.o.o....",
-    "..OOOOOOOO...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..o.o.o.o....",
-    "..oooooooo...",
-    "..OOOOOOO....",
-    "..OOOOOO.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..o.o.o.o....",
-    "..oooooooo...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...OOOO......",
-    "...OOOO......",
-    "...OOOO......",
-  },
+  {"...7777777...", "....7ooo7....", ".....7o7.....", "......7......", "......o......", ".....7.7.....", "....7...7....", "...7777777..."},
+  {"...7777777...", "....7ooo7....", ".....7o7.....", "......o......", "......7......", ".....7.7.....", "....7.o.7....", "...7777777..."},
+  {"...7777777...", "....7.o.7....", ".....7o7.....", "......o......", "......o......", ".....7o7.....", "....7ooo7....", "...7777777..."},
+  {"...5555555...", "....5...5....", ".....5.5.....", "......o......", "......7......", ".....5o5.....", "....5ooo5....", "...5555555..."},
+  {"...7777777...", "....7...7....", ".....7.7.....", "......7......", "......o......", ".....7o7.....", "....7ooo7....", "...7777777..."},
 };
 
 const char* const readyFrame[8] = {
@@ -395,11 +355,28 @@ void set_powerglove_profile(int profile) {
   requestedProfile = (profile >= 0 && profile <= 11) ? profile : 0;
 }
 
-// Initialize the matrix, register bridge endpoints, and show loading state.
+// Keep the display alive while Router Bridge initialization waits for Linux.
+// This task is the sole framebuffer writer after setup draws its first frame.
+void refreshMatrix();
+void displayTask(void*, void*, void*) {
+  while (true) {
+    refreshMatrix();
+    k_msleep(5);
+  }
+}
+
+// Initialize visible startup feedback before any blocking bridge calls.
 void setup() {
   matrix.begin();
   matrix.setGrayscaleBits(3);
-  matrix.clear();
+  drawRows(loadingFrames[0]);
+  displayStack = k_thread_stack_alloc(2048, 0);
+  if (displayStack != nullptr) {
+    displayThreadId = k_thread_create(&displayThread, displayStack, 2048,
+                                    displayTask, nullptr, nullptr, nullptr,
+                                    5, 0, K_NO_WAIT);
+    k_thread_name_set(displayThreadId, "powerglove-matrix");
+  }
 
   Bridge.begin();
   Bridge.provide("set_powerglove_status", set_powerglove_status);
@@ -408,7 +385,7 @@ void setup() {
 }
 
 // Refresh animations only when their frame or requested state changes.
-void loop() {
+void refreshMatrix() {
   const int status = requestedStatus;
   const int profile = requestedProfile;
   const unsigned long now = millis();
@@ -432,7 +409,7 @@ void loop() {
   if (status == PG_LOADING) {
     drawRows(loadingFrames[animationFrame]);
     animationFrame = (animationFrame + 1) % 5;
-    nextFrameAt = now + 115;
+    nextFrameAt = now + 220;
   } else if (status == PG_TRACKING) {
     if (profile == 0) {
       drawRows(trackingFrames[animationFrame]);
@@ -463,4 +440,12 @@ void loop() {
     animationFrame = (animationFrame + 1) % 8;
     nextFrameAt = now + 160;
   }
+}
+
+// Fall back to loop-driven animation if the optional display stack was unavailable.
+void loop() {
+  if (displayThreadId == nullptr) {
+    refreshMatrix();
+  }
+  delay(5);
 }

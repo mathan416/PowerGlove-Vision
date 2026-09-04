@@ -1233,3 +1233,22 @@ confirm its game-specific options are loaded, then test Glove Zap and normal
 movement. [RetroArch documents game options as complete option sets](https://docs.libretro.com/guides/overrides/),
 which is why the helper preserves the inherited settings instead of writing only
 one option.
+
+
+### Matrix startup hourglass
+
+After the system boot display, the Arduino sketch draws a pulsing hourglass
+before connecting to Router Bridge. Its display task runs independently of the
+bridge connection and Python imports, so a slow app startup does not leave the
+matrix blank once the sketch is running. Loading uses five frames, 220 ms each.
+The supervisor requests loading before importing the web controls; its normal
+status updates then select the glove attract animation, profile, or Academy mode.
+This is an activity indicator, not a percentage or a guarantee of successful
+startup. If the app never connects, the hourglass continues.
+
+The earlier protected boot display and any interval before the sketch starts
+belong to the board's system software. This change does not replace those. The
+display task uses the current Arduino sketch platform's thread API; if its stack
+cannot be allocated, the initial hourglass remains visible and ordinary loop
+animation resumes after bridge initialization. Verify a cold boot on the physical
+matrix, especially the transition from the system display to the hourglass.

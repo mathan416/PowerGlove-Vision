@@ -335,3 +335,20 @@ samples; calibration changes; preview expiry; persistence; and reset. Confirm
 that feedback agrees with recognition and output remains paused throughout
 Glove Academy/Tune. Complete live camera and gameplay tests before describing a reduced
 recording count as validated for other users.
+
+
+### Matrix during startup
+
+The Arduino sketch shows an hourglass before its blocking Router Bridge setup.
+A dedicated display task owns subsequent framebuffer writes and keeps startup
+feedback moving independently of Linux and Python initialization. The main
+sketch task registers the bridge endpoints; those endpoints update requested
+status/profile values, and the display task renders them. If the display-task
+stack allocation fails, the first hourglass stays visible during setup and the
+normal sketch loop takes over rendering afterward. This task currently uses the
+Zephyr API supplied by the Arduino sketch platform.
+
+Python requests loading before importing the web controls, then forwards normal
+worker status. The hourglass indicates activity, not measured completion. It
+cannot cover time before the sketch runs or replace the protected system boot
+display. Cold-boot appearance and transitions require a physical matrix check.
