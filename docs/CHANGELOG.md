@@ -15,7 +15,9 @@ Live camera, gameplay, and physical matrix checks remain release requirements.
 
 ### Added
 
-  - Added a Matrix display guide in Help and PDF form, covering every display state, profile letters, pairing sequences, troubleshooting, and a plan for future photo examples.
+  - Added an optional permanent UNO Q early-start helper after a successful physical cold-boot trial. It releases the installed sketch earlier on each boot while preserving the system boot display and existing hourglass animation.
+
+  - Added a Matrix display guide in Help and PDF form, covering every display state, profile letters, pairing sequences, troubleshooting, and photographs of the physical display.
 
   - Added a pulsing startup hourglass before Router Bridge initialization. A dedicated Arduino sketch display task keeps it moving while Linux is starting; ordinary app status then selects the glove, profile, or Academy display. The protected system boot display remains unchanged.
 

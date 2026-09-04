@@ -1,0 +1,71 @@
+{
+  "note": "Original decoded pixels cropped without resizing, enhancement or rotation. Coordinates are left, top, right, bottom in original JPEG pixels. PNG avoids further JPEG loss.",
+  "crops": {
+    "A": [
+      930,
+      994,
+      1788,
+      1510
+    ],
+    "Glove": [
+      1013,
+      1219,
+      2022,
+      1810
+    ],
+    "L": [
+      1013,
+      1160,
+      1987,
+      1742
+    ],
+    "T": [
+      1089,
+      1190,
+      2100,
+      1800
+    ],
+    "Heart": [
+      876,
+      1004,
+      1770,
+      1550
+    ],
+    "Hourglass": [
+      945,
+      1076,
+      1848,
+      1640
+    ],
+    "X": [
+      911,
+      955,
+      1730,
+      1453
+    ],
+    "Boot": [
+      849,
+      1001,
+      1738,
+      1535
+    ],
+    "Blank": [
+      973,
+      999,
+      1839,
+      1508
+    ],
+    "GB": [
+      789,
+      867,
+      1539,
+      1307
+    ],
+    "BS": [
+      900,
+      920,
+      1738,
+      1413
+    ]
+  }
+}

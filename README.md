@@ -171,12 +171,9 @@ illustrations; the [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) adds objectives and 
 | Roll your wrist left or right | A plus that direction |
 | Push toward the camera | Glove Zap: short simultaneous Left + Right pulse |
 
-Glove Zap uses the cartridge's simultaneous Left + Right command. The Bad Street
-Brawler profile emits a 180 ms pulse per forward push; release before trying again.
-FCEUmm must allow opposing directions for this game only. See the
-[configuration reference](docs/CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
-The extra `BTN_TR2` signal remains available, but needs no RetroArch assignment
-for this action.
+Push toward the camera for Glove Zap, then return to your starting distance
+before trying again. Bad Street Brawler needs its game-specific emulator setting;
+see the [configuration reference](docs/CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
 
 ### Super Glove Ball
 
@@ -198,12 +195,9 @@ finger measurements for future native-glove support.
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
-The application preloads OpenCV and MediaPipe in the background while the
-website is available. This prepares gesture tracking without opening the
-camera. With **Gestures off** selected, capture starts only when you choose an
-active profile or open Glove Academy. If preloading is still underway, activation waits
-for it to finish. See the [startup details](docs/CONFIGURATION_REFERENCE.md#vision-startup-and-timing)
-for measured results and troubleshooting.
+With **Gestures off** selected, the camera stays closed. Choose an active profile
+or open Glove Academy to begin. Wait for the camera view before practicing or
+playing; starting immediately after a reboot can take longer.
 
 **Stop controller** pauses delivery while leaving active tracking available.
 **Gestures off** closes the camera. **Shutdown** requests a Linux halt, but

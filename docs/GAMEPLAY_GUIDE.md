@@ -11,11 +11,8 @@ If the system is not installed yet, start with the [Installation Guide](INSTALL_
 
 Select a profile on Dashboard, or open Glove Academy for practice. If you see
 **Starting camera and gesture tracking**, wait for the camera view to appear.
-The app prepares its tracking software in the background after startup, keeping
-the camera off until needed. If you begin straight after boot, you may wait for
-that preparation to finish. The elapsed-time display covers the remaining
-preparation, camera startup, and tracking initialization. **Calibrate** becomes
-available when vision is active.
+Starting straight after a reboot can take longer. Wait until the camera view
+appears and **Calibrate** becomes available before continuing.
 
   1. Stand where the camera can see your whole hand with a little room on every side.
   2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
@@ -24,6 +21,15 @@ available when vision is active.
   5. Make one gesture at a time. Clean poses beat frantic motion.
 
 <img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
+
+### Check the selected game
+
+| Matrix code | See it | Selected game |
+| --- | --- | --- |
+| **BS** | <img src="images/matrix/BS.png" alt="BS matrix display" width="104"> | Bad Street Brawler |
+| **GB** | <img src="images/matrix/GB.png" alt="GB matrix display" width="104"> | Super Glove Ball |
+
+Confirm the profile on Dashboard and select **Start controller** when ready.
 
 ### The two gestures that work everywhere
 
@@ -86,15 +92,14 @@ vitality runs out.
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Pulsed B move |
 | Curl middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | A+B force move |
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | A plus that direction |
-| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap: simultaneous Left + Right pulse |
+| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap |
 
 **Play smart:** The available force moves change with each stage. Test the
 thumb curl, middle-finger curl, and wrist rolls on the punching bag before
-leaving practice. Forward push now sends Glove Zap as a 180 ms Left + Right pulse.
-Return to your starting distance before another attempt. The game controls its
-once-per-round availability. FCEUmm must allow opposing directions for Bad Street
-Brawler; other games retain their existing setting. Menu poses and tracking loss
-cancel an active zap pulse. Verify the actual attack against an enemy in gameplay.
+leaving practice. Push toward the camera to trigger Glove Zap, then return to
+your starting distance before another attempt. The game controls its
+once-per-round availability. If Zap does not work, check the
+[game-specific setup](CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
 
 **First round:**
 
@@ -416,6 +421,13 @@ The threshold table is below the camera; recording instructions are beside it.
 The matrix shows a scanning **T** during tuning, matching Glove Academy’s scanning **L**,
 and controller delivery stays paused.
 Camera imagery in this screenshot is blurred for privacy.
+
+| Mode | See it | Controller output |
+| --- | --- | --- |
+| Glove Academy lessons | <img src="images/matrix/L.png" alt="L matrix display" width="104"> | Paused while you practice |
+| Tune gestures | <img src="images/matrix/T.png" alt="T matrix display" width="104"> | Paused while you record or preview thresholds |
+
+See the [Matrix display guide](MATRIX_GUIDE.md) for all startup and profile displays.
 
 For a different automatic profile, open **Setup → Games**, edit the exact ROM filename's
 mapping, validate, and save. Restart the game to use the new mapping. The

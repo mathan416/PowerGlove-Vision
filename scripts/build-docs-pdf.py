@@ -173,6 +173,11 @@ def parse_table(
         widths = [1.4 * inch, 2.6 * inch, 2.6 * inch]
     elif source.name == "ARCHITECTURE.md" and columns == 4:
         widths = [1.2 * inch, 1.8 * inch, 1.8 * inch, 1.8 * inch]
+    if "See it" in rows[0] and any("images/matrix/" in cell for row in rows for cell in row):
+        if columns == 3:
+            widths = [1.85 * inch, 1.05 * inch, 3.7 * inch]
+        elif columns == 4:
+            widths = [1.4 * inch, 1.0 * inch, 2.1 * inch, 2.1 * inch]
     table = Table(formatted, colWidths=widths, repeatRows=1, hAlign="LEFT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), NIGHT),

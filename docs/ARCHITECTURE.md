@@ -350,5 +350,9 @@ Zephyr API supplied by the Arduino sketch platform.
 
 Python requests loading before importing the web controls, then forwards normal
 worker status. The hourglass indicates activity, not measured completion. It
-cannot cover time before the sketch runs or replace the protected system boot
-display. Cold-boot appearance and transitions require a physical matrix check.
+does not replace the protected system boot display. The optional host user
+service `powerglove-early-start.service` releases the installed sketch earlier
+using the loader release flag, after checking the selected app and sketch
+samples. It never resets, halts, or flashes the sketch. This brings the existing
+hourglass forward while App Lab continues starting. Failure falls back to normal
+App Lab startup; the cold-boot trial was confirmed on the physical board.

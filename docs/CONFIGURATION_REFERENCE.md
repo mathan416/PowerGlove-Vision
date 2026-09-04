@@ -1252,3 +1252,53 @@ display task uses the current Arduino sketch platform's thread API; if its stack
 cannot be allocated, the initial hourglass remains visible and ordinary loop
 animation resumes after bridge initialization. Verify a cold boot on the physical
 matrix, especially the transition from the system display to the hourglass.
+
+
+### Optional early-start host helper
+
+The helper runs on every boot as the Arduino user, separately from App Lab.
+It reduces the blank interval after the system animation by releasing the
+installed sketch early. It preserves the existing hourglass and uses no reset,
+halt, flash, or replacement of Arduino system services. The one-boot trial was
+confirmed on the physical board before enabling repeated startup.
+
+Install `scripts/uno-q-early-start.py` at
+`~/.local/lib/powerglove/uno-q-early-start.py` and
+`uno-q/powerglove-early-start.service` at
+`~/.config/systemd/user/powerglove-early-start.service`. The Arduino user must
+have lingering enabled. Run `systemctl --user daemon-reload` and
+`systemctl --user enable powerglove-early-start.service`. Disable the old
+`powerglove-early-start-trial.service` if present. No armed marker is required.
+
+The service waits up to 30 seconds for the router and permits 20 seconds for the
+debug check and release. It verifies the UNO Q, PowerGlove startup app, Wait for
+App image header, and four 64-byte code samples. This is not a full integrity
+check. If the image is unavailable or differs, or the debug pins are busy, it
+fails without releasing the sketch; normal App Lab startup continues. App Lab
+may subsequently reset the sketch during its ordinary upload.
+
+Inspect `journalctl --user -b -u powerglove-early-start.service`; disable with
+`systemctl --user disable powerglove-early-start.service`. Review compatibility
+after platform updates: the tested loader is Arduino platform 1.0.0 with App Lab
+0.13.0. Full installation and removal details are in
+[Early sketch startup](EARLY_START.md).
+
+
+### Matrix animation timing reference
+
+These implementation details support maintenance and physical display checks.
+For display meanings and user actions, use the [Matrix display guide](MATRIX_GUIDE.md).
+
+| Display | Timing and implementation |
+| --- | --- |
+| Startup hourglass | Five frames, 220 ms per frame; repeats while loading |
+| Academy L / tuning T | Eight scan frames, 160 ms per frame, with trailing glow |
+| Tracked profile | Alternates bright and dim every 360 ms |
+| Error X | Alternates X and blank every 420 ms |
+| Pairing | Nine steps of about 650 ms; ID, seven hexadecimal characters in groups of two with one final character, PN, then three digit pairs |
+
+The idle glove sequence draws an energy streak, brings the cuff and glove into
+view, curls and reopens the fingers, moves a spark along the glove, then pulses
+and pauses before repeating. Pairing temporarily takes display priority, normally
+for two minutes; a shutdown/off request can clear it sooner. Status precedence
+can keep a mode letter or idle animation visible instead of X.

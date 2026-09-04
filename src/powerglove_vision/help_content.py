@@ -29,6 +29,7 @@ DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
+    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Install, inspect, and remove the optional UNO Q startup helper.", "group": "Maintain the project"},
     {"slug": "matrix", "title": "Matrix display guide", "file": "MATRIX_GUIDE.md", "description": "Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.", "group": "Use PowerGlove Vision"},
     {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Maintain the project"},
     {

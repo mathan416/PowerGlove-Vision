@@ -219,17 +219,23 @@ sudo python3 scripts/setup-machine.py uno-q --check
 
 ## Read the matrix and open the web pages
 
-| Display | Meaning |
-| --- | --- |
-| Animated hand | The app or vision runtime is loading. |
-| Animated glove | Gestures are off. |
-| Scanning `L` | Glove Academy practice is active. |
-| Scanning `T` | Tune gestures is active, with the same scan and trailing glow as Glove Academy. |
-| `A`–`I`, `BS`, or `GB` | The corresponding profile is active. |
-| Pulsing profile code | A calibrated hand is being tracked. |
-| Blinking X | The camera or vision runtime needs attention. |
+| Display | See it | Meaning |
+| --- | --- | --- |
+| Arduino boot logo | <img src="images/matrix/Boot.png" alt="Boot matrix display" width="104"> | System startup, before the app display. |
+| System heart | <img src="images/matrix/Heart.png" alt="Heart matrix display" width="104"> | System startup is progressing. |
+| Pulsing hourglass | <img src="images/matrix/Hourglass.png" alt="Hourglass matrix display" width="104"> | PowerGlove Vision is starting. |
+| Animated glove | <img src="images/matrix/Glove.png" alt="Glove matrix display" width="104"> | Gestures are off. |
+| Scanning `L` | <img src="images/matrix/L.png" alt="L matrix display" width="104"> | Glove Academy practice is active; controller output is paused. |
+| Scanning `T` | <img src="images/matrix/T.png" alt="T matrix display" width="104"> | Tune gestures is active; controller output is paused. |
+| `A`–`I` | <img src="images/matrix/A.png" alt="A matrix display" width="104"> | The corresponding profile is selected; Program A is shown. |
+| `BS` | <img src="images/matrix/BS.png" alt="BS matrix display" width="104"> | Bad Street Brawler is selected. |
+| `GB` | <img src="images/matrix/GB.png" alt="GB matrix display" width="104"> | Super Glove Ball is selected. |
+| Blank matrix | <img src="images/matrix/Blank.png" alt="Blank matrix display" width="104"> | No LEDs are illuminated. Check board power and Dashboard; blank does not confirm shutdown. |
+| Pulsing profile code | <img src="images/matrix/A.png" alt="A matrix display" width="104"> | A calibrated hand is being tracked. Confirm controller output separately. |
+| Blinking X | <img src="images/matrix/X.png" alt="X matrix display" width="104"> | The app has requested an error display. Check Dashboard for the cause. |
 
-An animation does not prove that Linux is running or that shutdown has finished.
+See the [Matrix display guide](MATRIX_GUIDE.md) for the complete animations and
+startup sequence. An animation does not prove that shutdown has finished.
 
 | Page | Address |
 | --- | --- |
@@ -266,17 +272,13 @@ and the dashboard keep running so setup never generates surprise game inputs.
 
 ### Glove Academy before you launch
 
-Dashboard and Glove Academy show **Starting camera and gesture tracking** with elapsed
-seconds during initialization. OpenCV and MediaPipe preload in the background
-when the application starts. The website remains available, and preloading
-does not open the camera or process images. An early activation waits for any
-remaining preload work, then opens the camera and creates the tracker.
+Dashboard and Glove Academy show **Starting camera and gesture tracking** while
+the camera gets ready. Wait for the camera view and the centring button to become
+available before continuing.
 
-Wait for vision to become active before centring; the centring button is
-disabled during startup. **Gestures off** keeps the camera closed, including
-at boot. Choosing an active startup profile or opening Glove Academy requests capture.
-Switching between active profiles reuses the camera and tracker. Turning
-gestures off releases them but retains the loaded libraries for the next use.
+**Gestures off** keeps the camera closed. Choose an active profile or open Glove
+Academy to use it. Starting immediately after a reboot can take longer than
+switching between profiles once the app is ready.
 
 Open `http://UNO-Q-NAME.local:8088/learn`. Glove Academy mode automatically stops
 controller transmission, starts the camera when necessary, and guides you
@@ -447,14 +449,9 @@ adapters. The app itself waits for a camera and should recover when it appears.
 
 ### First installation takes several minutes
 
-On its first launch, the UNO Q prepares its private Python 3.12 runtime and
-installs vision dependencies, downloading missing components as needed. Keep
-internet access available and watch the App Lab log for progress. Later launches
-reuse the persistent cache.
-
-This one-time setup is separate from background library preloading on each
-worker start and from camera activation. The bundled hand model is verified
-and installed locally; normal startup does not download it again.
+The first launch downloads and prepares the software it needs. Keep the UNO Q
+connected to the internet and watch App Lab for progress. Later launches reuse
+the installed software and normally start faster.
 
 ### Setup page does not open
 
@@ -465,10 +462,8 @@ and installed locally; normal startup does not download it again.
 
 ### Camera is slow to start or missing after reboot
 
-The startup timer covers vision initialization, not just the camera. With
-background preloading complete, the first activation after a tested reboot
-took 1.21 seconds. This is an observed result, not a guaranteed delay. Starting
-gestures before preloading finishes can take longer.
+The startup timer includes preparation as well as opening the camera. Allow more
+time just after a reboot and wait for the camera view before calibrating.
 
 If the app reports that the camera is unavailable, run these commands on the UNO Q:
 
