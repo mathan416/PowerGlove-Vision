@@ -442,8 +442,17 @@ The camera overlay's **Right** or **Left** label identifies the hand; its score
 is confidence in that identification, not confidence in a movement command.
 
 Keep one PowerGlove Vision installation active in App Lab and set it as the
-default startup app. The website starts before the camera is ready. Controller
-transmission starts stopped, so select **Start controller** when ready to play.
+default startup app. OpenCV and MediaPipe preload in the background while the
+website is available. **Gestures off** keeps the camera closed; select an active
+profile or open Learn to begin capture. An early request waits for preloading
+to finish. Controller transmission starts stopped, so select **Start controller**
+when ready to play.
+
+With preloading complete, the first activation after a tested reboot took
+1.21 seconds; actual times vary. For a slow start, inspect the
+[startup stage logs](CONFIGURATION_REFERENCE.md#vision-startup-and-timing).
+If the camera disappears after reboot, check `lsusb` and `/dev/v4l/by-id/` on
+the UNO Q and reconnect the camera or hub if it is missing.
 
 ## Known limitation: UNO Q restarts after Shutdown
 

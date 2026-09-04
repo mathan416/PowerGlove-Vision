@@ -269,10 +269,16 @@ and the dashboard keep running so setup never generates surprise game inputs.
 ### Learn before you launch
 
 Dashboard and Learn show **Starting camera and gesture tracking** with elapsed
-seconds during initialization. The first activation can take longer while the
-camera and tracker load. Wait for vision to become active before centring;
-the centring button is disabled during startup. Gestures off keeps the camera
-off rather than briefly activating it at boot.
+seconds during initialization. OpenCV and MediaPipe preload in the background
+when the application starts. The website remains available, and preloading
+does not open the camera or process images. An early activation waits for any
+remaining preload work, then opens the camera and creates the tracker.
+
+Wait for vision to become active before centring; the centring button is
+disabled during startup. **Gestures off** keeps the camera closed, including
+at boot. Choosing an active startup profile or opening Learn requests capture.
+Switching between active profiles reuses the camera and tracker. Turning
+gestures off releases them but retains the loaded libraries for the next use.
 
 Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
 controller transmission, starts the camera when necessary, and guides you
@@ -437,11 +443,16 @@ This usually indicates USB enumeration or power trouble. Keep the powered hub
 energized before starting the UNO Q, try another cable, and avoid passive
 adapters. The app itself waits for a camera and should recover when it appears.
 
-### First start takes several minutes
+### First installation takes several minutes
 
-A slow first start is expected because the UNO Q must download its private
-Python 3.12 runtime and vision libraries. Later launches reuse the persistent cache. Keep internet access
-available and watch the App Lab log for progress.
+On its first launch, the UNO Q prepares its private Python 3.12 runtime and
+installs vision dependencies, downloading missing components as needed. Keep
+internet access available and watch the App Lab log for progress. Later launches
+reuse the persistent cache.
+
+This one-time setup is separate from background library preloading on each
+worker start and from camera activation. The bundled hand model is verified
+and installed locally; normal startup does not download it again.
 
 ### Setup page does not open
 
@@ -449,6 +460,27 @@ available and watch the App Lab log for progress.
   - Secure pairing: `https://UNO-Q-NAME.local:8443/setup`
   - Try the board's IP address if `.local` does not resolve.
   - HTTPS and HTTP are not interchangeable on these ports.
+
+### Camera is slow to start or missing after reboot
+
+The startup timer covers vision initialization, not just the camera. With
+background preloading complete, the first activation after a tested reboot
+took 1.21 seconds. This is an observed result, not a guaranteed delay. Starting
+gestures before preloading finishes can take longer.
+
+If the app reports that the camera is unavailable, run these commands on the UNO Q:
+
+```sh
+lsusb
+ls -l /dev/v4l/by-id/
+```
+
+Look for your camera in both outputs. If it is absent from the USB list, check
+its cable and hub connection, then disconnect and reconnect it. Waiting for
+MediaPipe will not fix a camera that the operating system cannot detect.
+Keep Camera set to `auto` unless you intentionally selected a particular device.
+For stage timings and further checks, see
+[Vision startup and timing](CONFIGURATION_REFERENCE.md#vision-startup-and-timing).
 
 ### Password pairing fails
 

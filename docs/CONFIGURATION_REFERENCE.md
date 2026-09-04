@@ -85,12 +85,62 @@ The Dashboard profile selector changes only the current active profile. It does
 not rewrite `device.json` or change the Setup page's startup profile. RetroPie
 may replace a Dashboard selection when a game starts or ends.
 
-The first time you activate a profile, the app opens the camera and loads the
-gesture tracker. This can take longer than subsequent profile changes. Dashboard and
-Learn show **Starting camera and gesture tracking** with elapsed time until
-vision is active. The **Calibrate** button is disabled until initialization finishes. If
-**Gestures off** is selected at startup, the camera stays closed until you
-select an active profile or open Learn.
+### Vision startup and timing
+
+The worker preloads OpenCV and MediaPipe on its background vision thread as
+soon as its control server is available. Preloading imports the libraries;
+it does not open the camera, create a hand tracker, or process images. The
+website and profile controls remain responsive while imports run. A failed
+preload is logged; a later activation retries loading and reports any error.
+
+If **Gestures off** is selected at startup, the camera stays closed until you
+select an active profile or open Learn. An active startup profile requests
+capture automatically after preloading. Controller delivery still starts stopped.
+
+Activation waits for any unfinished preload, verifies the saved model, opens
+and configures the camera, waits for a usable frame, and creates the tracker.
+Dashboard and Learn show **Starting camera and gesture tracking** until vision
+is active. The elapsed time covers startup work, not only the physical camera.
+**Calibrate** stays disabled until initialization finishes.
+
+Switching between active profiles reuses the camera and tracker. **Gestures off**
+releases both, while imported libraries remain in memory. An application restart,
+including a worker restart after saving Setup settings, starts preloading again.
+
+<!-- PAGEBREAK -->
+
+Measurements on the cabinet's UNO Q with a Razer Kiyo Pro on September 4, 2026:
+
+| Measurement | Observed time |
+| --- | --- |
+| First activation after reboot, before background preloading | 7.67 seconds |
+| OpenCV background preload after a later reboot | 0.94 seconds |
+| MediaPipe background preload after that reboot | 5.94 seconds |
+| First activation after that preload completed | 1.21 seconds |
+
+These were separate reboot tests on this cabinet, not guaranteed timings. The
+change moves library loading earlier; it does not eliminate that work. Selecting
+a profile immediately after application startup can still wait for preloading.
+An earlier reported 13-14 second delay was not reproduced in the instrumented tests.
+
+To inspect startup stages on the UNO Q:
+
+```sh
+docker logs --since 10m powerglove-vision-main-1 2>&1 | grep 'Vision startup:'
+```
+
+The default installation uses this container name; use `docker ps` to find it
+if your App Lab installation uses another name. Logs include background import
+times, model verification/recovery, camera discovery/open/settings, the first
+camera frame, tracker construction, first inference, and time to active worker
+status. Preparation and activation totals include earlier stages; do not add
+them to the individual durations. Dashboard polling adds a small delay before
+it displays the new status. Compare entries from the same activation.
+
+If the camera is unavailable, check `lsusb` and `/dev/v4l/by-id/` on the UNO Q.
+The built-in `qcom-venus-encoder` and `qcom-venus-decoder` video nodes are not
+webcams. A camera missing from the USB device list needs its connection checked;
+preloading cannot resolve that condition.
 
 ### Learn, calibration, and live readings
 
@@ -697,7 +747,8 @@ not automatically migrate active configuration.
 | Game launches slowly while UNO Q is offline | Confirm `timeout` remains near `0.4`; the hook retries but must never block game launch indefinitely. |
 | Profile command is not acknowledged | Check the UNO Q name, UDP `55356`, pairing token, and the UNO Q application status. |
 | Gestures off shows a blinking X | Update PowerGlove Vision; Gestures off should show the glove attract animation and must not open the camera. |
-| Camera disappears after reboot | Return Camera to `auto`, check powered-hub and cable stability, and inspect the UNO Q dashboard error. |
+| Camera disappears after reboot | Check `lsusb` and `/dev/v4l/by-id/`, reconnect the camera or hub if absent, and keep Camera set to `auto` unless selecting a specific device. See [startup diagnostics](#vision-startup-and-timing). |
+| First activation is slow | Allow background preloading to finish and inspect the startup stage logs before attributing the delay to the camera. |
 | Movement triggers too late | Center again first; if repeatable, lower `move_on` slightly for the active profile. |
 | Direction remains stuck | Raise `move_off` slightly, keep it below `move_on`, and verify tracking-loss release. |
 | Pairing suddenly fails after a Setup change | A rotated token invalidates the old pairing; run the pairing flow again. |
