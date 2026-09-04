@@ -46,7 +46,7 @@ The main protected assets are:
   - the privileged `/dev/uinput` receiver;
   - the physical pairing display and single-use PIN;
   - the fixed-purpose UNO Q shutdown helper;
-  - the integrity of the App Lab installation ZIP, MediaPipe wheel, downloaded model, and Arduino dependencies.
+  - the integrity of the App Lab installation ZIP, MediaPipe wheel, bundled or downloaded model, and Arduino dependencies.
 
 The project does not attempt to protect a device after an attacker obtains root
 access, physical storage access, or control of the trusted local network and
@@ -143,7 +143,7 @@ shutdown is not wanted.
 
   - The App Lab installation ZIP is generated and verified; it is not maintained as a changing source-controlled binary.
   - The custom MediaPipe wheel's provenance and checksum are recorded in `THIRD_PARTY_COMPONENTS.md`.
-  - Google's Hand Landmarker model downloads from its pinned source and must match the expected SHA-256 digest before atomic installation.
+  - Google's Hand Landmarker model is installed from the bundled copy, with its pinned download as a fallback only when that copy is absent. Both paths must match the expected SHA-256 digest before atomic installation; the package verifier also checks the bundled model and license text.
   - Arduino library versions are pinned in `sketch/sketch.yaml`.
   - GitHub Actions rebuilds and inspects documentation and the App Lab installation ZIP on every pull request and push to `main` or `dev`.
 

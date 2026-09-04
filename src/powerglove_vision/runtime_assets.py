@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import tempfile
 import urllib.request
 from pathlib import Path
@@ -24,6 +25,7 @@ HAND_LANDMARKER_URL = (
     "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
     "hand_landmarker/float16/1/hand_landmarker.task"
 )
+BUNDLED_HAND_LANDMARKER = Path(__file__).resolve().parents[2] / "models" / "hand_landmarker.task"
 HAND_LANDMARKER_SHA256 = "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1"
 
 
@@ -41,8 +43,9 @@ def ensure_hand_landmarker_model(
     url: str = HAND_LANDMARKER_URL,
     expected_sha256: str = HAND_LANDMARKER_SHA256,
     opener: Optional[Callable] = None,
+    bundled_path: Optional[Path] = None,
 ) -> Path:
-    """Return a verified cached model, downloading it atomically when absent."""
+    """Reuse cache, then install the bundled model; download only if absent."""
     destination = Path(data_directory) / "models" / "hand_landmarker.task"
     if destination.is_file() and sha256_file(destination) == expected_sha256:
         return destination
@@ -54,12 +57,14 @@ def ensure_hand_landmarker_model(
     temporary = Path(temporary_name)
     open_url = opener or urllib.request.urlopen
     try:
-        with os.fdopen(descriptor, "wb") as output, open_url(url, timeout=60) as response:
-            while True:
-                block = response.read(1024 * 1024)
-                if not block:
-                    break
-                output.write(block)
+        bundle = Path(bundled_path) if bundled_path is not None else BUNDLED_HAND_LANDMARKER
+        with os.fdopen(descriptor, "wb") as output:
+            if bundle.is_file():
+                with bundle.open("rb") as source:
+                    shutil.copyfileobj(source, output, 1024 * 1024)
+            else:
+                with open_url(url, timeout=60) as response:
+                    shutil.copyfileobj(response, output, 1024 * 1024)
         actual_sha256 = sha256_file(temporary)
         if actual_sha256 != expected_sha256:
             raise RuntimeError(

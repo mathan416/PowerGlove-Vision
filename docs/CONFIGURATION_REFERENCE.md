@@ -635,24 +635,23 @@ several complete loops is the preferred review artifact for later refinements.
 | `sketch/sketch.yaml` | UNO Q sketch platform and pinned Arduino library dependencies |
 | `pyproject.toml` | Python package metadata, supported interpreter range, and optional dependencies |
 | `python/worker-wheels/` | Platform-specific MediaPipe worker dependency supplied by the App Lab installation ZIP |
-| `data/models/hand_landmarker.task` | Checksum-verified model downloaded when vision is first activated |
+| `data/models/hand_landmarker.task` | Checksum-verified cached model, installed from the bundle when vision is first activated |
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
 | `data/.shutdown-enabled` | Readiness marker installed by the fixed-purpose shutdown helper included in standard setup |
 | `output/pdf/` | Generated PDF editions; public editions are served by Help, while the cabinet quick reference remains private |
 
 Changing manifests can prevent App Lab from starting the application. Generated
-files and downloaded runtime assets should not be committed or added to an App
+files and private runtime caches should not be committed or added to an App
 Lab installation ZIP. The installation ZIP is built as:
 
 ```text
 output/app-lab/PowerGlove-Vision-Uno-Q.zip
 ```
 
-The installation ZIP intentionally excludes private `data/`, downloaded models,
+The installation ZIP includes the verified model at `models/hand_landmarker.task`, its Apache 2.0 license, and third-party notices. It excludes private `data/`,
 caches, tests, Git metadata, and the cabinet-specific quick-reference PDF. It
-includes only the nine allowlisted public PDF editions used by Help. When an active profile first needs vision, the application downloads the
-pinned Google Hand Landmarker model and verifies its SHA-256 checksum.
+includes only the nine allowlisted public PDF editions used by Help. When an active profile first needs vision, the application installs the bundled Google Hand Landmarker model into its private cache and verifies its SHA-256 checksum. A download is attempted only if the bundle is absent.
 The model stays unopened while **Gestures off** is selected.
 
 ### Automated quality and package verification
@@ -683,7 +682,7 @@ Back up custom configuration before replacing an installation:
 
 Store token-bearing backups privately with restricted permissions. The supplied
 Wi-Fi deployment script preserves the UNO Q `data/` directory. The App Lab
-installation ZIP never contains your token or downloaded model.
+installation ZIP never contains your token or private model cache; it includes the unmodified public model.
 
 After an update, confirm that the active files under `/etc/powerglove/` still
 contain your local hostnames and ROM names. Updating repository templates does
@@ -925,7 +924,7 @@ before using it. Normal UNO Q use should start through App Lab instead.
 | `--glove-color VALUE` | `none` | `none`, `white`, or `black`; an informational label, not a different recognition model. |
 | `--no-mirror` | Off | Disables horizontal image mirroring. |
 | `--config PATH` | Project `config/profiles.json`, if present | Alternative gesture-threshold file. Otherwise built-in defaults are used. |
-| `--model PATH` | Default downloaded model | Alternative MediaPipe model. The standard `hand_landmarker.task` filename uses the verified model workflow. |
+| `--model PATH` | Default verified model | Alternative MediaPipe model. The standard `hand_landmarker.task` filename uses the verified model workflow. |
 | `--web-host ADDRESS` | `0.0.0.0` | Address for the worker's diagnostic web server. |
 | `--web-port NUMBER` | `8088` | Worker diagnostic port. App Lab overrides this to `8089` on loopback behind its main web server. |
 | `--no-matrix` | Off | Disables direct matrix integration. App Lab uses this because its supervisor controls the matrix. |
@@ -964,7 +963,7 @@ they may still perform their normal work.
 | `scripts/check-source-docs.py` | No flags or positional arguments | Checks source headers and docstrings; returns `0` on success or `1` on failure. |
 | `scripts/build-docs-pdf.py` | No flags or positional arguments | Rebuilds all ten PDF editions; requires ReportLab. Use only when ready to regenerate the PDFs. |
 | `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
-| `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Downloads and verifies the pinned model into project `data/models/`; requires Python 3 and curl. |
+| `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Installs and verifies the bundled model into project `data/models/`; downloads only if absent. Requires Python 3, plus curl for fallback downloads. |
 | `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |
 | `scripts/profile-relay.py` | No flags or positional arguments | Internal unprivileged UDP relay; publishes port 55356 and forwards to the worker, with bounded packet size, outstanding requests, and timeouts. |
 | `scripts/avahi-resolver-service.py` | No flags or positional arguments | Internal service started by the resolver brick; opens its fixed Unix socket. |

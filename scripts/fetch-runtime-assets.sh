@@ -46,8 +46,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Downloading the official Google Hand Landmarker model..."
-curl --fail --location --silent --show-error "${MODEL_URL}" --output "${temporary_model}"
+if [[ -f "${PROJECT_DIR}/models/hand_landmarker.task" ]]; then
+  echo "Installing the bundled Google Hand Landmarker model..."
+  cp "${PROJECT_DIR}/models/hand_landmarker.task" "${temporary_model}"
+else
+  echo "Downloading the official Google Hand Landmarker model..."
+  curl --fail --location --silent --show-error "${MODEL_URL}" --output "${temporary_model}"
+fi
 
 actual_sha256="$(sha256_file "${temporary_model}")"
 if [[ "${actual_sha256}" != "${MODEL_SHA256}" ]]; then

@@ -7,7 +7,11 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+  - Preserved and bundled the unmodified Google Hand Landmarker model with Apache 2.0 license text, provenance, and checksum.
+  - Added offline model-cache installation and recovery from the bundled copy, with verified download fallback only when the bundle is absent.
+  - Made package builds verify the model and required license files before reporting success.
 
 ## [0.2.5] - 2026-09-04
 

@@ -68,8 +68,7 @@ python3 scripts/verify-app-lab-package.py
 
 The resulting file is `output/app-lab/PowerGlove-Vision-Uno-Q.zip` inside your
 checkout. It contains the application, matrix sketch, public guides, and
-MediaPipe wheel. It excludes private settings and the hand-tracking model,
-which the UNO Q downloads and verifies when first needed.
+MediaPipe wheel, verified hand-tracking model, Apache 2.0 license, and third-party notices. It excludes private settings. The UNO Q verifies and installs the bundled model when first needed.
 
 ## Stage 2 - Install the application on the UNO Q
 
@@ -102,7 +101,7 @@ second time or copy the matrix sketch separately.
 
   1. In a browser on your development computer, open `http://UNO-Q-NAME.local:8088/debug`.
   2. Confirm that Dashboard loads. A camera error does not prevent the website from opening. With **Gestures off**, a closed camera is normal.
-  3. Open **Learn**. Wait for the live camera view, show your whole hand, and check that the app detects it. The first activation may take several minutes while dependencies or the model download.
+  3. Open **Learn**. Wait for the live camera view, show your whole hand, and check that the app detects it. The first activation may take several minutes while dependencies download. The model is included and verified locally; it downloads only if the bundled copy is absent.
   4. Return to Dashboard. Leave controller transmission stopped until pairing and RetroArch configuration are complete.
 
 **Checkpoint:** Dashboard and Learn open from another device. A missing camera
