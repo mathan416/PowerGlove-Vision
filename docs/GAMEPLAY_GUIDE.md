@@ -9,7 +9,7 @@ If the system is not installed yet, start with the [Installation Guide](INSTALL_
 
 ## Get ready to play
 
-Select a profile on Dashboard, or open Learn for practice. If you see
+Select a profile on Dashboard, or open Glove Academy for practice. If you see
 **Starting camera and gesture tracking**, wait for the camera view to appear.
 The app prepares its tracking software in the background after startup, keeping
 the camera off until needed. If you begin straight after boot, you may wait for
@@ -387,7 +387,7 @@ number beside the label indicates how confident the tracker is in that
 identification. To see the controls produced by your gestures, check the
 D-pad, button, and axis readings on Dashboard.
 
-Learn uses the same saved resting-position reference as gameplay. It helps
+Glove Academy uses the same saved resting-position reference as gameplay. It helps
 you practise gestures but does not train or save a personal recognition model.
 
 ## Make the controls fit your hand
@@ -405,7 +405,7 @@ seconds. Forward push and pull-back have independent thresholds; hand setup does
 not calibrate them. For directions and wrist rolls, likewise return to your
 starting position, distance, and wrist orientation for the final recording.
 
-If a gesture needs too much movement or fires accidentally, open **Learn** and
+If a gesture needs too much movement or fires accidentally, open **Glove Academy** and
 switch on **Tune gestures**. Record open hand → gesture → open hand, three seconds each. Keep your open hand comfortable, fingers and thumb gently extended, wrist straight, centered at a consistent distance. Optionally choose **Set up my hand** first and use a gentle fist with the thumb outside for the middle step. Live feedback identifies fingers that do not yet match the gesture. Preview the suggested thresholds before choosing
 **Save for all profiles**. Your games keep their button assignments; the selected
 gesture becomes easier or harder to activate everywhere it is used.
@@ -413,7 +413,7 @@ gesture becomes easier or harder to activate everywhere it is used.
 ![Tune mode with a blurred camera view and editable thresholds](images/tune-page.png)
 
 The threshold table is below the camera; recording instructions are beside it.
-The matrix shows a scanning **T** during tuning, matching Learn’s scanning **L**,
+The matrix shows a scanning **T** during tuning, matching Glove Academy’s scanning **L**,
 and controller delivery stays paused.
 Camera imagery in this screenshot is blurred for privacy.
 
@@ -425,7 +425,7 @@ mapping, validate, and save. Restart the game to use the new mapping. The
 
 ### Check the result in a game
 
-Ordinary Learn includes twelve lessons, including **Glove Zap** (forward push)
+Ordinary Glove Academy includes twelve lessons, including **Glove Zap** (forward push)
 and **Pull Back** (away from the camera). Saved tuning values also drive actual
 controller recognition. Activation starts an action; the lower Release value
 keeps it active until you return far enough. This applies to finger controls,

@@ -59,22 +59,22 @@ def main():
     """Build the diagrams used by the architecture Markdown and PDF."""
     diagram('system','01 / System boundaries',[
       ('cam',0,0,'USB camera','Images of the player'),('uno',1,0,'UNO Q / Linux','Vision, recognition, web UI'),('pi',2,0,'RetroPie / Linux','Receiver and virtual gamepad'),
-      ('browser',0,1,'Browser','Dashboard, Learn, Tune, Setup'),('mcu',1,1,'UNO Q / microcontroller','Arduino sketch / matrix firmware'),('game',2,1,'RetroArch and game','Consumes ordinary gamepad input'),
+      ('browser',0,1,'Browser','Dashboard, Glove Academy,\nSetup'),('mcu',1,1,'UNO Q / microcontroller','Arduino sketch / matrix firmware'),('game',2,1,'RetroArch and game','Consumes ordinary gamepad input'),
       ('hooks',2,2,'Game-launch hooks','Select a profile on the UNO Q')],
       [('cam','uno'),('uno','pi'),('uno','mcu'),('pi','game')],
       'Browser <-> UNO web UI; game hooks -> UNO profile relay. These are separate control paths.')
     diagram('input','02 / One hand movement becomes game input',[
       ('a',0,0,'1. Camera frame','UVC capture through OpenCV'),('b',1,0,'2. Hand observation','MediaPipe landmarks + curls'),('c',2,0,'3. Gesture engine','Calibration + effective thresholds'),
-      ('d',2,1,'4. Profile mapping','Held states, pulses and toggles'),('e',1,1,'5. Delivery gate','Enabled; no Learn or Tune'),('f',0,1,'6. UDP state packet','Session + sequence + token'),
+      ('d',2,1,'4. Profile mapping','Held states, pulses and toggles'),('e',1,1,'5. Delivery gate','Enabled; no practice or tuning'),('f',0,1,'6. UDP state packet','Session + sequence + token'),
       ('g',0,2,'7. Receiver checks','Token, session and sequence'),('h',1,2,'8. Linux uinput','Virtual gamepad state'),('i',2,2,'9. Game response','RetroArch mapping and gameplay')],
       [('a','b'),('b','c'),('c','d'),('d','e'),('e','f'),('f','g'),('g','h'),('h','i')],
       'Status and preview branch from the worker. Browser video is not in the controller delivery path.')
     diagram('modes','03 / Camera activity and controller delivery are separate',[
-      ('off',0,0,'Gestures off','Camera closed; web UI available'),('play',1,0,'Active game profile','Camera opens; output is gated'),('learn',2,0,'Ordinary Learn / L','General profile; output paused'),
+      ('off',0,0,'Gestures off','Camera closed; web UI available'),('play',1,0,'Active game profile','Camera opens; output is gated'),('learn',2,0,'Academy lessons / L','General profile; output paused'),
       ('idle',0,1,'Background preparation','Libraries can preload while off'),('gate',1,1,'Controller enabled?','Only gameplay can send states'),('tune',2,1,'Tune gestures / T','Single owner; output paused'),
       ('restore',2,2,'Exit or lease expiry','Restore selected vision mode')],
       [('off','idle'),('play','gate'),('learn','tune'),('tune','restore')],
-      'Open Learn from either mode. After Tune, explicitly start controller delivery from Dashboard.')
+      'Open Glove Academy from either mode. After Tune, explicitly start controller delivery from Dashboard.')
     diagram('tuning','04 / Three recordings, preview, then an explicit save',[
       ('a',0,0,'1. Choose scope','All five fingers or one gesture'),('b',1,0,'2. Record open / rest','Three seconds at starting pose'),('c',2,0,'3. Record performed pose','Gesture, fist, or held movement'),
       ('d',2,1,'4. Record open / rest','Return fully; three seconds'),('e',1,1,'5. Analyze separation','Open high end vs performed low'),('f',0,1,'6. Preview and inspect','Check required fingers and release'),
@@ -92,7 +92,7 @@ def main():
       ('d',2,1,'4. App Lab relay','Forwards bytes; holds no token'),('e',1,1,'5. Worker validates','Accept request and apply profile'),('f',0,1,'6. New controller session','Release old state; reset sequence'),
       ('ack',1,2,'Signed acknowledgement','Reports request outcome')],
       [('a','b'),('b','c'),('c','d'),('d','e'),('e','f'),('e','ack')],
-      'Acknowledgement returns through relay to RetroPie. Learn/Tune can keep delivery paused.')
+      'Acknowledgement returns through relay to RetroPie. Academy practice/tuning can keep delivery paused.')
     diagram('deployment','07 / Linux application and matrix firmware update separately',[
       ('source',0,0,'Reviewed project','Python, docs, assets, sketch'),('linux',1,0,'Linux application update','Sync files; recreate containers'),('runtime',2,0,'Website and vision worker','Preserve private data/ settings'),
       ('pins',0,1,'Pinned sketch profile','Board platform + library versions'),('compile',1,1,'Compile-only validation','Builds without flashing hardware'),('flash',2,1,'App Lab Run / restart','Builds and uploads MCU firmware'),

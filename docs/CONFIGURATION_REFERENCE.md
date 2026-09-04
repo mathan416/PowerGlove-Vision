@@ -69,7 +69,7 @@ the UNO Q matrix before entering the one-time PIN.
 
 | Setting | Default | Meaning and recommendation |
 | --- | --- | --- |
-| Console hostname or IP | Empty (not configured) | Set your RetroPie hostname (`RETROPIE-NAME.local` in examples) or a reserved LAN address and pair through Connection before starting controls. Learn and local settings work without a destination. Existing saved destinations are preserved. |
+| Console hostname or IP | Empty (not configured) | Set your RetroPie hostname (`RETROPIE-NAME.local` in examples) or a reserved LAN address and pair through Connection before starting controls. Glove Academy and local settings work without a destination. Existing saved destinations are preserved. |
 | Controller port | `55355` | UNO Q to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
 | Startup profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
 | Tracking aid | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
@@ -94,12 +94,12 @@ website and profile controls remain responsive while imports run. A failed
 preload is logged; a later activation retries loading and reports any error.
 
 If **Gestures off** is selected at startup, the camera stays closed until you
-select an active profile or open Learn. An active startup profile requests
+select an active profile or open Glove Academy. An active startup profile requests
 capture automatically after preloading. Controller delivery still starts stopped.
 
 Activation waits for any unfinished preload, verifies the saved model, opens
 and configures the camera, waits for a usable frame, and creates the tracker.
-Dashboard and Learn show **Starting camera and gesture tracking** until vision
+Dashboard and Glove Academy show **Starting camera and gesture tracking** until vision
 is active. The elapsed time covers startup work, not only the physical camera.
 **Calibrate** stays disabled until initialization finishes.
 
@@ -142,14 +142,18 @@ The built-in `qcom-venus-encoder` and `qcom-venus-decoder` video nodes are not
 webcams. A camera missing from the USB device list needs its connection checked;
 preloading cannot resolve that condition.
 
-### Learn, calibration, and live readings
+### Glove Academy, calibration, and live readings
 
-Learn starts the camera even when **Gestures off** is selected and uses Program H
+Glove Academy is the renamed Learn section. Existing `/learn` bookmarks still
+work. The matrix continues to show **L** for lessons and **T** for tuning.
+Older screenshots may still show the former Learn label.
+
+Glove Academy starts the camera even when **Gestures off** is selected and uses Program H
 for practice. It pauses controller delivery and restores the selected profile
-when you leave. With several Learn tabs open, practice remains active until the
+when you leave. With several Glove Academy tabs open, practice remains active until the
 last tab closes or its lease expires. A six-second lease timeout handles an
 unexpected browser close. Loading Dashboard also clears a stale session;
-reload Learn if you want to begin practice again.
+reload Glove Academy if you want to begin practice again.
 
 The twelve lessons include A (index curl), B (thumb curl), Glove Zap (forward
 push), Pull Back, Start, and Select. Completing every lesson earns Glove Master; skipped
@@ -158,7 +162,7 @@ indicators do not change a game's gesture mapping.
 
 | Reading or control | Meaning |
 | --- | --- |
-| Finger curl | Learn shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Default ordinary curl actions engage at 0.50 and release below 0.35; saved personal pairs override these values. |
+| Finger curl | Glove Academy shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Default ordinary curl actions engage at 0.50 and release below 0.35; saved personal pairs override these values. |
 | V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold for about 0.7 seconds to send Start. |
 | Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for about 0.7 seconds to send Select. |
 | Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward or backward movement relative to the calibrated hand size. |
@@ -172,12 +176,12 @@ uses normalized depth with image aspect-ratio correction; palm movement still
 uses image coordinates. The legacy Arduino landmark bridge keeps its 2D
 interpretation because its depth units differ.
 
-Learn and gameplay share held finger and movement states. Glove Zap and Pull Back
+Glove Academy and gameplay share held finger and movement states. Glove Zap and Pull Back
 remain recognized until movement falls below their respective release thresholds, and a confirmed menu pose
 still satisfies its lesson after the short controller pulse ends. The browser
 preview is capped at 15 fps; status updates follow each tracking calculation.
 
-The app reuses its saved resting reference across Learn, gameplay, profile
+The app reuses its saved resting reference across Glove Academy, gameplay, profile
 changes, and restarts. It calibrates automatically only when that reference is
 missing or invalid. Use **Calibrate** after moving the camera or changing your
 playing position. Keep your palm near the resting position when practising
@@ -462,7 +466,7 @@ seconds. Forward push and pull-back have independent thresholds; hand setup does
 not calibrate them. For directions and wrist rolls, likewise return to your
 starting position, distance, and wrist orientation for the final recording.
 
-Use **Learn → Tune gestures** to adjust sensitivity. You do not need to edit
+Use **Glove Academy → Tune gestures** to adjust sensitivity. You do not need to edit
 `config/profiles.json`; it remains the supplied defaults for each profile.
 
   1. Show your whole hand in the camera and wait for tracking. Calibrate your comfortable resting position if necessary.
@@ -517,7 +521,7 @@ changes the resting reference separately and invalidates any current recordings.
 ### Supplied profile defaults
 
 The following fields describe the shipped `config/profiles.json`. They remain
-useful for understanding the defaults; personal tuning is managed through Learn.
+useful for understanding the defaults; personal tuning is managed through Glove Academy.
 
 ### Threshold fields
 
@@ -658,7 +662,7 @@ ports through a router or expose them directly to the Internet.
 | --- | --- | --- |
 | UDP `55355` | UNO Q to RetroPie | Authenticated live controller state |
 | UDP `55356` | RetroPie to UNO Q | Authenticated game-profile requests and acknowledgements |
-| TCP `8088` | Browser to UNO Q | Dashboard, Help, Learn, and ordinary Setup UI, including Games |
+| TCP `8088` | Browser to UNO Q | Dashboard, Help, Glove Academy, and ordinary Setup UI, including Games |
 | TCP `8443` | Browser to UNO Q | TLS Setup and pairing workflow |
 | TCP `55358` | UNO Q to RetroPie | Paired game registry reads, saves, and restoration |
 | TCP `55357` | UNO Q to RetroPie | Temporary one-time-code pairing helper |
@@ -678,7 +682,7 @@ The built-in display is a 13-by-8 monochrome blue LED matrix with eight
 brightness levels. Treat it as a very small dot-matrix display in the spirit of
 a pinball DMD or monochrome BitPixel display, rather than as a miniature screen.
 The sketch encodes status, pairing, profile identifiers, and the gestures-idle
-Power Glove attract sequence. Learn and Tune share a dim letter, bright scan line,
+Power Glove attract sequence. Glove Academy and Tune share a dim letter, bright scan line,
 and trailing glow: eight frames at 160 milliseconds each (a 1.28-second cycle).
 
 Matrix artwork should use broad motion, recognizable silhouettes, and strong
@@ -828,7 +832,7 @@ See the installation guide for the investigation status and Arduino guidance.
 
 ## Saved neutral-hand calibration
 
-The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, and wrist angle; it is not a personally trained gesture model. Learn, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating position.
+The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, and wrist angle; it is not a personally trained gesture model. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating position.
 
 On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Hold your hand in a comfortable neutral position, then use **Calibrate** if necessary. A storage failure is reported as `calibration_save_error` in status; the reference remains usable in memory but will not survive a worker restart. The file is local runtime data, not a source or release-package file.
 

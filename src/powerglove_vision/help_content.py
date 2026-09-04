@@ -271,7 +271,7 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
         )
         for label, url in (
             ("Dashboard", http_root + "/dashboard"),
-            ("Gesture lessons", http_root + "/learn"),
+            ("Glove Academy", http_root + "/learn"),
             ("Help center", http_root + "/help"),
             ("Connection setup", http_root + "/setup"),
             ("Secure pairing", https_root + "/setup"),

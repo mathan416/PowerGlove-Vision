@@ -142,7 +142,7 @@ scripts/check-documentation.py --require-pdfs
 ```
 
 When the interface changes, refresh the affected screenshots in `docs/images/`.
-Capture Dashboard, Learn practice, Learn tuning, Setup, the Games section, and Help
+Capture Dashboard, Glove Academy practice, Glove Academy tuning, Setup, the Games section, and Help
 from the running application. Blur the entire camera image before saving a
 screenshot, keeping instructions and controls readable. Check that no passwords,
 pairing codes, tokens, or identifying camera details remain. Do not commit
@@ -198,9 +198,9 @@ releases may attach a verified ZIP for long-term distribution.
 
 ## Gesture tuning and firmware validation
 
-Keep Learn and gameplay on the same threshold checks and activation/release
+Keep Glove Academy and gameplay on the same threshold checks and activation/release
 states. Preserve the deliberate menu hold and game-specific pulses/toggles. Use
-**Glove Zap** and **Pull Back** consistently in user-facing labels. Learn and Tune
+**Glove Zap** and **Pull Back** consistently in user-facing labels. Glove Academy and Tune
 share the scanning-letter matrix renderer and its 160-millisecond frame timing.
 
 Before releasing recognition changes, validate three-step hand setup and

@@ -12,7 +12,7 @@ gamepad named **PowerGlove Vision**.
 
 The project includes eleven profiles: nine reusable Programs A–I and dedicated
 controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
-profile automatically when you launch a registered game. Learn mode lets you
+profile automatically when you launch a registered game. Glove Academy mode lets you
 practise without sending input to the cabinet.
 
 The cabinet currently uses `lr-fceumm` as its default NES emulator.
@@ -193,14 +193,14 @@ finger measurements for future native-glove support.
 | Page | What it does |
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
-| Learn, `/learn` | Provides twelve practice lessons and guided gesture tuning, with game input paused. |
+| Glove Academy, `/learn` | Provides twelve practice lessons and guided gesture tuning, with game input paused. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
 The application preloads OpenCV and MediaPipe in the background while the
 website is available. This prepares gesture tracking without opening the
 camera. With **Gestures off** selected, capture starts only when you choose an
-active profile or open Learn. If preloading is still underway, activation waits
+active profile or open Glove Academy. If preloading is still underway, activation waits
 for it to finish. See the [startup details](docs/CONFIGURATION_REFERENCE.md#vision-startup-and-timing)
 for measured results and troubleshooting.
 
@@ -213,9 +213,9 @@ it is safe to remove power. See the installation guide before using Shutdown.
 
 The screenshots below show the current interface. Camera imagery is blurred for privacy.
 
-![Learn in Tune mode, with thresholds below the blurred camera](docs/images/tune-page.png)
+![Glove Academy in Tune mode, with thresholds below the blurred camera](docs/images/tune-page.png)
 
-In **Learn**, switch on **Tune gestures** to adjust sensitivity. The UNO Q shows
+In **Glove Academy**, switch on **Tune gestures** to adjust sensitivity. The UNO Q shows
 a scanning **T** during tuning and a matching scanning **L** during ordinary practice. Both modes pause game input.
 
 Tuning uses three recordings of three seconds each: open hand, gesture, open hand.

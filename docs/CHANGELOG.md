@@ -15,6 +15,8 @@ Live camera, gameplay, and physical matrix checks remain release requirements.
 
 ### Added
 
+  - Renamed the Learn section to Glove Academy in navigation, the page heading, and current guides. Kept `/learn` links, lesson/tuning behaviour, and L/T matrix indicators unchanged.
+
   - Added startup stage timings for library imports, model preparation, camera initialization, and first inference.
   - Added individual gesture illustrations and Pixel Pal to the website and friendly manuals, with a smaller PNG for web use.
   - Preserved and bundled the unmodified Google Hand Landmarker model with Apache 2.0 license text, provenance, and checksum.

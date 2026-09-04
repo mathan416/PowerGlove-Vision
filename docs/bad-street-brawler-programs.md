@@ -19,8 +19,8 @@ For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE
 ![Dashboard profile selector and controller diagnostics](images/debug-dashboard.png)
 
 To change sensitivity without changing a program's button assignments, open
-**Learn → Tune gestures**. The threshold table is beneath the camera and the
-matrix shows a scanning **T**, matching ordinary Learn’s scanning **L**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
+**Glove Academy → Tune gestures**. The threshold table is beneath the camera and the
+matrix shows a scanning **T**, matching ordinary Glove Academy’s scanning **L**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
 
 ## Where the programs came from
 
@@ -205,9 +205,9 @@ the previous game's mapping does not remain active.
   4. Open Debug to compare hand motion with generated controller output.
   5. Start controller delivery only when ready to play.
 
-Learn mode works without RetroPie and automatically starts the camera while
+Glove Academy mode works without RetroPie and automatically starts the camera while
 suppressing controller output. This also works while **Gestures off** is the
-selected profile. Leaving Learn restores the selected mode, so it is a safe
+selected profile. Leaving Glove Academy restores the selected mode, so it is a safe
 place to build muscle memory without changing the saved or active selection.
 
 ## What remains special
@@ -230,7 +230,7 @@ to their respective owners. No ROM images are distributed with this project.
 
 ### Personal sensitivity and practice
 
-Learn has twelve lessons, including **Glove Zap** and **Pull Back**. Tune an
+Glove Academy has twelve lessons, including **Glove Zap** and **Pull Back**. Tune an
 individual gesture with open hand → gesture → open hand, three seconds per step.
 Optional **Set up my hand** uses a gentle fist with the thumb outside for the
 middle step. Open means fingers and thumb gently extended, wrist straight, with

@@ -97,10 +97,10 @@ second time or copy the matrix sketch separately.
 
   1. In a browser on your development computer, open `http://UNO-Q-NAME.local:8088/dashboard`.
   2. Confirm that Dashboard loads. A camera error does not prevent the website from opening. With **Gestures off**, a closed camera is normal.
-  3. Open **Learn**. Wait for the live camera view, show your whole hand, and check that the app detects it. The first activation may take several minutes while dependencies download. The model is included and verified locally; it downloads only if the bundled copy is absent.
+  3. Open **Glove Academy**. Wait for the live camera view, show your whole hand, and check that the app detects it. The first activation may take several minutes while dependencies download. The model is included and verified locally; it downloads only if the bundled copy is absent.
   4. Return to Dashboard. Leave controller transmission stopped until pairing and RetroArch configuration are complete.
 
-**Checkpoint:** Dashboard and Learn open from another device. A missing camera
+**Checkpoint:** Dashboard and Glove Academy open from another device. A missing camera
 or model error is shown on Dashboard. If a page does not open, see
 [Troubleshooting](#troubleshooting).
 
@@ -223,8 +223,8 @@ sudo python3 scripts/setup-machine.py uno-q --check
 | --- | --- |
 | Animated hand | The app or vision runtime is loading. |
 | Animated glove | Gestures are off. |
-| Scanning `L` | Learn practice is active. |
-| Scanning `T` | Tune gestures is active, with the same scan and trailing glow as Learn. |
+| Scanning `L` | Glove Academy practice is active. |
+| Scanning `T` | Tune gestures is active, with the same scan and trailing glow as Glove Academy. |
 | `A`–`I`, `BS`, or `GB` | The corresponding profile is active. |
 | Pulsing profile code | A calibrated hand is being tracked. |
 | Blinking X | The camera or vision runtime needs attention. |
@@ -234,7 +234,7 @@ An animation does not prove that Linux is running or that shutdown has finished.
 | Page | Address |
 | --- | --- |
 | Dashboard | `http://UNO-Q-NAME.local:8088/dashboard` |
-| Learn | `http://UNO-Q-NAME.local:8088/learn` |
+| Glove Academy | `http://UNO-Q-NAME.local:8088/learn` |
 | Games (lower Setup section) | `http://UNO-Q-NAME.local:8088/setup#games-section` |
 | Help and printable manuals | `http://UNO-Q-NAME.local:8088/help` |
 | Connection settings | `http://UNO-Q-NAME.local:8088/setup` |
@@ -264,9 +264,9 @@ PowerGlove Vision deliberately boots with controller delivery stopped. Vision
 and the dashboard keep running so setup never generates surprise game inputs.
 **Shutdown** is different: it halts Linux on the UNO Q. The tested board automatically restarts; remaining halted is not guaranteed.
 
-### Learn before you launch
+### Glove Academy before you launch
 
-Dashboard and Learn show **Starting camera and gesture tracking** with elapsed
+Dashboard and Glove Academy show **Starting camera and gesture tracking** with elapsed
 seconds during initialization. OpenCV and MediaPipe preload in the background
 when the application starts. The website remains available, and preloading
 does not open the camera or process images. An early activation waits for any
@@ -274,14 +274,14 @@ remaining preload work, then opens the camera and creates the tracker.
 
 Wait for vision to become active before centring; the centring button is
 disabled during startup. **Gestures off** keeps the camera closed, including
-at boot. Choosing an active startup profile or opening Learn requests capture.
+at boot. Choosing an active startup profile or opening Glove Academy requests capture.
 Switching between active profiles reuses the camera and tracker. Turning
 gestures off releases them but retains the loaded libraries for the next use.
 
-Open `http://UNO-Q-NAME.local:8088/learn`. Learn mode automatically stops
+Open `http://UNO-Q-NAME.local:8088/learn`. Glove Academy mode automatically stops
 controller transmission, starts the camera when necessary, and guides you
 through twelve exercises, including forward push and pull-back, with live feedback on the gestures it recognizes. RetroPie does not need to be
-online. Leaving Learn restores the selected profile and its camera state;
+online. Leaving Glove Academy restores the selected profile and its camera state;
 loading or refreshing the Dashboard also reapplies the selected mode.
 
 Switch on **Tune gestures** to record open hand → gesture → open hand (three seconds each), preview suggested thresholds, and save them across all profiles.
@@ -298,13 +298,13 @@ then restart the game. **Download backup** and **Restore previous save** provide
 recovery options. Both devices need the current software; RetroPie setup installs
 the paired Games service on TCP `55358`.
 
-![PowerGlove Vision Learn page](images/learn-page.png)
+![PowerGlove Vision Glove Academy page](images/learn-page.png)
 
 Camera imagery in these screenshots is blurred for privacy.
 
 ![Tune mode, with thresholds below the camera and recording controls alongside](images/tune-page.png)
 
-In Tune mode the matrix shows a scanning **T**; ordinary Learn practice shows
+In Tune mode the matrix shows a scanning **T**; ordinary Glove Academy practice shows
 a matching scanning **L**. The
 Activation and Release table sits below the camera. Use the instructions and
 recording buttons beside it to work through the three recordings.
@@ -355,7 +355,7 @@ application; matrix firmware changes still need **Run** in App Lab.
   1. On your development computer, open your project checkout and review local changes with `git status --short`.
   2. If you are updating from GitHub, run `git pull --ff-only`. Resolve any reported local-change or branch conflict before deploying. Keep the version compatible with the RetroPie installation.
   3. Run the deployment command below. It preserves private `data/`, restarts the application, and checks its web pages.
-  4. Open Dashboard and Learn to confirm the updated app works. If you changed the matrix sketch, also rebuild and run it through App Lab.
+  4. Open Dashboard and Glove Academy to confirm the updated app works. If you changed the matrix sketch, also rebuild and run it through App Lab.
 
 ```sh
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
@@ -611,7 +611,7 @@ arduino-app-cli app restart /home/arduino/ArduinoApps/powerglove-vision
 
 The Wi-Fi deployment script updates Linux files and restarts containers; it does
 not flash the matrix sketch. Keep a backup before firmware updates. After upload,
-check Dashboard, ordinary Learn's scanning L, Tune's scanning T, and normal
+check Dashboard, ordinary Glove Academy's scanning L, Tune's scanning T, and normal
 controller operation. Preserve the installed `data/` directory and verify that
 personal tuning and neutral calibration remain available.
 

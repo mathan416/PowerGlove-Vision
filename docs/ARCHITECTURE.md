@@ -4,7 +4,7 @@ A camera-to-controller system for the UNO Q and RetroPie.
 
 This guide describes the implementation reviewed on September 4, 2026, including
 three-step tuning, optional personal hand setup, shared gameplay thresholds, the
-matching Learn/Tune matrix animations, and the verified Arduino sketch build.
+matching Glove Academy/Tune matrix animations, and the verified Arduino sketch build.
 It is a map of current behaviour, not a proposed redesign or a hardware test report.
 
 ## Read this first
@@ -16,8 +16,8 @@ per-frame gameplay path. The UNO Q microcontroller drives the status matrix;
 Linux performs hand tracking and gesture recognition.
 
 There are three independent questions: which game profile is selected, whether
-the camera is running, and whether controller delivery is enabled. Learn can
-open the camera while the selected profile is **Gestures off**. Learn and Tune
+the camera is running, and whether controller delivery is enabled. Glove Academy can
+open the camera while the selected profile is **Gestures off**. Glove Academy and Tune
 both pause game input. A healthy web page does not by itself establish that the
 camera, receiver, or game is working.
 
@@ -25,7 +25,7 @@ camera, receiver, or game is working.
 | --- | --- |
 | Machines and processes | [System boundaries](#system-boundaries) |
 | A movement reaching a game | [Camera-to-controller flow](#camera-to-controller-flow) |
-| Boot, Learn, and Tune | [Runtime modes](#runtime-modes) |
+| Boot, Glove Academy, and Tune | [Runtime modes](#runtime-modes) |
 | Personal sensitivity | [Recognition and tuning](#recognition-and-tuning) |
 | Game launches and settings | [Profile and configuration flows](#profile-and-configuration-flows) |
 | Network and failure handling | [Interfaces and recovery](#interfaces-and-recovery) |
@@ -38,11 +38,11 @@ camera, receiver, or game is working.
 
 | Boundary | Responsibilities | Does not own |
 | --- | --- | --- |
-| Browser | Dashboard, Learn, Tune, Setup, Games, Help; live feedback and user commands | Authoritative per-frame recognition or gamepad output |
+| Browser | Dashboard, Glove Academy, Tune, Setup, Games, Help; live feedback and user commands | Authoritative per-frame recognition or gamepad output |
 | UNO Q Linux application | Web server, vision-worker supervision, camera tracking, calibration, thresholds, profile mapping, network sender | RetroArch button consumption |
 | UNO Q microcontroller | Arduino sketch, Router Bridge commands, LED matrix animations and pairing display | Camera inference or personal thresholds |
 | RetroPie services | Receive controller packets, expose a virtual gamepad, signal game launches, serve paired game-registry edits | Camera processing |
-| RetroArch and game | Consume virtual-gamepad input using emulator and game mappings | Learn/Tune feedback |
+| RetroArch and game | Consume virtual-gamepad input using emulator and game mappings | Glove Academy/Tune feedback |
 
 App Lab starts `python/main.py` in the main application container. This
 supervisor runs the website and starts an isolated Python 3.12 vision worker
@@ -88,7 +88,7 @@ emulator. That remains a separate integration concern.
 
 The worker keeps a lightweight control loop alive while vision is idle.
 Libraries can preload in the background without opening the camera. Selecting
-an active profile or opening Learn requests camera/tracker initialization.
+an active profile or opening Glove Academy requests camera/tracker initialization.
 Slow opens, reads, and cleanup run asynchronously so control requests remain
 responsive. The website reports startup and recovery rather than treating an
 empty first frame as completed initialization.
@@ -97,14 +97,14 @@ empty first frame as completed initialization.
 | --- | --- | --- | --- |
 | Gestures off | Camera closed; selected profile off | No gameplay states | Power Glove attract animation |
 | Active profile | Selected game profile; camera requested | Only when explicitly enabled | Ready/tracking status and profile display |
-| Ordinary Learn | General practice profile; camera requested | Paused | Scanning L |
+| Ordinary Glove Academy | General practice profile; camera requested | Paused | Scanning L |
 | Tune gestures | Practice with selected tuning scope and preview | Paused, including after a game-launch request | Scanning T |
 
-Learn preserves the selected game profile while using the general practice
+Glove Academy preserves the selected game profile while using the general practice
 profile for its twelve lessons, including **Glove Zap** and **Pull Back**.
-Browser leases support multiple Learn tabs; the last lease ending restores the
+Browser leases support multiple Glove Academy tabs; the last lease ending restores the
 selected vision mode. Leases expire after six seconds without refresh. Dashboard
-also clears abandoned practice sessions. Ordinary Learn restores its prior
+also clears abandoned practice sessions. Ordinary Glove Academy restores its prior
 controller intent; Tune requires an explicit start from Dashboard when finished.
 
 Tune has a single owning session. Exiting or losing that session discards its
@@ -207,7 +207,7 @@ that use that finger; it does not change the button assignments in a game profil
 
 Neutral calibration is distinct from hand setup. It centers position, depth,
 and roll; hand setup establishes finger thresholds. The app reuses valid neutral
-calibration across Learn, profile changes, camera reconnects, and worker restarts.
+calibration across Glove Academy, profile changes, camera reconnects, and worker restarts.
 Recalibrate after moving the camera or changing playing position. Ordinary
 updates preserve `data/` rather than replacing it with example configuration.
 
@@ -333,5 +333,5 @@ tuning without setup; V-sign and thumbs-up with different curl ranges; incorrect
 extended fingers; incomplete releases; tracking loss; insufficient/overlapping
 samples; calibration changes; preview expiry; persistence; and reset. Confirm
 that feedback agrees with recognition and output remains paused throughout
-Learn/Tune. Complete live camera and gameplay tests before describing a reduced
+Glove Academy/Tune. Complete live camera and gameplay tests before describing a reduced
 recording count as validated for other users.
