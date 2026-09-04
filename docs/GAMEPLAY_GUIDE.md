@@ -1,24 +1,28 @@
 <p align="center">
-  <img src="../assets/powerglove-vision-logo.png" alt="Power Glove Vision" width="680">
+  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
 </p>
 
-# Play with Power Glove Vision
+# Play with PowerGlove Vision
 
-**Eight ready-made play cards. Nine reusable programs. One gloriously
-impractical way to rediscover a game library.**
+This guide provides eight game-specific play cards and explains how to use
+the nine reusable programs. It shows you which gestures to make, what controls
+they produce, and how to try them with other games in your library.
 
-## Before you throw your first virtual punch
+Find your game below, check its profile, and try the first-round exercise.
+If the system is not installed yet, start with the [Installation Guide](INSTALL_README.md).
+
+## Get ready to play
 
 Select a profile on Dashboard, or open Learn for practice. If you see
 **Starting camera and gesture tracking**, wait for the camera view to appear.
-First startup can take longer; the elapsed-seconds display confirms that the
-page is still updating. **Calibrate** becomes available when vision is active.
+The first startup may take longer than later profile changes. The elapsed-time
+display lets you follow progress while the camera and tracker initialize. **Calibrate** becomes available when vision is active.
 
-1. Stand where the camera can see your whole hand with a little room on every side.
-2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved neutral position.
-3. Wait for tracking to settle, then select **Start controller**.
-4. Move your whole hand away from center for directions. Return to center to stop.
-5. Make one gesture at a time. Clean poses beat frantic motion.
+  1. Stand where the camera can see your whole hand with a little room on every side.
+  2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
+  3. Wait for tracking to settle, then select **Start controller**.
+  4. Move your whole hand away from center for directions. Return to center to stop.
+  5. Make one gesture at a time. Clean poses beat frantic motion.
 
 ![Whole-hand movement controls](images/gestures/actions/whole-hand-movement.png)
 
@@ -29,16 +33,18 @@ page is still updating. **Calibrate** becomes available when vision is active.
 | Hold a V sign for about 0.7 seconds | <img src="images/gestures/actions/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause |
 | Hold a thumbs-up with the other fingers closed for about 0.7 seconds | <img src="images/gestures/actions/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
 
-The menu poses briefly suppress movement and attacks while they form. If a game
+The menu poses suppress A/B attacks while they form. Some profiles can still
+produce directional or auxiliary output from wrist, depth, or finger gestures;
+keep your hand near its calibrated resting position while using menu poses. If a game
 needs Select and a direction at exactly the same time, use the physical
-controller for that combination. Re-center whenever neutral begins to drift.
+controller for that combination. Recalibrate if your resting hand position produces unwanted movement.
 
 The small pictures in each game card are pose reminders. Paired arrows show the
 available movement or wrist-roll directions; paired pictures show a combined
 gesture.
 
-> **GLOVE LAW #1**  If the character moves while your hand is centered, stop and
-> re-center. Do not teach your arm to compensate for a bad neutral position.
+**Comfort tip:** If the character moves while your hand is resting, recalibrate
+in that position. Keep movements small enough to repeat comfortably.
 
 ## Bad Street Brawler
 
@@ -57,13 +63,17 @@ vitality runs out.
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | A plus that direction |
 | Push toward camera | <img src="images/gestures/actions/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap auxiliary event |
 
-**Play smart:** The available force moves change by stage. Test thumb, middle
-finger, and wrist rolls on the punching bag before leaving practice. The Glove
+**Play smart:** The available force moves change with each stage. Test the
+thumb curl, middle-finger curl, and wrist rolls on the punching bag before
+leaving practice. The Glove
 Zap signal is preserved, but the ordinary `lr-nestopia` controller path cannot
 unlock the cartridge's native glove-only zap yet.
 
-> **ONE-LINE PLAN**  Learn the three moves, protect your vitality, and do not
-> pick a fight with every little old lady carrying a handbag.
+**First round:**
+
+  1. At the practice bag, try a thumb curl, a middle-finger curl, and a wrist roll separately.
+  2. Notice which move each gesture produces in this stage.
+  3. Enter the street and use one familiar move before adding combinations.
 
 <!-- PAGEBREAK -->
 
@@ -86,8 +96,11 @@ complete wall of tiles, and follow the revealed arrows through the maze.
 to take the exit. The current profile also preserves analogue hand position,
 depth, wrist roll, and individual finger values for future native glove support.
 
-> **ONE-LINE PLAN**  Think Breakout inside a room-sized maze: meet the ball,
-> aim the rebound, and make an exit.
+**First round:**
+
+  1. Move the glove across the room with small hand movements.
+  2. Try the index and thumb actions separately so you can recognize their effects.
+  3. Keep the ball in play, then aim to clear one wall.
 
 <!-- PAGEBREAK -->
 
@@ -110,7 +123,11 @@ their eggs before they hatch, and stay clear of the lava.
 pulsed finger flap to hold position. Sweep up eggs quickly; every ignored egg is
 an enemy preparing a return engagement.
 
-> **ONE-LINE PLAN**  Get above them, touch lances, grab the egg, repeat.
+**First round:**
+
+  1. Curl your index finger to practise a steady flap.
+  2. Move left and right while keeping your height.
+  3. Approach one rider from above, then collect the egg.
 
 <!-- PAGEBREAK -->
 
@@ -132,8 +149,11 @@ warp zones, and fight from planet to planet toward the Sun.
 **Before launching:** Choose **Attack Control B** at the title screen. This
 profile expects left/right rotation rather than eight-direction movement.
 
-> **ONE-LINE PLAN**  Keep the index straight, rotate into open space, and save
-> the pull-back bomb for the formation that owns the whole tunnel.
+**First round:**
+
+  1. Select Attack Control B at the title screen.
+  2. Keep your index straight and practise small wrist rolls in both directions.
+  3. Clear one formation before trying the pull-back bomb.
 
 <!-- PAGEBREAK -->
 
@@ -154,9 +174,13 @@ humanoids before abductors carry them away and turn them into mutants.
 
 **Play smart:** Watch the scanner as much as the ship. Intercept abductors early;
 if one lifts a humanoid, shoot the alien and catch the falling person. Wrist
-rolls spend the action mapped to the smart bomb, so make them deliberate.
+rolls trigger the smart-bomb action, so make them deliberate.
 
-> **ONE-LINE PLAN**  Scan, intercept, fire, rescue - then turn around fast.
+**First round:**
+
+  1. Fly a short circuit with your wrist level.
+  2. Curl your thumb to fire while moving.
+  3. Track one abductor on the scanner; save deliberate wrist rolls for smart bombs.
 
 <!-- PAGEBREAK -->
 
@@ -178,8 +202,11 @@ physical Yes or No answer.
 Make the open-hand answer broad and obvious; make the fist complete. Return to a
 relaxed open hand between questions so one answer does not run into the next.
 
-> **ONE-LINE PLAN**  Count carefully, answer clearly, and let the dramatic fist
-> handle every emphatic No.
+**First round:**
+
+  1. Count the objects before making a gesture.
+  2. Move an open hand from the resting position for Yes, or close all fingers for No.
+  3. Return to a relaxed hand at the centre before the next question.
 
 <!-- PAGEBREAK -->
 
@@ -196,13 +223,17 @@ each wanted poster, and collect the bounty by beating the stage boss.
 | Curl index finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl the index finger" width="72"> | A: shoot diagonally right |
 | Push toward camera | <img src="images/gestures/actions/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | B: shoot diagonally left |
 | Curl index while pushing | <img src="images/gestures/actions/index-push-combination.png" alt="Combine a finger curl with a push toward the camera" width="96"> | A+B: shoot straight ahead |
-| Curl thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress all action for menus |
+| Curl thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress D-pad and A/B output |
 
 **Play smart:** A stage keeps looping until you obtain its wanted poster. Keep
 your palm level while walking; wrist roll can add a left/right movement command.
 Use index-plus-push when you need the straight-ahead shot.
 
-> **ONE-LINE PLAN**  Find the poster, build an A+B rhythm, and keep moving.
+**First round:**
+
+  1. Try an index curl for the right shot and a forward push for the left shot.
+  2. Combine them to fire straight ahead.
+  3. Walk while firing, then look for the wanted poster.
 
 <!-- PAGEBREAK -->
 
@@ -222,21 +253,23 @@ the criminals ahead, and reach each destination before the timer expires.
 | Curl thumb | <img src="images/gestures/actions/thumb-curl.png" alt="Curl the thumb" width="72"> | Fire weapons |
 
 **Play smart:** Keep the wrist near center on straight roads; large steering
-rolls are for real turns. Hold index curl for normal speed and reserve the
+rolls are for real turns. Keep your index finger curled for normal speed and reserve the
 forward push for a clean burst when the road opens.
 
-> **ONE-LINE PLAN**  Index down, eyes forward, small steering corrections -
-> then push for turbo when KITT has room to run.
+**First round:**
+
+  1. Curl your index finger to accelerate and make small wrist rolls to steer.
+  2. Lower your hand to practise braking.
+  3. Use a forward push for turbo only when the road ahead is clear.
 
 <!-- PAGEBREAK -->
 
-## Take Power Glove Vision off-script
+## Take PowerGlove Vision off-script
 
-The included game profiles are starting points, not a velvet rope around eight
-approved cartridges. Programs A-I emit ordinary NES controller inputs, so the
-real game is finding unexpected combinations that feel good. Programs A, D,
-and H deliberately ship without a default ROM assignment because they are the
-project's invitation to experiment.
+You can use the included profiles with games beyond the eight listed in this
+guide. Programs A–I send ordinary NES controller inputs, so try matching their
+gestures to games with similar controls. Programs A, D, and H have no default
+ROM assignment and are useful starting points for these experiments.
 
 ### Start with A, D, and H
 
@@ -246,23 +279,19 @@ project's invitation to experiment.
 | **D - Mirror world** | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | A game you already know well, a party challenge, or an inverted-direction accessibility experiment | Every direction is reversed. Thumb and index provide A and B. Expect your muscle memory to complain loudly. |
 | **H - General play** | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger for a general-purpose action button" width="72"> | Two-button platform, maze, puzzle, and action games | Hand movement supplies the D-pad. Index and thumb pulse A and B, so games that require a long held button may be a poor fit. |
 
-Program H is the best first guess. Program A is wonderfully specialized.
+Try Program H first for general play, or Program A for pinball controls.
 Program D turns a familiar game into a new coordination challenge without
 changing the ROM or emulator.
 
 ### Try a combination
 
-1. Launch the NES or Famicom game normally. An unregistered game safely turns
-   gesture output off instead of inheriting the previous game's controls.
-2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**,
-   **H: General**, or another Program
-   A-I profile from **Active profile**.
-3. Use **Calibrate** on the Dashboard only if your neutral position needs adjusting, then select **Start controller** and return to the game.
-4. Test movement, both action gestures, Start, and Select before committing to a
-   long session. Stop the controller immediately if a gesture remains active.
+  1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
+  2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
+  3. Use **Calibrate** if your resting hand position produces unwanted movement or your physical setup has changed. Hold still while calibration completes, then select **Start controller** and return to the game.
+  4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
 
-The temporary choice lasts only until another game lifecycle command changes
-the profile or turns gestures off.
+The selection is temporary. Starting or ending a game sends a new command
+that changes the profile or turns gestures off.
 
 ### Keep a discovery
 
@@ -292,9 +321,10 @@ profile to the game's mechanics, not to the title printed on the cartridge.
 > fun is a successful experiment. Record the exact ROM filename and profile so
 > somebody else can reproduce it.
 
-For every Program A-I gesture, see the illustrated
-`bad-street-brawler-programs.md` field manual. For registry validation and
-manual profile commands, see `CONFIGURATION_REFERENCE.md`.
+For every Program A–I gesture, see the illustrated
+[Programs A–I manual](bad-street-brawler-programs.md). For registry validation
+and manual profile commands, see the
+[Configuration Reference](CONFIGURATION_REFERENCE.md).
 
 ## Sources, artwork, and fair play
 
@@ -302,24 +332,30 @@ The profile descriptions are checked against the project's implemented gesture
 engine and tests. Game objectives and original control intent were summarized
 from the following historical instruction sources:
 
-- [Mattel Power Glove instructions and Programs A-I](https://home.hiwaay.net/~lkseitz/cvg/power_glove.shtml)
-- [Bad Street Brawler NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/bad_street_brawler.shtml)
-- [Super Glove Ball NES instruction manual](https://www.digitpress.com/library/manuals/nes/Super%20Glove%20Ball.pdf)
-- [Joust NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/joust.shtml)
-- [Gyruss NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/gyruss.shtml)
-- [Defender II NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/defender_2.shtml)
-- [Gun Smoke NES gameplay reference](https://strategywiki.org/wiki/Gun.Smoke_%28NES%29/Gameplay)
-- [Knight Rider NES instruction manual](https://www.retrogames.cz/manualy/NES/Knight_Rider_-_NES_-_Manual.pdf)
+  - [Mattel Power Glove instructions and Programs A-I](https://home.hiwaay.net/~lkseitz/cvg/power_glove.shtml)
+  - [Bad Street Brawler NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/bad_street_brawler.shtml)
+  - [Super Glove Ball NES instruction manual](https://www.digitpress.com/library/manuals/nes/Super%20Glove%20Ball.pdf)
+  - [Joust NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/joust.shtml)
+  - [Gyruss NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/gyruss.shtml)
+  - [Defender II NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/defender_2.shtml)
+  - [Gun Smoke NES gameplay reference](https://strategywiki.org/wiki/Gun.Smoke_%28NES%29/Gameplay)
+  - [Knight Rider NES instruction manual](https://www.retrogames.cz/manualy/NES/Knight_Rider_-_NES_-_Manual.pdf)
 
-The gesture drawings are original Power Glove Vision project illustrations made
+The gesture drawings are original PowerGlove Vision project illustrations made
 for this guide. They deliberately avoid game screenshots, box art, characters,
 and publisher logos.
 
-Power Glove Vision is an independent MIT-licensed hobbyist project by Iain
+PowerGlove Vision is an independent MIT-licensed hobbyist project by Iain
 Bennett. Nintendo, NES, Power Glove, and all game titles and marks belong to
 their respective owners. No ROM images or original game artwork are distributed.
 
 
 ### Reading the camera overlay
 
-**Right** and **Left** label the detected hand; the adjacent confidence score is handedness confidence, not a left/right movement command. Check the Dashboard D-pad/buttons and axes for generated controls. Learn uses the same saved neutral reference as gameplay; it does not train and save a personal hand-recognition model.
+The camera overlay labels the detected hand as **Right** or **Left**. The
+number beside the label indicates how confident the tracker is in that
+identification. To see the controls produced by your gestures, check the
+D-pad, button, and axis readings on Dashboard.
+
+Learn uses the same saved resting-position reference as gameplay. It helps
+you practise gestures but does not train or save a personal recognition model.

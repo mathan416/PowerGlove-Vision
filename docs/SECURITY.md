@@ -1,5 +1,9 @@
 # PowerGlove Vision security policy
 
+Use PowerGlove Vision on a trusted home or workshop network. This policy
+explains how to report a vulnerability and which protections the project
+expects pairing, networking, and shutdown code to maintain.
+
 ## Supported code
 
 Security fixes will be available on the current `main` branch and included in
@@ -11,23 +15,22 @@ shutdown protections and should be upgraded before troubleshooting them.
 Please do not publish credentials, pairing codes, tokens, private device
 configuration, or working exploit instructions in a public issue.
 
-Use the repository's **Security** tab to submit a private vulnerability report
-when private vulnerability reporting is available. Include:
+  1. Open the repository's **Security** tab and look for private vulnerability reporting.
+  2. Submit a private report with the information below. Remove secrets from every attachment.
+  3. If private reporting is unavailable, open a minimal public issue asking for a private contact channel; include no exploit details or secrets.
 
-- the affected commit or release;
-- the UNO Q, RetroPie, browser, and network environment involved;
-- concise reproduction steps and the observed result;
-- the security boundary that was crossed;
-- logs or screenshots after removing tokens, passwords, pairing codes, local
-  addresses, and unrelated personal information.
+Include these details in the private report:
 
-If private reporting is unavailable, open a minimal public issue asking the
-maintainer to establish a private channel. Do not include exploit details or
-secrets in that issue. This project does not currently offer a bug bounty or a
-guaranteed response time.
+  - the affected commit or release;
+  - the UNO Q, RetroPie, browser, and network environment involved;
+  - concise reproduction steps and the observed result;
+  - the security boundary that was crossed;
+  - logs or screenshots after removing tokens, passwords, pairing codes, local addresses, and unrelated personal information.
 
-Ordinary controller mapping, camera compatibility, and game-profile problems
-may use normal public issues after logs are sanitized.
+This project does not currently offer a bug bounty or a guaranteed response time.
+
+You can report controller-mapping, camera-compatibility, and game-profile
+problems in public issues after removing sensitive information from the logs.
 
 ## Security model
 
@@ -38,13 +41,12 @@ treated as an Internet-facing service.
 
 The main protected assets are:
 
-- the shared controller token;
-- the UNO Q and RetroPie operating systems;
-- the privileged `/dev/uinput` receiver;
-- the physical pairing display and single-use PIN;
-- the fixed-purpose UNO Q shutdown helper;
-- the integrity of the App Lab installation ZIP, MediaPipe wheel, downloaded
-  model, and Arduino dependencies.
+  - the shared controller token;
+  - the UNO Q and RetroPie operating systems;
+  - the privileged `/dev/uinput` receiver;
+  - the physical pairing display and single-use PIN;
+  - the fixed-purpose UNO Q shutdown helper;
+  - the integrity of the App Lab installation ZIP, MediaPipe wheel, downloaded model, and Arduino dependencies.
 
 The project does not attempt to protect a device after an attacker obtains root
 access, physical storage access, or control of the trusted local network and
@@ -57,17 +59,18 @@ active token belongs only in the UNO Q's private `data/device.json` and
 RetroPie's `/etc/powerglove/token`. It must not be committed, placed in a shell
 argument, stored in `launcher.json`, or included in a screenshot or log.
 
-The preferred setup path uses authenticated SSH and verifies the remote host
-key after first trust. Password input is passed through the SSH channel and is
-not placed on the process command line.
+The recommended setup path uses a short-lived one-time code to authenticate
+the RetroPie pairing server over pinned TLS. Password pairing uses authenticated SSH. After the initial connection
+establishes trust, subsequent connections verify the saved remote host key.
+The password is not placed on the process command line.
 
-The alternative pairing path uses short-lived TLS, a certificate identity, and
-a physical single-use PIN displayed on the UNO Q matrix. The browser or client
-must compare the certificate identity and supply the physical PIN before the
-token is released. This is a local certificate-pinning ceremony, not validation
-by a public certificate authority.
+Both browser pairing methods require you to open secure Setup, compare the
+browser certificate identity with the identifier on the UNO Q matrix, and
+enter the single-use PIN shown on the matrix before the token is released. This is a local certificate-pinning ceremony, not
+validation by a public certificate authority.
 
-Pairing sessions have bounded handshakes and deadlines. Reusing a PIN, removing
+Pairing sessions limit how long a connection handshake can take and how long
+the pairing service remains available. Reusing a PIN, removing
 the physical display requirement, accepting pairing credentials over ordinary
 HTTP, or extending the listener indefinitely weakens the intended boundary and
 requires explicit security review.
@@ -123,22 +126,19 @@ A root-owned tmpfiles rule recreates only that fixed readiness marker during
 boot. It grants no command execution and does not change the container's
 privileges.
 
-Keep the path unit, service unit, and tmpfiles rule root-owned and mode `0644`.
+Keep the path unit, service unit, and tmpfiles rule owned by root, with file
+permissions set to `0644`.
 Do not replace the fixed `ExecStart` commands with user input, a shell string,
 or an arbitrary command runner. Remove or disable all three files if remote
 shutdown is not wanted.
 
 ## Dependency and release integrity
 
-- The App Lab installation ZIP is generated and verified; it is not maintained
-  as a changing source-controlled binary.
-- The custom MediaPipe wheel's provenance and checksum are recorded in
-  `THIRD_PARTY_COMPONENTS.md`.
-- Google's Hand Landmarker model downloads from its pinned source and must match
-  the expected SHA-256 digest before atomic installation.
-- Arduino library versions are pinned in `sketch/sketch.yaml`.
-- GitHub Actions rebuilds and inspects documentation and the App Lab
-  installation ZIP on every pull request and push to `main`.
+  - The App Lab installation ZIP is generated and verified; it is not maintained as a changing source-controlled binary.
+  - The custom MediaPipe wheel's provenance and checksum are recorded in `THIRD_PARTY_COMPONENTS.md`.
+  - Google's Hand Landmarker model downloads from its pinned source and must match the expected SHA-256 digest before atomic installation.
+  - Arduino library versions are pinned in `sketch/sketch.yaml`.
+  - GitHub Actions rebuilds and inspects documentation and the App Lab installation ZIP on every pull request and push to `main` or `dev`.
 
 Changing a download URL, checksum, dependency source, pairing primitive,
 network binding, file permission, or privileged service requires focused review

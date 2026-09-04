@@ -11,6 +11,7 @@
 #   2026-09-03 - Added changelog, configuration, security, and contributor editions.
 #   2026-09-03 - Added explicit page breaks and the illustrated gameplay handbook.
 #   2026-09-03 - Added contextual gesture images inside gameplay control tables.
+#   2026-09-04 - Added section-link destinations and kept headings with their following content.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Build polished, distributable PowerGlove Vision PDF guides."""
@@ -225,6 +226,7 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
     index = 0
     skipped_html = False
     skipped_title = False
+    used_anchors: set[str] = set()
     while index < len(lines):
         line = lines[index].strip()
         if not line:
@@ -253,7 +255,8 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
             image_path = (source.parent / image_match.group(2)).resolve()
             if image_path.exists():
                 image = image_flowable(image_path, 6.1 * inch, 2.85 * inch)
-                story.extend([Spacer(1, 8), image, paragraph(image_match.group(1), styles["caption"]), Spacer(1, 10)])
+                image.keepWithNext = True
+                story.extend([image, paragraph(image_match.group(1), styles["caption"]), Spacer(1, 10)])
             index += 1
             continue
 
@@ -261,6 +264,14 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
         if heading:
             level = len(heading.group(1))
             title = heading.group(2)
+            # Match the Help renderer's stable heading IDs before normalizing typography.
+            base_anchor = re.sub(r"[^a-z0-9]+", "-", re.sub(r"[`*_]", "", title).lower()).strip("-") or "section"
+            anchor = base_anchor
+            suffix = 2
+            while anchor in used_anchors:
+                anchor = f"{base_anchor}-{suffix}"
+                suffix += 1
+            used_anchors.add(anchor)
             if level == 1 and not skipped_title:
                 skipped_title = True
                 index += 1
@@ -272,7 +283,8 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
                 or title in {"Troubleshooting", "Program cards", "How PowerGlove Vision selects a program"}
             ):
                 story.append(CondPageBreak(2.25 * inch))
-            story.append(paragraph(title, styles[f"h{level}"]))
+            story.append(CondPageBreak((1.6 if level == 2 else 1.25) * inch))
+            story.append(Paragraph(f'<a name="{anchor}"/>{inline(title)}', styles[f"h{level}"]))
             index += 1
             continue
 
