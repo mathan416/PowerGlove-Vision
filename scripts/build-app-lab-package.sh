@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Project: PowerGlove Vision
 # File: scripts/build-app-lab-package.sh
-# Purpose: Build a clean, model-free UNO Q App Lab distribution archive from tracked project sources.
+# Purpose: Build a clean, offline-model UNO Q App Lab distribution archive from tracked project sources.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
@@ -42,7 +42,6 @@ rsync -a \
   --exclude '.cache/' \
   --exclude '.venv/' \
   --exclude 'data/' \
-  --exclude 'models/hand_landmarker.task' \
   --exclude 'output/' \
   --exclude 'tests/' \
   --exclude 'tmp/' \
@@ -60,7 +59,8 @@ for PDF_NAME in "${PUBLIC_PDFS[@]}"; do
     "${PACKAGE_TMP}/PowerGlove-Vision/output/pdf/${PDF_NAME}"
 done
 
-rm -f "${OUTPUT_ZIP}"
 cd "${PACKAGE_TMP}"
-zip -qr "${OUTPUT_ZIP}" PowerGlove-Vision
+zip -qr "${PACKAGE_TMP}/verified-package.zip" PowerGlove-Vision
+python3 "${SCRIPT_DIR}/verify-app-lab-package.py" "${PACKAGE_TMP}/verified-package.zip"
+mv "${PACKAGE_TMP}/verified-package.zip" "${OUTPUT_ZIP}"
 echo "Built ${OUTPUT_ZIP}"

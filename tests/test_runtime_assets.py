@@ -37,7 +37,7 @@ class RuntimeAssetTests(unittest.TestCase):
             return io.BytesIO(content)
 
         path = ensure_hand_landmarker_model(
-            self.data, url="https://example.test/model", expected_sha256=expected, opener=open_model
+            self.data, url="https://example.test/model", expected_sha256=expected, bundled_path=self.data / "absent.task", opener=open_model
         )
         self.assertEqual(path.read_bytes(), content)
         self.assertEqual(path.stat().st_mode & 0o777, 0o600)
@@ -61,8 +61,34 @@ class RuntimeAssetTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "checksum mismatch"):
             ensure_hand_landmarker_model(
                 self.data, expected_sha256=hashlib.sha256(b"expected").hexdigest(),
-                opener=open_bad_model,
+                bundled_path=self.data / "absent.task", opener=open_bad_model,
             )
+        self.assertFalse((self.data / "models" / "hand_landmarker.task").exists())
+        self.assertEqual(list((self.data / "models").glob("*.download")), [])
+
+    def test_bundle_installs_offline_and_repairs_bad_cache(self) -> None:
+        content = b"verified bundled model"
+        bundle = self.data / "bundle.task"
+        bundle.write_bytes(content)
+        cache = self.data / "models" / "hand_landmarker.task"
+        cache.parent.mkdir()
+        cache.write_bytes(b"damaged cache")
+        def no_network(*args, **kwargs):
+            raise AssertionError("offline installation attempted network access")
+        path = ensure_hand_landmarker_model(
+            self.data, expected_sha256=hashlib.sha256(content).hexdigest(),
+            bundled_path=bundle, opener=no_network,
+        )
+        self.assertEqual(path.read_bytes(), content)
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_bad_bundle_is_rejected_without_download(self) -> None:
+        bundle = self.data / "bundle.task"
+        bundle.write_bytes(b"damaged bundle")
+        def no_network(*args, **kwargs):
+            raise AssertionError("bad bundle must not be silently replaced")
+        with self.assertRaisesRegex(RuntimeError, "checksum mismatch"):
+            ensure_hand_landmarker_model(self.data, bundled_path=bundle, opener=no_network)
         self.assertFalse((self.data / "models" / "hand_landmarker.task").exists())
         self.assertEqual(list((self.data / "models").glob("*.download")), [])
 

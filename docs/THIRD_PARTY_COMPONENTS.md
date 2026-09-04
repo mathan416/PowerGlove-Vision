@@ -52,27 +52,30 @@ PowerGlove Vision uses Google's float16 Hand Landmarker task bundle.
 | SHA-256 | `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1` |
 | Size | 7,819,105 bytes |
 
-The model is not tracked in Git and is not included in the App Lab installation
-ZIP. The first time an active gesture profile needs vision, the application
-downloads it from Google's versioned URL into the private, persistent
-`data/models/` directory. **Gestures off** does not download or open the model.
-If the file's SHA-256 checksum differs from the expected value, the application
-reports the problem on Dashboard and retries. The web interface remains available. Later
-launches reuse the verified cached model. Wi-Fi deployments preserve `data/`,
-so an application update does not download the model again.
+The unmodified model is preserved in `models/hand_landmarker.task` and included
+in the App Lab installation ZIP. Its Apache 2.0 license is in
+`licenses/Apache-2.0.txt`; [third-party notices](../THIRD_PARTY_NOTICES.md) record
+its source, checksum, and licensing evidence. Google's official Hand Landmarker
+[documentation](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker)
+links a [model card](https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Hand%20Tracking%20%28Lite_Full%29%20with%20Fairness%20Oct%202021.pdf)
+that explicitly states Apache License, Version 2.0 on page 2. The project's MIT
+license does not replace that license. No model modifications were made.
 
-`scripts/fetch-runtime-assets.sh` provides an optional manual prefetch using
-the same URL and checksum. It writes to the same private `data/models/` path and
-is useful for development or for preparing the app before an offline session.
+When vision is first activated, the application verifies and copies the bundled
+model into private, persistent `data/models/`. A verified cached copy is reused.
+A damaged cache is replaced from the bundle; a damaged bundle is rejected.
+Google's pinned download is used only when no bundled model is available.
+**Gestures off** does not open or install the model. Wi-Fi deployments preserve
+`data/` and include the bundled recovery copy. The model therefore does not
+require internet access in a complete installation package; Python and other
+first-install dependencies may still require downloads.
 
-Google's MediaPipe repository is Apache-2.0 licensed and its official examples
-direct applications to this model URL. The model download does not place a
-separate model-specific license file in this repository. The PowerGlove Vision
-MIT License therefore should not be interpreted as licensing the Google model.
-The project avoids redistributing the model by having each installation fetch
-it directly from Google. Anyone who independently bundles or redistributes the
-model should confirm that the intended distribution complies with Google's
-applicable model terms.
+`scripts/fetch-runtime-assets.sh` follows the same bundled-first policy and
+verifies the pinned checksum before installing the private cached copy.
+`models/SHA256SUMS` records the preserved model's digest. Keep the model, license,
+notices, and checksum together in backups. Store a copy of the recovery archive
+on another drive or in your regular off-machine backup; copies on the same Mac
+do not protect against loss of that Mac.
 
 ## Documentation illustration provenance
 
@@ -94,10 +97,10 @@ Before publishing a wheel or model update, complete these steps. The
 explains the build and verification scripts.
 
   1. Record the official source URL, version, license, size, and SHA-256 here.
-  2. Update the pinned value in `scripts/fetch-runtime-assets.sh` when changing the model.
+  2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
   3. If repackaging another wheel, record every difference from upstream and retain its license files.
-  4. Build the App Lab installation ZIP and confirm it contains one wheel, no model file, and only the root `sketch/` application sketch.
-  5. Test first-launch download and checksum verification, camera initialization, tracking, the Learn and Debug pages, and controller output on the UNO Q before publishing the package.
+  4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
+  5. Test first-launch offline model installation, download fallback, and checksum verification, camera initialization, tracking, the Learn and Debug pages, and controller output on the UNO Q before publishing the package.
 
 ### Application screenshots
 

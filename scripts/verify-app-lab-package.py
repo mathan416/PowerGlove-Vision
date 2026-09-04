@@ -40,6 +40,10 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/models/hand_landmarker.task",
+    "PowerGlove-Vision/models/SHA256SUMS",
+    "PowerGlove-Vision/licenses/Apache-2.0.txt",
+    "PowerGlove-Vision/THIRD_PARTY_NOTICES.md",
     "PowerGlove-Vision/src/powerglove_vision/game_registry.py",
     "PowerGlove-Vision/src/powerglove_vision/tuning.py",
     "PowerGlove-Vision/src/powerglove_vision/web_features.py",
@@ -68,7 +72,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/uno-q/powerglove-system-shutdown.service",
 } | {f"PowerGlove-Vision/{path}" for path in PUBLIC_PDF_PATHS}
 FORBIDDEN_PARTS = {".git", ".venv", "__pycache__", "data", "tests", "tmp"}
-FORBIDDEN_NAMES = {"CODE_REVIEW_MAP.txt", ".DS_Store", "cheatsheet.md", "hand_landmarker.task"}
+FORBIDDEN_NAMES = {"CODE_REVIEW_MAP.txt", ".DS_Store", "cheatsheet.md"}
 FORBIDDEN_SUFFIXES = {".pyc"}
 
 
@@ -111,6 +115,12 @@ def archive_errors(path: Path) -> list[str]:
                     errors.append(f"unapproved PDF included: {info.filename}")
             for name in sorted(REQUIRED_FILES - names):
                 errors.append(f"required package file is missing: {name}")
+            model = "PowerGlove-Vision/models/hand_landmarker.task"
+            if model in names and hashlib.sha256(archive.read(model)).hexdigest() != "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1":
+                errors.append("bundled Hand Landmarker checksum mismatch")
+            license_path = "PowerGlove-Vision/licenses/Apache-2.0.txt"
+            if license_path in names and hashlib.sha256(archive.read(license_path)).hexdigest() != "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30":
+                errors.append("Apache 2.0 license text is missing or altered")
             wheels = [name for name in names if "/python/worker-wheels/mediapipe-" in name and name.endswith(".whl")]
             if len(wheels) != 1:
                 errors.append(f"expected one UNO Q MediaPipe wheel, found {len(wheels)}")

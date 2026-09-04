@@ -9,7 +9,7 @@ Linux devices, and a privileged shutdown helper.
   1. Start from the current `dev` branch and create a short-lived topic branch.
   2. Read `SECURITY.md` before changing pairing, tokens, network listeners, downloads, file permissions, uinput, or shutdown behaviour.
   3. Check `CONFIGURATION_REFERENCE.md` before changing a file format, default, installed path, port, controller mapping, or service unit.
-  4. Never commit `data/`, tokens, passwords, pairing codes, the downloaded hand model, caches, or locally generated App Lab installation ZIP files.
+  4. Never commit `data/`, tokens, passwords, pairing codes, model caches and other runtime caches, or locally generated App Lab installation ZIP files.
 
 Report security vulnerabilities through the private process described in
 `SECURITY.md`. Do not disclose them in an ordinary pull request or public issue.
@@ -171,7 +171,7 @@ verification remain outstanding.
 
 ## App Lab installation package changes
 
-Build and verify the model-free App Lab installation ZIP with:
+Build and verify the model-bundled App Lab installation ZIP with:
 
 ```sh
 scripts/build-app-lab-package.sh
@@ -180,8 +180,8 @@ scripts/verify-app-lab-package.py
 
 The App Lab installation ZIP must contain public source, configuration
 examples, documentation, the nine allowlisted public PDF guides, and the
-required custom UNO Q MediaPipe wheel. It must exclude private `data/`, the
-downloaded Google model, tests, the cabinet quick-reference PDF, caches, and Git
+required custom UNO Q MediaPipe wheel, verified Google model, Apache 2.0 license,
+and third-party notices. It must exclude private `data/`, tests, the cabinet quick-reference PDF, caches, and Git
 history. Do not force-add the generated ZIP to Git. GitHub Actions publishes a
 short-lived verified ZIP artifact for each successful workflow run; tagged
 releases may attach a verified ZIP for long-term distribution.

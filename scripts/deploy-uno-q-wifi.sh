@@ -90,7 +90,6 @@ COPYFILE_DISABLE=1 tar \
   --exclude './.cache' \
   --exclude './.venv' \
   --exclude './data' \
-  --exclude './models/hand_landmarker.task' \
   --exclude './output/app-lab' \
   --exclude './output/pdf/PowerGlove-Vision-Quick-Reference.pdf' \
   --exclude './tests' \
