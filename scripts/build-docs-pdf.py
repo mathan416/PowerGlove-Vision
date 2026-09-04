@@ -12,6 +12,7 @@
 #   2026-09-03 - Added explicit page breaks and the illustrated gameplay handbook.
 #   2026-09-03 - Added contextual gesture images inside gameplay control tables.
 #   2026-09-04 - Added section-link destinations and kept headings with their following content.
+#   2026-09-04 - Indented list markers and text consistently within the body margin.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Build polished, distributable PowerGlove Vision PDF guides."""
@@ -201,7 +202,7 @@ def parse_list(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
                 break
             parts.append(stripped)
             index += 1
-        items.append(ListItem(paragraph(" ".join(parts), styles["body"]), leftIndent=10))
+        items.append(ListItem(paragraph(" ".join(parts), styles["body"])))
         if index < len(lines) and not lines[index].strip():
             lookahead = index + 1
             if lookahead < len(lines) and re.match(r"^\s*(?:[-*]|\d+\.)\s+", lines[lookahead]):
@@ -211,7 +212,10 @@ def parse_list(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
     return ListFlowable(
         items,
         bulletType="1" if ordered else "bullet",
-        leftIndent=24,
+        # Indent markers as well as text; item overrides otherwise outdent markers.
+        leftIndent=30,
+        bulletDedent=10,
+        bulletAlign="right",
         bulletFontName="Helvetica-Bold",
         bulletFontSize=8,
         bulletColor=RED if ordered else BLUE,
