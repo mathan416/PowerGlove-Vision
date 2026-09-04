@@ -17,7 +17,6 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
-AXIS_MIN = -32767
 AXIS_MAX = 32767
 
 

@@ -180,3 +180,14 @@ Documentation screenshots blur the complete camera image before capture. Keep
 controls legible, but never publish unblurred camera frames or screenshots that
 contain passwords, private tokens, or pairing codes. The reference images show
 the interface; they are not saved gesture recordings.
+
+### Personal hand setup and tuning data
+
+Optional hand setup measures all five fingers; gesture tuning measures selected
+components. Both use three short sets of numerical samples in memory. The
+version-1 `data/gesture-tuning.json` file stores only activation/release pairs,
+shared across profiles. Neutral calibration is separate in `data/calibration.json`.
+Preserve both files during updates. Expiry or discard removes temporary preview
+state, not saved settings. Numerical validity and sample separation do not prove
+a pose was performed correctly; preview feedback and physical testing are still
+required before release.

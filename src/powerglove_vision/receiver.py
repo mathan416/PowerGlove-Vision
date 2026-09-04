@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hmac
 import socket
+import time
 from pathlib import Path
 
 from .transport import MAX_PACKET_BYTES, decode_state
@@ -118,17 +119,28 @@ def main() -> int:
     device = DryRunDevice() if args.dry_run else None
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
-    sock.settimeout(args.timeout_ms / 1000)
+    if args.timeout_ms <= 0:
+        sock.close()
+        raise ValueError("receiver timeout must be positive")
+    timeout = args.timeout_ms / 1000
+    sock.settimeout(timeout)
+    last_valid_at = None
     released = True
     last_sequence = -1
     last_session: str | None = None
     try:
         while True:
+            now = time.monotonic()
+            if last_valid_at is not None and not released and now - last_valid_at >= timeout:
+                device.release()
+                released = True
+            remaining = timeout if released or last_valid_at is None else timeout - (now - last_valid_at)
+            sock.settimeout(max(0.001, remaining))
             try:
                 payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
                 try:
                     state = decode_state(payload)
-                except (ValueError, UnicodeError):
+                except (ValueError, UnicodeError, RecursionError):
                     continue
                 supplied_token = state.get("token")
                 if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, token):
@@ -137,7 +149,7 @@ def main() -> int:
                 if isinstance(session, str) and session != last_session:
                     last_session = session
                     last_sequence = -1
-                sequence = int(state.get("sequence", -1))
+                sequence = state["sequence"]
                 if last_sequence >= 0 and sequence <= last_sequence:
                     continue
                 last_sequence = sequence
@@ -145,6 +157,7 @@ def main() -> int:
                     device = UInputDevice()
                 device.write_state(state)
                 released = False
+                last_valid_at = time.monotonic()
             except socket.timeout:
                 if device is not None and not released:
                     device.release()

@@ -46,6 +46,8 @@ CONFIGURATION_FILES = (
     ".github/workflows/quality.yml",
 )
 PDF_EDITIONS = {
+    "docs/MATRIX_GUIDE.md": "PowerGlove-Vision-Matrix-Guide.pdf",
+    "docs/ARCHITECTURE.md": "PowerGlove-Vision-Architecture.pdf",
     "README.md": "PowerGlove-Vision-Overview.pdf",
     "docs/INSTALL_README.md": "PowerGlove-Vision-Guide.pdf",
     "docs/cheatsheet.md": "PowerGlove-Vision-Quick-Reference.pdf",

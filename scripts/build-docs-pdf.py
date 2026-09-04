@@ -135,6 +135,8 @@ def table_cell(
     if image_match:
         image_path = (source.parent / image_match.group(1)).resolve()
         if image_path.exists():
+            if "images/matrix/" in cell and int(image_match.group(3) or 104) > 104:
+                return image_flowable(image_path, 2.6 * inch, 1.7 * inch)
             return image_flowable(image_path, 0.92 * inch, 0.48 * inch)
     return Paragraph(inline(cell), style)
 
@@ -167,6 +169,21 @@ def parse_table(
         widths = [1.25 * inch, 1.25 * inch, 1.25 * inch, 2.85 * inch]
     else:
         widths = [6.6 * inch / columns] * columns
+    if source.name == "MATRIX_GUIDE.md" and columns == 3:
+        widths = [1.8 * inch, 2.3 * inch, 2.5 * inch]
+    elif source.name == "ARCHITECTURE.md" and columns == 3:
+        widths = [1.4 * inch, 2.6 * inch, 2.6 * inch]
+    elif source.name == "ARCHITECTURE.md" and columns == 4:
+        widths = [1.2 * inch, 1.8 * inch, 1.8 * inch, 1.8 * inch]
+    if "See it" in rows[0] and any("images/matrix/" in cell for row in rows for cell in row):
+        if columns == 3:
+            widths = [1.85 * inch, 1.05 * inch, 3.7 * inch]
+        elif columns == 4:
+            widths = [1.4 * inch, 1.0 * inch, 2.1 * inch, 2.1 * inch]
+    if columns == 2 and any("images/matrix/" in cell for row in rows for cell in row):
+        widths = [3.3 * inch, 3.3 * inch]
+    if rows[0] == ["Profile", "Matrix code", "See it"]:
+        widths = [3.7 * inch, 1.85 * inch, 1.05 * inch]
     table = Table(formatted, colWidths=widths, repeatRows=1, hAlign="LEFT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), NIGHT),
@@ -279,8 +296,9 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
                     "debug-dashboard.png", "learn-page.png", "tune-page.png",
                     "setup-page.png", "games-section.png", "help-page.png",
                 }
-                image = image_flowable(image_path, 6.6 * inch if screenshot else 6.1 * inch,
-                                       5.7 * inch if screenshot else 2.85 * inch)
+                architecture = image_path.parent.name == "architecture"
+                image = image_flowable(image_path, 6.6 * inch if screenshot or architecture else 6.1 * inch,
+                                       5.7 * inch if screenshot else 4.1 * inch if architecture else 2.85 * inch)
                 group = [image, paragraph(image_match.group(1), styles["caption"])]
                 # Keep a directly preceding heading with its illustration, too.
                 if story and isinstance(story[-1], Paragraph) and story[-1].style.name in {"H2", "H3", "H4"}:
@@ -340,7 +358,12 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
             index += 1
             code: list[str] = []
             while index < len(lines) and not lines[index].strip().startswith("```"):
-                code.append(normalize(lines[index]).replace("\t", "    "))
+                rendered = normalize(lines[index]).replace("\t", "    ")
+                # Preserve a copyable shell command while fitting long installer URLs.
+                if language in ("sh", "bash") and rendered.startswith("curl -fLO https://"):
+                    rendered = rendered.replace("curl -fLO ", "curl -fLO " + chr(92) + "\n  ", 1)
+                    rendered = rendered.replace(" && bash ", " \\" + "\n  && bash ", 1)
+                code.append(rendered)
                 index += 1
             index += 1
             label = f"{language.upper()}\n" if language and language != "text" else ""
@@ -484,7 +507,7 @@ def main():
     build(
         install, OUTPUT / "PowerGlove-Vision-Guide.pdf",
         "Power Glove Vision Installation Guide",
-        "Build, pair, and play with camera-based hand controls on Arduino UNO Q and RetroPie.",
+        "Install, pair, and play on Arduino UNO Q and RetroPie.",
         "Installation instructions",
     )
     build(
@@ -535,7 +558,15 @@ def main():
         "Eight ready-made play cards, nine reusable programs, and a whole library to rediscover.",
         "Illustrated game handbook",
     )
-    print(f"Built 10 PDF guides on {date.today().isoformat()}")
+    build(docs / "ARCHITECTURE.md", OUTPUT / "PowerGlove-Vision-Architecture.pdf",
+          "PowerGlove Vision Architecture",
+          "System boundaries, recognition, tuning, game input, and deployment.",
+          "Architecture and flows")
+    build(docs / "MATRIX_GUIDE.md", OUTPUT / "PowerGlove-Vision-Matrix-Guide.pdf",
+          "PowerGlove Vision Matrix Display Guide",
+          "Recognize animations, mode letters, pairing, and startup feedback.",
+          "Display reference")
+    print(f"Built 12 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

@@ -110,12 +110,23 @@ explains the build and verification scripts.
   2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
   3. If repackaging another wheel, record every difference from upstream and retain its license files.
   4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
-  5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Learn and Dashboard pages, and controller output on the UNO Q before publishing the package.
+  5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the UNO Q before publishing the package.
 
 ### Application screenshots
 
 The interface screenshots in `docs/images/` were refreshed from the running
-PowerGlove Vision application on September 4, 2026. They cover Dashboard, Learn,
+PowerGlove Vision application on September 4, 2026. They cover Dashboard, Glove Academy,
 Tune, Setup, Games, and Help. Camera imagery is blurred for privacy; gesture
 illustrations remain unchanged. These screenshots are project documentation
 assets and add no runtime dependencies.
+
+## Verified UNO Q sketch toolchain
+
+The September 4, 2026 sketch build and firmware deployment used the pinned
+`sketch/sketch.yaml`: Arduino Zephyr platform **1.0.0**, Arduino_RouterBridge
+**0.4.3**, Arduino_RPClite **0.3.0**, ArxContainer **0.7.0**, ArxTypeTraits
+**0.3.2**, DebugLog **0.8.4**, and MsgPack **0.4.2**. The build resolved
+Arduino_LED_Matrix **0.1.3** from that platform. Preserve the dependency pins when
+synchronizing with App Lab; its shortened generated configuration is not a
+replacement for the project's complete configuration. Revalidate compilation
+and device operation before changing a pin.

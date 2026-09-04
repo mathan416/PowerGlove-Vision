@@ -237,7 +237,7 @@ def main() -> int:
     token = read_token(args.token, None)
     sender = UdpSender(args.receiver, args.port, args.token)
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
-    shared = SharedDebugState(controller_enabled)
+    shared = SharedDebugState()
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
     server = start_debug_server(shared, args.web_host, args.web_port)
     capture = tracker = engine = cv2 = None
@@ -273,6 +273,8 @@ def main() -> int:
                     sender.send(ControllerState.released(
                         2_147_483_647, time.monotonic(), engine.profile, engine.calibrated
                     ))
+                # A terminal release must never share a session with later frames.
+                sender.new_session()
                 current_profile = requested_profile
                 if profile_requested:
                     if request is not None:
@@ -296,7 +298,6 @@ def main() -> int:
                         ),
                         clear_frame=True,
                     )
-                    sender.new_session()
                     retry_at = 0.0
                     read_failures = 0
                     vision_error = None
@@ -455,6 +456,7 @@ def main() -> int:
             status["vision_state"] = "active"
             status["menu_gesture"] = engine.menu_feedback()
             status["push_gesture"] = engine.push_feedback(result.observation)
+            status["pull_gesture"] = engine.pull_feedback(result.observation)
             status["finger_active"] = engine.curl_feedback(result.observation)
             status["finger_curls"] = result.observation.fingers
             status["curl_threshold"] = engine.config.pair("index")[0]

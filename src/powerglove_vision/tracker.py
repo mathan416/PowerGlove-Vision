@@ -111,42 +111,6 @@ def _finger_curls(points: list) -> dict:
     return {name + "_curl": max(bends) for name, bends in _finger_bends(points).items()}
 
 
-def observation_from_landmarks(
-    values: list,
-    confidence: float,
-    *,
-    width: int = 640,
-    height: int = 480,
-    timestamp: float | None = None,
-) -> HandObservation:
-    """Convert Arduino Gesture Recognition Brick landmarks to controller input."""
-    now = time.monotonic() if timestamp is None else timestamp
-    if len(values) < 21:
-        return HandObservation(now, False)
-    landmarks = [
-        _Point(float(point[0]) / width, float(point[1]) / height, float(point[2]))
-        for point in values[:21]
-    ]
-    palm_ids = (0, 5, 9, 13, 17)
-    palm_x = sum(landmarks[i].x for i in palm_ids) / len(palm_ids)
-    palm_y = sum(landmarks[i].y for i in palm_ids) / len(palm_ids)
-    palm_scale = (_distance(landmarks[0], landmarks[9]) + _distance(landmarks[5], landmarks[17])) / 2
-    return HandObservation(
-        timestamp=now,
-        detected=True,
-        confidence=confidence,
-        palm_x=palm_x,
-        palm_y=palm_y,
-        palm_scale=palm_scale,
-        roll=math.atan2(landmarks[5].y - landmarks[17].y, landmarks[5].x - landmarks[17].x),
-        thumb_curl=(_curl(landmarks[1], landmarks[2], landmarks[3]) + _curl(landmarks[2], landmarks[3], landmarks[4])) / 2,
-        index_curl=(_curl(landmarks[5], landmarks[6], landmarks[7]) + _curl(landmarks[6], landmarks[7], landmarks[8])) / 2,
-        middle_curl=(_curl(landmarks[9], landmarks[10], landmarks[11]) + _curl(landmarks[10], landmarks[11], landmarks[12])) / 2,
-        ring_curl=(_curl(landmarks[13], landmarks[14], landmarks[15]) + _curl(landmarks[14], landmarks[15], landmarks[16])) / 2,
-        pinky_curl=(_curl(landmarks[17], landmarks[18], landmarks[19]) + _curl(landmarks[18], landmarks[19], landmarks[20])) / 2,
-    )
-
-
 class MediaPipeTracker:
     """Run single-hand tracking and produce normalized controller observations."""
     def __init__(

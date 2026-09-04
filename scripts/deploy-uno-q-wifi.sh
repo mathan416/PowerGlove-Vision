@@ -87,26 +87,11 @@ fi
 readonly UNO_CONNECTION UNO_HEALTH_HOST UNO_HEALTH_AUTHORITY
 
 echo "Uploading PowerGlove Vision over Wi-Fi..."
-COPYFILE_DISABLE=1 tar \
-  --exclude './.git' \
-  --exclude './src/powerglove_vision/_build_info.json' \
-  --exclude './.cache' \
-  --exclude './.venv' \
-  --exclude './data' \
-  --exclude './output/app-lab' \
-  --exclude './output/pdf/PowerGlove-Vision-Quick-Reference.pdf' \
-  --exclude './tests' \
-  --exclude './tmp' \
-  --exclude '__pycache__' \
-  --exclude '*.pyc' \
-  --exclude '.DS_Store' \
-  --exclude './docs/cheatsheet.md' \
-  -C "${PROJECT_DIR}" -cf "${LOCAL_ARCHIVE}" .
-python3 "${SCRIPT_DIR}/stamp-build-version.py" "${LOCAL_METADATA_DIR}/src/powerglove_vision/_build_info.json"
-tar -rf "${LOCAL_ARCHIVE}" -C "${LOCAL_METADATA_DIR}" ./src/powerglove_vision/_build_info.json
+python3 "${SCRIPT_DIR}/application-payload.py" "${LOCAL_METADATA_DIR}"
+COPYFILE_DISABLE=1 tar -C "${LOCAL_METADATA_DIR}" -cf "${LOCAL_ARCHIVE}" .
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "mkdir -p '${REMOTE_APP_DIR}' && tar --warning=no-unknown-keyword -C '${REMOTE_APP_DIR}' -xf '${REMOTE_ARCHIVE}' && rm -f '${REMOTE_ARCHIVE}'"
+  "set -eu; stage=\$(mktemp -d /tmp/powerglove-payload.XXXXXX); trap 'rm -rf \"\$stage\"' EXIT; tar --warning=no-unknown-keyword -C \"\$stage\" -xf '${REMOTE_ARCHIVE}'; python3 \"\$stage/scripts/installation-manifest.py\" '${REMOTE_APP_DIR}' --source \"\$stage\" --backup \"\$HOME/powerglove-backups/payload-\$(date +%Y%m%d-%H%M%S)-\$\$\"; rm -f '${REMOTE_ARCHIVE}'"
 
 echo "Ensuring the secure setup port is published..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \

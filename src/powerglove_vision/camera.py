@@ -83,13 +83,3 @@ def camera_candidates(
         return [int(value)]
     except ValueError:
         return [value]
-
-
-def camera_connected(selection: str = "auto") -> bool:
-    """Return whether the selected camera currently has a Linux device node."""
-    candidates = camera_candidates(selection)
-    if selection.strip().lower() == "auto":
-        return bool(candidates)
-    candidate = candidates[0]
-    path = Path(f"/dev/video{candidate}") if isinstance(candidate, int) else Path(candidate)
-    return path.exists()
