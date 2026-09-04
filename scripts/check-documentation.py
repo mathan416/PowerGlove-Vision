@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Limited Help coverage checks to guides directly under docs.
 #   2026-09-03 - Added documentation and generated-PDF consistency checks.
 #   2026-09-03 - Registered the illustrated gameplay handbook and PDF edition.
 #   2026-09-03 - Added Help-library and registered-game coverage checks.
@@ -115,7 +116,7 @@ def check_help_coverage(markdown: list[Path], errors: list[str]) -> None:
     portable_guides = {
         path.name
         for path in markdown
-        if path.parts[:1] == ("docs",) and path.name != "cheatsheet.md"
+        if path.parent == Path("docs") and path.name != "cheatsheet.md"
     }
     for name in sorted(portable_guides - help_files):
         errors.append(f"public guide is missing from the Help library: docs/{name}")

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Covered nested documentation support files in the Help audit.
 #   2026-09-04 - Cover reliability findings from the development audit.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -36,6 +37,15 @@ def packet(**extra):
 
 
 class AuditRegressionTests(unittest.TestCase):
+    def test_help_audit_ignores_nested_documentation_support_files(self):
+        audit = runpy.run_path(str(ROOT / 'scripts/check-documentation.py'))
+        errors = []
+        audit['check_help_coverage'](
+            [Path('docs/GAMEPLAY_GUIDE.md'), Path('docs/images/web/README.md')],
+            errors,
+        )
+        self.assertEqual(errors, [])
+
     def test_malformed_packets_are_rejected_before_device_access(self):
         invalid = [b'[]', b'null', b'"text"', packet(axes=[]), packet(buttons={'a':1}),
                    packet(axes={'x':32768}), packet(fingers={'index':4}),
