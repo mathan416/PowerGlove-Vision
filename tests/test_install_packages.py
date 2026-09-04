@@ -27,6 +27,23 @@ installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 
 
+class PackageContentTests(unittest.TestCase):
+    def test_local_matrix_exports_rejected_but_guide_images_allowed(self):
+        spec = importlib.util.spec_from_file_location(
+            'package_verifier', ROOT / 'scripts/verify-app-lab-package.py')
+        verifier = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(verifier)
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / 'package.zip'
+            with zipfile.ZipFile(archive, 'w') as output:
+                output.writestr('PowerGlove-Vision/assets/matrix/A.png', 'duplicate')
+                output.writestr('PowerGlove-Vision/docs/images/matrix/A.jpg', 'guide')
+            errors = verifier.archive_errors(archive)
+            duplicates = [error for error in errors if 'local duplicate matrix' in error]
+            self.assertEqual(len(duplicates), 1)
+            self.assertIn('assets/matrix/A.png', duplicates[0])
+
+
 class ArchiveTests(unittest.TestCase):
     def package(self, directory, machine='retropie', extra=None):
         archive = Path(directory) / 'package.zip'

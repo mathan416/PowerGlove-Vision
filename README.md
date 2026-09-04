@@ -23,13 +23,20 @@ gamepad path does not provide every original glove feature.
 
 ## Choose a guide
 
+### User manuals
+
 | You want to… | Read… |
 | --- | --- |
 | Install both devices and play your first game | [Installation Guide](docs/INSTALL_README.md) |
 | Find a command or connection reminder | [Quick Reference](docs/cheatsheet.md) |
-| Learn a game's gestures and try a short challenge | [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) |
+| Learn a game's gestures and try a short challenge | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) |
 | Choose or experiment with Programs A–I | [Programs A–I manual](docs/bad-street-brawler-programs.md) |
 | Recognize matrix animations and letters | [Matrix display guide](docs/MATRIX_GUIDE.md) |
+
+### Technical documentation
+
+| You want to… | Read… |
+| --- | --- |
 | Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
@@ -42,7 +49,9 @@ Prepare your UNO Q with Arduino App Lab and use an existing RetroPie installatio
 Connect both to the same trusted network and attach the camera through a powered
 USB hub. Keep a physical controller available for RetroArch setup.
 
-Download `install-uno-q.sh` and `install-retropie.sh` from the same published
+The commands in the Installation Guide select the latest published stable release.
+Use the same release on both devices. Download `install-uno-q.sh` and
+`install-retropie.sh` from that published
 [release](https://github.com/mathan416/PowerGlove-Vision/releases). Run the first
 on the UNO Q and the second on RetroPie as your normal login user. Each verifies
 its package and requests sudo access when needed. The UNO installer includes
@@ -88,7 +97,7 @@ effect depends on the game. A pulsed button repeatedly presses and releases.
 Programs A, D, and H have no default ROM assignment. Choose one on Dashboard
 to try it, then register the exact game filename if you want automatic
 selection. The [Programs manual](docs/bad-street-brawler-programs.md) includes
-illustrations; the [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) adds objectives and tips.
+illustrations; the [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) adds objectives and tips.
 
 ### Bad Street Brawler
 

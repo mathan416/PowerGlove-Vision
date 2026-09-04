@@ -1,5 +1,5 @@
 {
-  "note": "Original decoded pixels cropped without resizing, enhancement or rotation. Coordinates are left, top, right, bottom in original JPEG pixels. PNG avoids further JPEG loss.",
+  "note": "Coordinates are left, top, right, bottom in the original JPEG pixels. Original crops were saved as lossless PNGs without resizing, enhancement or rotation. The guide uses resized, optimized JPEG editions; these coordinates describe the original crops, not the current display dimensions.",
   "crops": {
     "A": [
       930,

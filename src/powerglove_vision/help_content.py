@@ -36,7 +36,7 @@ HELP_GUIDES = (
     {"slug": "installation", "title": "Installation and setup", "file": "INSTALL_README.md", "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.", "group": "User manuals"},
     {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Technical documentation"},
     {"slug": "configuration", "title": "Configuration reference", "file": "CONFIGURATION_REFERENCE.md", "description": "Every public setting, template, generated file, and installed location.", "group": "Technical documentation"},
-    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Install, inspect, and remove the optional UNO Q startup helper.", "group": "Technical documentation"},
+    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Inspect, maintain, and remove the UNO Q startup helper included by the installer.", "group": "Technical documentation"},
     {"slug": "security", "title": "Security and privacy", "file": "SECURITY.md", "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.", "group": "Technical documentation"},
     {"slug": "components", "title": "Third-party components", "file": "THIRD_PARTY_COMPONENTS.md", "description": "MediaPipe, model, license, checksum, and runtime provenance.", "group": "Technical documentation"},
     {"slug": "contributing", "title": "Contributing", "file": "CONTRIBUTING.md", "description": "Source formatting, tests, documentation, packaging, and review expectations.", "group": "Technical documentation"},

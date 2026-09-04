@@ -118,6 +118,8 @@ def archive_errors(path: Path) -> list[str]:
                     errors.append(f"symbolic link is not allowed in the App Lab installation ZIP: {info.filename}")
                 relative_parts = set(member.parts[1:])
                 relative = PurePosixPath(*member.parts[1:])
+                if relative.parts[:2] == ("assets", "matrix"):
+                    errors.append(f"local duplicate matrix export included: {info.filename}")
                 if relative_parts & FORBIDDEN_PARTS:
                     errors.append(f"private or generated path included: {info.filename}")
                 if member.name in FORBIDDEN_NAMES or member.suffix in FORBIDDEN_SUFFIXES:

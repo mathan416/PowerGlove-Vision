@@ -41,6 +41,7 @@ trap cleanup EXIT
 mkdir -p "${OUTPUT_DIR}" "${PACKAGE_TMP}/PowerGlove-Vision"
 rsync -a \
   --exclude '.git/' \
+  --exclude '/assets/matrix/' \
   --exclude '.cache/' \
   --exclude '.venv/' \
   --exclude 'data/' \
