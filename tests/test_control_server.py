@@ -145,7 +145,7 @@ class ControlStateTests(unittest.TestCase):
         page = help_document_page("gameplay")
         self.assertIsNotNone(page)
         assert page is not None
-        self.assertIn(b"Play with Power Glove Vision", page)
+        self.assertIn(b"Play with PowerGlove Vision", page)
         self.assertIn(b"On this page", page)
         self.assertIn(b"/help-assets/gestures/actions/whole-hand-movement.png", page)
         self.assertIn(b"/help-assets/gestures/actions/v-sign.png", page)

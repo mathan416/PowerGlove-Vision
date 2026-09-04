@@ -6,17 +6,11 @@ licenses or terms that apply to third-party software and model files.
 
 ## MediaPipe 0.10.18 ARM64 wheel
 
-A Python wheel is a standard installable package archive with a `.whl` file
-extension. It is similar to a ZIP file, but follows a defined layout that lets
-`pip` install Python modules, native libraries, and dependency metadata without
-building the project from source on the target device. In this case, the wheel
-contains MediaPipe's Python package and its already-compiled Linux ARM64 native
-code, so the UNO Q does not have to compile MediaPipe itself.
-
-The filename describes its compatibility: `cp312-cp312` means CPython 3.12 and
-its matching application binary interface, while `manylinux2014_aarch64` and
-`manylinux_2_17_aarch64` identify compatible 64-bit ARM Linux environments. The
-UNO Q runtime uses this tracked wheel:
+A wheel (`.whl`) is an installable Python package. This wheel includes
+MediaPipe's compiled Linux ARM64 code, so the UNO Q does not need to build it.
+The filename's `cp312-cp312` tags identify CPython 3.12 and its binary interface;
+`manylinux2014_aarch64` and `manylinux_2_17_aarch64` identify compatible ARM64
+Linux environments. The UNO Q uses this tracked file:
 
 ```text
 python/worker-wheels/mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
@@ -34,14 +28,13 @@ python/worker-wheels/mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylin
 ### Modification notice
 
 PowerGlove Vision repackaged the upstream wheel for its headless UNO Q worker.
-The Python package code and compiled MediaPipe binaries were not modified. The
-wheel dependency metadata was changed as follows, and its `RECORD` was rebuilt:
+The Python package code and compiled MediaPipe binaries were not modified. The changes listed below were made when repackaging the wheel, and its
+`RECORD` file was rebuilt to reflect them:
 
-- removed the `jax` dependency declaration;
-- removed the `jaxlib` dependency declaration;
-- replaced `opencv-contrib-python` with
-  `opencv-contrib-python-headless==4.10.0.84`;
-- omitted the upstream wheel's empty `mediapipe.libs` directory.
+  - The `jax` dependency declaration was removed.
+  - The `jaxlib` dependency declaration was removed.
+  - The `opencv-contrib-python` dependency was replaced with `opencv-contrib-python-headless==4.10.0.84`.
+  - The upstream wheel's empty `mediapipe.libs` directory was omitted.
 
 These changes avoid unnecessary JAX installation and GUI OpenCV dependencies
 on the UNO Q. The repacked wheel retains MediaPipe's Apache 2.0 license at
@@ -63,8 +56,8 @@ The model is not tracked in Git and is not included in the App Lab installation
 ZIP. The first time an active gesture profile needs vision, the application
 downloads it from Google's versioned URL into the private, persistent
 `data/models/` directory. **Gestures off** does not download or open the model.
-If the SHA-256 checksum differs, the active vision state reports the problem on
-the dashboard and retries without taking the web interface offline. Later
+If the file's SHA-256 checksum differs from the expected value, the application
+reports the problem on Dashboard and retries. The web interface remains available. Later
 launches reuse the verified cached model. Wi-Fi deployments preserve `data/`,
 so an application update does not download the model again.
 
@@ -96,15 +89,12 @@ marks remain the property of their respective owners.
 
 ## Updating either component
 
-Treat a wheel or model update as a tested dependency change:
+Before publishing a wheel or model update, complete these steps. The
+[command reference](CONFIGURATION_REFERENCE.md#build-inspect-or-maintain-project-files)
+explains the build and verification scripts.
 
-1. Record the official source URL, version, license, size, and SHA-256 here.
-2. Update the pinned value in `scripts/fetch-runtime-assets.sh` when changing
-   the model.
-3. If repackaging another wheel, record every difference from upstream and
-   retain its license files.
-4. Build the App Lab installation ZIP and confirm it contains one wheel, no
-   model file, and only the root `sketch/` application sketch.
-5. Test first-launch download and checksum verification, camera initialization,
-   tracking, the Learn and Debug pages, and controller output on the UNO Q
-   before publishing the package.
+  1. Record the official source URL, version, license, size, and SHA-256 here.
+  2. Update the pinned value in `scripts/fetch-runtime-assets.sh` when changing the model.
+  3. If repackaging another wheel, record every difference from upstream and retain its license files.
+  4. Build the App Lab installation ZIP and confirm it contains one wheel, no model file, and only the root `sketch/` application sketch.
+  5. Test first-launch download and checksum verification, camera initialization, tracking, the Learn and Debug pages, and controller output on the UNO Q before publishing the package.

@@ -1,21 +1,20 @@
-# Configure Power Glove Vision
+# PowerGlove Vision Configuration Reference
 
-This guide is for anyone installing or adapting Power Glove Vision on their own
-Arduino UNO Q and RetroPie system. It explains which settings are safe to change,
-where the active copies live, how game profiles are selected, and how to recover
-from a bad configuration.
+Use this reference to find a setting, change a game mapping, tune a gesture,
+or look up a command. Each section identifies the active file and explains
+what its values mean.
 
 Use the [installation guide](INSTALL_README.md) for the initial deployment and
 pairing procedure. Return here when you need to change a host, camera, game,
 gesture threshold, or network setting.
 
-> **KEEP THE TOKEN PRIVATE**  Power Glove Vision uses one shared token to
+> **KEEP THE TOKEN PRIVATE**  PowerGlove Vision uses one shared token to
 > authenticate controller packets and profile changes. Never paste it into an
 > issue, screenshot, command line, public backup, or Git commit.
 
 ## The three places configuration lives
 
-Power Glove Vision runs on two computers. A repository template is not always the
+PowerGlove Vision runs on two computers. A repository template is not always the
 file the running system reads.
 
 | Location | What it controls | Preferred way to change it |
@@ -34,16 +33,19 @@ In commands and examples, replace these placeholders:
 | --- | --- |
 | `UNO-Q-NAME.local` | Your UNO Q hostname or reserved IP address |
 | `RETROPIE-NAME.local` | Your RetroPie hostname or reserved IP address |
-| `/home/arduino/ArduinoApps/powerglove-vision` | Your UNO Q App Lab application directory, if different |
+| `/home/arduino/ArduinoApps/powerglove-vision` | Required directory for the supported UNO Q installer and shutdown helper; do not substitute a different path |
 
-## Recommended setup workflow
+## Find the setting or command you need
 
-1. Configure the UNO Q from its Setup page.
-2. Pair the UNO Q with RetroPie so both machines receive the same private token.
-3. Confirm the RetroPie launcher points to the UNO Q.
-4. Add your exact ROM filenames to the game registry.
-5. Install the RetroArch autoconfiguration and launch a registered game.
-6. Tune gesture thresholds only after the standard profiles work.
+| Task | Section |
+| --- | --- |
+| Install and pair both machines | [Installation Guide](INSTALL_README.md) |
+| Change the camera or startup profile | [UNO Q settings](#uno-q-settings) |
+| Repair pairing or token permissions | [Pairing and token management](#pairing-and-token-management) |
+| Change the UNO Q destination on RetroPie | [RetroPie connection settings](#retropie-connection-settings) |
+| Make a game select a profile | [Register games and select profiles](#register-games-and-select-profiles) |
+| Adjust gesture sensitivity | [Tune gesture sensitivity](#tune-gesture-sensitivity) |
+| Understand an option or command | [Command-line reference](#command-line-reference) |
 
 ## UNO Q settings
 
@@ -75,78 +77,66 @@ the UNO Q matrix before entering the one-time PIN.
 | Generate a new token | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
 
 Selecting **Save** validates the fields, writes them atomically with private
-permissions, and restarts the vision worker. Hold a neutral hand in view and
-center it again after the restart.
+permissions, and restarts the vision worker using the saved calibration.
+Recalibrate only if you have moved the camera, changed your playing position,
+or notice unwanted movement while your hand is at rest.
 
 The Dashboard profile selector changes only the current active profile. It does
 not rewrite `device.json` or change the Setup page's startup profile. RetroPie
 may replace a Dashboard selection when a game starts or ends.
 
-The first vision activation opens the camera and loads the gesture tracker,
-so it can take longer than switching between active profiles. Dashboard and
+The first time you activate a profile, the app opens the camera and loads the
+gesture tracker. This can take longer than subsequent profile changes. Dashboard and
 Learn show **Starting camera and gesture tracking** with elapsed time until
-vision is active. Centering is disabled during initialization. The camera is
-not pre-warmed at boot when **Gestures off** is selected.
+vision is active. The **Calibrate** button is disabled until initialization finishes. If
+**Gestures off** is selected at startup, the camera stays closed until you
+select an active profile or open Learn.
 
-The Learn page uses a temporary practice session. Entering Learn starts camera
-capture and recognition even if the selected profile is **Gestures off**; the
-practice engine uses Program H internally without changing the selected
-profile. Controller packets remain suppressed. Leaving Learn restores the
-selected profile and its camera state. A Dashboard load or refresh clears any
-stale practice session, and a six-second lease timeout provides the same
-recovery if a browser closes without sending its normal release request.
-An existing Learn tab cannot reactivate practice after a Dashboard reset;
-reload Learn to begin a new practice session.
+### Learn, calibration, and live readings
 
-More than one Learn tab may be open. Vision remains active until the last tab
-closes or its lease expires.
+Learn starts the camera even when **Gestures off** is selected and uses Program H
+for practice. It pauses controller delivery and restores the selected profile
+when you leave. With several Learn tabs open, practice remains active until the
+last tab closes or its lease expires. A six-second lease timeout handles an
+unexpected browser close. Loading Dashboard also clears a stale session;
+reload Learn if you want to begin practice again.
 
-The supplied profiles activate curl at 0.50 and release below 0.35. Learn uses
-the same held finger state as gameplay, so small changes during a hold do not
-reset the lesson. Bending the middle knuckle alone can qualify; bending the
-base knuckle is not required. Menu poses have separate thresholds. V/Start requires index and middle curl
-below 0.28, with ring and pinky above 0.42, held for about 0.7 seconds.
-Thumbs-up/Select requires thumb curl below 0.32 and all four fingers above
-0.42, with the same deliberate hold.
+The eleven lessons include A (index curl), B (thumb curl), GLOVE ZAP (forward
+push), Start, and Select. Completing every lesson earns Glove Master; skipped
+lessons must be revisited. **Start again** clears session progress. The practice
+indicators do not change a game's gesture mapping.
 
-Camera finger curl uses the strongest joint bend rather than averaging bends,
-including the base knuckle for the four fingers. The thumb uses its two outer
-joints. **Live hand measurements** in Learn displays exact curl values,
-the action threshold, magnified landmarks, and forward movement relative to
-the centered hand size. Push recognition stays active while forward movement
-exceeds its hysteresis threshold; Learn does not rely on a one-frame event.
+| Reading or control | Meaning |
+| --- | --- |
+| Finger curl | Learn shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Ordinary curl actions engage at 0.50 and release below 0.35. |
+| V sign | Index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold for about 0.7 seconds to send Start. |
+| Thumbs-up | Thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for about 0.7 seconds to send Select. |
+| Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward movement relative to the calibrated hand size. |
+| Calibrate | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
+| `inference_ms` and `send_ms` | Tracking calculation and local send time; neither measures the full delay from camera movement to game response. |
 
-Camera finger curl uses MediaPipe 3D world landmarks when available. If those
-are absent, normalized depth is used with image aspect-ratio correction. Palm
-movement remains based on image coordinates. The legacy Arduino landmark
-bridge retains its existing 2D interpretation because its depth units are not
-assumed to match MediaPipe. Gesture thresholds are unchanged.
+Finger recognition uses the strongest joint bend, including the base knuckle;
+a middle-knuckle bend alone can qualify. Thumb recognition uses the stronger
+of its two outer joints. MediaPipe 3D world landmarks are preferred. The fallback
+uses normalized depth with image aspect-ratio correction; palm movement still
+uses image coordinates. The legacy Arduino landmark bridge keeps its 2D
+interpretation because its depth units differ.
 
-Learn teaches A (index curl), B (thumb curl), and GLOVE ZAP (forward push),
-with live practice indicators. Game-specific mappings remain separate.
-Learn awards a Glove Master achievement once all eleven lessons are completed;
-skipped lessons must be revisited. Start again clears session progress.
-The Calibrate button turns red while calibration is active, then blue with a
-brief completion confirmation. Browser preview encoding is capped at 15 fps;
-controller status continues at inference rate. Status fields `inference_ms` and
-`send_ms` measure processing and local send time, not full camera-to-game latency.
-Learn uses the general practice profile. A new vision engine reuses the saved
-neutral reference across Learn, gameplay, profile changes, and restarts. Only
-first use or an unavailable/invalid saved reference triggers automatic centering.
-Use **Calibrate** to replace the reference after moving the camera or changing
-your playing position.
+Learn uses the same held finger state as gameplay. Push remains recognized
+until movement falls below its release threshold, and a confirmed menu pose
+still satisfies its lesson after the short controller pulse ends. The browser
+preview is capped at 15 fps; status updates follow each tracking calculation.
 
-Each Learn lesson shows a gesture illustration. Start uses a V sign; Select
-uses a thumbs-up with the other four fingers closed. Both must remain steady
-for about 0.7 seconds. The lesson accepts the confirmed pose even after its
-short controller pulse ends. Learn shows precise curl values from 0 to 1;
-the Dashboard's compact finger display uses 0 to 3. If directions appear
-instead, keep the palm near center and check the
-finger readings; direction output alone does not establish a model bias.
+The app reuses its saved resting reference across Learn, gameplay, profile
+changes, and restarts. It calibrates automatically only when that reference is
+missing or invalid. Use **Calibrate** after moving the camera or changing your
+playing position. Keep your palm near the resting position when practising
+finger curls so unintended movement does not obscure the finger readings.
+See [Saved neutral-hand calibration](#saved-neutral-hand-calibration) for storage
+and recovery details.
 
-**Start controller** and **Stop controller** change live output only. The
-controller deliberately starts stopped after an application or system restart;
-this prevents hand motion from navigating menus before you are ready.
+**Start controller** and **Stop controller** affect live delivery only. After
+an application or system restart, delivery remains stopped until you start it.
 
 ### Active UNO Q device file
 
@@ -156,7 +146,7 @@ The Setup page maintains this private file inside the application:
 /home/arduino/ArduinoApps/powerglove-vision/data/device.json
 ```
 
-A typical active file has this shape:
+A typical device configuration file contains the following fields:
 
 ```json
 {
@@ -178,7 +168,7 @@ python3 -m json.tool data/device.json >/dev/null
 chmod 0600 data/device.json
 ```
 
-Deleting `device.json` causes Power Glove Vision to create a new token and
+Deleting `device.json` causes PowerGlove Vision to create a new token and
 first-run defaults. You must then pair RetroPie again.
 
 ### Camera selection
@@ -188,16 +178,17 @@ known codec-only video nodes, and then considers ordinary `/dev/video*` capture
 devices. This is the most reliable choice when USB enumeration changes after a
 reboot.
 
-Use an explicit number only for troubleshooting. If `0` selects `/dev/video0`,
-for example, that number may refer to different hardware after devices are
-reconnected. Keep the camera on a powered USB hub when the UNO Q cannot supply
+Use an explicit camera number only for troubleshooting. For example, `0`
+selects `/dev/video0`, but Linux may assign that number to a different device
+after hardware is reconnected. Keep the camera on a powered USB hub when the UNO Q cannot supply
 stable power by itself.
 
 ### Supported startup profiles
 
-The valid profile identifiers are:
+The valid startup profile identifiers are:
 
 ```text
+off
 bad_street_brawler
 super_glove_ball
 program_a  program_b  program_c  program_d  program_e
@@ -236,8 +227,18 @@ sudo chown root:input /etc/powerglove/token
 sudo chmod 0640 /etc/powerglove/token
 ```
 
-If you rotate the token from Setup, pair again immediately. Do not try to make
-the new value match by passing it as a command-line argument; process listings
+### Recover without browser pairing
+
+Use this fallback only when neither browser pairing method works. Both machines
+must already have the software installed.
+
+  1. In App Lab, open the active application's private `data/device.json` and locate its `token` value.
+  2. On RetroPie, run `sudo nano /etc/powerglove/token`. Replace the file contents with that same value on one line, without quotation marks. Do not enter it as a shell command.
+  3. Save with Ctrl+O, confirm the filename, and exit with Ctrl+X. Apply the ownership and permission commands above.
+  4. Run `sudo systemctl restart powerglove-receiver.service`, then test controller delivery from Dashboard. Clear the token from your clipboard and close the private file afterward.
+
+If you generate a new token in Setup, pair the devices again immediately.
+Do not transfer the new token through a command-line argument; process listings
 and shell history can expose it.
 
 ## RetroPie connection settings
@@ -287,7 +288,7 @@ The active game registry is:
 /etc/powerglove/games.json
 ```
 
-Power Glove Vision matches the exact ROM basename, including its extension,
+PowerGlove Vision matches the exact ROM basename, including its extension,
 without regard to letter case. Directory names are ignored. Automatic profile
 selection currently applies only when RetroPie reports the system as `nes` or
 `famicom`; other systems turn gesture control off.
@@ -365,10 +366,10 @@ advanced thresholds.
 | `move_off` | Palm displacement at which active movement releases | Movement stays active farther back toward center |
 | `curl_on` | Normalized finger curl, where `0` is straight and `1` is tightly curled | Curl actions activate with less bend |
 | `curl_off` | Curl amount at which an active curl releases | Curl stays active until the finger is straighter |
-| `roll_on` | Wrist rotation from the centered angle | Roll actions activate with less rotation |
+| `roll_on` | Wrist rotation from the centred angle | Roll actions activate with less rotation |
 | `roll_off` | Rotation at which active roll releases | Roll stays active closer to neutral |
 | `push_on` | Relative increase in apparent hand size from center | Push actions activate with less forward movement |
-| `push_off` | Depth change at which an active push releases | Push stays active closer to the centered depth |
+| `push_off` | Depth change at which an active push releases | Push stays active closer to the centred depth |
 | `pulse_hz` | Repetition rate for profiles that pulse an action | Repeated actions become slower |
 | `loss_release_ms` | Tracking-loss delay before all controls release | Controls release sooner after the hand disappears |
 
@@ -393,23 +394,24 @@ The supplied defaults are:
 }
 ```
 
-`super_glove_ball` has a more responsive movement pair of `0.32` and `0.20`,
-a higher roll pair of `0.70` and `0.50`, an `8.0` Hz pulse rate, and slightly
-higher push thresholds. Profiles A through I use `program_defaults` unless an
+The `super_glove_ball` profile uses movement activation and release thresholds
+of `0.32` and `0.20`, making movement more responsive. Its wrist-roll thresholds
+are `0.70` and `0.50`, its pulse rate is `8.0` Hz, and its push thresholds are
+slightly higher than the defaults. Profiles A through I use `program_defaults` unless an
 exact profile object such as `program_b` is added.
 
 Change one pair at a time in steps of approximately `0.02` to `0.05`, then test
 from the same camera position. Useful adjustments include:
 
-- Lower `move_on` if directional movement requires too much travel.
-- Raise `move_off` if a direction remains held after returning toward center.
-- Raise an `_on` value when an action triggers unintentionally.
-- Increase `pulse_hz` when a repeating action is too slow.
-- Keep `loss_release_ms` short enough to release safely but long enough to
-  tolerate a few missed camera frames.
+  - Lower `move_on` if directional movement requires too much travel.
+  - Raise `move_off` if a direction remains held after returning toward center.
+  - Raise an `_on` value when an action triggers unintentionally.
+  - Increase `pulse_hz` when a repeating action is too slow.
+  - Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
 
-Validate the file, restart the UNO Q application from App Lab, and center the
-hand again. Gesture-to-button assignments are implemented by each profile in
+Validate the file and restart the UNO Q application from App Lab. The saved
+calibration is reused; recalibrate only if your physical setup has changed or
+your resting hand position produces unwanted movement. Gesture-to-button assignments are implemented by each profile in
 the application; threshold changes adjust sensitivity but do not remap buttons.
 
 ## RetroPie receiver and virtual controller
@@ -422,8 +424,8 @@ gamepad named `PowerGlove Vision`. Its installed service is:
 ```
 
 The supplied service listens on all local interfaces at UDP port `55355`, reads
-`/etc/powerglove/token`, and releases all controls after 250 milliseconds
-without a valid packet. If you change the controller port in UNO Q Setup, add
+`/etc/powerglove/token`, and releases held controls when a socket receive times out after 250 milliseconds.
+This is a receive timeout, rather than a separate timer for the last valid packet. If you change the controller port in UNO Q Setup, add
 the same `--port` value to the service's `ExecStart`, then reload and restart:
 
 ```sh
@@ -445,7 +447,7 @@ sudo journalctl -u powerglove-receiver.service -n 100 --no-pager
 ```
 
 The virtual gamepad appears only after the first authenticated controller
-packet. On the UNO Q, select **Start controller** and show a centered hand before
+packet. On the UNO Q, select **Start controller** and show a centred hand before
 deciding that the device is missing.
 
 ### RetroArch autoconfiguration
@@ -488,7 +490,7 @@ that `powerglove-system-shutdown.path` is enabled and active.
 
 ## Network ports and trust boundary
 
-Keep Power Glove Vision on a trusted home or cabinet LAN. Do not forward these
+Keep PowerGlove Vision on a trusted home or cabinet LAN. Do not forward these
 ports through a router or expose them directly to the Internet.
 
 | Port | Direction | Purpose |
@@ -540,7 +542,7 @@ several complete loops is the preferred review artifact for later refinements.
 | `data/models/hand_landmarker.task` | Checksum-verified model downloaded when vision is first activated |
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
-| `data/.shutdown-enabled` | Marker installed by the optional fixed-purpose shutdown helper |
+| `data/.shutdown-enabled` | Readiness marker installed by the fixed-purpose shutdown helper included in standard setup |
 | `output/pdf/` | Generated PDF editions; public editions are served by Help, while the cabinet quick reference remains private |
 
 Changing manifests can prevent App Lab from starting the application. Generated
@@ -553,14 +555,14 @@ output/app-lab/PowerGlove-Vision-Uno-Q.zip
 
 The installation ZIP intentionally excludes private `data/`, downloaded models,
 caches, tests, Git metadata, and the cabinet-specific quick-reference PDF. It
-includes only the nine allowlisted public PDF editions used by Help. The pinned
-Google Hand Landmarker model downloads and passes a SHA-256 check when an
-active profile first needs vision. Gestures-idle mode does not open it.
+includes only the nine allowlisted public PDF editions used by Help. When an active profile first needs vision, the application downloads the
+pinned Google Hand Landmarker model and verifies its SHA-256 checksum.
+The model stays unopened while **Gestures off** is selected.
 
 ### Automated quality and package verification
 
 Maintainers use `.github/workflows/quality.yml` for pull requests, pushes to
-`main`, and manual runs. It tests supported Python versions, checks Python and
+`main` and `dev`, and manual runs. The workflow tests the project on supported Python versions, checks Python and
 shell syntax, validates JSON, audits source and documentation, rebuilds and
 inspects the PDF set, and verifies the App Lab installation ZIP. The workflow has
 read-only repository permissions and uses no deployment credentials.
@@ -595,11 +597,11 @@ not automatically migrate active configuration.
 
 | Symptom | Configuration checks |
 | --- | --- |
-| Dashboard works but no virtual controller appears | Start the controller, show a centered hand, verify the receiver service and shared token, then check UDP `55355`. |
+| Dashboard works but no virtual controller appears | Start the controller, show a centred hand, verify the receiver service and shared token, then check UDP `55355`. |
 | Controller appears but a game uses the wrong gestures | Confirm the system is `nes` or `famicom` and the exact ROM basename exists in `/etc/powerglove/games.json`. |
 | Game launches slowly while UNO Q is offline | Confirm `timeout` remains near `0.4`; the hook retries but must never block game launch indefinitely. |
 | Profile command is not acknowledged | Check the UNO Q name, UDP `55356`, pairing token, and the UNO Q application status. |
-| Gestures off shows a blinking X | Update Power Glove Vision; Gestures off should show the glove attract animation and must not open the camera. |
+| Gestures off shows a blinking X | Update PowerGlove Vision; Gestures off should show the glove attract animation and must not open the camera. |
 | Camera disappears after reboot | Return Camera to `auto`, check powered-hub and cable stability, and inspect the UNO Q dashboard error. |
 | Movement triggers too late | Center again first; if repeatable, lower `move_on` slightly for the active profile. |
 | Direction remains stuck | Raise `move_off` slightly, keep it below `move_on`, and verify tracking-loss release. |
@@ -632,6 +634,10 @@ changing controller mappings.
 
 ## Local hostname resolution inside App Lab
 
+If the console name fails, use **Test console name** in Connection, then follow
+[hostname troubleshooting](INSTALL_README.md#faq-what-if-the-console-name-cannot-be-resolved).
+A router-reserved IPv4 address is a fallback, not a setup requirement.
+
 Both machine installers install `avahi-daemon` and `libnss-mdns` and enable Avahi at boot. The UNO Q host dependency supports native hostname lookups; it does not replace the app-owned resolver used inside the container. Setup check mode verifies the dependency and Avahi service, and the UNO Q check tests the configured destination inside the app.
 
 The app-owned `local:avahi_resolver` brick survives App Lab container regeneration.
@@ -661,5 +667,249 @@ The worker saves its completed neutral reference in `data/calibration.json`. It 
 
 On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Hold your hand in a comfortable neutral position, then use **Calibrate** if necessary. A storage failure is reported as `calibration_save_error` in status; the reference remains usable in memory but will not survive a worker restart. The file is local runtime data, not a source or release-package file.
 
+## Command-line reference
 
-For a failed console lookup, follow the installation guide's **FAQ: What if the console name cannot be resolved?** Start with **Test console name** inside Connection. A router-reserved IPv4 address is a fallback, not a prerequisite. Both the resolver and the saved neutral-hand calibration have now been checked after a physical UNO Q reboot; the calibration values remained unchanged.
+Use this section to look up a flag without interrupting the installation steps.
+It covers every project command and script, plus the external-command options
+used in these guides. Defaults describe this source version, not a guarantee
+about a future release. For external tools' other options, use their own help
+or manual pages.
+
+An **option** begins with `-` or `--`. A **positional argument** is a value
+supplied in a particular place, such as `retropie` after `setup-machine.py`.
+Replace example hostnames and file paths with your own. Square brackets in
+usage descriptions mean optional; do not type them. Options that take a value
+need both the option and its value, such as `--port 55355`.
+
+### Install or inspect a machine
+
+Run `sudo python3 scripts/setup-machine.py MACHINE [OPTIONS]` from the project
+directory on the target Linux machine. This is the recommended installer for
+both UNO Q and RetroPie. `--check` performs read-only checks; using `sudo`
+also lets those checks read protected token files.
+
+| Argument or flag | Default | Meaning |
+| --- | --- | --- |
+| `MACHINE` | Required | `retropie` or `uno-q`; selects the machine to install or inspect. |
+| `--peer HOST` | None | Required for a new RetroPie launcher configuration; supplies the UNO Q hostname or IPv4 address. Existing launcher settings are preserved. On UNO Q, it prints guidance but does not change the saved receiver address. |
+| `--check` | Off | Checks the existing installation without installing, restarting, or changing it. |
+| `-h`, `--help` | — | Prints usage and exits. |
+
+Exit codes are `0` for success, `1` for an installation/check failure, and `2`
+for outstanding user action. Argument errors also use argparse's exit code `2`.
+The current check always asks for human gameplay confirmation.
+
+### Run the RetroPie receiver
+
+Use `/opt/powerglove/bin/powerglove-receiver` on RetroPie. Normal operation is
+managed by its systemd service. A manual receiver cannot share the same port
+with that service: stop the service before a manual diagnostic run, then
+restart it afterward. Use `--token-file` rather than placing a token in shell
+history.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--listen ADDRESS` | `127.0.0.1` | Local address to bind. `0.0.0.0` accepts packets on all local IPv4 interfaces, as the installed service requires. |
+| `--port NUMBER` | `55355` | UDP port for controller packets; must match UNO Q settings. |
+| `--token VALUE` | None | Supplies the shared token directly. Use only as an advanced alternative; the value can appear in process arguments. |
+| `--token-file PATH` | None | Reads the shared token from a protected file. Supply exactly one of this flag and `--token`. The token must contain at least 16 characters. |
+| `--timeout-ms NUMBER` | `250` | Socket receive timeout in milliseconds; a timeout releases held controls. Use a positive value. |
+| `--dry-run` | Off | Prints received controls instead of creating a virtual input device. |
+| `-h`, `--help` | — | Prints usage and exits. |
+
+Example: inspect packets without sending input to Linux. Run each command on
+RetroPie and press Ctrl+C to end the diagnostic receiver before restarting the
+service.
+
+```sh
+sudo systemctl stop powerglove-receiver.service
+sudo /opt/powerglove/bin/powerglove-receiver --listen 0.0.0.0 --token-file /etc/powerglove/token --dry-run
+sudo systemctl start powerglove-receiver.service
+```
+
+### Start one-time-code pairing
+
+Use `/opt/powerglove/bin/powerglove-pair` on RetroPie with `sudo`. It opens a
+temporary TLS server, prints a code, installs the received token, and restarts
+the receiver. Complete the browser steps while it is running.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--listen ADDRESS` | `0.0.0.0` | Local IPv4 address for the temporary server. |
+| `--port NUMBER` | `55357` | Pairing server TCP port. The browser pairing client uses the standard port; keep the default for that workflow. |
+| `--token-file PATH` | `/etc/powerglove/token` | Destination for the paired token; keep it aligned with the receiver's token file. |
+| `--timeout SECONDS` | `120` | Lifetime of the pairing server. Use a positive value; the code is single use and attempts are limited. |
+| `--receiver-service NAME` | `powerglove-receiver.service` | systemd service to restart after pairing succeeds. |
+| `-h`, `--help` | — | Prints usage and exits. |
+
+The command returns `0` after pairing completes or `2` when the pairing window
+times out. Other failures are reported as errors.
+
+### Select a profile from RetroPie
+
+Use `/opt/powerglove/bin/powerglove-profile` to test profile selection. It sends
+an authenticated request to the UNO Q. This changes the active profile; it
+does not change the saved startup profile or turn controller delivery on.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--uno-q HOST` | Required | UNO Q hostname or IPv4 address. |
+| `--port NUMBER` | `55356` | UNO Q profile-control UDP port. |
+| `--token VALUE` | None | Supplies the token directly; prefer the protected-file option. |
+| `--token-file PATH` | None | Reads the token from a file. Supply exactly one token option. |
+| `--registry PATH` | `/etc/powerglove/games.json` | Registry used when `--profile` is omitted. |
+| `--system NAME` | `nes` | System used for registry selection and request metadata. Automatic selection accepts `nes` or `famicom`. |
+| `--rom PATH` | `Manual selection` | ROM path or filename used for registry lookup and displayed game metadata. |
+| `--profile NAME` | None | Overrides registry lookup. Accepts `program_a` through `program_i`, `bad_street_brawler`, `super_glove_ball`, or `off`. |
+| `--timeout SECONDS` | `0.4` | Wait for each acknowledgement; the sender makes up to three attempts. |
+| `-h`, `--help` | — | Prints usage and exits. |
+
+Exit codes are `0` for acceptance, `2` for a timeout, and `3` for rejection.
+Malformed arguments and file errors can also stop the command.
+
+### Forward game-launch events
+
+The installer connects `powerglove-retropie-hook` to RetroPie automatically.
+Use its wrapper scripts from existing runcommand hooks; do not run them again
+as an extra installation step.
+
+| Argument or flag | Default | Meaning |
+| --- | --- | --- |
+| `ACTION` | Required | `start` selects a registered game's profile; `end` turns gestures off. |
+| `SYSTEM` | Empty | Optional first metadata argument, such as `nes`. |
+| `EMULATOR` | Empty | Optional second metadata argument supplied by RetroPie; accepted for compatibility. |
+| `ROM` | Empty | Optional third metadata argument; its filename selects the profile. |
+| `COMMAND` | Empty | Optional fourth metadata argument; accepted for compatibility. Quote it as one argument. |
+| `--settings PATH` | `/etc/powerglove/launcher.json` | Reads destination, token path, registry path, and timeout settings. |
+| `-h`, `--help` | — | Prints usage and exits. |
+
+`retropie/runcommand-onstart-powerglove.sh` forwards RetroPie's four positional
+arguments. `retropie/runcommand-onend-powerglove.sh` needs none. Neither wrapper
+has its own flags. The executables in `retropie/bin/` forward their arguments
+to the corresponding Python commands.
+
+### Run the standalone vision tracker
+
+`powerglove-vision` is the advanced camera worker, not the full App Lab website.
+Install the package's `vision` dependencies in a compatible Python environment
+before using it. Normal UNO Q use should start through App Lab instead.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--receiver HOST` | Required | RetroPie hostname or IPv4 address. An empty string permits local-only tracking but cannot deliver controls. |
+| `--port NUMBER` | `55355` | Destination UDP controller port. |
+| `--token VALUE` | Required | Shared token. This worker currently has no `--token-file` flag; its token appears in process arguments. |
+| `--profile NAME` | `bad_street_brawler` | Initial profile, one of the eleven supported profiles or `off`. |
+| `--camera VALUE` | `auto` | Camera selection; use `auto` or a camera index. |
+| `--width PIXELS` | `640` | Requested capture width; the camera may negotiate another size. |
+| `--height PIXELS` | `480` | Requested capture height. |
+| `--fps NUMBER` | `30` | Requested capture rate; not a guarantee of tracking or game frame rate. |
+| `--glove-color VALUE` | `none` | `none`, `white`, or `black`; an informational label, not a different recognition model. |
+| `--no-mirror` | Off | Disables horizontal image mirroring. |
+| `--config PATH` | Project `config/profiles.json`, if present | Alternative gesture-threshold file. Otherwise built-in defaults are used. |
+| `--model PATH` | Default downloaded model | Alternative MediaPipe model. The standard `hand_landmarker.task` filename uses the verified model workflow. |
+| `--web-host ADDRESS` | `0.0.0.0` | Address for the worker's diagnostic web server. |
+| `--web-port NUMBER` | `8088` | Worker diagnostic port. App Lab overrides this to `8089` on loopback behind its main web server. |
+| `--no-matrix` | Off | Disables direct matrix integration. App Lab uses this because its supervisor controls the matrix. |
+| `--profile-listen ADDRESS` | `0.0.0.0` | Local IPv4 address for authenticated profile requests. |
+| `--profile-port NUMBER` | `55356` | UDP port for profile requests. |
+| `--controller-enabled` | Off | Starts sending controller input immediately; omit it for local inspection. |
+| `-h`, `--help` | — | Prints usage and exits. |
+
+### Deploy or repair the UNO Q application
+
+Run these scripts from the project checkout on your development computer.
+Always supply your own SSH destination; the built-in fallback names the
+maintainer's board and is not appropriate for other installations.
+
+| Script or setting | Arguments and defaults | Effect |
+| --- | --- | --- |
+| `scripts/deploy-uno-q-wifi.sh` | Optional positional `USER@HOST`; `-h` or `--help` | Transfers the Linux application, preserves `data/`, restarts the container, and checks web routes. Does not update RetroPie or flash the matrix sketch. |
+| `UNO_Q_SSH_TARGET` | Environment variable; overridden by a positional destination | Sets the SSH destination. Without either setting, deployment falls back to the maintainer's board. |
+| `UNO_Q_APP_DIR` | Environment variable; default `/home/arduino/ArduinoApps/powerglove-vision` | Remote deployment directory. Changing it does not change the shutdown helper's fixed path or the machine installer's path requirement. |
+| `scripts/install-uno-q-shutdown-helper.sh` | Optional positional `USER@HOST`; `-h` or `--help` | Installs the fixed shutdown watcher, service, and readiness rule. Uses the positional destination, then `UNO_Q_SSH_TARGET`, then the maintainer's fallback. The application directory is fixed. |
+
+Both scripts accept at most one destination. Deployment needs existing SSH
+key access; helper installation can prompt for a password through the terminal.
+
+### Build, inspect, or maintain project files
+
+These scripts run from a full development checkout. Scripts marked **no flags**
+do not implement `--help`; adding it is not a safe way to inspect them because
+they may still perform their normal work.
+
+| Script | Arguments and flags | Result or requirement |
+| --- | --- | --- |
+| `scripts/build-app-lab-package.sh` | No flags or positional arguments | Builds `output/app-lab/PowerGlove-Vision-Uno-Q.zip`; requires Bash, rsync, zip, and the existing public PDFs. |
+| `scripts/verify-app-lab-package.py` | Optional `ARCHIVE` path; `-h`, `--help` | Checks the supplied ZIP or the default ZIP above; prints its SHA-256. Returns `0` on success, `1` on verification failure. |
+| `scripts/check-documentation.py` | `--require-pdfs`; `-h`, `--help` | Checks Markdown, links, and coverage. The optional flag also inspects the PDF set and needs `pypdf`. Returns `0` on success, `1` on failure. |
+| `scripts/check-source-docs.py` | No flags or positional arguments | Checks source headers and docstrings; returns `0` on success or `1` on failure. |
+| `scripts/build-docs-pdf.py` | No flags or positional arguments | Rebuilds all ten PDF editions; requires ReportLab. Use only when ready to regenerate the PDFs. |
+| `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
+| `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Downloads and verifies the pinned model into project `data/models/`; requires Python 3 and curl. |
+| `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |
+| `scripts/avahi-resolver-service.py` | No flags or positional arguments | Internal service started by the resolver brick; opens its fixed Unix socket. |
+| `python/main.py` | No flags or positional arguments | App Lab entry point; reads `data/device.json` and supervises the worker. |
+| `python/ssh_pair.py` | No command-line flags | Internal password-pairing helper; receives its request through standard input. Use secure Setup instead. |
+
+### Understand the system commands in these guides
+
+The table explains the subcommands and flags shown in the documentation.
+Defaults and additional flags for these external programs depend on their
+installed versions; use `man TOOL` or that tool's `--help` for its full manual.
+
+| Command or syntax | Meaning of the options used here |
+| --- | --- |
+| `git clone --branch dev URL` | Downloads a repository and checks out `dev`. A final directory argument chooses the destination folder. |
+| `git branch --show-current` | Prints the checked-out branch name. |
+| `git status --short` | Shows a compact list of local changes. |
+| `git pull --ff-only` | Updates only if Git can fast-forward; refuses an automatic merge when histories have diverged. |
+| `cd PATH`, `cd ~`, `pwd` | Changes directory, opens your home directory, or prints the current directory. |
+| `command -v NAME` | Prints where the shell finds a command; no path means it is unavailable. |
+| `sudo COMMAND` | Runs a command with administrator privileges. Enter your account password only at the terminal prompt. |
+| `apt update`; `apt install -y PACKAGES` | Refreshes package information, then installs packages. `-y` accepts package-manager confirmation prompts. |
+| `python3 -m MODULE` | Runs a Python module. Used with `venv`, `pip`, `unittest`, `json.tool`, and `compileall`. |
+| `python3 -m venv DIRECTORY` | Creates an isolated Python environment at that directory. |
+| `. .venv/bin/activate` | Activates that environment in the current shell. The initial dot is a shell command. |
+| `pip install -e PATH` | Installs a source checkout in editable mode. `[vision]` and `[receiver]` request optional dependency groups. |
+| `pip install -U PACKAGE`; `--upgrade` | Upgrades the named package; the two options have the same meaning. |
+| `unittest discover -s tests -v` | Finds tests in `tests` (`-s`) and prints each test's result (`-v`). |
+| `compileall -q DIRECTORIES` | Checks/compiles Python files; `-q` reduces routine output. |
+| `json.tool FILE` | Parses and formats JSON; a parse error means the example or configuration is invalid. |
+| `PYTHONPATH=src COMMAND` | Sets the import path for that command only, allowing it to use the local `src/` tree. |
+| `ssh-keygen -t ed25519` | Creates an SSH key pair using the Ed25519 algorithm (`-t`). Follow the prompts without overwriting an existing key. |
+| `cat FILE` | Prints a text file. In key setup, print only the `.pub` public key. |
+| `ssh USER@HOST` | Opens a remote terminal. `exit` closes that session. |
+| `ssh -o BatchMode=yes USER@HOST COMMAND` | Runs a remote command without interactive password prompts; useful for checking key access. `-o` supplies an SSH setting. |
+| `ssh -t USER@HOST COMMAND` | Allocates a remote terminal, allowing an interactive remote prompt. |
+| `systemctl status NAME` | Displays a service or timer's state. Press `q` if it opens a pager. |
+| `systemctl start`, `stop`, `restart NAME` | Starts, stops, or restarts the named unit now. |
+| `systemctl enable`, `disable NAME` | Enables or disables activation at boot. `--now` also starts or stops it immediately. |
+| `systemctl is-enabled`, `is-active NAME` | Checks boot enablement or current activity. |
+| `systemctl daemon-reload` | Reloads unit definitions after service files change. |
+| `systemctl --no-block halt` | Requests a halt and returns without waiting. This is the helper's action, not a health check. |
+| `journalctl -u NAME -n 100 --no-pager` | Shows logs for a unit (`-u`), limits output to the last 100 entries (`-n`), and avoids a pager. |
+| `systemd-tmpfiles --create FILE` | Applies creation rules from the named file, such as the readiness-marker rule. |
+| `grep -A8 -B2 PATTERN FILE` | Shows matching lines with eight following lines (`-A`) and two preceding lines (`-B`). |
+| `curl -sS URL` | Fetches a URL quietly (`-s`) while still showing errors (`-S`). |
+| `ls -l PATH` | Lists files with permissions and ownership. A trailing directory slash refers to its contents. |
+| `install -d -m MODE PATH` | Creates a directory (`-d`) with the specified permissions (`-m`). Without `-d`, `install` copies a file; `-o` sets its owner and `-g` its group. |
+| `chmod MODE PATH`; `chown USER:GROUP PATH` | Changes permissions or ownership. Modes used here: `0600` owner only, `0640` owner read/write and group read, `0644` public read with owner write, `0700` private directory, `0755` publicly traversable directory or executable. |
+| `rm FILE`; `rm -f FILE` | Deletes a file; `-f` suppresses prompts and ignores a missing file. Check the path before use. |
+| `nano FILE` | Opens a text editor. Save with Ctrl+O, confirm the name, and exit with Ctrl+X. |
+| `modprobe uinput` | Loads the Linux virtual-input kernel module. |
+| `tee FILE` | Writes its input to a file as well as the terminal. Used with `sudo` for a protected destination. |
+| `printf '%s\n' VALUE` | Prints a value followed by a newline. |
+| `ping HOST` | Tests whether a host replies to network echo requests; press Ctrl+C to stop. It does not test the application. |
+| `hostname`; `hostname -I` | Prints the host's name, or its interface addresses with `-I`. |
+| `bash -n FILE`; `sh -n FILE` | Checks shell syntax without running the file. |
+| `> /dev/null` | Discards normal output while leaving errors visible. |
+| Pipe operator | Sends the first command's output into the second command. The vertical bar is shell syntax. |
+| `\` at the end of a command line | Continues the same command on the next line. |
+| `"$1"` through `"$4"` | Quoted positional arguments forwarded by RetroPie's wrapper scripts. |
+| `for …; do …; done` | Repeats the enclosed commands for each value. |
+| `[ -r FILE ]` | Tests whether a file is readable. `continue` skips the current loop item. |
+| `${device##*/}` | Extracts the last component of a path in the camera-inspection loop. |
+
+Commands shown inside a source script may use additional internal options.
+Those are implementation details, not extra arguments accepted by the wrapper.
