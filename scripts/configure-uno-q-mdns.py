@@ -6,9 +6,11 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-03 - Added persistent host mDNS resolution without pinned IP addresses.
+#   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Add the resolver brick include and a compatibility mount to existing Compose output."""
+"""Preserve resolver and UDP profile bricks when updating generated Compose output."""
+import json
 import sys
 from pathlib import Path
 
@@ -16,12 +18,16 @@ from pathlib import Path
 def configure(path):
     """Preserve existing settings while supporting deployment before App Lab regeneration."""
     text = path.read_text()
-    brick = path.resolve().parents[1] / "bricks/local/avahi_resolver/brick_compose.yaml"
-    if "bricks/local/avahi_resolver/brick_compose.yaml" not in text:
-        if "include:" in text:
-            raise ValueError("Run App Lab start to regenerate the resolver brick include")
-        import json
-        text += "\ninclude:\n  - " + json.dumps(str(brick)) + "\n"
+    for name in ("avahi_resolver", "profile_control"):
+        relative = "bricks/local/" + name + "/brick_compose.yaml"
+        if relative in text:
+            continue
+        brick = path.resolve().parents[1] / relative
+        entry = "- " + json.dumps(str(brick)) + "\n"
+        if "include:\n" in text:
+            text = text.replace("include:\n", "include:\n" + entry, 1)
+        else:
+            text += "\ninclude:\n" + entry
     if "target: /run/avahi-daemon" in text:
         path.write_text(text)
         return

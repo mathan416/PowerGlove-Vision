@@ -226,7 +226,8 @@ sudo python3 scripts/setup-machine.py uno-q --check
 | --- | --- |
 | Animated hand | The app or vision runtime is loading. |
 | Animated glove | Gestures are off. |
-| Scanning `L` | Learn is active. |
+| Scanning `L` | Learn practice is active. |
+| `T` | Tune gestures is active. |
 | `A`–`I`, `BS`, or `GB` | The corresponding profile is active. |
 | Pulsing profile code | A calibrated hand is being tracked. |
 | Blinking X | The camera or vision runtime needs attention. |
@@ -237,11 +238,14 @@ An animation does not prove that Linux is running or that shutdown has finished.
 | --- | --- |
 | Dashboard | `http://UNO-Q-NAME.local:8088/debug` |
 | Learn | `http://UNO-Q-NAME.local:8088/learn` |
+| Games (lower Setup section) | `http://UNO-Q-NAME.local:8088/setup#games-section` |
 | Help and printable manuals | `http://UNO-Q-NAME.local:8088/help` |
 | Connection settings | `http://UNO-Q-NAME.local:8088/setup` |
 | Secure pairing | `https://UNO-Q-NAME.local:8443/setup` |
 
 ![Setup page; use HTTPS to enable pairing](images/setup-page.png)
+
+![Help page with links to the local manuals](images/help-page.png)
 
 Help serves the public manuals, illustrations, and PDFs locally. **This cabinet**
 shows addresses derived from your current browser connection and public device
@@ -277,9 +281,30 @@ through eleven exercises with live feedback on the gestures it recognizes. Retro
 online. Leaving Learn restores the selected profile and its camera state;
 loading or refreshing the Dashboard also reapplies the selected mode.
 
+Switch on **Tune gestures** to record a baseline and three gesture-and-release
+repetitions, preview suggested thresholds, and save them across all profiles.
+See [Tune gesture sensitivity](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity)
+for the numbered walkthrough. Tuning keeps controller delivery stopped; explicitly
+start it again from Dashboard when ready to play.
+
+Open **Setup → Games** to edit the installed RetroPie game mappings. Validate before saving,
+then restart the game. **Download backup** and **Restore previous save** provide
+recovery options. Both devices need the current software; RetroPie setup installs
+the paired Games service on TCP `55358`.
+
 ![PowerGlove Vision Learn page](images/learn-page.png)
 
-The camera preview in this screenshot is masked for privacy.
+Camera imagery in these screenshots is blurred for privacy.
+
+![Tune mode, with thresholds below the camera and recording controls alongside](images/tune-page.png)
+
+In Tune mode the matrix shows **T**; ordinary Learn practice shows **L**. The
+Activation and Release table sits below the camera. Use the instructions and
+recording buttons beside it to work through the seven recordings.
+
+![Games editor in the lower part of Setup](images/games-section.png)
+
+Scroll below pairing to find **Games**. Changes take effect on the next game launch.
 
 For a white glove, use a darker background. For a black glove, use a lighter
 background. Even lighting, a simple scene, and keeping the whole hand in frame
@@ -466,6 +491,13 @@ are additional hooks.
   - Check whether an existing cabinet input merger filters the virtual device.
 
 ### Profiles do not change
+
+A **profile queued** message confirms authentication and queue admission. Wait
+for Dashboard to show the new profile; camera startup may still be in progress.
+For timeouts, check that the UNO Q publishes UDP `55356` through its profile
+relay. Follow [Check a queued profile change](CONFIGURATION_REFERENCE.md#check-a-queued-profile-change)
+for the command and recovery steps. Check the exact ROM filename, including
+its archive extension, if the selected profile is **off**.
 
   - Test `powerglove-profile` manually.
   - Check `uno_q` and `token_file` in `/etc/powerglove/launcher.json`.

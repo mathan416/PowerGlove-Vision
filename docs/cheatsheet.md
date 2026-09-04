@@ -31,7 +31,8 @@ Open these pages on a computer or phone connected to the same trusted network.
 | Page | Address |
 | --- | --- |
 | Dashboard: camera and controller output | [Open Dashboard](http://UNO-Q-NAME.local:8088/debug) |
-| Learn: guided gesture practice | [Open Learn](http://UNO-Q-NAME.local:8088/learn) |
+| Learn: practice and tune gestures | [Open Learn](http://UNO-Q-NAME.local:8088/learn) |
+| Games: edit game mappings | [Open Games](http://UNO-Q-NAME.local:8088/setup#games-section) |
 | Help: manuals and live cabinet reference | [Open Help](http://UNO-Q-NAME.local:8088/help) |
 | Setup: connection and startup settings | [Open Setup](http://UNO-Q-NAME.local:8088/setup) |
 | Secure Setup: pairing | [Open secure Setup](https://UNO-Q-NAME.local:8443/setup) |
@@ -254,7 +255,8 @@ The app retries camera initialization automatically. Keep **Camera** set to
 ## Website screenshots
 
 These are reference screenshots, not live views. Open the browser URLs above
-to see your own camera and controller status.
+to see your own camera and controller status. Camera imagery is blurred for privacy.
+These screenshots were refreshed on September 4, 2026.
 
 ### Dashboard
 
@@ -262,13 +264,30 @@ to see your own camera and controller status.
 
 ### Learn
 
-![Learn page with its camera preview masked for privacy](images/learn-page.png)
+![Learn page with its camera imagery blurred for privacy](images/learn-page.png)
+
+### Tune gestures
+
+![Tune mode with thresholds below the blurred camera](images/tune-page.png)
+
+The matrix shows **T** while tuning. Instructions and recording controls sit beside
+the camera on a wide screen; Activation and Release are underneath the camera.
 
 ### Setup
 
 ![Setup page for connection settings and pairing](images/setup-page.png)
 
 The Setup screenshot shows the HTTP page. Open secure Setup on port 8443 to pair.
+
+### Games within Setup
+
+![Games editor below the pairing section](images/games-section.png)
+
+Scroll down Setup to edit mappings. Saving affects the next game launch.
+
+### Help
+
+![Help page linking to the manuals and printable editions](images/help-page.png)
 
 ## Choose a profile
 
@@ -321,10 +340,10 @@ Once a profile works well, register the game **on RetroPie**. The launch hook
 reads `/etc/powerglove/games.json` to choose the profile each time a game starts.
 
   1. Find the game file in your RetroPie ROM folder, usually `~/RetroPie/roms/nes/`. Record its complete filename, including the extension. For example, `/home/pi/RetroPie/roms/nes/My Game (USA).zip` has the filename `My Game (USA).zip`. Use the archive filename when launching an archive, not the filename inside it.
-  2. Back up `/etc/powerglove/games.json` before editing it.
-  3. Open the file with `sudo nano /etc/powerglove/games.json`.
+  2. Open **Setup → Games** on the UNO Q website and select **Download backup**.
+  3. Edit the loaded JSON in the Games section.
   4. Add the filename and your chosen profile inside the existing `games` object. Keep all existing entries, separate entries with commas, and leave no comma after the last entry.
-  5. Save the file, check its JSON syntax with the command below, and restart the game.
+  5. Select **Validate**, then **Save**. Wait for verified save confirmation and restart the game. **Restore previous save** reverses the last saved edit.
 
 This example shows the required structure. Replace the example filename with
 your actual filename and merge the entry into your existing file:
@@ -337,6 +356,8 @@ your actual filename and merge the entry into your existing file:
 }
 ```
 
+For a manual file edit outside the website, check syntax on RetroPie:
+
 ```sh
 python3 -m json.tool /etc/powerglove/games.json >/dev/null
 ```
@@ -348,6 +369,23 @@ Confirm the selected profile on Dashboard after restarting the game.
 
 See the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game-specific instructions and
 the [Programs A–I manual](bad-street-brawler-programs.md) for all reusable mappings.
+
+A **profile queued** launch message means the UNO Q accepted the request for
+processing. Confirm the active profile and game name on Dashboard. For timeouts,
+see [Check a queued profile change](CONFIGURATION_REFERENCE.md#check-a-queued-profile-change);
+the UNO Q must publish UDP `55356`, and the registry must match the exact archive filename.
+
+### Tune a gesture
+
+  1. Open Learn, show your hand, and switch on **Tune gestures**.
+  2. Select a gesture and record your relaxed baseline.
+  3. Record three repetitions of the gesture and its release, following the prompts.
+  4. Select **Analyze and preview**, then try the suggested values.
+  5. Select **Save for all profiles**, or discard the preview. **Restore defaults** resets the selected components.
+
+Controller delivery stays paused during tuning. Start it explicitly from Dashboard
+when ready to play. See [Tune gesture sensitivity](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity)
+for guidance on noisy samples, neutral calibration, and shared finger thresholds.
 
 ## Service and configuration reference
 

@@ -282,6 +282,32 @@ assigned to another device.
 
 ## Register games and select profiles
 
+### Edit mappings in Games
+
+![Games section below pairing on Setup](images/games-section.png)
+
+Games is a section of **Setup**, below pairing; it is not a separate navigation tab.
+
+  1. Open **Setup → Games** in the UNO Q website. Both machines must be online and paired. The page reads the registry used by the installed RetroPie launch hook.
+  2. Select **Download backup** to keep a copy of the last verified installed registry on your computer.
+  3. Edit the JSON, adding the exact ROM filename and a supported profile identifier inside `games`. Expand **Available profile identifiers** for the choices. Preserve your existing entries.
+  4. Select **Validate**. It checks JSON syntax, supported profiles, and duplicate filenames, including names that differ only by letter case. **Format** tidies the JSON without saving it.
+  5. Select **Save**. Wait for confirmation that RetroPie saved the file and the UNO Q read it back successfully.
+  6. Launch or restart the game and confirm its profile on Dashboard.
+
+Saving does not change the current game's profile. **Restore previous save** swaps
+in the last valid version. **Reload** discards your draft after confirmation. If
+another editor changed the installed registry, saving is refused; download or copy
+your draft before reloading. Connection failures leave the draft in the browser.
+Leaving or refreshing the page can discard unsaved work.
+
+The Games section needs the `powerglove-games.service` installed by the current
+RetroPie setup workflow. If it reports an unavailable service, update the RetroPie
+installation, check pairing, and ensure TCP `55358` is reachable from the UNO Q.
+Games does not require an SSH password after pairing.
+
+### Registry format
+
 The active game registry is:
 
 ```text
@@ -346,17 +372,86 @@ acknowledgement and starts the matrix glove attract animation. In this healthy
 idle state the camera and MediaPipe tracker are closed, while the website and
 authenticated profile listener remain available.
 
-## Tune gesture sensitivity
+### Check a queued profile change
 
-The UNO Q reads gesture thresholds from the application's active
-`config/profiles.json`:
+The launch helper reports **profile queued** when the UNO Q has authenticated
+and queued the request. Dashboard shows the applied profile and ROM name once
+the worker processes it. Camera startup can take longer than the acknowledgement;
+an acknowledgement does not mean that the camera is ready or that controller
+delivery is enabled.
 
-```text
-/home/arduino/ArduinoApps/powerglove-vision/config/profiles.json
+App Lab's `local:profile_control` brick publishes UDP `55356` through a small
+relay to the worker. The relay holds no pairing token and forwards signed
+packets unchanged. Both this brick and `local:avahi_resolver` must be present
+in `app.yaml`, so the services return when App Lab regenerates its containers.
+The setup and Wi-Fi update helpers also add their includes to existing Compose
+configuration. On the UNO Q, check the published port with:
+
+```sh
+docker port powerglove-vision-profile-relay-1 55356/udp
 ```
 
-Make a private backup before editing it. The Setup page does not expose these
-advanced thresholds.
+Expect a host binding for port `55356`. If it is missing, update the application
+and rerun UNO Q setup. On RetroPie, compare the game's actual filename, including
+`.nes`, `.zip`, or `.7z`, with `/etc/powerglove/games.json`. These are separate
+exact entries. Updating the template does not overwrite an installed registry;
+add missing names while preserving your custom mappings.
+
+## Tune gesture sensitivity
+
+Use **Learn → Tune gestures** to adjust sensitivity. You do not need to edit
+`config/profiles.json`; it remains the supplied defaults for each profile.
+
+  1. Show your whole hand in the camera and wait for tracking. Calibrate your comfortable resting position if necessary.
+  2. Switch on **Tune gestures** and select a gesture. Instructions and action buttons stay beside the camera; the Activation and Release table sits beneath the camera. Directions, finger curls, wrist rolls, push/pull, and compound gestures are available.
+  3. Hold your centered, relaxed hand still and select **Record baseline**. Each recording lasts three seconds.
+  4. Follow the prompt to perform and hold the gesture, then record its release. Repeat this pair three times: seven recordings including the baseline.
+  5. Select **Analyze and preview**. The app uses clear, fresh camera measurements to suggest activation and release values. If resting and performed measurements overlap, repeat the recordings with a clearer gesture and a complete release.
+  6. Try the temporary preview. You may adjust the numeric values and select **Preview adjustments** before deciding whether to save.
+  7. Select **Save for all profiles** to keep the adjustment. **Discard / record again** removes unsaved changes. **Restore defaults** removes saved adjustments for the selected gesture's components.
+
+![Tune mode with the Activation and Release table beneath the blurred camera](images/tune-page.png)
+
+The camera imagery is blurred in this reference screenshot. On a wide screen,
+instructions and buttons sit beside the camera; on a narrow screen, they appear
+first. The matrix shows **T** while tuning and **L** in ordinary practice.
+
+Activation is the point where a gesture begins; release is the lower point where
+it stops. Separate values prevent rapid on/off flickering. Directions and fingers
+can be adjusted independently. Compound gestures share component thresholds, so
+changing a finger also affects other gestures that use it. Suggested menu-pose
+adjustments tune the closed fingers; already extended fingers retain their existing
+settings unless you adjust them manually. Button assignments and menu hold timing
+remain unchanged.
+
+Only adjusted components override all game profiles. Untuned components retain
+their profile's supplied values. Personal adjustments are saved atomically in
+`data/gesture-tuning.json` and survive application restarts and normal updates.
+No images or recordings are saved. The versioned format is:
+
+```json
+{
+  "version": 1,
+  "thresholds": {
+    "index": {"on": 0.6, "off": 0.4}
+  }
+}
+```
+
+Each pair must contain finite numbers with `0 <= off < on`. Finger and pull
+activation cannot exceed `1`; wrist rotation cannot exceed `2`; movement and push
+cannot exceed `4`. These are normalized measurements, not distances in centimetres.
+
+Tuning pauses controller delivery. A game launch may update the selected game but
+cannot interrupt tuning or send game input. Leaving Tune discards its preview;
+a disconnected browser's session expires after six seconds. Return to Dashboard
+and explicitly start controller delivery when ready to play. **Recalibrate neutral**
+changes the resting reference separately and invalidates any current recordings.
+
+### Supplied profile defaults
+
+The following fields describe the shipped `config/profiles.json`. They remain
+useful for understanding the defaults; personal tuning is managed through Learn.
 
 ### Threshold fields
 
@@ -400,7 +495,7 @@ are `0.70` and `0.50`, its pulse rate is `8.0` Hz, and its push thresholds are
 slightly higher than the defaults. Profiles A through I use `program_defaults` unless an
 exact profile object such as `program_b` is added.
 
-Change one pair at a time in steps of approximately `0.02` to `0.05`, then test
+When adjusting numeric values in Tune, change one pair at a time in steps of approximately `0.02` to `0.05`, then test
 from the same camera position. Useful adjustments include:
 
   - Lower `move_on` if directional movement requires too much travel.
@@ -409,7 +504,7 @@ from the same camera position. Useful adjustments include:
   - Increase `pulse_hz` when a repeating action is too slow.
   - Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
 
-Validate the file and restart the UNO Q application from App Lab. The saved
+Saved personal tuning applies without reopening the camera. The saved neutral
 calibration is reused; recalibrate only if your physical setup has changed or
 your resting hand position produces unwanted movement. Gesture-to-button assignments are implemented by each profile in
 the application; threshold changes adjust sensitivity but do not remap buttons.
@@ -497,8 +592,9 @@ ports through a router or expose them directly to the Internet.
 | --- | --- | --- |
 | UDP `55355` | UNO Q to RetroPie | Authenticated live controller state |
 | UDP `55356` | RetroPie to UNO Q | Authenticated game-profile requests and acknowledgements |
-| TCP `8088` | Browser to UNO Q | Dashboard, Help, Learn, and ordinary Setup UI |
+| TCP `8088` | Browser to UNO Q | Dashboard, Help, Learn, and ordinary Setup UI, including Games |
 | TCP `8443` | Browser to UNO Q | TLS Setup and pairing workflow |
+| TCP `55358` | UNO Q to RetroPie | Paired game registry reads, saves, and restoration |
 | TCP `55357` | UNO Q to RetroPie | Temporary one-time-code pairing helper |
 
 The two UDP ports serve different purposes despite their similar numbers. The
@@ -618,6 +714,8 @@ not automatically migrate active configuration.
 | `config/launcher.example.json` | RetroPie `/etc/powerglove/launcher.json` | RetroPie launch and exit hooks |
 | `retropie/retroarch/PowerGlove Vision.cfg` | RetroArch autoconfig directory | RetroArch input system |
 | `retropie/powerglove-receiver.service` | `/etc/systemd/system/` | Privileged virtual-controller receiver |
+| `retropie/powerglove-games.service` | `/etc/systemd/system/` | Paired Games editor service on RetroPie |
+| `data/gesture-tuning.json` (runtime only) | UNO Q application `data/gesture-tuning.json` | Global personal threshold overlays |
 | `retropie/powerglove-receiver.timer` | `/etc/systemd/system/` | Delayed boot activation |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/` | Fixed shutdown request watcher |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/` | Fixed clean-shutdown action |
@@ -765,7 +863,27 @@ does not change the saved startup profile or turn controller delivery on.
 | `-h`, `--help` | — | Prints usage and exits. |
 
 Exit codes are `0` for acceptance, `2` for a timeout, and `3` for rejection.
+Acceptance means the request is queued; confirm the applied profile on Dashboard.
 Malformed arguments and file errors can also stop the command.
+
+### Run the paired Games service
+
+The RetroPie installer starts this service automatically. Its installed command
+is `powerglove-games`; developers can also run `python3 -m powerglove_vision.game_registry`.
+
+| Flag | Default | Purpose |
+| --- | --- | --- |
+| `--settings` | `/etc/powerglove/launcher.json` | Read the administrator-configured registry and token-file locations. |
+| `--listen` | `0.0.0.0` | Bind address for the paired LAN service. |
+| `--port` | `55358` | TCP port. The UNO browser proxy uses the standard port. |
+| `--help` | Not applicable | Print usage without starting the service. |
+
+The service uses a single request handler with a three-second socket timeout,
+64-KiB registry limit, and 64 pending challenges. Challenges expire after fifteen
+seconds and can be used once. The previous registry is saved beside the active
+file as `games.json.previous` (or the configured filename plus `.previous`).
+Installer-generated systemd permissions allow writing to the configured registry
+directory. Rerun installation if an administrator changes that directory.
 
 ### Forward game-launch events
 
@@ -848,6 +966,7 @@ they may still perform their normal work.
 | `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
 | `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Downloads and verifies the pinned model into project `data/models/`; requires Python 3 and curl. |
 | `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |
+| `scripts/profile-relay.py` | No flags or positional arguments | Internal unprivileged UDP relay; publishes port 55356 and forwards to the worker, with bounded packet size, outstanding requests, and timeouts. |
 | `scripts/avahi-resolver-service.py` | No flags or positional arguments | Internal service started by the resolver brick; opens its fixed Unix socket. |
 | `python/main.py` | No flags or positional arguments | App Lab entry point; reads `data/device.json` and supervises the worker. |
 | `python/ssh_pair.py` | No command-line flags | Internal password-pairing helper; receives its request through standard input. Use secure Setup instead. |
@@ -882,6 +1001,7 @@ installed versions; use `man TOOL` or that tool's `--help` for its full manual.
 | `ssh USER@HOST` | Opens a remote terminal. `exit` closes that session. |
 | `ssh -o BatchMode=yes USER@HOST COMMAND` | Runs a remote command without interactive password prompts; useful for checking key access. `-o` supplies an SSH setting. |
 | `ssh -t USER@HOST COMMAND` | Allocates a remote terminal, allowing an interactive remote prompt. |
+| `docker port CONTAINER 55356/udp` | Shows the host binding for the container's UDP profile port. This command does not change the container. |
 | `systemctl status NAME` | Displays a service or timer's state. Press `q` if it opens a pager. |
 | `systemctl start`, `stop`, `restart NAME` | Starts, stops, or restarts the named unit now. |
 | `systemctl enable`, `disable NAME` | Enables or disables activation at boot. `--now` also starts or stops it immediately. |

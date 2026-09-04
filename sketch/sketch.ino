@@ -26,6 +26,7 @@ enum PowerGloveStatus {
   PG_PAIRING = 5,
   PG_GESTURES_IDLE = 6,
   PG_LEARNING = 7,
+  PG_TUNING = 8,
 };
 
 Arduino_LED_Matrix matrix;
@@ -171,6 +172,7 @@ const uint8_t digitGlyphs[10][7] = {
 };
 const uint8_t glyphN[7] = {17,25,25,21,19,19,17};
 const uint8_t glyphP[7] = {30,17,17,30,16,16,16};
+const uint8_t glyphT[7] = {31,4,4,4,4,4,4};
 const uint8_t glyphL[7] = {16,16,16,16,16,16,31};
 
 void drawRows(const char* const rows[8]);
@@ -375,7 +377,7 @@ void drawIdleFrame(uint8_t frame) {
 
 // Router Bridge endpoint: request a bounded status code from the Linux app.
 void set_powerglove_status(int status) {
-  if (status < PG_OFF || status > PG_LEARNING) {
+  if (status < PG_OFF || status > PG_TUNING) {
     status = PG_ERROR;
   }
   requestedStatus = status;
@@ -456,6 +458,11 @@ void loop() {
     nextFrameAt = now + idleFrameDurations[animationFrame];
     animationFrame = (animationFrame + 1) %
       (sizeof(idleFrameDurations) / sizeof(idleFrameDurations[0]));
+  } else if (status == PG_TUNING) {
+    uint8_t pixels[104] = {0};
+    placeGlyph(pixels, glyphT, 4, 7);
+    matrix.draw(pixels);
+    nextFrameAt = now + 250;
   } else if (status == PG_LEARNING) {
     drawLearning(animationFrame);
     animationFrame = (animationFrame + 1) % 8;

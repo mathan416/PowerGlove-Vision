@@ -15,8 +15,9 @@ controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
 profile automatically when you launch a registered game. Learn mode lets you
 practise without sending input to the cabinet.
 
-The standard gamepad path has been tested on the cabinet with `lr-nestopia`.
-Native Power Glove support remains planned work. The software preserves
+The cabinet currently uses `lr-fceumm` as its default NES emulator.
+`lr-nestopia` has not been tested with PowerGlove Vision. Native Power Glove
+support remains planned work. The software preserves
 analogue and finger measurements for that future integration, but the current
 gamepad path does not provide every original glove feature.
 
@@ -187,9 +188,9 @@ finger measurements for future native-glove support.
 | Page | What it does |
 | --- | --- |
 | Dashboard, `/debug` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
-| Learn, `/learn` | Provides eleven practice lessons with game input paused. |
+| Learn, `/learn` | Provides eleven practice lessons and guided gesture tuning, with game input paused. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
-| Setup, `/setup` | Saves connection, camera, and startup settings. Pairing requires HTTPS on port 8443. |
+| Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
 **Stop controller** pauses delivery while leaving active tracking available.
 **Gestures off** closes the camera. **Shutdown** requests a Linux halt, but
@@ -197,6 +198,18 @@ the tested UNO Q restarts afterward. A disappearing website is not proof that
 it is safe to remove power. See the installation guide before using Shutdown.
 
 ![Dashboard showing the selected profile and controller readings](docs/images/debug-dashboard.png)
+
+The screenshots below show the current interface. Camera imagery is blurred for privacy.
+
+![Learn in Tune mode, with thresholds below the blurred camera](docs/images/tune-page.png)
+
+In **Learn**, switch on **Tune gestures** to adjust sensitivity. The UNO Q shows
+**T** during tuning and **L** during ordinary practice. Both modes pause game input.
+
+![Games editor in the lower part of Setup](docs/images/games-section.png)
+
+Scroll down **Setup** to **Games** to map exact ROM filenames to profiles.
+Saving affects the next game launch, not the game already running.
 
 ## Maintain or extend the project
 

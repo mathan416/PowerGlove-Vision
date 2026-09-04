@@ -15,7 +15,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "powerglove-vision"
-version = "0.2.0.dev3"
+version = "0.2.5"
 description = "Camera-only Power Glove-inspired controller for UNO Q and RetroPie"
 license = {file = "LICENSE"}
 requires-python = ">=3.7"
@@ -31,6 +31,7 @@ receiver = ["evdev>=1.7"]
 dev = []
 
 [project.scripts]
+powerglove-games = "powerglove_vision.game_registry:main"
 powerglove-vision = "powerglove_vision.vision_app:main"
 powerglove-receiver = "powerglove_vision.receiver:main"
 powerglove-profile = "powerglove_vision.profile_control:main"

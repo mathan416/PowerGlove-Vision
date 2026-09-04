@@ -90,6 +90,13 @@ public reverse proxies, cloud tunnels, or Internet firewall exceptions for
 them. Guest Wi-Fi and untrusted shared networks are inappropriate unless the
 devices are isolated by firewall rules or a dedicated VLAN.
 
+The profile-control brick publishes UDP `55356` and forwards packets to the
+worker on the private container network. It has no token or private data mount,
+runs without elevated privileges, and bounds packet sizes, pending exchanges,
+and reply lifetime. Authentication remains in the worker; the relay never
+creates an acknowledgement. A signed acknowledgement confirms queue admission,
+not completed camera startup or enabled gameplay delivery.
+
 Controller and profile UDP traffic is authenticated but not encrypted. Anyone
 with access to the local network can observe packet timing and size even when
 they cannot create accepted input without the token. The dashboard can expose
@@ -143,3 +150,33 @@ shutdown is not wanted.
 Changing a download URL, checksum, dependency source, pairing primitive,
 network binding, file permission, or privileged service requires focused review
 and corresponding tests and documentation.
+
+## Paired game editing and gesture tuning
+
+The separate RetroPie Games service listens on TCP `55358`. Only the paired UNO
+proxy uses it; browsers call the UNO website. Requests and replies use a distinct
+HMAC-authenticated protocol. Server challenges expire after fifteen seconds and
+are consumed once. The shared token never goes to the browser. This protects
+message integrity; the LAN transport does not encrypt ROM filenames.
+
+The service accepts only registry reads, validated writes, and restoration. File
+locations come from the administrator's launcher configuration, never from browser
+input. Writes use revision checks, atomic replacement, and a previous valid backup.
+The service has bounded document sizes, pending challenges, and socket timeouts;
+it runs separately from controller input delivery. Its systemd unit confines writes
+to the configured registry directory and removes device access and capabilities.
+
+The new Games and Tune browser actions require JSON, an explicit action header,
+and matching Origin when supplied; cross-site browser requests are rejected.
+They retain the existing trusted-LAN administration model, not per-user accounts.
+Personal tuning contains numerical thresholds only. Measurements are held briefly
+in memory, previews expire with the owning session, and camera images are not saved.
+Tuning suppresses controller delivery even if a game launches or another Dashboard
+requests input. Saved settings are validated and atomically replaced.
+
+### Documentation screenshots
+
+Documentation screenshots blur the complete camera image before capture. Keep
+controls legible, but never publish unblurred camera frames or screenshots that
+contain passwords, private tokens, or pairing codes. The reference images show
+the interface; they are not saved gesture recordings.

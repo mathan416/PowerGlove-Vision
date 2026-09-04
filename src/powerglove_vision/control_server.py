@@ -38,6 +38,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
 
+from .game_registry import registry_request, validate_document, MAX_REQUEST
+from .web_features import GAMES_CONTENT, GAMES_SCRIPT, TUNE_CONTENT, TUNE_SCRIPT, TUNE_THRESHOLDS
 from . import __version__
 from .resolver import resolve_ipv4
 
@@ -222,15 +224,26 @@ function drawHand(points){const canvas=$('hand-detail'),ctx=canvas.getContext('2
 function restartTraining(){clearTimeout(advanceTimer);index=0;completed.clear();holdStarted=0;lastSequence=-1;advancing=false;trainingComplete=false;$('achievement').hidden=true;$('lesson-result').textContent='Show your hand to begin.';draw()}
 function moveLesson(next){clearTimeout(advanceTimer);index=next;holdStarted=0;advancing=false;draw()}
 function finishLesson(){holdStarted=0;advancing=false;if(completed.size===lessons.length){trainingComplete=true;$('achievement').hidden=false;$('lesson-result').textContent='Training complete — achievement unlocked!';}else{index=(index+1)%lessons.length;while(completed.has(index))index=(index+1)%lessons.length;}draw()}
-function draw(s={}){const lesson=lessons[index];const menu=!!s.menu_gesture?.pose;const actions={'A':!!s.finger_active?.index&&!menu,'B':!!s.finger_active?.thumb&&!menu,'GLOVE ZAP':!!s.push_gesture?.active};$('practice-actions').innerHTML=Object.entries(actions).map(([label,active])=>`<span class="bit ${active?'on':''}">${label}</span>`).join('');$('lesson-image').src='/help-assets/gestures/actions/'+lesson.image;$('lesson-image').alt=lesson.title;$('finger-feedback').textContent='Curl / trigger '+Number(s.curl_threshold??0.50).toFixed(2)+': '+Object.entries(s.finger_curls||{}).map(([name,value])=>`${name} ${Number(value).toFixed(3)}`).join(' · ');$('depth-feedback').textContent=s.push_gesture?`Forward movement: ${Math.round(s.push_gesture.depth*100)}% / ${Math.round(s.push_gesture.threshold*100)}% required`:'';drawHand(s.hand_landmarks||[]);$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=trainingComplete||index===0;$('next').textContent=trainingComplete?'Start again':index===lessons.length-1?'Review lessons':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
+function draw(s={}){const lesson=lessons[index];const menu=!!s.menu_gesture?.pose;const actions={'A':!!s.finger_active?.index&&!menu,'B':!!s.finger_active?.thumb&&!menu,'GLOVE ZAP':!!s.push_gesture?.active};$('practice-actions').innerHTML=Object.entries(actions).map(([label,active])=>`<span class="bit ${active?'on':''}">${label}</span>`).join('');$('lesson-image').src='/help-assets/gestures/actions/'+lesson.image;$('lesson-image').alt=lesson.title;$('finger-feedback').textContent='Curl / activation: '+Object.entries(s.finger_curls||{}).map(([name,value])=>`${name} ${Number(value).toFixed(3)} / ${Number(s.tuning?.effective?.[name]?.on??s.curl_threshold??0.5).toFixed(2)}`).join(' · ');$('depth-feedback').textContent=s.push_gesture?`Forward movement: ${Math.round(s.push_gesture.depth*100)}% / ${Math.round(s.push_gesture.threshold*100)}% required`:'';drawHand(s.hand_landmarks||[]);$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=trainingComplete||index===0;$('next').textContent=trainingComplete?'Start again':index===lessons.length-1?'Review lessons':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
 async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json();const startup=startupMessage(s),starting=s.vision_state==='starting',ready=s.vision_state==='active'&&s.practice_mode;
 $('learn-startup').style.display=starting?'flex':'none';$('learn-startup').textContent=startup;$('learn-camera').style.display=starting?'none':'block';updateCalibration(s);
-if(trainingComplete){draw(s);return}
+if(trainingComplete||document.getElementById('tune-switch')?.checked){draw(s);return}
 if(!ready){holdStarted=0;$('lesson-result').textContent=s.vision_state==='error'?(s.vision_error||'Vision unavailable; retrying.'):startup||'Starting practice camera…';$('lesson-result').className='lesson-result';$('tracking').textContent=starting?'Starting…':'Waiting';$('recognized').textContent='None';$('confidence').textContent='—';return}
 if(s.sequence===lastSequence)return;lastSequence=s.sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=lessons[index].instant?0:Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);advanceTimer=setTimeout(finishLesson,700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?(lessons[index].menu?(s.menu_gesture?.pose===lessons[index].menu?'Pose found — keep holding…':'Match the hand image. Keep your palm near center; check which fingers read closed.'):'Try the gesture shown above.'):'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
 $('restart-training').onclick=restartTraining;$('previous').onclick=()=>moveLesson(Math.max(0,index-1));$('next').onclick=()=>{if(trainingComplete)restartTraining();else moveLesson((index+1)%lessons.length)};$('center').onclick=calibrate;
 window.addEventListener('pagehide',stopPractice);draw();startPractice();setInterval(()=>{if(practiceActive)practice(true).catch(()=>{})},2000);setInterval(update,150);update();""",
 )
+
+
+# Keep the camera beside the active lesson or tuning controls.
+_tune_intro, _tune_body = TUNE_CONTENT.split('<div id=tune-panel hidden>', 1)
+LEARN = LEARN.replace(b'<section class=card>', b'<section class=card id=practice-lessons>', 1)
+LEARN = LEARN.replace(b'<div class=learn-grid>', (_tune_intro + '</section>').encode() + b'<div class=learn-grid>', 1)
+LEARN = LEARN.replace(b'<section class=card id=practice-lessons>',
+    ('<section class=card id=tune-panel hidden>' + _tune_body[:-len('</div></section>')] + '</section>').encode()
+    + b'<section class=card id=practice-lessons>', 1)
+LEARN = LEARN.replace('<div class=practice-badge>● PRACTICE ONLY</div></div>'.encode(), '<div class=practice-badge>● PRACTICE ONLY</div>'.encode() + TUNE_THRESHOLDS.encode() + b'</div>', 1)
+LEARN = LEARN.replace(b'</body>', b'<script>' + TUNE_SCRIPT.encode() + b'</script></body>')
 
 
 SETUP = _page(
@@ -267,6 +280,10 @@ async function pair(method,path,payload,button){if(prepared!==method){await prep
 $('pair-ssh').onclick=()=>pair('ssh','/api/pair/ssh',{host:$('pair-host').value.trim(),username:$('pair-user').value.trim(),password:$('pair-password').value},$('pair-ssh'));
 $('pair-code-button').onclick=()=>pair('code','/api/pair/code',{host:$('pair-host').value.trim(),code:$('pair-code').value.trim()},$('pair-code-button'));""",
 )
+
+
+SETUP = SETUP.replace(b'</main>', GAMES_CONTENT.encode() + b'</main>', 1)
+SETUP = SETUP.replace(b'</body>', b'<script>' + GAMES_SCRIPT.encode() + b'</script></body>', 1)
 
 
 def help_index_page() -> bytes:
@@ -521,9 +538,13 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
             if require_json and self.headers.get_content_type() != "application/json":
                 raise ValueError("Content-Type must be application/json")
             length = int(self.headers.get("Content-Length", "0"))
-            if length > 8192:
+            limit = MAX_REQUEST if self.path == "/api/games" else 8192
+            if not 0 <= length <= limit:
                 raise ValueError("Request is too large.")
-            return json.loads(self.rfile.read(length) or b"{}")
+            data = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(data, dict):
+                raise ValueError("Request must be an object.")
+            return data
 
         def do_GET(self) -> None:
             path = self.path.split("?", 1)[0]
@@ -531,6 +552,10 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 self.send_response(302); self.send_header("Location", "/debug"); self.end_headers()
             elif path == "/debug":
                 _send(self, 200, DASHBOARD, "text/html; charset=utf-8")
+            elif path == "/games":
+                self.send_response(302)
+                self.send_header("Location", "/setup#games-section")
+                self.end_headers()
             elif path == "/learn":
                 _send(self, 200, LEARN, "text/html; charset=utf-8")
             elif path == "/setup":
@@ -582,7 +607,36 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             path = self.path.split("?", 1)[0]
             try:
-                if path == "/api/config":
+                if path in ("/api/games", "/api/tuning"):
+                    expected = path.rsplit("/", 1)[-1]
+                    origin = self.headers.get("Origin")
+                    if (self.headers.get("X-PowerGlove-Action") != expected
+                            or self.headers.get("Sec-Fetch-Site", "") == "cross-site"
+                            or (origin and origin not in ("http://" + self.headers.get("Host", ""), "https://" + self.headers.get("Host", "")))):
+                        raise ForbiddenActionError("Open this control from the UNO website.")
+                    incoming = self.json_body(require_json=True)
+                    if path == "/api/games":
+                        action = incoming.get("action")
+                        if action in ("validate", "format"):
+                            data = validate_document(incoming.get("document"))
+                            result = {"valid": True, "document": json.dumps(data, indent=2) + "\n"}
+                        elif action in ("read", "save", "restore"):
+                            result = registry_request(state.load_config(), action,
+                                {"document": incoming.get("document"), "revision": incoming.get("revision")})
+                        else:
+                            raise ValueError("Unknown Games action.")
+                    else:
+                        request = urllib.request.Request(WORKER_URL + "/tuning", method="POST",
+                            data=json.dumps(incoming).encode(), headers={"Content-Type": "application/json"})
+                        try:
+                            with urllib.request.urlopen(request, timeout=2) as response:
+                                result = json.load(response)
+                        except urllib.error.HTTPError as exc:
+                            raise ValueError(json.loads(exc.read()).get("error", "Tuning request failed.")) from None
+                        if incoming.get("action") == "begin":
+                            state.set_controller_enabled(False)
+                    _send(self, 200, json.dumps(result).encode(), "application/json")
+                elif path == "/api/config":
                     result = state.save_config(self.json_body())
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/test-connection":

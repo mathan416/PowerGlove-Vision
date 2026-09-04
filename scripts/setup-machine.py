@@ -8,6 +8,7 @@
 # Change log:
 #   2026-09-03 - Added repeatable host installers with backups and explicit health reports.
 #   2026-09-03 - Install and check mDNS dependencies and boot service on both machines.
+#   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Run on the target Linux host: setup-machine.py {retropie,uno-q} [--check]."""
@@ -126,14 +127,21 @@ def install_retropie(peer):
     write_file(token, b"", 0o640, preserve=True)
     token.chmod(0o640)
     os.chown(str(token), 0, grp.getgrnam("input").gr_gid)
-    for unit in ("powerglove-receiver.service", "powerglove-receiver.timer"):
+    for unit in ("powerglove-receiver.service", "powerglove-receiver.timer", "powerglove-games.service"):
         write_file(Path("/etc/systemd/system") / unit, (SOURCE / "retropie" / unit).read_bytes())
     profile = "PowerGlove Vision.cfg"
     write_file(base / "retroarch/autoconfig" / profile, (SOURCE / "retropie/retroarch" / profile).read_bytes(), preserve=True)
     for path, content in hooks:
         write_file(path, content, 0o755)
         path.chmod(path.stat().st_mode | 0o111)
+    registry_directory = Path(json.loads(launcher.read_text()).get("registry", "/etc/powerglove/games.json")).resolve().parent
+    # systemd quoted strings preserve spaces and avoid percent specifier expansion.
+    writable = str(registry_directory).replace("%", "%%").replace("\\", "\\\\").replace('"', '\\"')
+    write_file("/etc/systemd/system/powerglove-games.service.d/registry.conf",
+               '[Service]\nReadWritePaths=\nReadWritePaths="' + writable + '"\n')
     run("systemctl", "daemon-reload")
+    run("systemctl", "enable", "--now", "powerglove-games.service")
+    run("systemctl", "restart", "powerglove-games.service")
     run("systemctl", "disable", "powerglove-receiver.service")
     if len(token.read_text().strip()) >= 16:
         run("systemctl", "restart", "powerglove-receiver.service")
@@ -226,6 +234,7 @@ def check_retropie(report):
     report.check("Local pairing token configured (pair on the Connection page if missing)", paired, pending=True)
     if paired:
         report.command("Receiver service running", ["systemctl", "is-active", "--quiet", "powerglove-receiver.service"])
+        report.command("Games service running", ["systemctl", "is-active", "--quiet", "powerglove-games.service"])
     for action in ("start", "end"):
         path = Path("/opt/retropie/configs/all/runcommand-on" + action + ".sh")
         text = path.read_text() if path.exists() else ""
@@ -265,6 +274,7 @@ def check_unoq(report):
     except (OSError, ValueError):
         report.check("Application HTTP status", False)
     report.check("App-owned Avahi resolver configured", "local:avahi_resolver" in (SOURCE / "app.yaml").read_text() and (SOURCE / "bricks/local/avahi_resolver/brick_compose.yaml").is_file())
+    report.command("Profile UDP ingress published", ["docker", "port", "powerglove-vision-profile-relay-1", "55356/udp"])
     code = ("import json; from pathlib import Path; from powerglove_vision.resolver import resolve_ipv4; "
             "d=json.loads(Path('/app/data/device.json').read_text()); resolve_ipv4(d['receiver'])")
     if status.get("connection_configured"):

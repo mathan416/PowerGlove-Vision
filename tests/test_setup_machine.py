@@ -112,6 +112,7 @@ class SetupTests(unittest.TestCase):
             self.assertEqual(first, compose.read_text())
             self.assertEqual(first.count("target: /run/avahi-daemon"), 1)
             self.assertEqual(first.count("- 8443:8443"), 1)
+            self.assertEqual(first.count("bricks/local/profile_control/brick_compose.yaml"), 1)
             self.assertEqual((app / "data/device.json").read_text(), '{"token":"keep-this-private","profile":"off"}')
             self.assertTrue(mapped("/etc/systemd/system/powerglove-system-shutdown.path").exists())
             service = mapped("/etc/systemd/system/powerglove-system-shutdown.service").read_text()
