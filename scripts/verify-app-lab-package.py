@@ -29,6 +29,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ARCHIVE = ROOT / "output" / "app-lab" / "PowerGlove-Vision-Uno-Q.zip"
 PACKAGE_ROOT = PurePosixPath("PowerGlove-Vision")
 PUBLIC_PDF_NAMES = {
+    "PowerGlove-Vision-Matrix-Guide.pdf",
+    "PowerGlove-Vision-Architecture.pdf",
     "Bad-Street-Brawler-Power-Glove-Programs.pdf",
     "PowerGlove-Vision-Changelog.pdf",
     "PowerGlove-Vision-Configuration-Reference.pdf",
@@ -38,9 +40,23 @@ PUBLIC_PDF_NAMES = {
     "PowerGlove-Vision-Overview.pdf",
     "PowerGlove-Vision-Security.pdf",
     "PowerGlove-Vision-Third-Party-Components.pdf",
+    "PowerGlove-Vision-Input-Audit.pdf",
+    "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+    "PowerGlove-Vision-Direction-Response.pdf",
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/scripts/install-uno-q.sh",
+    "PowerGlove-Vision/scripts/install-retropie.sh",
+    "PowerGlove-Vision/scripts/install-package.py",
+    "PowerGlove-Vision/scripts/setup-machine.py",
+    "PowerGlove-Vision/scripts/installation-manifest.py",
+    "PowerGlove-Vision/docs/images/web/gestures/v2/v-sign.png",
+    "PowerGlove-Vision/docs/images/web/gestures/actions/v-sign.png",
+    "PowerGlove-Vision/scripts/uno-q-early-start.py",
+    "PowerGlove-Vision/uno-q/powerglove-early-start.service",
+    "PowerGlove-Vision/sketch/sketch.yaml",
+    "PowerGlove-Vision/docs/MATRIX_GUIDE.md",
     "PowerGlove-Vision/src/powerglove_vision/_build_info.json",
     "PowerGlove-Vision/src/powerglove_vision/versioning.py",
     "PowerGlove-Vision/models/hand_landmarker.task",
@@ -49,6 +65,21 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/THIRD_PARTY_NOTICES.md",
     "PowerGlove-Vision/src/powerglove_vision/game_registry.py",
     "PowerGlove-Vision/src/powerglove_vision/tuning.py",
+    "PowerGlove-Vision/src/powerglove_vision/native_state.py",
+    "PowerGlove-Vision/scripts/build-nestopia-powerglove.sh",
+    "PowerGlove-Vision/scripts/install-nestopia-powerglove.sh",
+    "PowerGlove-Vision/scripts/configure-super-glove-ball-core.py",
+    "PowerGlove-Vision/scripts/run-nestopia-powerglove-trace.py",
+    "PowerGlove-Vision/scripts/build-fceumm-benchmark.sh",
+    "PowerGlove-Vision/scripts/benchmark-direction-response.py",
+    "PowerGlove-Vision/native/nestopia-powerglove/nestopia-powerglove.patch",
+    "PowerGlove-Vision/native/nestopia-powerglove/README.md",
+    "PowerGlove-Vision/native/nestopia-powerglove/CHANGES.md",
+    "PowerGlove-Vision/docs/super-glove-ball-native.md",
+    "PowerGlove-Vision/docs/direction-response-benchmark.md",
+    "PowerGlove-Vision/docs/power-glove-rom-input-audit.md",
+    "PowerGlove-Vision/docs/images/gestures/actions/menu-guard.png",
+    "PowerGlove-Vision/docs/images/web/gestures/actions/menu-guard.png",
     "PowerGlove-Vision/src/powerglove_vision/web_features.py",
     "PowerGlove-Vision/retropie/powerglove-games.service",
     "PowerGlove-Vision/retropie/bin/powerglove-games",
@@ -108,6 +139,8 @@ def archive_errors(path: Path) -> list[str]:
                     errors.append(f"symbolic link is not allowed in the App Lab installation ZIP: {info.filename}")
                 relative_parts = set(member.parts[1:])
                 relative = PurePosixPath(*member.parts[1:])
+                if relative.parts[:2] == ("assets", "matrix"):
+                    errors.append(f"local duplicate matrix export included: {info.filename}")
                 if relative_parts & FORBIDDEN_PARTS:
                     errors.append(f"private or generated path included: {info.filename}")
                 if member.name in FORBIDDEN_NAMES or member.suffix in FORBIDDEN_SUFFIXES:
@@ -116,6 +149,11 @@ def archive_errors(path: Path) -> list[str]:
                     errors.append(f"unapproved output file included: {info.filename}")
                 if member.suffix == ".pdf" and str(relative) not in PUBLIC_PDF_PATHS:
                     errors.append(f"unapproved PDF included: {info.filename}")
+            for name in names:
+                if name.startswith("PowerGlove-Vision/docs/images/gestures/") and name.endswith(".png") and not name.endswith("-web.png"):
+                    compact = name.replace("/docs/images/gestures/", "/docs/images/web/gestures/", 1)
+                    if compact not in names:
+                        errors.append("missing compact gesture image: " + compact)
             for name in sorted(REQUIRED_FILES - names):
                 errors.append(f"required package file is missing: {name}")
             stamp = "PowerGlove-Vision/src/powerglove_vision/_build_info.json"

@@ -34,7 +34,7 @@ class SetupTests(unittest.TestCase):
 
     def test_files_are_backed_up_and_tokens_preserved(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             file = root / "settings"
             file.write_text("original")
             with patch.object(setup, "BACKUPS", root / "backups"):
@@ -52,7 +52,7 @@ class SetupTests(unittest.TestCase):
 
     def test_retropie_install_twice_preserves_existing_configuration(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             def mapped(value):
                 path = Path(value)
                 if str(path).startswith(("/etc/", "/opt/", "/dev/")):
@@ -83,7 +83,7 @@ class SetupTests(unittest.TestCase):
 
     def test_unoq_install_twice_preserves_private_data_and_mount(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             app = root / "app"
             (app / ".cache").mkdir(parents=True)
             (app / "data").mkdir()
@@ -103,7 +103,7 @@ class SetupTests(unittest.TestCase):
             def mapped(value):
                 path = Path(value)
                 return root / str(path).lstrip("/") if str(path).startswith("/etc/") else path
-            with patch.object(setup, "SOURCE", AppPath()), patch.object(setup, "Path", side_effect=mapped), patch.object(setup, "BACKUPS", root / "backups"), patch.object(setup, "run") as command, patch.object(setup.os, "chown"), patch.object(setup.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)):
+            with patch.object(setup, "SOURCE", AppPath()), patch.object(setup, "Path", side_effect=mapped), patch.object(setup, "BACKUPS", root / "backups"), patch.object(setup, "run") as command, patch.object(setup, "install_early_start") as early, patch.object(setup.os, "chown"), patch.object(setup.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)):
                 setup.install_unoq(None)
                 first = compose.read_text()
                 setup.install_unoq(None)

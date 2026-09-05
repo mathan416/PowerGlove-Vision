@@ -47,7 +47,7 @@ you used to open it.
 ## Install and deploy over Wi-Fi
 
 For a first installation, follow these sections in order, then pair the devices
-and complete the [Installation Guide's gameplay checks](INSTALL_README.md#stage-5-connect-the-virtual-gamepad-to-retroarch).
+and complete the [Installation Guide's gameplay checks](INSTALL_README.md#5-calibrate-and-test-a-game).
 All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#command-line-reference).
 
 ### Download and package on your computer
@@ -122,7 +122,7 @@ If that address has changed, update `/etc/powerglove/launcher.json` on RetroPie.
 
 ### Update the UNO Q from your computer
 
-Complete the [SSH key setup](INSTALL_README.md#set-up-ssh-key-access-once) first. From the full project
+Complete the [SSH key setup](CONFIGURATION_REFERENCE.md#set-up-ssh-key-access-once) first. From the full project
 checkout **on your development computer**, verify access and deploy:
 
 ```sh
@@ -438,6 +438,11 @@ Calibration records your resting hand position, apparent size, and wrist angle
 in the UNO Q's `data/calibration.json`. It survives profile changes, Learn
 sessions, and restarts. Include it in private backups. Recalibrate when your
 physical setup changes or the resting hand position produces unwanted movement.
+The app uses 24 clear observations at 70% confidence or better. Returning to the
+same center, distance, and wrist pose produces a similar reference, although
+normal camera variation means the saved values will not be exactly equal.
+Installers preserve this private reference while replacing the shared tested
+recognition baseline in `config/profiles.json`.
 The camera overlay's **Right** or **Left** label identifies the hand; its score
 is confidence in that identification, not confidence in a movement command.
 

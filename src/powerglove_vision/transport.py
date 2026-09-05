@@ -43,8 +43,41 @@ def decode_state(payload: bytes) -> dict:
     if len(payload) > MAX_PACKET_BYTES:
         raise ValueError("controller packet exceeds size limit")
     data = json.loads(payload.decode("utf-8"))
-    if data.get("protocol") != "powerglove-vision/1":
+    if not isinstance(data, dict) or data.get("protocol") != "powerglove-vision/1":
         raise ValueError("unsupported controller protocol")
+    sequence = data.get("sequence")
+    if type(sequence) is not int or not 0 <= sequence <= 2_147_483_647:
+        raise ValueError("invalid controller sequence")
+    for name in ("session", "token"):
+        value = data.get(name)
+        if value is not None and (not isinstance(value, str) or not value.isascii()
+                                  or not 1 <= len(value) <= (128 if name == "session" else 256)):
+            raise ValueError("invalid controller " + name)
+    for name, keys, maximum in (
+        ("axes", {"x", "y", "z", "roll"}, 32767),
+        ("dpad", {"up", "down", "left", "right"}, None),
+        ("buttons", {"a", "b", "start", "select", "glove_zap", "menu_guard"}, None),
+        ("fingers", {"thumb", "index", "middle", "ring", "pinky"}, 3),
+    ):
+        values = data.get(name, {})
+        if not isinstance(values, dict) or set(values) - keys:
+            raise ValueError("invalid controller " + name)
+        for value in values.values():
+            if maximum is None:
+                valid = type(value) is bool
+            else:
+                valid = type(value) is int and (-maximum if name == "axes" else 0) <= value <= maximum
+            if not valid:
+                raise ValueError("invalid controller " + name)
+    for name in ("timestamp", "confidence"):
+        if name in data:
+            value = data[name]
+            if (type(value) not in (int, float)
+                    or not 0 <= value <= (1 if name == "confidence" else 1e15)):
+                raise ValueError("invalid controller " + name)
+    for name in ("detected", "calibrated"):
+        if name in data and type(data[name]) is not bool:
+            raise ValueError("invalid controller " + name)
     return data
 
 

@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from powerglove_vision.tuning import TuningManager, suggest, CHANNELS, validate_overrides
-from powerglove_vision.gesture import GestureConfig, GestureEngine, SUPPORTED_PROFILES
+from powerglove_vision.gesture import GestureConfig, GestureEngine, SUPPORTED_PROFILES, MENU_FINGERS, finger_pose_feedback
 from powerglove_vision.model import Calibration, HandObservation
 from powerglove_vision.debug_server import SharedDebugState
 
@@ -28,29 +28,47 @@ class TuningTests(unittest.TestCase):
         self.manager = TuningManager(self.path, lambda: self.now)
         self.command('begin')
         self.calibration = Calibration(.5, .5, .2, 0)
+        self.manager.observe(HandObservation(0, True, .99, .5,.5,.2,0), self.calibration, GestureConfig(), True)
 
     def command(self, action, **extra):
         return self.manager.command(dict(action=action, session='test-session', **extra))
 
     def phases(self):
-        return [[dict.fromkeys(CHANNELS, .1 if i % 2 == 0 else .8) for _ in range(20)] for i in range(7)]
+        return [[dict.fromkeys(CHANNELS, .1 if i % 2 == 0 else .8) for _ in range(20)] for i in range(3)]
 
-    def test_three_repetitions_produce_release_below_activation(self):
+    def test_three_recordings_produce_release_below_activation(self):
         pair = suggest('index', self.phases())['index']
         self.assertGreater(pair['off'], .1)
         self.assertLess(pair['off'], pair['on'])
         self.assertLess(pair['on'], .8)
 
+    def test_idle_manager_skips_live_measurement_work_and_reuses_configuration(self):
+        manager = TuningManager(self.path, lambda: self.now)
+        config = GestureConfig()
+        self.assertIs(manager.configuration(config), config)
+        self.assertIs(manager.configuration(config), config)
+        manager.observe(
+            HandObservation(1, True, .99, .7, .2, .3, 1.0, index_curl=.8),
+            self.calibration, config, True,
+        )
+        self.assertEqual(manager.latest, {})
+        self.assertFalse(manager.ready)
+
     def test_noisy_overlapping_incomplete_or_inconsistent_samples_rejected(self):
-        with self.assertRaises(ValueError): suggest('index', self.phases()[:3])
-        for phase in (0, 3, 6):
+        with self.assertRaises(ValueError): suggest('index', self.phases()[:2])
+        for phase in (0, 1, 2):
             data = self.phases()
             for sample in data[phase]: sample['index'] = .78 if phase % 2 == 0 else .12
             with self.subTest(phase=phase), self.assertRaises(ValueError): suggest('index', data)
 
     def test_compound_suggestions_adjust_closed_components(self):
-        self.assertEqual(set(suggest('start', self.phases())), {'ring','pinky'})
-        self.assertEqual(set(suggest('menu_guard', self.phases())), {'thumb','ring'})
+        phases = self.phases()
+        for sample in phases[1]: sample['index'] = sample['middle'] = .1
+        self.assertEqual(set(suggest('start', phases)), {'ring','pinky'})
+        guard = self.phases()
+        for sample in guard[1]:
+            sample['index'] = sample['middle'] = sample['pinky'] = .1
+        self.assertEqual(set(suggest('menu_guard', guard)), {'thumb','ring'})
 
     def test_preview_expiry_and_session_ownership(self):
         self.command('preview', thresholds={'index': {'on':.3, 'off':.2}})
@@ -102,7 +120,7 @@ class TuningTests(unittest.TestCase):
         self.assertEqual(self.manager.snapshot()['completed_phases'],0)
 
     def test_tuning_keeps_practice_active_despite_dashboard_reset(self):
-        shared = SharedDebugState(True)
+        shared = SharedDebugState()
         shared.tuning = self.manager
         self.assertTrue(shared.take_practice_request())
         shared.request_profile('program_g', 'RetroPie launch hook', 'Gun.Smoke')
@@ -119,3 +137,152 @@ class TuningTests(unittest.TestCase):
         self.assertFalse(state['recording'])
         self.assertIn('Not enough', state['error'])
         self.assertEqual(state['completed_phases'], 0)
+
+    def test_hand_setup_then_individual_tuning_preserves_extended_thresholds(self):
+        self.command('select', gesture='hand_setup')
+        self.manager.phases = self.phases()
+        state = self.command('suggest')
+        self.assertEqual(state['mode'], 'hand_setup')
+        self.assertEqual(len(state['preview']), 5)
+        self.command('save', thresholds=state['preview'])
+        original = dict(self.manager.saved)
+        self.command('select', gesture='start')
+        phases = self.phases()
+        for sample in phases[1]:
+            sample['index'] = sample['middle'] = .1
+            sample['ring'] = sample['pinky'] = .65
+        self.manager.phases = phases
+        state = self.command('suggest')
+        self.assertEqual(set(state['preview']), {'ring', 'pinky'})
+        self.command('save', thresholds=state['preview'])
+        self.assertEqual(self.manager.saved['index'], original['index'])
+        self.assertEqual(self.manager.saved['middle'], original['middle'])
+        self.command('select', gesture='hand_setup')
+        self.command('reset')
+        self.assertEqual(self.manager.saved, {})
+
+    def test_recording_three_phases_and_failed_analysis_clears_preview(self):
+        self.command('select', gesture='hand_setup')
+        for phase in range(3):
+            self.command('record')
+            for frame in range(15):
+                value = .7 if phase == 1 else .1
+                hand = HandObservation(100+phase*20+frame, True, .99, .5,.5,.2,0,
+                                       **{k+'_curl': value for k in ('thumb','index','middle','ring','pinky')})
+                self.manager.observe(hand, self.calibration, GestureConfig(), True)
+            self.now += 3.1
+            self.command('heartbeat')
+            self.manager.observe(hand, self.calibration, GestureConfig(), True)
+        self.assertEqual(self.manager.snapshot()['completed_phases'], 3)
+        with self.assertRaises(ValueError): self.command('record')
+        self.assertEqual(len(self.command('suggest')['preview']), 5)
+        for sample in self.manager.phases[2]: sample['thumb'] = .69
+        with self.assertRaisesRegex(ValueError, 'thumb'): self.command('suggest')
+        self.assertIsNone(self.manager.preview)
+        self.assertFalse(self.path.exists())
+
+    def test_short_recording_and_stale_tracking_rejected(self):
+        phases = self.phases()
+        phases[1] = phases[1][:11]
+        with self.assertRaises(ValueError): suggest('hand_setup', phases)
+        self.now += 2.1
+        with self.assertRaisesRegex(ValueError, 'tracking'): self.command('record')
+        self.assertEqual(self.manager.snapshot()['finger_feedback'], {})
+
+    def test_menu_feedback_matches_recognition_with_default_and_personal_values(self):
+        personal = suggest('hand_setup', self.phases())
+        for cfg in (GestureConfig(), GestureConfig(thresholds=personal)):
+            for gesture, requirements in MENU_FINGERS.items():
+                for failure in (None, *requirements):
+                    values = {finger: .8 if closed else .1 for finger, closed in requirements.items()}
+                    if failure:
+                        values[failure] = .1 if requirements[failure] else .8
+                    hand = HandObservation(1, True, .99, .5,.5,.2,0,
+                                           **{k+'_curl': v for k,v in values.items()})
+                    engine = GestureEngine('bad_street_brawler', cfg, calibration=self.calibration)
+                    engine.update(hand)
+                    feedback = finger_pose_feedback(cfg, gesture, requirements, hand.fingers)
+                    self.assertEqual(all(f['matches'] for f in feedback.values()), failure is None)
+                    held = engine._start_gesture if gesture == 'start' else engine._select_gesture
+                    self.assertEqual(held.started_at is not None, failure is None)
+                    self.command('select', gesture=gesture)
+                    self.manager.phases = self.phases()[:1]
+                    self.manager.observe(hand, self.calibration, cfg, True)
+                    self.assertEqual(self.manager.snapshot()['finger_feedback'], feedback)
+
+    def test_hand_setup_recognizes_personal_extension_above_default_cutoff(self):
+        phases = self.phases()
+        for i, phase in enumerate(phases):
+            for sample in phase:
+                for finger in ('thumb', 'index', 'middle', 'ring', 'pinky'):
+                    sample[finger] = .65 if i == 1 else .38
+        cfg = GestureConfig(thresholds=suggest('hand_setup', phases))
+        for gesture, requirements in MENU_FINGERS.items():
+            values = {finger: .65 if closed else .38 for finger, closed in requirements.items()}
+            hand = HandObservation(1, True, .99, .5,.5,.2,0,
+                                   **{k+'_curl': v for k,v in values.items()})
+            self.assertFalse(all(x['matches'] for x in finger_pose_feedback(
+                GestureConfig(), gesture, requirements, hand.fingers).values()))
+            engine = GestureEngine('bad_street_brawler', cfg, calibration=self.calibration)
+            first = engine.update(hand)
+            self.assertFalse(first.buttons[gesture])
+            hand.timestamp = 1.8
+            held = engine.update(hand)
+            self.assertTrue(held.buttons[gesture])
+
+
+    def test_each_extended_finger_is_required_in_every_recording(self):
+        for gesture, extended in (("start", ("index", "middle")), ("select", ("thumb",))):
+            for finger in extended:
+                for phase_index in range(3):
+                    phases = self.phases()
+                    for sample in phases[1]:
+                        for name in extended: sample[name] = .1
+                    for sample in phases[phase_index]: sample[finger] = .6
+                    with self.subTest(gesture=gesture, finger=finger, phase=phase_index):
+                        with self.assertRaisesRegex(ValueError, finger + " extended"):
+                            suggest(gesture, phases)
+
+    def test_personal_extension_and_strict_boundary_are_used_by_analysis(self):
+        for gesture, extended in (("start", ("index", "middle")), ("select", ("thumb",))):
+            phases = self.phases()
+            for phase in phases:
+                for sample in phase:
+                    for finger in extended: sample[finger] = .38
+            personal = {finger: {"on": .6, "off": .4} for finger in extended}
+            with self.assertRaisesRegex(ValueError, "extended"): suggest(gesture, phases)
+            result = suggest(gesture, phases, GestureConfig(thresholds=personal))
+            self.assertTrue(set(result).isdisjoint(extended))
+            for sample in phases[1]: sample[extended[0]] = .4
+            with self.assertRaisesRegex(ValueError, "extended"):
+                suggest(gesture, phases, GestureConfig(thresholds=personal))
+
+    def test_simultaneous_pose_and_noise_tolerance(self):
+        phases = self.phases()
+        for sample in phases[1]: sample['index'] = sample['middle'] = .1
+        phases[1][0]['index'] = phases[1][1]['index'] = .7
+        suggest('start', phases)  # Eighteen out of twenty complete poses.
+        phases[1][2]['middle'] = phases[1][3]['middle'] = .7
+        with self.assertRaisesRegex(ValueError, 'together'): suggest('start', phases)
+
+    def test_failed_extended_check_clears_preview_without_changing_saved_values(self):
+        self.command('save', thresholds={'index': {'on': .6, 'off': .4}})
+        original = self.path.read_text()
+        self.command('select', gesture='start')
+        phases = self.phases()
+        for phase in phases:
+            for sample in phase: sample['index'] = sample['middle'] = .1
+        for sample in phases[1]: sample['ring'] = sample['pinky'] = .8
+        self.manager.phases = phases
+        self.command('suggest')
+        for sample in phases[1]: sample['index'] = .5
+        with self.assertRaisesRegex(ValueError, 'index extended'): self.command('suggest')
+        self.assertIsNone(self.manager.preview)
+        self.assertEqual(self.path.read_text(), original)
+
+    def test_missing_or_nonfinite_required_finger_samples_are_rejected(self):
+        for value in (None, float('nan'), float('inf'), True):
+            phases = self.phases()
+            for sample in phases[1]: sample['index'] = sample['middle'] = .1
+            phases[1][0]['index'] = value
+            with self.assertRaisesRegex(ValueError, 'invalid'): suggest('start', phases)

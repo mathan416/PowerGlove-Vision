@@ -39,6 +39,7 @@ default target is:
 
 Environment overrides:
   UNO_Q_SSH_TARGET  SSH destination
+  UNO_Q_SSH_IDENTITY  Optional private-key path for this UNO Q
   UNO_Q_APP_DIR     Remote App Lab application directory
 USAGE
   exit 0
@@ -59,12 +60,20 @@ readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
 readonly REMOTE_ARCHIVE="/tmp/powerglove-vision-deploy.tar"
 readonly LOCAL_ARCHIVE="$(mktemp)"
 readonly LOCAL_METADATA_DIR="$(mktemp -d)"
-readonly -a SSH_OPTIONS=(
+SSH_OPTIONS=(
   -o BatchMode=yes
   -o ConnectTimeout=30
   -o ServerAliveInterval=10
   -o ServerAliveCountMax=12
 )
+if [[ -n "${UNO_Q_SSH_IDENTITY:-}" ]]; then
+  if [[ ! -f "${UNO_Q_SSH_IDENTITY}" ]]; then
+    echo "error: UNO_Q_SSH_IDENTITY is not a readable file" >&2
+    exit 2
+  fi
+  SSH_OPTIONS+=(-i "${UNO_Q_SSH_IDENTITY}")
+fi
+readonly -a SSH_OPTIONS
 
 # Always remove the local staging archive, including after an interrupted upload.
 cleanup() {
@@ -87,26 +96,11 @@ fi
 readonly UNO_CONNECTION UNO_HEALTH_HOST UNO_HEALTH_AUTHORITY
 
 echo "Uploading PowerGlove Vision over Wi-Fi..."
-COPYFILE_DISABLE=1 tar \
-  --exclude './.git' \
-  --exclude './src/powerglove_vision/_build_info.json' \
-  --exclude './.cache' \
-  --exclude './.venv' \
-  --exclude './data' \
-  --exclude './output/app-lab' \
-  --exclude './output/pdf/PowerGlove-Vision-Quick-Reference.pdf' \
-  --exclude './tests' \
-  --exclude './tmp' \
-  --exclude '__pycache__' \
-  --exclude '*.pyc' \
-  --exclude '.DS_Store' \
-  --exclude './docs/cheatsheet.md' \
-  -C "${PROJECT_DIR}" -cf "${LOCAL_ARCHIVE}" .
-python3 "${SCRIPT_DIR}/stamp-build-version.py" "${LOCAL_METADATA_DIR}/src/powerglove_vision/_build_info.json"
-tar -rf "${LOCAL_ARCHIVE}" -C "${LOCAL_METADATA_DIR}" ./src/powerglove_vision/_build_info.json
+python3 "${SCRIPT_DIR}/application-payload.py" "${LOCAL_METADATA_DIR}"
+COPYFILE_DISABLE=1 tar -C "${LOCAL_METADATA_DIR}" -cf "${LOCAL_ARCHIVE}" .
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "mkdir -p '${REMOTE_APP_DIR}' && tar --warning=no-unknown-keyword -C '${REMOTE_APP_DIR}' -xf '${REMOTE_ARCHIVE}' && rm -f '${REMOTE_ARCHIVE}'"
+  "set -eu; stage=\$(mktemp -d /tmp/powerglove-payload.XXXXXX); trap 'rm -rf \"\$stage\"' EXIT; tar --warning=no-unknown-keyword -C \"\$stage\" -xf '${REMOTE_ARCHIVE}'; python3 \"\$stage/scripts/installation-manifest.py\" '${REMOTE_APP_DIR}' --source \"\$stage\" --backup \"\$HOME/powerglove-backups/payload-\$(date +%Y%m%d-%H%M%S)-\$\$\"; rm -f '${REMOTE_ARCHIVE}'"
 
 echo "Ensuring the secure setup port is published..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
@@ -146,11 +140,11 @@ curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/learn" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help" >/dev/null
-for HELP_SLUG in cabinet installation gameplay programs configuration security components contributing changelog; do
+for HELP_SLUG in cabinet installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
   curl --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help/${HELP_SLUG}" >/dev/null
 done
-for PDF_SLUG in overview installation gameplay programs configuration security components contributing changelog; do
+for PDF_SLUG in overview installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
   curl --fail --silent --show-error --max-time 15 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help-pdf/${PDF_SLUG}.pdf" >/dev/null
 done

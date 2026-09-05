@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Limited Help coverage checks to guides directly under docs.
 #   2026-09-03 - Added documentation and generated-PDF consistency checks.
 #   2026-09-03 - Registered the illustrated gameplay handbook and PDF edition.
 #   2026-09-03 - Added Help-library and registered-game coverage checks.
@@ -46,6 +47,8 @@ CONFIGURATION_FILES = (
     ".github/workflows/quality.yml",
 )
 PDF_EDITIONS = {
+    "docs/MATRIX_GUIDE.md": "PowerGlove-Vision-Matrix-Guide.pdf",
+    "docs/ARCHITECTURE.md": "PowerGlove-Vision-Architecture.pdf",
     "README.md": "PowerGlove-Vision-Overview.pdf",
     "docs/INSTALL_README.md": "PowerGlove-Vision-Guide.pdf",
     "docs/cheatsheet.md": "PowerGlove-Vision-Quick-Reference.pdf",
@@ -56,6 +59,9 @@ PDF_EDITIONS = {
     "docs/SECURITY.md": "PowerGlove-Vision-Security.pdf",
     "docs/CONTRIBUTING.md": "PowerGlove-Vision-Contributing.pdf",
     "docs/GAMEPLAY_GUIDE.md": "PowerGlove-Vision-Gameplay-Guide.pdf",
+    "docs/power-glove-rom-input-audit.md": "PowerGlove-Vision-Input-Audit.pdf",
+    "docs/super-glove-ball-native.md": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+    "docs/direction-response-benchmark.md": "PowerGlove-Vision-Direction-Response.pdf",
 }
 
 
@@ -113,7 +119,7 @@ def check_help_coverage(markdown: list[Path], errors: list[str]) -> None:
     portable_guides = {
         path.name
         for path in markdown
-        if path.parts[:1] == ("docs",) and path.name != "cheatsheet.md"
+        if path.parent == Path("docs") and path.name != "cheatsheet.md"
     }
     for name in sorted(portable_guides - help_files):
         errors.append(f"public guide is missing from the Help library: docs/{name}")
@@ -155,7 +161,11 @@ def main() -> int:
     markdown = tracked_markdown()
     for path in markdown:
         # Distribution-wide licensing notices stay beside the root LICENSE.
-        if path not in {Path("README.md"), Path("THIRD_PARTY_NOTICES.md")} and path.parts[0] != "docs":
+        if path not in {
+            Path("README.md"), Path("THIRD_PARTY_NOTICES.md"),
+            Path("native/nestopia-powerglove/README.md"),
+            Path("native/nestopia-powerglove/CHANGES.md"),
+        } and path.parts[0] != "docs":
             errors.append(f"project Markdown must be under docs/: {path}")
         for target in local_targets(path):
             if not (ROOT / target).exists():

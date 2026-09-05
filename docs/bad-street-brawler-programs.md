@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="620">
-</p>
-
 # Programs A-I: The Cartridge-Free Field Manual
 
 Bad Street Brawler supplied nine programs that configured the original
@@ -23,8 +19,8 @@ For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE
 ![Dashboard profile selector and controller diagnostics](images/debug-dashboard.png)
 
 To change sensitivity without changing a program's button assignments, open
-**Learn → Tune gestures**. The threshold table is beneath the camera and the
-matrix shows **T**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
+**Glove Academy → Tune gestures**. The threshold table is beneath the camera and the
+matrix shows a scanning **T**, matching ordinary Glove Academy’s scanning **L**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
 
 ## Where the programs came from
 
@@ -44,24 +40,24 @@ open Bad Street Brawler first.
 
 ## Quick selector
 
-| Program | Best fit | Main controls |
-| --- | --- | --- |
-| **A** | Pinball | Two finger flippers, wrist tilt, combined-flipper mode |
-| **B** | Joust | Steer by position; curl a finger to flap |
-| **C** | Gyruss | Rotate by wrist angle; fire and bomb gestures |
-| **D** | Challenge mode | Reversed directions with thumb/index buttons |
-| **E** | Defender II | Ship movement, fire, smart bomb, evasive movement |
-| **F** | Sesame Street 1-2-3 | Open-hand Yes and closed-hand No |
-| **G** | Gun Smoke | Walk by position; combine index curl and a forward push to fire |
-| **H** | Training / general play | Familiar controls with pulsed buttons |
-| **I** | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
+| Program | See it | Best fit | Main controls |
+| --- | --- | --- | --- |
+| **A** | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | Pinball | Two finger flippers, wrist tilt, combined-flipper mode |
+| **B** | <img src="images/matrix/programs/B.png" alt="B matrix display illustration" width="104"> | Joust | Steer by position; curl a finger to flap |
+| **C** | <img src="images/matrix/programs/C.png" alt="C matrix display illustration" width="104"> | Gyruss | Rotate by wrist angle; fire and bomb gestures |
+| **D** | <img src="images/matrix/programs/D.png" alt="D matrix display illustration" width="104"> | Challenge mode | Reversed directions with thumb/index buttons |
+| **E** | <img src="images/matrix/programs/E.png" alt="E matrix display illustration" width="104"> | Defender II | Ship movement, fire, smart bomb, evasive movement |
+| **F** | <img src="images/matrix/programs/F.png" alt="F matrix display illustration" width="104"> | Sesame Street 1-2-3 | Open-hand Yes and closed-hand No |
+| **G** | <img src="images/matrix/programs/G.png" alt="G matrix display illustration" width="104"> | Gun Smoke | Walk by position; combine index curl and a forward push to fire |
+| **H** | <img src="images/matrix/programs/H.png" alt="H matrix display illustration" width="104"> | Training / general play | Familiar controls with pulsed buttons |
+| **I** | <img src="images/matrix/programs/I.png" alt="I matrix display illustration" width="104"> | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
 
 ## Menu gestures shared by every program
 
 | Gesture | See it | Controller result |
 | --- | --- | --- |
-| Hold a V sign for about 0.7 seconds | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause |
-| Hold a thumbs-up with the other fingers closed for about 0.7 seconds | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
+| Hold a V sign steadily | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause after about two-thirds of a second |
+| Briefly show a thumbs-up with the other fingers closed | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
 
 These menu poses suppress A/B attacks while they form. Some programs can still
 produce directional output from wrist, depth, or finger gestures. Keep your
@@ -143,7 +139,7 @@ Use this profile for Sesame Street 1-2-3 and simple choice-driven games.
 | Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Walk using horizontal and vertical hand movement |
 | Curl the index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Fire |
 | Roll the wrist | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Add left or right movement |
-| Curl the thumb and ring finger | <img src="images/gestures/actions/thumb-finger-combination.png" alt="Combine a thumb curl with another finger curl" width="96"> | Suppress D-pad and A/B output |
+| Curl the thumb and ring finger | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="96"> | Suppress D-pad and A/B output |
 
 A forward push sends B. Combine it with index curl (A) to send A+B.
 
@@ -185,7 +181,9 @@ The launch hook sends an authenticated profile request. The UNO Q releases held
 controls, changes the mapping, reuses the saved calibration, and acknowledges
 the new profile on its blue matrix. If no valid calibration is saved, it collects
 an initial reference while you hold your open hand still in a comfortable
-resting position.
+resting position. It uses 24 observations at 70% confidence or better; repeating
+the same center, distance, and wrist pose produces a similar rather than
+bit-for-bit identical reference.
 
 ```json
 {
@@ -209,17 +207,19 @@ the previous game's mapping does not remain active.
   4. Open Debug to compare hand motion with generated controller output.
   5. Start controller delivery only when ready to play.
 
-Learn mode works without RetroPie and automatically starts the camera while
+Glove Academy mode works without RetroPie and automatically starts the camera while
 suppressing controller output. This also works while **Gestures off** is the
-selected profile. Leaving Learn restores the selected mode, so it is a safe
+selected profile. Leaving Glove Academy restores the selected mode, so it is a safe
 place to build muscle memory without changing the saved or active selection.
 
 ## What remains special
 
 The nine profiles emit useful conventional controller inputs, so ordinary NES
-cores can use them today. Native Power Glove packets are still needed for the original glove-specific
-features of games such as Super Glove Ball and Bad Street Brawler. PowerGlove Vision preserves the richer analogue and finger data
-needed for that future emulator integration; it does not modify ROM images.
+cores can use them today. Bad Street Brawler's Glove Zap also works through
+standard inputs: its dedicated profile emits a short simultaneous Left + Right
+pulse. FCEUmm must allow opposing directions for that game. Richer native glove
+integration remains separate work; PowerGlove Vision preserves analogue and
+finger data for it and does not modify ROM images.
 
 For installation, secure pairing, RetroArch mapping, and troubleshooting, see
 the [Installation Guide](INSTALL_README.md).
@@ -229,3 +229,18 @@ the [Installation Guide](INSTALL_README.md).
 PowerGlove Vision is an independent MIT-licensed hobbyist project by Iain
 Bennett. Nintendo, NES, Power Glove, Bad Street Brawler, and other marks belong
 to their respective owners. No ROM images are distributed with this project.
+
+### Personal sensitivity and practice
+
+Glove Academy has sixteen lessons, including **Glove Zap**, **Pull Back**, both wrist
+rolls, close hand, and menu guard. Tune an
+individual gesture with open hand → gesture → open hand, three seconds per step.
+Optional **Set up my hand** uses a gentle fist with the thumb outside for the
+middle step. Open means fingers and thumb gently extended, wrist straight, with
+the hand centered at a consistent camera distance. For push or Pull Back, return
+to the starting distance for the final recording. Preview before saving.
+
+Saved thresholds apply across profiles, including these programs. Movement
+controls use separate activation and release thresholds, while program-specific
+button pulses and mappings remain in effect. Extended-only fingers retain their
+existing settings. Practice and tuning pause controller delivery.

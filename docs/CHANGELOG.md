@@ -1,13 +1,91 @@
 # Changelog
 
+- Hardened the V-sign Start command after live Gun Smoke/FCEUmm testing exposed
+  accidental pause pulses. Start now requires a stable 0.65-second hold and a
+  continuous 0.30-second non-V release before it can rearm; movement, A/B, and
+  Select timing are unchanged.
+- Confirmed the exact Super Glove Ball ROM's ten-byte native packet, MSB-first reads, `$A0`/`$5F` detection, `$3F` terminator, native `$82` Start, and continuous X/Y behavior in a deterministic headless trace.
+- Corrected the custom Nestopia core to wrap the exact ROM's stream at ten bytes, center zero precisely, and neutralize stale, lost, uncalibrated, and wrong-profile samples instead of retaining a prior coordinate.
+- Added reversible per-ROM native Nestopia/FCEUmm selection plus a RetroPie-only isolated core installer; stock Nestopia remains untouched.
+- Audited all eight listed US ROMs: only Super Glove Ball consumes native multi-byte glove packets; the other games use standard controller-bit mappings through FCEUmm.
+- Added a reproducible matched-savestate direction benchmark. Native Super Glove Ball visibly activates and releases every axis by frame 3, including a 3.1% X step; FCEUmm Gun.Smoke polls input on frame 1 and visibly activates and releases every direction by frame 2.
+- Compared the exact Super Glove Ball ROM in both cores, confirmed that FCEUmm remains standard-joypad-only, and corrected native Y wrapping so its packet and screen position span bottom, center, and top.
+- Added an optional RetroPie installer offer that builds the pinned GPLv2 native core locally, registers both per-ROM launch choices without changing the saved FCEUmm selection, and installs the upstream license beside the core.
+- Made `config/profiles.json` release-owned and replaceable during updates so the shared recognition defaults supersede legacy per-game thresholds; the previous file is backed up and personal calibration and tuning under `data/` remain preserved.
+
 This file records user-visible PowerGlove Vision changes. The project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) categories and uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
+## Two-script installation
+
+- Added versioned UNO Q and RetroPie installers with verified downloads, repeatable updates, backups, and read-only checks.
+- Included the early-start and shutdown helpers in UNO Q installation; App Lab's command-line tools install the app and Arduino sketch.
+- Added optional emulator installation and registered-game checks, including Bad Street Brawler's game-specific Glove Zap setting.
+- Simplified installation instructions and moved manual repair and packaging details into the technical reference.
+- Added release packaging and automated installer tests. Fresh-device and physical gameplay validation remain required before a stable release.
+
 ## Unreleased
 
+- Preserved Nestopia's original source copyright and GPL header verbatim,
+  added a separate file-by-file PowerGlove Vision modification ledger, made
+  the native-core build reject header changes, and installed that ledger beside
+  the optional core and its upstream `COPYING` file.
+- Made explicit and automatic neutral calibration accept only complete hand
+  observations at 70% confidence or better. Documented its 24-frame averaging,
+  circular wrist mean, 95th-percentile jitter measurement, repeatability limits,
+  atomic replacement, and separation from portable recognition defaults.
+- Hardened release validation so installer packages must contain the shared
+  profile baseline and current recognition, tracking, tuning, and native-core
+  selection modules. Update tests now explicitly preserve neutral calibration
+  and personal gesture tuning while replacing release-owned defaults.
+- Removed avoidable gameplay diagnostics: finger geometry is measured once,
+  detailed landmarks are prepared only at the 5 fps preview cadence, and idle
+  tuning skips measurement work while unchanged configurations are reused.
+- Allowed UNO Q deployments to select an explicit SSH identity and expanded
+  the live deployment gate to verify every published technical guide and PDF.
+- Made Menu Guard and the V-sign mutually exclusive with a clear pinky deadband.
+  Menu Guard now has priority, cancels pending Start pulses, and suppresses every
+  ordinary controller button while the safety pose is active.
+- Centered gesture, profile, and matrix artwork in Help and printable table
+  columns. Grouped related startup and attention-state matrix photographs into
+  compact visual rows where side-by-side comparison is clearer.
+- Made recognition settings global across game mappings, reduced movement travel
+  with `0.28` activation and `0.14` release baselines, and recorded neutral X/Y
+  jitter so only noisy setups automatically receive higher safe thresholds.
+- Expanded Glove Academy from twelve to sixteen mapping-independent lessons with
+  roll left/right, close hand, and a shared menu-guard pose. Practice polls every
+  75 ms and controller delivery remains paused.
+- Added a dedicated menu-guard illustration and substantially enlarged the A/D/H
+  experiment artwork in built-in Help and the gameplay PDF, with balanced text columns.
+- Added the isolated `lr-nestopia-powerglove` research patch, reproducible pinned
+  build, tracing, and a guarded latest-sample bridge. Only candidate X/Y is wired;
+  exact-ROM validation and promotion remain explicitly gated, with FCEUmm retained.
+- Added installation manifests shared by both package installers and Wi-Fi deployment. Updates back up and remove unchanged obsolete application files, preserve local edits, and provide interrupted-update recovery and read-only inventory checks.
+
+- Reduced Start and Select pose debounce to 0.15 seconds, retaining one press per pose and release before repeating.
+- Fixed controller session resets, malformed packet rejection, and timeout release during rejected network traffic.
+- Applied finger release thresholds consistently in Programs E, F, and G.
+- Matched tuning feedback to each recording step and made failed matrix commands retry.
+- Preserved existing profile configuration during installation and Wi-Fi updates.
+- Unified release/deployment payload selection and installer templates; removed unused helpers and state.
+
+## [0.3.0] - Unreleased
+
+Planned feature release: simplified personal tuning, shared gameplay recognition,
+Bad Street Brawler Glove Zap, and illustrated architecture documentation.
+Live camera, gameplay, and physical matrix checks remain release requirements.
+
 ### Added
+
+  - Added an optional permanent UNO Q early-start helper after a successful physical cold-boot trial. It releases the installed sketch earlier on each boot while preserving the system boot display and existing hourglass animation.
+
+  - Added a Matrix display guide in Help and PDF form, covering every display state, profile letters, pairing sequences, troubleshooting, and photographs of the physical display.
+
+  - Added a pulsing startup hourglass before Router Bridge initialization. A dedicated Arduino sketch display task keeps it moving while Linux is starting; ordinary app status then selects the glove, profile, or Academy display. The protected system boot display remains unchanged.
+
+  - Renamed the Learn section to Glove Academy in navigation, the page heading, and current guides. Kept `/learn` links, lesson/tuning behaviour, and L/T matrix indicators unchanged.
 
   - Added startup stage timings for library imports, model preparation, camera initialization, and first inference.
   - Added individual gesture illustrations and Pixel Pal to the website and friendly manuals, with a smaller PNG for web use.
@@ -20,6 +98,54 @@ authoritative record for line-level and file-level history.
   - Preloaded OpenCV and MediaPipe in the background when the vision worker starts, keeping controls responsive and the camera off until requested. On the tested cabinet, first activation after a reboot took 1.21 seconds once preloading completed.
   - Made `/dashboard` the default page, retaining redirects from `/` and `/debug`.
   - Made web footers use the release version, with a development indicator on dev builds.
+
+### Gesture tuning simplification
+
+  - Replaced seven recordings with open hand, gesture, open hand (three seconds each).
+  - Added optional all-finger hand setup using a gentle fist with the thumb outside.
+  - Added live extended/curled finger feedback sharing V-sign and thumbs-up recognition checks. Existing saved thresholds remain compatible.
+  - Live camera validation is required before release.
+
+  - Featured common tuning controls and grouped directions, wrist rolls, and other combinations under More adjustments. Added explicit movement-specific starting-position and return instructions for Glove Zap, pull-back, directions, and wrist rolls.
+
+  - Added pull-back as the twelfth ordinary Learn lesson, with a live action indicator, backward-distance feedback, and personal pull thresholds.
+
+  - Gameplay movement mappings now use shared activation/release states for wrist controls, forward push, pull-back, movement answers, and braking. Preserved game button mappings, pulses, and pull-toggle edges; clear depth activation on tracking loss.
+
+  - Matched Tune’s T animation to Learn’s L using the same scan line, trailing glow, brightness, and frame timing.
+
+  - Standardized Glove Zap and Pull Back labels across Learn, Tune, and the guides.
+
+### Documentation and firmware reconciliation
+
+  - Documented optional five-finger hand setup, three recordings of three seconds, preview/save/discard/reset, extended-only finger handling, and unchanged version-1 saved settings.
+  - Updated ordinary Learn to twelve lessons with Glove Zap and Pull Back, and documented shared gameplay activation/release states while retaining profile mappings and menu holds.
+  - Documented matching scanning L/T animations and consistent action names.
+  - Recorded the verified Zephyr 1.0.0 platform and pinned sketch libraries, distinguishing platform installation, compile-only validation, and firmware upload.
+  - Refreshed maintained guides and their PDF editions. Historical entries above retain the behaviour and names at the time of each change.
+  - Retained live camera, game-control, and physical display checks as release validation requirements; automated checks and deployment alone do not satisfy them.
+
+### Complete-pose validation before tuning suggestions
+
+  - Automatic analysis now requires all selected fingers to match together in at least 90% of accepted samples, including opening and final release phases.
+  - V-sign validates extended index/middle alongside curled ring/pinky; thumbs-up validates extended thumb alongside four curled fingers, using shared recognition checks and existing personal extension thresholds.
+  - Failed analysis identifies the finger/phase and clears the preview without modifying saved settings. Existing holds and orientation-flexible thumb extension remain unchanged.
+  - Added regressions for invalid extended fingers in each phase, personal thresholds, exact boundaries, noise tolerance, simultaneous pose failures, invalid samples, and saved-value preservation. Live camera and gameplay validation remain required.
+
+### Bad Street Brawler Glove Zap
+
+  - Mapped forward-push activation to a 180 ms simultaneous Left + Right pulse in the Bad Street Brawler profile. Require release before retriggering; cancel on menu poses, tracking loss, and recalibration.
+  - Enabled opposing directions in Bad Street Brawler's FCEUmm game options while preserving global settings. The existing RetroPie receiver and gamepad mapping need no changes.
+  - Corrected the earlier documentation claim that this attack required native glove support. Added pulse, cancellation, rearming, and other-profile regressions; all 155 tests passed. A two-frame headless test confirmed the game-specific options load. Live attack validation remains outstanding.
+
+
+### Repeatable RetroPie Glove Zap configuration
+
+  - Added `powerglove-bsb-zap` with read-only checks and explicit `--apply` setup.
+  - Checks installed FCEUmm/RetroArch and game emulator selection; reports missing dependencies or incompatible selection without silently changing either.
+  - Preserves inherited options and global settings; backs up and atomically updates the game file, with repeat-run detection and rollback instructions.
+  - Added six isolated tests for creation, preservation, inheritance, missing cores, wrong emulator selection, read-only mode, running games, redirects, and symlinks.
+  - Documented installation, use, limitations, and the remaining live gameplay check.
 
 ## [0.2.5] - 2026-09-04
 

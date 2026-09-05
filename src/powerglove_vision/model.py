@@ -17,7 +17,6 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
-AXIS_MIN = -32767
 AXIS_MAX = 32767
 
 
@@ -52,11 +51,13 @@ class HandObservation:
 
 @dataclass
 class Calibration:
-    """Store the neutral palm position, apparent size, and wrist roll."""
+    """Store neutral pose plus measured positional jitter around that pose."""
     palm_x: float
     palm_y: float
     palm_scale: float
     roll: float
+    noise_x: float = 0.0
+    noise_y: float = 0.0
 
 
 @dataclass

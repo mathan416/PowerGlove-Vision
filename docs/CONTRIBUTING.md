@@ -33,11 +33,19 @@ fix into `main`, publish the corrective release, and then merge `main` back into
 `dev`. Keep both branches protected against unreviewed or failing changes when
 the repository host supports branch protection.
 
+## Guide layout and audience
+
+Keep user guides focused on what people see and what they should do. Put timing,
+rendering, protocol, and other implementation details in the technical references.
+Use small contextual images in tables, place related images side by side, and
+avoid repeating large images when a nearby table already identifies the display.
+Keep headings, images, and captions together where practical when checking PDFs.
+
 ## Source style and documentation
 
-Every executable script, source file, service unit, and application
-configuration file that supports comments must begin with the standard
-project header. Preserve a shebang
+Every project-authored executable script, source file, service unit, and
+application configuration file that supports comments must begin with the
+standard project header. Preserve a shebang
 as the first line when one is required. The header must identify:
 
   - project and repository-relative filename;
@@ -46,6 +54,14 @@ as the first line when one is required. The header must identify:
   - `SPDX-License-Identifier: MIT`;
   - a short dated change log;
   - `docs/CHANGELOG.md` and Git as the complete history.
+
+Imported or modified third-party source is the exception: retain its original
+header, authorship, copyright, and license language verbatim. Do not replace or
+prepend those notices with the PowerGlove Vision header. Keep project changes
+in a separate patch and an additive component change ledger, and install or
+distribute that ledger with the upstream license and notices. If a vendor source
+tree is accepted later, place it under `third_party/` or `vendor/`; the source
+audit deliberately exempts those paths from project-header requirements.
 
 Python modules need a useful module docstring. Public classes and functions,
 plus non-obvious security, protocol, lifecycle, and numerical helpers, need
@@ -142,7 +158,7 @@ scripts/check-documentation.py --require-pdfs
 ```
 
 When the interface changes, refresh the affected screenshots in `docs/images/`.
-Capture Dashboard, Learn practice, Learn tuning, Setup, the Games section, and Help
+Capture Dashboard, Glove Academy practice, Glove Academy tuning, Setup, the Games section, and Help
 from the running application. Blur the entire camera image before saving a
 screenshot, keeping instructions and controls readable. Check that no passwords,
 pairing codes, tokens, or identifying camera details remain. Do not commit
@@ -179,7 +195,7 @@ scripts/verify-app-lab-package.py
 ```
 
 The App Lab installation ZIP must contain public source, configuration
-examples, documentation, the nine allowlisted public PDF guides, and the
+examples, documentation, the allowlisted public PDF guides, and the
 required custom UNO Q MediaPipe wheel, verified Google model, Apache 2.0 license,
 and third-party notices. It must exclude private `data/`, tests, the cabinet quick-reference PDF, caches, and Git
 history. Do not force-add the generated ZIP to Git. GitHub Actions publishes a
@@ -195,3 +211,52 @@ releases may attach a verified ZIP for long-term distribution.
   - Do not claim hardware verification unless the change was tested on the named device. Automated tests and simulated input should be described accurately.
   - Wait for the GitHub Actions quality workflow to pass before merging.
   - Target ordinary pull requests at `dev`; reserve pull requests into `main` for reviewed releases and urgent release fixes.
+
+## Gesture tuning and firmware validation
+
+Keep Glove Academy and gameplay on the same threshold checks and activation/release
+states. Preserve the deliberate menu hold and game-specific pulses/toggles. Use
+**Glove Zap** and **Pull Back** consistently in user-facing labels. Glove Academy and Tune
+share the scanning-letter matrix renderer and its 160-millisecond frame timing.
+
+Before releasing recognition changes, validate three-step hand setup and
+individual tuning, including users who skip setup. Exercise V-sign and thumbs-up
+with different curl ranges, incorrect extended fingers, and incomplete releases.
+Verify neutral calibration ignores undetected, incomplete-scale, and sub-70%
+confidence observations; requires 24 accepted frames in production; preserves
+the previous saved reference until atomic completion; and reproduces a close,
+not necessarily identical, result for the same simulated stance.
+Check insufficient samples, tracking loss, overlapping ranges, and calibration
+changes. Verify preview expiry, save/reload, selected-component reset, existing
+version-1 files, and controller suppression throughout tuning. Automatic
+suggestions must check separation and a simultaneous full-pose match in at least
+90% of accepted samples in each phase, using candidate values and existing
+personal extension thresholds. Test each extended finger, exact threshold
+boundaries, default/personal ranges, tolerated noise, and failures occurring in
+different frames. Failed analysis must clear previews without changing saved
+settings. Extended-only samples still cannot learn a curled boundary. Manual
+numerical editing and live-camera validation remain separate concerns.
+
+Perform live camera checks of both menu poses, ordinary finger controls, Glove
+Zap, Pull Back, and actual game input before release. Successful automated tests,
+compilation, firmware upload, and bridge calls do not establish real-world
+recognition quality or visually confirm the physical matrix animation.
+
+Use the complete pinned Zephyr 1.0.0 configuration for compile-only validation,
+then explicitly upload through App Lab. See the installation guide's
+[firmware workflow](CONFIGURATION_REFERENCE.md#build-and-install-matrix-firmware).
+Regenerate all PDF editions after documentation updates. Reference screenshots
+may show earlier labels; keep instructions authoritative and refresh screenshots
+with camera imagery blurred when the interface layout changes.
+
+
+## Two-machine installer releases
+
+Use [Build and publish installation assets](CONFIGURATION_REFERENCE.md#build-and-publish-installation-assets)
+to package an explicit release tag. Both installers share `setup-machine.py` and
+`install-package.py`; changes to host integration must cover first installation,
+repeat updates, private-settings preservation, and read-only checks. Run
+`test_install_packages.py` and `test_setup_machine.py`, plus the full test suite.
+Keep development builds as prereleases. Workflow artifacts are not published
+release downloads. Physical fresh-device and upgrade tests, cold boot, pairing,
+and gameplay remain release gates; simulated filesystem tests do not replace them.

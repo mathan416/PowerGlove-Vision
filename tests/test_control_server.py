@@ -147,13 +147,25 @@ class ControlStateTests(unittest.TestCase):
         assert page is not None
         self.assertIn(b"Play with PowerGlove Vision", page)
         self.assertIn(b"On this page", page)
-        self.assertIn(b"/help-assets/gestures/v2/pixel-pal-web.png", page)
         self.assertIn(b"/help-assets/gestures/actions/whole-hand-movement.png", page)
         self.assertIn(b"/help-assets/gestures/v2/v-sign.png", page)
         self.assertIn(b"/help-assets/gestures/v2/thumbs-up.png", page)
         self.assertGreaterEqual(page.count(b"<img loading=lazy"), 46)
+        self.assertIn(b"<table class=program-starters>", page)
+        self.assertIn(b"width='176'", page)
         self.assertIn(b"/help/gameplay.md", page)
         self.assertIn(b"/help-pdf/gameplay.pdf", page)
+
+    def test_help_guides_keep_only_the_shared_header_logo(self):
+        for slug, width in (("gameplay", 680), ("programs", 620), ("installation", 680)):
+            with self.subTest(slug=slug):
+                page = help_document_page(slug)
+                self.assertEqual(page.count(b"/assets/powerglove-vision-logo.png"), 1)
+                rendered, _ = render_markdown('<img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="%s">' % width)
+                self.assertIn("<img loading=lazy", rendered)
+                self.assertNotIn(b"&lt;img", page)
+        rendered, _ = render_markdown('<img src="../assets/private.png" alt="Unlisted" width="680">')
+        self.assertNotIn("<img loading=lazy", rendered)
 
     def test_help_renderer_escapes_html_and_unsafe_links(self):
         rendered, _headings = render_markdown("# Safe\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1))")
@@ -162,13 +174,21 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn("href='#'", rendered)
 
         table, _headings = render_markdown(
-            '| Pose |\n| --- |\n| <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72"> |'
+            '| Name | Pose |\n| --- | --- |\n| Start | <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72"> |'
         )
         self.assertIn("<img loading=lazy", table)
         self.assertIn("/help-assets/gestures/actions/v-sign.png", table)
+        self.assertIn("<th class=art-column>", table)
+        self.assertIn("<td class=art-cell>", table)
+
+        mixed_table, _headings = render_markdown(
+            '| State | See it |\n| --- | --- |\n| Pairing | — |\n'
+            '| Ready | <img src="images/matrix/A.jpg" alt="A" width="104"> |'
+        )
+        self.assertEqual(mixed_table.count("<td class=art-cell>"), 2)
 
         unsafe_table, _headings = render_markdown(
-            '| Pose |\n| --- |\n| <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72" onerror="alert(1)"> |'
+            '| Name | Pose |\n| --- | --- |\n| Start | <img src="images/gestures/actions/v-sign.png" alt="V sign" width="72" onerror="alert(1)"> |'
         )
         self.assertNotIn("<img loading=lazy", unsafe_table)
         self.assertIn("&lt;img", unsafe_table)
@@ -180,12 +200,25 @@ class ControlStateTests(unittest.TestCase):
         self.assertEqual(asset[1], "image/png")
         self.assertIsNone(help_asset("../../data/device.json"))
 
+    def test_gesture_http_assets_use_compact_copies_without_changing_originals(self):
+        root = Path(__file__).resolve().parents[1] / "docs/images"
+        for name in ("v2/v-sign.png", "v2/thumbs-up.png", "actions/v-sign.png"):
+            asset = help_asset("gestures/" + name)
+            self.assertEqual(asset[1], "image/png")
+            self.assertEqual(asset[0], (root / "web/gestures" / name).read_bytes())
+            self.assertLess(len(asset[0]), 40000)
+            self.assertLess(len(asset[0]), (root / "gestures" / name).stat().st_size // 4)
+
     def test_help_pdfs_are_allowlisted_and_exclude_the_cabinet_reference(self):
         document = guide_pdf("gameplay")
         self.assertIsNotNone(document)
         assert document is not None
         self.assertTrue(document[0].startswith(b"%PDF-"))
         self.assertEqual(document[1], "PowerGlove-Vision-Gameplay-Guide.pdf")
+        self.assertEqual(
+            guide_pdf("native-super-glove-ball")[1],
+            "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+        )
         self.assertIsNone(guide_pdf("quick-reference"))
         self.assertIsNone(guide_pdf("../../data/device"))
 
@@ -211,31 +244,6 @@ class ControlStateTests(unittest.TestCase):
         finally:
             servers.shutdown()
 
-    def test_dashboard_is_default_and_legacy_url_redirects(self):
-        """Keep the canonical dashboard and existing bookmarks working."""
-        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
-        try:
-            port = servers.servers[0].server_address[1]
-            for path in ("/", "/debug"):
-                connection = http.client.HTTPConnection("127.0.0.1", port)
-                connection.request("GET", path)
-                response = connection.getresponse()
-                response.read()
-                self.assertEqual(response.status, 302)
-                self.assertEqual(response.getheader("Location"), "/dashboard")
-                connection.close()
-            connection = http.client.HTTPConnection("127.0.0.1", port)
-            connection.request("GET", "/dashboard")
-            response = connection.getresponse()
-            body = response.read()
-            self.assertEqual(response.status, 200)
-            self.assertIn(b"class=pal-intro", body)
-            self.assertIn(b"/help-assets/gestures/v2/pixel-pal-web.png", body)
-            self.assertIn(b"href=/dashboard>Dashboard", body)
-            connection.close()
-        finally:
-            servers.shutdown()
-
     def test_learn_page_is_offline_practice_mode(self):
         self.assertIn(b"Practice gesture recognition without a RetroPie connection", LEARN)
         self.assertIn(b"/api/practice", LEARN)
@@ -243,7 +251,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"keepalive:true", LEARN)
         self.assertIn(b"data-src=/stream", LEARN)
         self.assertNotIn(b"/api/controller", LEARN)
-        self.assertIn(b"Lesson 1 of 11", LEARN)
+        self.assertIn(b"Lesson 1 of 16", LEARN)
 
     def test_dashboard_load_clears_practice_and_restores_selected_mode(self):
         self.assertIn(b"/api/practice", DASHBOARD)
@@ -283,15 +291,15 @@ class ControlStateTests(unittest.TestCase):
             self.assertIs(shared.take_practice_request(), False)
 
     def test_practice_uses_general_tracking_without_changing_selected_off_mode(self):
-        self.assertEqual(_effective_profile(None, True), "program_h")
+        self.assertEqual(_effective_profile(None, True), "practice")
         self.assertIsNone(_effective_profile(None, False))
-        self.assertEqual(_effective_profile("bad_street_brawler", True), "program_h")
+        self.assertEqual(_effective_profile("bad_street_brawler", True), "practice")
         self.assertEqual(_effective_profile("bad_street_brawler", False), "bad_street_brawler")
         status = _base_status(
             None, "Startup default", "startup", True, practice_mode=True,
         )
         self.assertEqual(status["active_profile"], "off")
-        self.assertEqual(status["vision_profile"], "program_h")
+        self.assertEqual(status["vision_profile"], "practice")
         self.assertTrue(status["practice_mode"])
         self.assertIn("Practice mode", status["receiver_error"])
 
@@ -357,7 +365,12 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"image:'v-sign.png'", LEARN)
         self.assertIn(b"image:'thumbs-up.png'", LEARN)
         self.assertIn(b"image:'thumb-curl.png'", LEARN)
-        self.assertIn(b"GLOVE ZAP recognized!", LEARN)
+        self.assertIn(b"Glove Zap recognized!", LEARN)
+        self.assertIn(b"image:'wrist-roll-left.png'", LEARN)
+        self.assertIn(b"image:'wrist-roll-right.png'", LEARN)
+        self.assertIn(b"image:'close-all-fingers.png'", LEARN)
+        self.assertIn(b"image:'menu-guard.png'", LEARN)
+        self.assertIn(b"setInterval(update,75)", LEARN)
         self.assertIn(b"id=practice-actions", LEARN)
         self.assertIn(b"s.menu_gesture?.recognized", LEARN)
         self.assertIn(b"lessons[index].instant?0", LEARN)
@@ -519,6 +532,18 @@ class ControlStateTests(unittest.TestCase):
         shared.request_controller(True)
         self.assertTrue(shared.take_controller_request())
         self.assertIsNone(shared.take_controller_request())
+
+    def test_preview_work_tracks_active_stream_consumers(self):
+        shared = SharedDebugState()
+        self.assertFalse(shared.has_stream_clients())
+        shared.stream_opened()
+        shared.stream_opened()
+        self.assertTrue(shared.has_stream_clients())
+        shared.stream_closed()
+        self.assertTrue(shared.has_stream_clients())
+        shared.stream_closed()
+        shared.stream_closed()
+        self.assertFalse(shared.has_stream_clients())
 
     def test_worker_profile_request_is_consumed_once_and_normalizes_off(self):
         shared = SharedDebugState()

@@ -5,6 +5,7 @@
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
 // Change log:
+//   2026-09-04 - Share the scanning letter animation between Learn and Tune.
 //   2026-09-02 - Added to PowerGlove Vision.
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
 //   2026-09-03 - Added the gestures-idle Power Glove attract animation.
@@ -14,6 +15,7 @@
 
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
+#include <zephyr/kernel.h>
 
 // App Lab starts this sketch after the UNO Q's protected system-boot display
 // has finished. The Python vision process then selects one of these states.
@@ -38,61 +40,20 @@ int drawnStatus = -1;
 int drawnProfile = -1;
 unsigned long nextFrameAt = 0;
 uint8_t animationFrame = 0;
+struct k_thread displayThread;
+k_thread_stack_t* displayStack = nullptr;
+k_tid_t displayThreadId = nullptr;
 
 // Original 8-bit artwork sized for the UNO Q's 8x13 blue matrix. Characters
 // encode brightness: '.' is off, '1' through '7' select exact grayscale
 // levels, 'o' is legacy dim, and 'O' is full brightness.
+// A distinct hourglass means startup/loading; the glove remains the idle display.
 const char* const loadingFrames[][8] = {
-  {
-    "..O.O.O.O....",
-    "..o.o.o.o....",
-    "..oooooooo...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..O.O.O.O....",
-    "..oooooooo...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..o.o.o.o....",
-    "..OOOOOOOO...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..o.o.o.o....",
-    "..oooooooo...",
-    "..OOOOOOO....",
-    "..OOOOOO.....",
-    "...oooo......",
-    "...oooo......",
-    "...oooo......",
-  },
-  {
-    "..o.o.o.o....",
-    "..o.o.o.o....",
-    "..oooooooo...",
-    "..ooooooo....",
-    "..oooooo.....",
-    "...OOOO......",
-    "...OOOO......",
-    "...OOOO......",
-  },
+  {"...7777777...", "....7ooo7....", ".....7o7.....", "......7......", "......o......", ".....7.7.....", "....7...7....", "...7777777..."},
+  {"...7777777...", "....7ooo7....", ".....7o7.....", "......o......", "......7......", ".....7.7.....", "....7.o.7....", "...7777777..."},
+  {"...7777777...", "....7.o.7....", ".....7o7.....", "......o......", "......o......", ".....7o7.....", "....7ooo7....", "...7777777..."},
+  {"...5555555...", "....5...5....", ".....5.5.....", "......o......", "......7......", ".....5o5.....", "....5ooo5....", "...5555555..."},
+  {"...7777777...", "....7...7....", ".....7.7.....", "......7......", "......o......", ".....7o7.....", "....7ooo7....", "...7777777..."},
 };
 
 const char* const readyFrame[8] = {
@@ -240,18 +201,17 @@ void drawProfile(int profile, bool pulse) {
   matrix.draw(pixels);
 }
 
-// Show a legible L with a bright scan line so Learn mode remains visually
-// active without resembling a game-profile code or an error condition.
-void drawLearning(uint8_t frame) {
+// Keep Learn and Tune legible with the same bright scan line and trailing glow.
+void drawModeLetter(const uint8_t glyph[7], uint8_t frame) {
   uint8_t pixels[104] = {0};
-  placeGlyph(pixels, glyphL, 4, 3);
+  placeGlyph(pixels, glyph, 4, 3);
   const int scanRow = frame % 8;
   for (int x = 4; x < 9; ++x) {
-    if (scanRow < 7 && (glyphL[scanRow] & (1 << (8 - x)))) {
+    if (scanRow < 7 && (glyph[scanRow] & (1 << (8 - x)))) {
       setPixelMax(pixels, x, scanRow, 7);
     }
     if (scanRow > 0 && scanRow - 1 < 7 &&
-        (glyphL[scanRow - 1] & (1 << (8 - x)))) {
+        (glyph[scanRow - 1] & (1 << (8 - x)))) {
       setPixelMax(pixels, x, scanRow - 1, 5);
     }
   }
@@ -395,11 +355,28 @@ void set_powerglove_profile(int profile) {
   requestedProfile = (profile >= 0 && profile <= 11) ? profile : 0;
 }
 
-// Initialize the matrix, register bridge endpoints, and show loading state.
+// Keep the display alive while Router Bridge initialization waits for Linux.
+// This task is the sole framebuffer writer after setup draws its first frame.
+void refreshMatrix();
+void displayTask(void*, void*, void*) {
+  while (true) {
+    refreshMatrix();
+    k_msleep(5);
+  }
+}
+
+// Initialize visible startup feedback before any blocking bridge calls.
 void setup() {
   matrix.begin();
   matrix.setGrayscaleBits(3);
-  matrix.clear();
+  drawRows(loadingFrames[0]);
+  displayStack = k_thread_stack_alloc(2048, 0);
+  if (displayStack != nullptr) {
+    displayThreadId = k_thread_create(&displayThread, displayStack, 2048,
+                                    displayTask, nullptr, nullptr, nullptr,
+                                    5, 0, K_NO_WAIT);
+    k_thread_name_set(displayThreadId, "powerglove-matrix");
+  }
 
   Bridge.begin();
   Bridge.provide("set_powerglove_status", set_powerglove_status);
@@ -408,7 +385,7 @@ void setup() {
 }
 
 // Refresh animations only when their frame or requested state changes.
-void loop() {
+void refreshMatrix() {
   const int status = requestedStatus;
   const int profile = requestedProfile;
   const unsigned long now = millis();
@@ -432,7 +409,7 @@ void loop() {
   if (status == PG_LOADING) {
     drawRows(loadingFrames[animationFrame]);
     animationFrame = (animationFrame + 1) % 5;
-    nextFrameAt = now + 115;
+    nextFrameAt = now + 220;
   } else if (status == PG_TRACKING) {
     if (profile == 0) {
       drawRows(trackingFrames[animationFrame]);
@@ -458,14 +435,17 @@ void loop() {
     nextFrameAt = now + idleFrameDurations[animationFrame];
     animationFrame = (animationFrame + 1) %
       (sizeof(idleFrameDurations) / sizeof(idleFrameDurations[0]));
-  } else if (status == PG_TUNING) {
-    uint8_t pixels[104] = {0};
-    placeGlyph(pixels, glyphT, 4, 7);
-    matrix.draw(pixels);
-    nextFrameAt = now + 250;
-  } else if (status == PG_LEARNING) {
-    drawLearning(animationFrame);
+  } else if (status == PG_LEARNING || status == PG_TUNING) {
+    drawModeLetter(status == PG_LEARNING ? glyphL : glyphT, animationFrame);
     animationFrame = (animationFrame + 1) % 8;
     nextFrameAt = now + 160;
   }
+}
+
+// Fall back to loop-driven animation if the optional display stack was unavailable.
+void loop() {
+  if (displayThreadId == nullptr) {
+    refreshMatrix();
+  }
+  delay(5);
 }

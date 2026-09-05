@@ -23,12 +23,19 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[1]
 BACKUPS = Path("/var/backups/powerglove-vision") / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+
+
+def installation_manifest():
+    """Load the shared payload ownership and recovery implementation."""
+    import runpy
+    return runpy.run_path(str(Path(__file__).resolve().parent / "installation-manifest.py"))
 
 
 def run(*args):
@@ -39,7 +46,7 @@ def run(*args):
 def write_file(path, content, mode=0o644, preserve=False):
     """Back up changed managed files; never overwrite a symlink or preserved setting."""
     path = Path(path)
-    if path.is_symlink():
+    if any(parent.is_symlink() for parent in [path] + list(path.parents)):
         raise ValueError("Refusing symlink: " + str(path))
     if path.exists() and preserve:
         return
@@ -57,6 +64,9 @@ def write_file(path, content, mode=0o644, preserve=False):
     with temporary.open("xb") as stream:
         stream.write(data)
     temporary.chmod(mode)
+    if path.exists() and os.geteuid() == 0:
+        owner = path.stat()
+        os.chown(str(temporary), owner.st_uid, owner.st_gid)
     os.replace(str(temporary), str(path))
 
 
@@ -108,12 +118,14 @@ def install_retropie(peer):
     run("modprobe", "uinput")
     write_file("/etc/modules-load.d/powerglove.conf", "uinput\n")
     destination = Path("/opt/powerglove-src")
-    for directory in ("src", "retropie", "config", "scripts"):
-        for source in (SOURCE / directory).rglob("*"):
-            if source.is_file() and "__pycache__" not in source.parts and source.suffix != ".pyc":
-                target = destination / source.relative_to(SOURCE)
-                if source.resolve() != target.resolve():
-                    write_file(target, source.read_bytes(), source.stat().st_mode & 0o777)
+    if SOURCE.resolve() != destination.resolve():
+        names = [str(path.relative_to(SOURCE))
+                 for directory in ("src", "retropie", "config", "scripts", "native", "licenses")
+                 for path in (SOURCE / directory).rglob("*")
+                 if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc"]
+        names += [name for name in ("install-release.json", "LICENSE", "THIRD_PARTY_NOTICES.md")
+                  if (SOURCE / name).is_file()]
+        installation_manifest()["apply"](SOURCE, destination, BACKUPS / "application-payload", names)
     for source in (SOURCE / "retropie/bin").iterdir():
         write_file(Path("/opt/powerglove/bin") / source.name, source.read_bytes(), 0o755)
     for action in ("start", "end"):
@@ -149,13 +161,13 @@ def install_retropie(peer):
 
 
 def install_unoq(peer):
-    """Complete an imported App Lab app: mDNS, shutdown permission and default startup."""
+    """Complete the CLI-started app with networking, shutdown and early startup."""
     app = SOURCE
     if str(app) != "/home/arduino/ArduinoApps/powerglove-vision":
         raise ValueError("UNO Q setup currently requires App Lab path /home/arduino/ArduinoApps/powerglove-vision")
     compose = app / ".cache/app-compose.yaml"
     if not compose.exists():
-        raise ValueError("Import and run this app in App Lab once before setup")
+        raise ValueError("Start the app with install-uno-q.sh before completing host setup")
     if (app / "data/shutdown-request").exists():
         raise ValueError("A pending shutdown request exists; remove it deliberately before setup")
     run("apt-get", "update")
@@ -185,8 +197,128 @@ def install_unoq(peer):
     # App Lab properties belong to the non-root desktop account.
     run("runuser", "-u", "arduino", "--", "arduino-app-cli", "properties", "set", "default", app)
     run("docker", "compose", "-f", compose, "up", "-d", "--force-recreate")
+    install_early_start()
     if peer:
         print("Receiver setting is preserved; choose " + peer + " on the Connection page if needed.")
+
+
+def user_systemctl(*args):
+    """Address the Arduino user manager consistently from a sudo installation."""
+    user = pwd.getpwnam("arduino")
+    prefix = ["runuser", "-u", "arduino", "--"] if os.geteuid() != user.pw_uid else []
+    return prefix + ["env", "XDG_RUNTIME_DIR=/run/user/" + str(user.pw_uid),
+            "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/" + str(user.pw_uid) + "/bus",
+            "systemctl", "--user"] + list(args)
+
+
+def install_early_start():
+    """Install the guarded helper and enable it for subsequent boots without an SWD write now."""
+    user = pwd.getpwnam("arduino")
+    home = Path(user.pw_dir)
+    for source, relative in (("scripts/uno-q-early-start.py", ".local/lib/powerglove/uno-q-early-start.py"),
+                             ("uno-q/powerglove-early-start.service", ".config/systemd/user/powerglove-early-start.service")):
+        target = home / relative
+        if any(parent.is_symlink() for parent in [target] + list(target.parents)):
+            raise ValueError("Refusing symbolic helper path: " + str(target))
+        write_file(target, (SOURCE / source).read_bytes())
+        os.chown(str(target), user.pw_uid, user.pw_gid)
+        for parent in target.parents:
+            if parent == home:
+                break
+            os.chown(str(parent), user.pw_uid, user.pw_gid)
+    run("loginctl", "enable-linger", "arduino")
+    run("systemctl", "start", "user@%s.service" % user.pw_uid)
+    run(*user_systemctl("daemon-reload"))
+    trial = home / ".config/systemd/user/powerglove-early-start-trial.service"
+    if trial.exists():
+        run(*user_systemctl("disable", "powerglove-early-start-trial.service"))
+    run(*user_systemctl("enable", "powerglove-early-start.service"))
+    print("PASS  Early-start helper installed for the next boot; existing sketch animation preserved.")
+
+
+def wait_unoq():
+    """Allow a cold application startup to finish before reporting health."""
+    for _ in range(90):
+        try:
+            urllib.request.urlopen("http://127.0.0.1:8088/status", timeout=2).close()
+            return
+        except OSError:
+            time.sleep(2)
+
+
+def registered_roms():
+    """Find registered NES games in standard RetroPie account ROM directories."""
+    config = json.loads(Path("/etc/powerglove/launcher.json").read_text())
+    registry = json.loads(Path(config.get("registry", "/etc/powerglove/games.json")).read_text())["games"]
+    results = []
+    for home in Path("/home").iterdir():
+        directory = home / "RetroPie/roms/nes"
+        if directory.is_dir():
+            for rom in directory.rglob("*"):
+                if rom.is_file() and rom.name in registry:
+                    results.append((rom, registry[rom.name]))
+    return results
+
+
+def configure_games(confirm):
+    """Prepare FCEUmm games and offer the optional source-built native core."""
+    prefix = Path("/opt/retropie")
+    core = prefix / "libretrocores/lr-fceumm/fceumm_libretro.so"
+    retroarch = prefix / "emulators/retroarch/bin/retroarch"
+    if not core.is_file() or not retroarch.is_file():
+        user = os.environ.get("SUDO_USER", "")
+        home = Path(pwd.getpwnam(user).pw_dir) if user else Path("/root")
+        script = home / "RetroPie-Setup/retropie_packages.sh"
+        if script.is_file() and confirm("Install missing RetroArch/FCEUmm using RetroPie Setup? This may take several minutes"):
+            for package, artifact in (("retroarch", retroarch), ("lr-fceumm", core)):
+                if not artifact.is_file():
+                    run("bash", script, package, "install_bin")
+                    run("bash", script, package, "configure")
+        else:
+            print("ACTION  Install lr-fceumm using RetroPie Setup, then rerun this installer.")
+    import runpy
+    roms = registered_roms()
+    super_glove_ball_roms = [rom for rom, profile in roms if profile == "super_glove_ball"]
+    native = prefix / "libretrocores/lr-nestopia-powerglove/nestopia_powerglove_libretro.so"
+    if super_glove_ball_roms and not native.is_file():
+        prompt = ("Build and register optional lr-nestopia-powerglove for Super Glove Ball? "
+                  "This installs build tools and downloads pinned GPLv2 source")
+        if confirm(prompt):
+            run("apt-get", "install", "-y", "git", "build-essential")
+            with tempfile.TemporaryDirectory(prefix="powerglove-nestopia-", dir="/var/tmp") as build:
+                run("bash", SOURCE / "scripts/install-nestopia-powerglove.sh", build)
+    if super_glove_ball_roms and native.is_file():
+        selector = runpy.run_path(str(SOURCE / "scripts/configure-super-glove-ball-core.py"))
+        system_path, system_text, option_path, option_text = selector["native_registration"](prefix)
+        write_file(system_path, system_text)
+        write_file(option_path, option_text)
+        print("PASS  Both Super Glove Ball emulators are available; FCEUmm remains selected until you choose native mode.")
+    elif super_glove_ball_roms:
+        print("INFO  Super Glove Ball will use FCEUmm; the optional native core was not installed.")
+
+    zap = runpy.run_path(str(SOURCE / "scripts/configure-bsb-zap.py"))
+    for rom, profile in roms:
+        if profile != "bad_street_brawler":
+            continue
+        try:
+            configs = prefix / "configs"
+            games_path = configs / "all/emulators.cfg"
+            system = zap["settings"](configs / "nes/emulators.cfg")
+            games = zap["settings"](games_path)
+            import hashlib
+            key = "a" + hashlib.md5(("nes" + str(rom) + "\n").encode()).hexdigest()
+            modern = re.sub(r"[^a-zA-Z0-9_-]", "", "nes_" + rom.stem)
+            selected = games.get(key) or games.get(modern) or system.get("default")
+            if selected != "lr-fceumm" and core.is_file() and "lr-fceumm" in system:
+                if confirm("Use FCEUmm for " + rom.name + " so Glove Zap is supported?"):
+                    text = games_path.read_text() if games_path.exists() else ""
+                    text = "\n".join(line for line in text.splitlines() if not re.match(r"^\s*" + re.escape(key) + r"\s*=", line))
+                    write_file(games_path, text + "\n" + key + ' = "lr-fceumm"\n')
+            result = zap["main"](["--rom", str(rom), "--apply"])
+            if result:
+                print("ACTION  Finish Glove Zap setup for " + rom.name + "; rerun after resolving the message above.")
+        except (ValueError, OSError) as error:
+            print("ACTION  " + str(error))
 
 
 class Report:
@@ -214,14 +346,35 @@ class Report:
         except (OSError, subprocess.TimeoutExpired):
             self.check(label, False)
 
+    def release(self):
+        """Display the installed package tag without reading private runtime settings."""
+        path = SOURCE / "install-release.json"
+        if path.is_file():
+            try:
+                print("Installed release: " + json.loads(path.read_text())["version"])
+            except (ValueError, KeyError):
+                self.check("Installed release identity is readable", False)
+
     def finish(self):
         """Distinguish technical failures from required human pairing/play verification."""
+        self.release()
         print("Checks: %d failed, %d require action." % (self.failures, self.pending))
         return 1 if self.failures else 2 if self.pending else 0
 
 
+def check_inventory(report, root):
+    """Verify the installed payload rather than a temporary release staging tree."""
+    issues = installation_manifest()["check"](root)
+    if not issues:
+        report.check("Installation manifest matches managed files", True)
+    for issue in issues:
+        report.check("Installation manifest: " + issue, False,
+                     pending=issue.startswith(("Locally modified:", "No installation manifest;")))
+
+
 def check_retropie(report):
     """Inspect boot configuration, receiver prerequisites and launch integration."""
+    check_inventory(report, Path("/opt/powerglove-src"))
     report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
     report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])
     report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
@@ -246,11 +399,34 @@ def check_retropie(report):
         report.check("Configured UNO Q hostname resolves", True)
     except (OSError, ValueError, KeyError):
         report.check("Configured UNO Q hostname resolves", False)
+    report.check("RetroArch installed", Path("/opt/retropie/emulators/retroarch/bin/retroarch").is_file(), pending=True)
+    report.check("FCEUmm installed for supported NES games", Path("/opt/retropie/libretrocores/lr-fceumm/fceumm_libretro.so").is_file(), pending=True)
+    native = Path("/opt/retropie/libretrocores/lr-nestopia-powerglove/nestopia_powerglove_libretro.so")
+    if native.is_file():
+        import runpy
+        selector = runpy.run_path(str(SOURCE / "scripts/configure-super-glove-ball-core.py"))
+        system = selector["settings"](Path("/opt/retropie/configs/nes/emulators.cfg"))
+        option = Path("/opt/retropie/configs/nes/powerglove-native.cfg")
+        report.check("Optional native Super Glove Ball core registered",
+                     "lr-nestopia-powerglove" in system and option.is_file())
+        report.check("Native core GPLv2 license installed", native.with_name("COPYING").is_file())
+    try:
+        roms = registered_roms()
+        report.check("Registered ROMs found (supply your own games)", bool(roms), pending=True)
+        import runpy
+        zap = runpy.run_path(str(SOURCE / "scripts/configure-bsb-zap.py"))
+        for rom, profile in roms:
+            if profile == "bad_street_brawler":
+                report.check("Glove Zap configured: " + rom.name,
+                             zap["main"](["--rom", str(rom), "--check"]) == 0, pending=True)
+    except (OSError, ValueError, KeyError):
+        report.check("Game registry readable; review custom ROM paths if needed", False, pending=True)
     report.check("Confirm controls in a game; a local token alone does not prove pairing", False, pending=True)
 
 
 def check_unoq(report):
     """Check boot persistence, the app-owned resolver and public application health."""
+    check_inventory(report, Path("/home/arduino/ArduinoApps/powerglove-vision"))
     report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
     report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
     report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])
@@ -266,6 +442,9 @@ def check_unoq(report):
     except (OSError, ValueError, KeyError, subprocess.SubprocessError):
         report.check("PowerGlove Vision is the startup app", False)
 
+    report.command("Arduino user starts at boot", ["test", "-f", "/var/lib/systemd/linger/arduino"])
+    report.command("Early-start helper enabled", user_systemctl("is-enabled", "--quiet", "powerglove-early-start.service"))
+    report.check("Early-start helper installed", Path("/home/arduino/.local/lib/powerglove/uno-q-early-start.py").is_file())
     status = {}
     try:
         with urllib.request.urlopen("http://127.0.0.1:8088/status", timeout=3) as response:
@@ -281,7 +460,14 @@ def check_unoq(report):
         report.command("Configured receiver resolves inside app", ["docker", "exec", "-e", "PYTHONPATH=/app/src", "powerglove-vision-main-1", "python3", "-c", code])
     else:
         report.check("Configure your RetroPie destination in Connection", False, pending=True)
-    report.check("Camera device present", bool(list(Path("/dev").glob("video*"))), pending=True)
+    for route in ("help", "help/installation", "help-pdf/installation.pdf"):
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8088/" + route, timeout=10) as response:
+                report.check("Available: " + route, response.status == 200)
+        except OSError:
+            report.check("Available: " + route, False)
+    report.check("USB camera device present", Path("/dev/v4l/by-id").is_dir() and
+                 bool(list(Path("/dev/v4l/by-id").glob("*"))), pending=True)
     report.check("Complete pairing and verify gameplay; credentials remain user-controlled", False, pending=True)
 
 
@@ -305,12 +491,7 @@ def main():
             (install_retropie if args.machine == "retropie" else install_unoq)(args.peer)
             print("Managed-file backups, when changed: " + str(BACKUPS))
             if args.machine == "uno-q":
-                for _ in range(45):
-                    try:
-                        urllib.request.urlopen("http://127.0.0.1:8088/status", timeout=2).close()
-                        break
-                    except OSError:
-                        time.sleep(2)
+                wait_unoq()
         report = Report()
         (check_retropie if args.machine == "retropie" else check_unoq)(report)
         return report.finish()

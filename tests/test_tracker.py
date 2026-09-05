@@ -14,7 +14,10 @@ import math
 import unittest
 from types import SimpleNamespace
 
-from powerglove_vision.tracker import _Point, _curl, _finger_curls, _camera_curl_points
+from powerglove_vision.tracker import (
+    _Point, _camera_curl_points, _curl, _finger_bends,
+    _finger_curls, _finger_curls_from_bends,
+)
 from powerglove_vision.gesture import GestureEngine
 from powerglove_vision.model import HandObservation
 
@@ -29,6 +32,13 @@ def pose_points(closed):
 
 
 class TrackerGeometryTests(unittest.TestCase):
+    def test_precomputed_bends_produce_identical_curls(self):
+        points = pose_points({'thumb', 'middle', 'pinky'})
+        self.assertEqual(
+            _finger_curls_from_bends(_finger_bends(points)),
+            _finger_curls(points),
+        )
+
     def test_base_knuckle_bend_is_detected_with_straight_outer_joints(self):
         points = pose_points(set())
         points[0] = _Point(0, -1, 0)
@@ -78,7 +88,8 @@ class TrackerGeometryTests(unittest.TestCase):
                                ('select', {'index', 'middle', 'ring', 'pinky'})]:
             engine = GestureEngine('program_h', calibration_frames=3)
             for t in (0, .03, .06):
-                engine.update(HandObservation(t, True, palm_x=.5, palm_y=.5, palm_scale=.2))
+                engine.update(HandObservation(t, True, confidence=.95,
+                                              palm_x=.5, palm_y=.5, palm_scale=.2))
             curls = _finger_curls(pose_points(closed))
             for t in (.1, .85):
                 state = engine.update(HandObservation(t, True, palm_x=.8, palm_y=.2, palm_scale=.2, **curls))

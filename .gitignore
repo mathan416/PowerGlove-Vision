@@ -7,3 +7,13 @@ __pycache__/
 data/
 output/app-lab/*.zip
 src/powerglove_vision/_build_info.json
+
+# Local photo-crop exports; maintained images live in docs/images/matrix/.
+/assets/matrix/
+/output/Matrix-Display-Crops.zip
+
+# Generated release installers and packages are published as release assets.
+/output/install/
+
+# Full-resolution photo backup; optimized guide images are tracked.
+/output/Matrix-Photo-Originals.zip

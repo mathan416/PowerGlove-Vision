@@ -100,6 +100,41 @@ The repository applies its MIT License to these curated project assets to the
 extent the project owner has rights in them. Game names and other third-party
 marks remain the property of their respective owners.
 
+## Modified Nestopia libretro core
+
+The optional `lr-nestopia-powerglove` core is built from libretro Nestopia
+revision `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`. Nestopia identifies its
+license as the GNU General Public License, version 2. PowerGlove Vision's MIT
+license does not replace the license of Nestopia or the resulting modified core.
+
+| Property | Value |
+| --- | --- |
+| Component | libretro Nestopia with the PowerGlove Vision native-state patch |
+| Upstream project | <https://github.com/libretro/nestopia> |
+| Pinned revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
+| Upstream license | GNU General Public License, version 2 |
+| Local modification | `native/nestopia-powerglove/nestopia-powerglove.patch` |
+| Modification ledger | `native/nestopia-powerglove/CHANGES.md` |
+| Build recipe | `scripts/build-nestopia-powerglove.sh` |
+
+Ordinary releases contain the patch and build recipe, not a compiled Nestopia
+core. If the user accepts the RetroPie installer's optional native-core step,
+the target machine downloads the pinned upstream source, including its author
+notices and `COPYING` file, applies the patch, and builds for its own processor.
+The core installer places `COPYING` and the local distribution note beside the
+installed binary. It also installs the separate PowerGlove Vision modification
+ledger. The original Nestopia copyright/GPL header in
+`NstInpPowerGlove.cpp` remains byte-for-byte intact, and the build stops if a
+future patch changes it. Stock Nestopia remains untouched and FCEUmm remains
+available.
+
+If prebuilt cores are published in the future, produce separately identified
+artifacts for every tested RetroPie architecture. Accompany each binary with
+the exact complete corresponding source archive used to build it, the local
+patch and build instructions, all upstream notices, and the GPLv2 license. A
+Git commit or patch URL alone is not the project's binary-distribution plan.
+ROM images are never part of a source or binary core artifact.
+
 ## Updating either component
 
 Before publishing a wheel or model update, complete these steps. The
@@ -110,12 +145,23 @@ explains the build and verification scripts.
   2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
   3. If repackaging another wheel, record every difference from upstream and retain its license files.
   4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
-  5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Learn and Dashboard pages, and controller output on the UNO Q before publishing the package.
+  5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the UNO Q before publishing the package.
 
 ### Application screenshots
 
 The interface screenshots in `docs/images/` were refreshed from the running
-PowerGlove Vision application on September 4, 2026. They cover Dashboard, Learn,
+PowerGlove Vision application on September 4, 2026. They cover Dashboard, Glove Academy,
 Tune, Setup, Games, and Help. Camera imagery is blurred for privacy; gesture
 illustrations remain unchanged. These screenshots are project documentation
 assets and add no runtime dependencies.
+
+## Verified UNO Q sketch toolchain
+
+The September 4, 2026 sketch build and firmware deployment used the pinned
+`sketch/sketch.yaml`: Arduino Zephyr platform **1.0.0**, Arduino_RouterBridge
+**0.4.3**, Arduino_RPClite **0.3.0**, ArxContainer **0.7.0**, ArxTypeTraits
+**0.3.2**, DebugLog **0.8.4**, and MsgPack **0.4.2**. The build resolved
+Arduino_LED_Matrix **0.1.3** from that platform. Preserve the dependency pins when
+synchronizing with App Lab; its shortened generated configuration is not a
+replacement for the project's complete configuration. Revalidate compilation
+and device operation before changing a pin.

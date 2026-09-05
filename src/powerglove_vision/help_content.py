@@ -29,69 +29,21 @@ DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
-    {
-        "slug": "cabinet",
-        "title": "This cabinet",
-        "file": None,
-        "description": "Live UNO Q links and the active RetroPie connection, generated for this cabinet.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "installation",
-        "title": "Build and operate",
-        "file": "INSTALL_README.md",
-        "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "gameplay",
-        "title": "Game and gesture guide",
-        "file": "GAMEPLAY_GUIDE.md",
-        "description": "Illustrated controls and play tips for every configured game.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "programs",
-        "title": "Programs A-I",
-        "file": "bad-street-brawler-programs.md",
-        "description": "The original Power Glove programs and their camera-based equivalents.",
-        "group": "Use PowerGlove Vision",
-    },
-    {
-        "slug": "configuration",
-        "title": "Configuration reference",
-        "file": "CONFIGURATION_REFERENCE.md",
-        "description": "Every public setting, template, generated file, and installed location.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "security",
-        "title": "Security and privacy",
-        "file": "SECURITY.md",
-        "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "components",
-        "title": "Third-party components",
-        "file": "THIRD_PARTY_COMPONENTS.md",
-        "description": "MediaPipe, model, license, checksum, and runtime provenance.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "contributing",
-        "title": "Contributing",
-        "file": "CONTRIBUTING.md",
-        "description": "Source formatting, tests, documentation, packaging, and review expectations.",
-        "group": "Maintain the project",
-    },
-    {
-        "slug": "changelog",
-        "title": "Changelog",
-        "file": "CHANGELOG.md",
-        "description": "User-visible additions, fixes, security changes, and documentation updates.",
-        "group": "Maintain the project",
-    },
+    {"slug": "cabinet", "title": "This cabinet", "file": None, "description": "Live UNO Q links and the active RetroPie connection, generated for this cabinet.", "group": "User manuals"},
+    {"slug": "gameplay", "title": "Game and gesture guide", "file": "GAMEPLAY_GUIDE.md", "description": "Illustrated controls and play tips for every configured game.", "group": "User manuals"},
+    {"slug": "programs", "title": "Programs A-I", "file": "bad-street-brawler-programs.md", "description": "The original Power Glove programs and their camera-based equivalents.", "group": "User manuals"},
+    {"slug": "matrix", "title": "Matrix display guide", "file": "MATRIX_GUIDE.md", "description": "Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.", "group": "User manuals"},
+    {"slug": "installation", "title": "Installation and setup", "file": "INSTALL_README.md", "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.", "group": "User manuals"},
+    {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Technical documentation"},
+    {"slug": "input-audit", "title": "Power Glove game input audit", "file": "power-glove-rom-input-audit.md", "description": "ROM-level evidence separating native Power Glove input from standard controller mappings.", "group": "Technical documentation"},
+    {"slug": "native-super-glove-ball", "title": "Super Glove Ball native compatibility", "file": "super-glove-ball-native.md", "description": "Confirmed, disproven, and unknown details for the custom Nestopia path.", "group": "Technical documentation"},
+    {"slug": "direction-response", "title": "Direction-response benchmark", "file": "direction-response-benchmark.md", "description": "Reproducible headless response measurements for native Nestopia and FCEUmm.", "group": "Technical documentation"},
+    {"slug": "configuration", "title": "Configuration reference", "file": "CONFIGURATION_REFERENCE.md", "description": "Every public setting, template, generated file, and installed location.", "group": "Technical documentation"},
+    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Inspect, maintain, and remove the UNO Q startup helper included by the installer.", "group": "Technical documentation"},
+    {"slug": "security", "title": "Security and privacy", "file": "SECURITY.md", "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.", "group": "Technical documentation"},
+    {"slug": "components", "title": "Third-party components", "file": "THIRD_PARTY_COMPONENTS.md", "description": "MediaPipe, model, license, checksum, and runtime provenance.", "group": "Technical documentation"},
+    {"slug": "contributing", "title": "Contributing", "file": "CONTRIBUTING.md", "description": "Source formatting, tests, documentation, packaging, and review expectations.", "group": "Technical documentation"},
+    {"slug": "changelog", "title": "Changelog", "file": "CHANGELOG.md", "description": "User-visible additions, fixes, security changes, and documentation updates.", "group": "Technical documentation"},
 )
 GUIDES_BY_SLUG = {str(guide["slug"]): guide for guide in HELP_GUIDES}
 LEGACY_SLUGS = {"field-guide": "installation"}
@@ -101,6 +53,11 @@ SLUG_BY_FILE = {
     if guide["file"] is not None
 }
 HELP_PDFS = {
+    "matrix": "PowerGlove-Vision-Matrix-Guide.pdf",
+    "architecture": "PowerGlove-Vision-Architecture.pdf",
+    "input-audit": "PowerGlove-Vision-Input-Audit.pdf",
+    "native-super-glove-ball": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+    "direction-response": "PowerGlove-Vision-Direction-Response.pdf",
     "overview": "PowerGlove-Vision-Overview.pdf",
     "installation": "PowerGlove-Vision-Guide.pdf",
     "gameplay": "PowerGlove-Vision-Gameplay-Guide.pdf",
@@ -152,11 +109,16 @@ def guide_pdf(slug: str) -> tuple[bytes, str] | None:
 
 
 def help_asset(relative_name: str) -> tuple[bytes, str] | None:
-    """Read an image below docs/images while rejecting traversal and unknown types."""
+    """Read documentation images, preferring compact web copies of gesture artwork."""
     root = HELP_ASSETS_ROOT.resolve()
     try:
         requested = (root / relative_name).resolve()
         requested.relative_to(root)
+        if requested.relative_to(root).parts[:1] == ("gestures",):
+            compact = (root / "web" / requested.relative_to(root)).resolve()
+            compact.relative_to(root / "web")
+            if compact.is_file():
+                requested = compact
     except (OSError, ValueError):
         return None
     content_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml"}
@@ -172,7 +134,7 @@ def help_asset(relative_name: str) -> tuple[bytes, str] | None:
 def help_index_content() -> str:
     """Build the Help landing-page body from the public guide registry."""
     sections = []
-    for group in ("Use PowerGlove Vision", "Maintain the project"):
+    for group in ("User manuals", "Technical documentation"):
         cards = []
         for guide in HELP_GUIDES:
             if guide["group"] != group:
@@ -190,9 +152,9 @@ def help_index_content() -> str:
     return (
         "<h1>Help, without leaving the glove.</h1>"
         "<p class=lead>Read the maintained PowerGlove Vision guides directly on this UNO Q. "
-        "The manuals work offline from their Markdown sources, while This cabinet fills in the live connection details.</p>"
-        "<p><a class=button href='/help-pdf/overview.pdf'>Open project overview PDF</a></p>"
+        "Start with This cabinet for your current connections, or choose a guide below. The manuals are available offline.</p>"
         + "".join(sections)
+        + "<p><a href='/help-pdf/overview.pdf'>Project overview PDF</a></p>"
     )
 
 
@@ -269,7 +231,7 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
         )
         for label, url in (
             ("Dashboard", http_root + "/dashboard"),
-            ("Gesture lessons", http_root + "/learn"),
+            ("Glove Academy", http_root + "/learn"),
             ("Help center", http_root + "/help"),
             ("Connection setup", http_root + "/setup"),
             ("Secure pairing", https_root + "/setup"),
@@ -342,6 +304,8 @@ def _anchor(text: str, used: set[str]) -> str:
 def _safe_target(target: str, image: bool = False) -> str:
     """Translate known documentation links and reject unsafe URL schemes."""
     target = target.strip()
+    if image and target in {"../assets/powerglove-vision-logo.png", "assets/powerglove-vision-logo.png"}:
+        return "/assets/powerglove-vision-logo.png"
     if image and target.startswith("images/"):
         return "/help-assets/" + target[len("images/"):]
     filename = target.split("#", 1)[0].rsplit("/", 1)[-1]
@@ -366,7 +330,8 @@ def _inline(text: str) -> str:
                 target, alt, width_text = image_match.groups()
                 safe_target = _safe_target(target, image=True)
                 width = int(width_text)
-                if safe_target != "#" and 24 <= width <= 320:
+                maximum_width = 760 if safe_target == "/assets/powerglove-vision-logo.png" else 320
+                if safe_target != "#" and 24 <= width <= maximum_width:
                     output.append(
                         "<img loading=lazy src='{src}' alt='{alt}' width='{width}'>".format(
                             src=html.escape(safe_target, quote=True),
@@ -425,8 +390,18 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
         if not line.strip():
             index += 1
             continue
-        if _HTML_IMAGE.fullmatch(line.strip()):
-            blocks.append("<p>" + _inline(line.strip()) + "</p>")
+        standalone_image = _HTML_IMAGE.fullmatch(line.strip())
+        if standalone_image:
+            target, caption, width = standalone_image.groups()
+            if target.startswith("images/matrix/") and 24 <= int(width) <= 320:
+                blocks.append(
+                    "<figure style='margin:1em auto;max-width:320px'>"
+                    + _inline(line.strip())
+                    + "<figcaption style='text-align:center;font-size:0.9em'>"
+                    + html.escape(caption) + "</figcaption></figure>"
+                )
+            else:
+                blocks.append("<p>" + _inline(line.strip()) + "</p>")
             index += 1
             continue
         if line.lstrip().startswith("<"):
@@ -462,9 +437,33 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
             while index < len(lines) and "|" in lines[index] and lines[index].strip():
                 rows.append(_table_cells(lines[index]))
                 index += 1
-            head = "".join(f"<th>{_inline(cell)}</th>" for cell in headers)
-            body = "".join("<tr>{}</tr>".format("".join(f"<td>{_inline(cell)}</td>" for cell in row)) for row in rows)
-            blocks.append(f"<div class=table-scroll><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>")
+            image_columns = {
+                column for row in rows for column, cell in enumerate(row)
+                if _HTML_IMAGE.fullmatch(cell)
+            }
+            table_class = (
+                " class=program-starters"
+                if headers == ["Program", "See it", "Try it with", "Know before playing"]
+                else ""
+            )
+            head = "".join(
+                "<th{css}>{content}</th>".format(
+                    css=" class=art-column" if column in image_columns else "",
+                    content=_inline(cell),
+                )
+                for column, cell in enumerate(headers)
+            )
+            body = "".join(
+                "<tr>{}</tr>".format("".join(
+                    "<td{css}>{content}</td>".format(
+                        css=" class=art-cell" if column in image_columns else "",
+                        content=_inline(cell),
+                    )
+                    for column, cell in enumerate(row)
+                ))
+                for row in rows
+            )
+            blocks.append(f"<div class=table-scroll><table{table_class}><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>")
             continue
         list_match = _BULLET.match(line) or _NUMBERED.match(line)
         if list_match:

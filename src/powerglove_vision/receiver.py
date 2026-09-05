@@ -16,8 +16,10 @@ from __future__ import annotations
 import argparse
 import hmac
 import socket
+import time
 from pathlib import Path
 
+from .native_state import DEFAULT_PATH as DEFAULT_NATIVE_STATE_PATH, NativeStateWriter
 from .transport import MAX_PACKET_BYTES, decode_state
 
 
@@ -103,6 +105,8 @@ def build_parser() -> argparse.ArgumentParser:
     tokens.add_argument("--token")
     tokens.add_argument("--token-file", type=Path)
     parser.add_argument("--timeout-ms", type=int, default=250)
+    parser.add_argument("--native-state", type=Path, default=DEFAULT_NATIVE_STATE_PATH,
+                        help="latest validated sample for the custom Nestopia core")
     parser.add_argument("--dry-run", action="store_true")
     return parser
 
@@ -116,19 +120,38 @@ def main() -> int:
     # Keep an idle virtual controller out of frontend startup. Create the real
     # uinput device only after an authenticated controller packet arrives.
     device = DryRunDevice() if args.dry_run else None
+    native = None
+    try:
+        native = NativeStateWriter(args.native_state)
+    except OSError as exc:
+        # The standard uinput path remains usable on systems without the optional core.
+        print(f"Native Power Glove state unavailable: {exc}", flush=True)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
-    sock.settimeout(args.timeout_ms / 1000)
+    if args.timeout_ms <= 0:
+        sock.close()
+        raise ValueError("receiver timeout must be positive")
+    timeout = args.timeout_ms / 1000
+    sock.settimeout(timeout)
+    last_valid_at = None
     released = True
     last_sequence = -1
     last_session: str | None = None
     try:
         while True:
+            now = time.monotonic()
+            if last_valid_at is not None and not released and now - last_valid_at >= timeout:
+                device.release()
+                if native is not None:
+                    native.release(last_sequence + 1)
+                released = True
+            remaining = timeout if released or last_valid_at is None else timeout - (now - last_valid_at)
+            sock.settimeout(max(0.001, remaining))
             try:
                 payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
                 try:
                     state = decode_state(payload)
-                except (ValueError, UnicodeError):
+                except (ValueError, UnicodeError, RecursionError):
                     continue
                 supplied_token = state.get("token")
                 if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, token):
@@ -137,14 +160,17 @@ def main() -> int:
                 if isinstance(session, str) and session != last_session:
                     last_session = session
                     last_sequence = -1
-                sequence = int(state.get("sequence", -1))
+                sequence = state["sequence"]
                 if last_sequence >= 0 and sequence <= last_sequence:
                     continue
                 last_sequence = sequence
                 if device is None:
                     device = UInputDevice()
                 device.write_state(state)
+                if native is not None:
+                    native.write(state)
                 released = False
+                last_valid_at = time.monotonic()
             except socket.timeout:
                 if device is not None and not released:
                     device.release()
@@ -155,6 +181,8 @@ def main() -> int:
         if device is not None:
             device.release()
             device.close()
+        if native is not None:
+            native.close()
         sock.close()
 
 
