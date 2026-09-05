@@ -2,10 +2,9 @@ POWERGLOVE VISION - FILE HIERARCHY AND CODE REVIEW MAP
 ===================================================
 Updated: September 5, 2026 (America/Toronto)
 Source: /Users/mathan/Developer/PowerGlove
-Inventory: 277 tracked paths at dev commit 39547766f7000e7e1af90ecc1e72b4dbed7b489a.
-Main merge: aabef93fbad5d746dae35b221627e32bd68c7c5b.
-Release metadata is 0.3.0. The working tree also contains the September 5
-documentation reconciliation and generated-manual updates described below.
+Inventory: 279 tracked paths at main commit 9220db219b156764849a42817b656f31c6c07d9a.
+Release metadata is 0.3.0. The September 5 documentation reconciliation,
+generated-manual updates, and native-core attribution audit are included.
 This is a reading aid, not a claim of a completed code/security audit.
 
 CURRENT SNAPSHOT AND VERIFIED WORK
@@ -23,7 +22,7 @@ versioned native-state bridge. The Help library exposes fourteen public PDFs;
 the cabinet quick reference remains private.
 
 Verification completed for this snapshot:
-  - All 243 automated tests passed locally on September 4 after the native-core,
+  - All 243 automated tests passed locally on September 5 after the native-core,
     installation, calibration, recognition, and documentation updates.
   - Documentation validation passed for all maintained Markdown and PDF files.
   - Fifteen project PDFs and the updated Console Guide PDFs were rendered and
