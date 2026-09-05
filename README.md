@@ -119,7 +119,7 @@ effect depends on the game. A pulsed button repeatedly presses and releases.
 | D — Challenge | All four hand-movement directions are reversed. | Thumb curl sends A; index curl sends B. |
 | E — Defender II | Move your hand in four directions. | Thumb curl sends A; wrist roll sends B; ring-finger curl rapidly alternates left and right. |
 | F — Sesame Street | Ordinary directional output is disabled. | Moving an open hand away from centre sends A; closing all fingers sends B. |
-| G — Gun Smoke | Move your hand in four directions; wrist roll adds left or right. | Index curl sends A; pushing forward sends B. Combine them for A+B. Thumb and ring-finger curl together suppress D-pad and A/B output. |
+| G — Gun Smoke | Move your hand in four directions; wrist roll adds left or right. | Index curl sends A; pushing forward sends B. Combine them for A+B. Menu guard suppresses all ordinary controller output. |
 | H — General | Move your hand in four directions. | Index curl pulses A; thumb curl pulses B. |
 | I — Knight Rider | Roll your wrist to steer; lower your hand to brake. | Index curl sends Up for acceleration; pushing sends Up+A for turbo; thumb curl sends B. |
 

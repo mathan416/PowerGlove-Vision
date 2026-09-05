@@ -31,15 +31,19 @@ the wheel. Its modifications and checksums are described in
 ## Optional modified Nestopia core
 
 `lr-nestopia-powerglove` is a modified build of the libretro Nestopia core,
-licensed under the GNU General Public License, version 2. It is not covered by
-PowerGlove Vision's MIT license. Ordinary release packages provide a pinned
-source-build recipe and the local patch rather than a compiled core. The
-downloaded upstream source supplies its full `COPYING` text and author notices;
-the local core installer copies that license beside the installed binary.
+licensed under the GNU General Public License, version 2; affected Nestopia
+source headers permit version 2 or later. It is not covered by PowerGlove
+Vision's MIT license. Ordinary release packages provide a pinned source-build
+recipe and the local patch rather than a compiled core. The downloaded upstream
+source supplies its full `COPYING` text and author notices; the local core
+installer copies that license beside the installed binary.
 
 Upstream: https://github.com/libretro/nestopia
 
 Pinned revision: `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`
+
+PowerGlove Vision patch SHA-256:
+`6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec`
 
 Modification and distribution details are recorded in
 [`native/nestopia-powerglove/README.md`](native/nestopia-powerglove/README.md)

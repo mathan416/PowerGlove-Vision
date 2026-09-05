@@ -1,0 +1,705 @@
+POWERGLOVE VISION - FILE HIERARCHY AND CODE REVIEW MAP
+===================================================
+Updated: September 5, 2026 (America/Toronto)
+Source: /Users/mathan/Developer/PowerGlove
+Inventory: 277 tracked paths at dev commit 39547766f7000e7e1af90ecc1e72b4dbed7b489a.
+Main merge: aabef93fbad5d746dae35b221627e32bd68c7c5b.
+Release metadata is 0.3.0. The working tree also contains the September 5
+documentation reconciliation and generated-manual updates described below.
+This is a reading aid, not a claim of a completed code/security audit.
+
+CURRENT SNAPSHOT AND VERIFIED WORK
+----------------------------------
+PowerGlove Vision 0.3.0 uses one shared recognition layer and two RetroPie input
+paths. FCEUmm remains the complete standard-joypad path for every registered NES
+game and for Super Glove Ball fallback. The separately named
+lr-nestopia-powerglove core supplies native Super Glove Ball detection, Start,
+continuous X/Y, and safe neutralization without changing stock Nestopia.
+
+The current checkout includes release installers for UNO Q and RetroPie,
+installation manifests, a paired Games registry service, personal gesture
+tuning, sixteen Glove Academy lessons, the six-second launch guard, and the
+versioned native-state bridge. The Help library exposes fourteen public PDFs;
+the cabinet quick reference remains private.
+
+Verification completed for this snapshot:
+  - All 243 automated tests passed locally on September 4 after the native-core,
+    installation, calibration, recognition, and documentation updates.
+  - Documentation validation passed for all maintained Markdown and PDF files.
+  - Fifteen project PDFs and the updated Console Guide PDFs were rendered and
+    visually reviewed.
+  - Super Glove Ball was tested through both FCEUmm and lr-nestopia-powerglove;
+    Gun.Smoke was tested end to end through FCEUmm on the cabinet.
+
+Automated and existing-machine checks do not replace a fresh-device installation
+test. Native Z, roll, finger/action fields, and unverified native buttons remain
+neutral. Keep FCEUmm available as the explicit rollback and complete-controls path.
+
+START HERE
+----------
+1. README.md: understand the two-machine design and current limitations.
+2. src/powerglove_vision/model.py: learn the data passed between components.
+3. tracker.py -> gesture.py: follow landmarks into gestures and game inputs.
+4. vision_app.py: see how camera, profiles, calibration and output cooperate.
+5. transport.py -> receiver.py: follow an input from UNO Q to Linux uinput.
+6. python/main.py -> control_server.py -> debug_server.py: distinguish the
+   always-available website/supervisor from the restartable vision worker.
+7. retropie_hook.py -> profile_control.py: follow a game launch back to UNO Q.
+8. scripts/setup-machine.py and the systemd units: understand boot/deployment.
+9. Read each matching test alongside the implementation, then pairing.py,
+   resolver.py and the shutdown path with their trust boundaries in mind.
+10. For documentation work, read help_content.py and scripts/build-docs-pdf.py
+    together. They render the same Markdown with different parsing and layout
+    rules. Use docs/CONTRIBUTING.md for the writing and publication workflow.
+
+Except for the explicitly prefixed python/, scripts/ and retropie/ paths above,
+the Python modules are under src/powerglove_vision/.
+
+HOW THE PARTS CONNECT
+---------------------
+Camera -> tracker.py -> HandObservation -> gesture.py -> ControllerState
+       -> transport.py -> UDP 55355 -> receiver.py -> uinput -> RetroArch/game
+
+RetroPie runcommand hooks -> retropie_hook.py -> profile_control.py
+       -> UDP 55356 -> vision worker changes the selected gesture profile
+
+App Lab -> python/main.py (supervisor / runtime preparation)
+       -> control_server.py (Dashboard, Learn, Help, Setup and APIs)
+       -> vision_app.py (separate camera/tracking worker)
+       -> debug_server.py (worker status and control requests)
+
+matrix.py -> App Lab Bridge -> sketch/sketch.ino -> UNO Q LED matrix
+
+resolver.py -> app-private Unix socket -> avahi-resolver-service.py
+       -> host Avahi socket -> local-network hostname discovery
+
+Confirmed web Shutdown -> fixed request file -> root-owned systemd path/service
+       -> Linux halt request. The tested board can restart; do not infer power
+          removal is safe from the website disappearing or matrix animation.
+
+WHERE THE UI LIVES
+------------------
+There is no separate React/Vue frontend in this repository. The full pages and
+browser JavaScript are embedded in control_server.py. debug_server.py has a
+smaller worker diagnostic interface: it is not the complete application UI.
+help_content.py selects/serves the allowed manuals and assets. Markdown is the
+editable guide source; the PDFs and screenshots are generated artifacts.
+
+COMPLETE TRACKED FILE TREE
+-------------------------
+Each file has one description below. Directories organize related files.
+This inventory excludes .git internals and ignored runtime/cache content.
+
+PowerGlove/
+|-- .github/
+|   `-- workflows/
+|       `-- quality.yml
+|               GitHub Actions quality checks for tests, syntax, documentation and package
+|               verification.
+|-- assets/
+|   `-- powerglove-vision-logo.png
+|           Brand logo used by the website and printed manuals.
+|-- bricks/
+|   `-- local/
+|       `-- avahi_resolver/
+|           |-- brick_compose.yaml
+|           |       Resolver container definition, private socket/data mounts and reduced
+|           |       privileges; survives App Lab regeneration.
+|           `-- brick_config.yaml
+|                   Registers the app-owned local resolver brick with App Lab.
+|-- config/
+|   |-- device.example.json
+|   |       Public template for UNO Q settings. The private active copy is data/device.json.
+|   |-- games.json
+|   |       Default exact-ROM-basename to gesture-profile registry copied to RetroPie.
+|   |-- launcher.example.json
+|   |       Template for RetroPie-to-UNO Q profile-control address, port and local file paths.
+|   `-- profiles.json
+|           Gesture sensitivity, hysteresis, timing and other per-profile parameters.
+|-- docs/
+|   |-- images/
+|   |   |-- gestures/
+|   |   |   |-- actions/
+|   |   |   |   |-- close-all-fingers.png
+|   |   |   |   |       Reusable gesture illustration: close all fingers. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   |-- finger-curl.png
+|   |   |   |   |       Reusable gesture illustration: finger curl. Derived from the gesture sheets
+|   |   |   |   |       for inline instructions.
+|   |   |   |   |-- horizontal-movement.png
+|   |   |   |   |       Reusable gesture illustration: horizontal movement. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   |-- index-push-combination.png
+|   |   |   |   |       Reusable gesture illustration: index push combination. Derived from the
+|   |   |   |   |       gesture sheets for inline instructions.
+|   |   |   |   |-- keep-index-straight.png
+|   |   |   |   |       Reusable gesture illustration: keep index straight. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   |-- move-down.png
+|   |   |   |   |       Reusable gesture illustration: move down. Derived from the gesture sheets
+|   |   |   |   |       for inline instructions.
+|   |   |   |   |-- move-left.png
+|   |   |   |   |       Reusable gesture illustration: move left. Derived from the gesture sheets
+|   |   |   |   |       for inline instructions.
+|   |   |   |   |-- move-right.png
+|   |   |   |   |       Reusable gesture illustration: move right. Derived from the gesture sheets
+|   |   |   |   |       for inline instructions.
+|   |   |   |   |-- move-up.png
+|   |   |   |   |       Reusable gesture illustration: move up. Derived from the gesture sheets for
+|   |   |   |   |       inline instructions.
+|   |   |   |   |-- pull-away-from-camera.png
+|   |   |   |   |       Reusable gesture illustration: pull away from camera. Derived from the
+|   |   |   |   |       gesture sheets for inline instructions.
+|   |   |   |   |-- push-toward-camera.png
+|   |   |   |   |       Reusable gesture illustration: push toward camera. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   |-- thumb-curl.png
+|   |   |   |   |       Reusable gesture illustration: thumb curl. Derived from the gesture sheets
+|   |   |   |   |       for inline instructions.
+|   |   |   |   |-- thumb-finger-combination.png
+|   |   |   |   |       Reusable gesture illustration: thumb finger combination. Derived from the
+|   |   |   |   |       gesture sheets for inline instructions.
+|   |   |   |   |-- thumbs-up.png
+|   |   |   |   |       Reusable gesture illustration: thumbs up. Derived from the gesture sheets
+|   |   |   |   |       for inline instructions.
+|   |   |   |   |-- v-sign.png
+|   |   |   |   |       Reusable gesture illustration: v sign. Derived from the gesture sheets for
+|   |   |   |   |       inline instructions.
+|   |   |   |   |-- vertical-movement.png
+|   |   |   |   |       Reusable gesture illustration: vertical movement. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   |-- whole-hand-movement.png
+|   |   |   |   |       Reusable gesture illustration: whole hand movement. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   |-- wrist-roll-left.png
+|   |   |   |   |       Reusable gesture illustration: wrist roll left. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   |-- wrist-roll-right.png
+|   |   |   |   |       Reusable gesture illustration: wrist roll right. Derived from the gesture
+|   |   |   |   |       sheets for inline instructions.
+|   |   |   |   `-- wrist-roll.png
+|   |   |   |           Reusable gesture illustration: wrist roll. Derived from the gesture sheets
+|   |   |   |           for inline instructions.
+|   |   |   |-- directional-movement.png
+|   |   |   |       Original illustrated direction/whole-hand gesture sheet.
+|   |   |   |-- finger-and-menu-poses.png
+|   |   |   |       Original illustrated finger and Start/Select pose sheet.
+|   |   |   `-- wrist-and-depth.png
+|   |   |           Original illustrated wrist rotation and depth gesture sheet.
+|   |   |-- debug-dashboard.png
+|   |   |       Dashboard screenshot in Gestures off from the earlier deployed dev build; it was
+|   |   |       not recaptured after the latest documentation merge.
+|   |   |-- help-page.png
+|   |   |       Current live Help landing-page screenshot.
+|   |   |-- learn-page.png
+|   |   |       Current Learn screenshot; the live camera preview is masked for privacy.
+|   |   `-- setup-page.png
+|   |           Current HTTP Setup screenshot; secure pairing is disabled on HTTP.
+|   |-- CHANGELOG.md
+|   |       Version history and feature/fix notes.
+|   |-- CONFIGURATION_REFERENCE.md
+|   |       Settings, active file locations, calibration, hostname resolution, and the full
+|   |       project command/flag reference.
+|   |-- CONTRIBUTING.md
+|   |       Contribution, testing, code documentation, PDF and live-Help synchronization
+|   |       expectations.
+|   |-- GAMEPLAY_GUIDE.md
+|   |       Illustrated controls, game objectives, first-round exercises, and profile experiments.
+|   |-- INSTALL_README.md
+|   |       Numbered Git download, App Lab import, UNO Q and RetroPie installation, pairing,
+|   |       gameplay checks, updates, and troubleshooting.
+|   |-- SECURITY.md
+|   |       Security reporting, network/pairing boundaries, secrets and shutdown permissions.
+|   |-- THIRD_PARTY_COMPONENTS.md
+|   |       Third-party licensing/provenance, MediaPipe wheel and model download/checksum details.
+|   |-- bad-street-brawler-programs.md
+|   |       Bad Street Brawler program behavior and camera-based Program A-I equivalents.
+|   `-- cheatsheet.md
+|           Private cabinet quick reference; intentionally excluded from the public installation
+|           package and Help routes.
+|-- output/
+|   `-- pdf/
+|       |-- Bad-Street-Brawler-Power-Glove-Programs.pdf
+|       |       Generated printable edition of docs/bad-street-brawler-programs.md. Edit the
+|       |       Markdown source, not this binary.
+|       |-- PowerGlove-Vision-Changelog.pdf
+|       |       Generated printable edition of docs/CHANGELOG.md. Edit the Markdown source, not this
+|       |       binary.
+|       |-- PowerGlove-Vision-Configuration-Reference.pdf
+|       |       Generated printable edition of docs/CONFIGURATION_REFERENCE.md. Edit the Markdown
+|       |       source, not this binary.
+|       |-- PowerGlove-Vision-Contributing.pdf
+|       |       Generated printable edition of docs/CONTRIBUTING.md. Edit the Markdown source, not
+|       |       this binary.
+|       |-- PowerGlove-Vision-Gameplay-Guide.pdf
+|       |       Generated printable edition of docs/GAMEPLAY_GUIDE.md. Edit the Markdown source, not
+|       |       this binary.
+|       |-- PowerGlove-Vision-Guide.pdf
+|       |       Generated printable edition of docs/INSTALL_README.md. Edit the Markdown source, not
+|       |       this binary.
+|       |-- PowerGlove-Vision-Overview.pdf
+|       |       Generated printable edition of README.md. Edit the Markdown source, not this binary.
+|       |-- PowerGlove-Vision-Quick-Reference.pdf
+|       |       Generated printable edition of docs/cheatsheet.md. Edit the Markdown source, not
+|       |       this binary.
+|       |-- PowerGlove-Vision-Security.pdf
+|       |       Generated printable edition of docs/SECURITY.md. Edit the Markdown source, not this
+|       |       binary.
+|       `-- PowerGlove-Vision-Third-Party-Components.pdf
+|               Generated printable edition of docs/THIRD_PARTY_COMPONENTS.md. Edit the Markdown
+|               source, not this binary.
+|-- python/
+|   |-- worker-wheels/
+|   |   `-- mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+|   |           Bundled third-party MediaPipe 0.10.18 wheel for CPython 3.12 on Linux ARM64. A
+|   |           prebuilt dependency, not our editable source; see THIRD_PARTY_COMPONENTS.md.
+|   |-- main.py
+|   |       Supervise the UNO Q App Lab vision worker, web controls, model retrieval, and camera
+|   |       recovery.
+|   `-- ssh_pair.py
+|           Pair an UNO Q with RetroPie over password-authenticated SSH without exposing credentials
+|           on the command line.
+|-- retropie/
+|   |-- bin/
+|   |   |-- powerglove-pair
+|   |   |       Launch the token-pairing command with the installed PowerGlove Python source path.
+|   |   |-- powerglove-profile
+|   |   |       Launch the authenticated profile-control command with the installed Python source
+|   |   |       path.
+|   |   |-- powerglove-receiver
+|   |   |       Launch the Linux virtual-controller receiver with the installed Python source path.
+|   |   `-- powerglove-retropie-hook
+|   |           Launch the RetroPie game lifecycle hook with the installed Python source path.
+|   |-- retroarch/
+|   |   `-- PowerGlove Vision.cfg
+|   |           RetroArch autoconfiguration template mapping virtual buttons and axes.
+|   |-- powerglove-receiver.service
+|   |       Run the privileged uinput receiver under systemd with automatic failure recovery.
+|   |-- powerglove-receiver.timer
+|   |       Delay receiver startup until the RetroPie boot and EmulationStation device scan settle.
+|   |-- runcommand-onend-powerglove.sh
+|   |       Tell PowerGlove Vision that a RetroPie game ended without replacing existing cabinet
+|   |       hooks.
+|   `-- runcommand-onstart-powerglove.sh
+|           Forward RetroPie game-launch metadata to PowerGlove Vision without replacing existing
+|           cabinet hooks.
+|-- scripts/
+|   |-- avahi-resolver-service.py
+|   |       Expose only Avahi IPv4 .local lookups over an app-private Unix socket.
+|   |-- build-app-lab-package.sh
+|   |       Builds the installation ZIP with exclusions for private data, caches and downloaded
+|   |       model; inspect its exclusion list when reviewing releases.
+|   |-- build-docs-pdf.py
+|   |       Render fifteen Markdown guides as PDFs, including section destinations and heading/image
+|   |       pagination. Changes here affect every printed guide.
+|   |-- build-gesture-crops.py
+|   |       Split the illustrated gesture sheets into reusable action images.
+|   |-- check-documentation.py
+|   |       Validate project documentation layout, local links, configuration coverage, and PDF
+|   |       editions.
+|   |-- check-source-docs.py
+|   |       Enforce standard source headers and production Python interface documentation.
+|   |-- configure-uno-q-mdns.py
+|   |       Add the resolver-brick include and read-only compatibility mount to generated
+|   |       Compose configuration; the resolver itself runs elsewhere.
+|   |-- deploy-uno-q-wifi.sh
+|   |       Deploy the application over authenticated SSH, preserve device data, restart it, and
+|   |       verify health.
+|   |-- fetch-runtime-assets.sh
+|   |       Download and SHA-256 verify the official Google Hand Landmarker model for local or
+|   |       offline staging.
+|   |-- install-uno-q-shutdown-helper.sh
+|   |       Install the narrow systemd helper that permits confirmed dashboard shutdown of the UNO
+|   |       Q.
+|   |-- setup-machine.py
+|   |       Install or check UNO Q and RetroPie integration without replacing private settings.
+|   `-- verify-app-lab-package.py
+|           Reject incomplete, unsafe, or private content in the generated App Lab installation ZIP.
+|-- sketch/
+|   |-- sketch.ino
+|   |       Render protected status, pairing, and gesture-profile feedback on the UNO Q LED matrix.
+|   `-- sketch.yaml
+|           Pin the UNO Q sketch platform and Router Bridge dependency versions.
+|-- src/
+|   `-- powerglove_vision/
+|       |-- __init__.py
+|       |       Python package identity and __version__, used by the website footer and status.
+|       |-- camera.py
+|       |       Discover usable Linux camera capture devices while excluding codec-only video nodes.
+|       |-- control_server.py
+|       |       Full App Lab web UI (HTML/CSS/JavaScript embedded in Python), settings, Learn, Help
+|       |       and guarded API actions.
+|       |-- debug_server.py
+|       |       Worker diagnostic HTTP server and shared state/command queue; not the full App Lab
+|       |       UI.
+|       |-- gesture.py
+|       |       Neutral calibration load/save, thresholds, hysteresis, menu-pose holds and
+|       |       game/profile input mappings.
+|       |-- help_content.py
+|       |       Render the bundled public Markdown guides as safe, offline Help pages.
+|       |-- matrix.py
+|       |       Drive UNO Q LED matrix status, pairing, and active-profile displays through Router
+|       |       Bridge.
+|       |-- model.py
+|       |       Define the hand-observation, calibration, and virtual-controller data models.
+|       |-- pairing.py
+|       |       Provision the shared controller token through bounded TLS pairing or authenticated
+|       |       SSH.
+|       |-- profile_control.py
+|       |       Authenticate profile commands and coordinate per-game profile selection between
+|       |       RetroPie and UNO Q.
+|       |-- receiver.py
+|       |       Validate controller datagrams and publish them as a Linux virtual gamepad through
+|       |       uinput.
+|       |-- resolver.py
+|       |       Resolve .local names through the host Avahi socket inside App Lab containers.
+|       |-- retropie_hook.py
+|       |       Translate RetroPie launch and exit events into authenticated PowerGlove profile
+|       |       requests.
+|       |-- runtime_assets.py
+|       |       Download, verify, cache, and atomically install third-party runtime model assets.
+|       |-- tracker.py
+|       |       Convert MediaPipe or Arduino hand landmarks into normalized observations and
+|       |       annotated frames.
+|       |-- transport.py
+|       |       Encode bounded controller packets and send them to RetroPie without blocking vision
+|       |       recovery.
+|       `-- vision_app.py
+|               Vision worker loop: resource state, calibration retention, practice suppression,
+|               inference and packet sending.
+|-- tests/
+|   |-- test_camera.py
+|   |       Verify camera discovery, filtering, stable paths, and explicit device selection.
+|   |-- test_control_server.py
+|   |       Verify dashboard settings, pairing, controller state, shutdown safeguards, and
+|   |       public Help routes, images, PDFs, and HTML rendering.
+|   |-- test_gesture.py
+|   |       Verify calibration, hysteresis, safety release, menu poses, and supported gesture
+|   |       profiles.
+|   |-- test_matrix.py
+|   |       Verify LED matrix status, profile, and physical pairing-display bridge calls.
+|   |-- test_pairing.py
+|   |       Verify pairing codes, certificate identity, TLS time bounds, SSH handling, and token
+|   |       permissions.
+|   |-- test_profiles.py
+|   |       Verify authenticated profile commands, game matching, acknowledgements, and rejection
+|   |       paths.
+|   |-- test_resolver.py
+|   |       Verify local name resolution, cache refresh and safe failure behavior.
+|   |-- test_runtime_assets.py
+|   |       Verify model download caching, checksum enforcement, and atomic installation behavior.
+|   |-- test_setup_machine.py
+|   |       Verify installer preservation, backups, hook integration and repeatability.
+|   |-- test_tracker.py
+|   |       Verify depth-aware curl geometry and MediaPipe coordinate selection.
+|   `-- test_transport.py
+|           Verify controller packet protocol validation and sender recovery from network failures.
+|-- uno-q/
+|   |-- powerglove-system-shutdown.conf
+|   |       Recreate the unprivileged shutdown-helper readiness marker during UNO Q boot.
+|   |-- powerglove-system-shutdown.path
+|   |       Watch for the fixed PowerGlove Vision shutdown-request file on the UNO Q host.
+|   `-- powerglove-system-shutdown.service
+|           Consume an authorized shutdown request and initiate a non-blocking UNO Q halt.
+|-- .gitattributes
+|       Git attributes, including large-file handling rules.
+|-- .gitignore
+|       Excludes private data, caches, temporary files and generated local artifacts from Git.
+|-- LICENSE
+|       MIT license for the project; third-party assets retain their own terms.
+|-- README.md
+|       Project overview, architecture, quick start, controls, live UI screenshots and guide links.
+|-- app.yaml
+|       App Lab manifest: application identity, web ports and local Avahi resolver brick.
+`-- pyproject.toml
+        Define Python packaging metadata, dependencies, console commands, and source layout.
+
+
+PRIVATE / GENERATED FILES NOT IN THE TRACKED TREE
+------------------------------------------------
+These are expected runtime/deployment locations, not a directory dump of your
+private data. No token, password, certificate key or camera image is reproduced.
+
+UNO Q app root: /home/arduino/ArduinoApps/powerglove-vision/
+  data/device.json        Private device settings and pairing token.
+  data/calibration.json   Versioned neutral palm position, scale and wrist roll.
+                          Reused across Learn/profiles/restarts. Explicit
+                          Calibrate replaces it once sampling completes.
+  data/models/hand_landmarker.task
+                          Downloaded, checksum-verified Google hand model.
+  data/uv-cache/, data/uv-python/
+                          Reproducible worker dependency/interpreter caches.
+  data/.avahi-resolver.sock
+                          Runtime Unix socket; do not restore from backup.
+  data/shutdown-request   Temporary fixed-path request consumed by root helper.
+  data/.shutdown-enabled  Host-created readiness marker, restored by the boot rule.
+                          This differs from the transient shutdown-request file.
+  .cache/app-compose.yaml
+                          Generated by App Lab; not the source of truth.
+                          The tracked local brick survives its regeneration.
+
+Other generated local content:
+  output/app-lab/PowerGlove-Vision-Uno-Q.zip
+                          Installation bundle built from the working source.
+  .venv/, __pycache__/, temporary output
+                          Development/runtime products, not review entry points.
+  .git/                  Git history and index; do not edit by hand.
+
+Installed RetroPie locations:
+  ~/PowerGlove-Vision/                Original RetroPie Git checkout for updates.
+  /opt/powerglove-src/                 Installed source snapshot, not a Git checkout.
+  /opt/powerglove/bin/                 Small command wrappers.
+  /etc/powerglove/games.json           Active ROM/profile registry.
+  /etc/powerglove/launcher.json        Active UNO Q destination and paths.
+  /etc/powerglove/token                PRIVATE shared controller token.
+  /etc/systemd/system/powerglove-receiver.service
+  /etc/systemd/system/powerglove-receiver.timer
+                                      Boot/runtime service definitions.
+  /opt/retropie/configs/all/retroarch/autoconfig/PowerGlove Vision.cfg
+                                      Active virtual-controller mapping.
+  /opt/retropie/configs/all/runcommand-onstart.sh and runcommand-onend.sh
+                                      Existing cabinet hooks call our helpers;
+                                      other lighting/controller work stays intact.
+
+Desktop/Console Guide is separate from this Git repository. It documents the
+whole cabinet (I-PAC/8BitDo merging, trackballs, lighting, scraping and recovery),
+not just Power Glove Vision. Its Markdown/PDF manuals are maintained separately.
+
+IMPORTANT REVIEW QUESTIONS
+--------------------------
+- Does every path that disables tracking/output release held controls?
+- Does Learn suppress gameplay packets and restore the selected mode afterward?
+- Is a missing or invalid calibration handled clearly? Does a completed explicit
+  calibration save atomically, and does storage failure remain visible?
+- Does a saved neutral reference remain appropriate after the camera is moved?
+- Are Start/Select held gestures distinct from continuous movement/action inputs?
+- Are incoming packets authenticated, bounded and checked before uinput changes?
+- Is UDP send success kept distinct from proof of receiver/game input?
+- Does loss of traffic release buttons within the configured receiver timeout?
+  Inspect receiver.py carefully: release currently follows socket.timeout, not
+  an independent deadline measured from the last accepted packet. Review how
+  repeated invalid or stale traffic interacts with that distinction.
+- Does installation preserve private settings and existing cabinet hooks?
+- Is the Avahi dependency installed on BOTH machines, with service boot enablement?
+- Can App Lab recreate containers without losing the resolver service?
+- Do shutdown and pairing APIs require the intended confirmations/safeguards?
+- Are generated files excluded where necessary, and are third-party licenses and
+  model checksums explicit? Inspect package exclusions rather than assuming
+  everything in a working tree is appropriate for public distribution.
+- Does the website accurately describe the currently running deployed version?
+
+DOCUMENTATION AND PACKAGING REVIEW POINTERS
+------------------------------------------
+1. Read the overview for the project and common controls, the installation guide
+   for the numbered setup journey, and the configuration reference for flags.
+   Check that machine names, paths, required values, and expected results agree.
+2. Follow a new installation from Git download to App Lab import, UNO Q host
+   setup, RetroPie receiver installation, pairing, and actual game input. The
+   supported UNO Q installer requires the exact application path shown above.
+3. Compare Programs A-I and the dedicated game controls with gesture.py and
+   test_gesture.py. Keep controller output distinct from its effect in a game.
+4. When changing Markdown, check both Help and PDF output. The Help renderer
+   expects each list item on one source line. PDF tables and code blocks need
+   visual inspection; passing a link audit does not prove good pagination.
+5. Check PDF links within a document and between documents separately. The
+   renderer now creates destinations for section links; it does not translate
+   every relative Markdown file link into a link to another PDF edition.
+6. Keep rendering tests aligned with deliberate heading changes while retaining
+   assertions for image coverage, navigation, and escaping. A title change
+   caused the first CI run in this revision to fail; its corrected test passed.
+7. Inspect package and deployment exclusions. The package builder copies the
+   working directory with rsync, rather than exporting only Git-tracked files.
+   This untracked notes file is not explicitly excluded and can enter a local
+   ZIP. Untracked does not mean private or excluded from deployment. The public
+   Help allowlist is a separate control and does not publish this file as a guide.
+
+These are review pointers, not claims that a security audit was completed.
+
+HOW TO READ AND TEST SAFELY
+--------------------------
+Start with static reading and the unit tests on the Mac. Do not run installers,
+shutdown helpers or deploy scripts just to see what happens: they alter machines.
+From the repository root, the usual local test command is:
+
+  PYTHONPATH=src python3 -m unittest discover -s tests -q
+
+Other useful checks:
+  python3 scripts/check-source-docs.py
+  python3 scripts/check-documentation.py
+  python3 scripts/check-documentation.py --require-pdfs
+
+The PDF-aware check requires pypdf and the generated PDF set. For publication,
+render with an environment containing ReportLab, then repeat that check:
+  python3 scripts/build-docs-pdf.py
+  python3 scripts/check-documentation.py --require-pdfs
+
+When reviewing a package, build it before verifying so you inspect the current
+working tree rather than an older ZIP:
+  scripts/build-app-lab-package.sh
+  python3 scripts/verify-app-lab-package.py
+
+Use the project's documented Python environment for PDF-related dependencies.
+The source-doc audit checks headers/docstrings; the documentation audit checks
+structure/links/PDF coverage. Neither proves every behavior or sentence correct.
+Unit tests are useful evidence, not a replacement for real camera/gameplay tests.
+Fresh-machine installation remains untested even though existing-machine updates,
+calibration retention and hostname resolution have been exercised.
+
+Review edits on dev. Main contains the reviewed 0.3.0 code, but a published tag is
+not moved when main receives a later merge. A Git push does not deploy the UNO Q.
+
+SUGGESTED FIRST REVIEW SESSION
+------------------------------
+Read model.py, then tests/test_gesture.py and gesture.py. Trace one index curl,
+one held V-sign, and one neutral calibration. Next trace ControllerState through
+transport.py and receiver.py. Once that path makes sense, move to the supervisor
+and UI. Leave binary assets and the MediaPipe wheel until the core flow is clear.
+
+ABOUT THIS FILE
+---------------
+docs/CODE_REVIEW_MAP.txt is a local, untracked reading aid. The repository has
+277 tracked paths at the stated dev commit; the curated tree above emphasizes
+review-relevant source and configuration rather than reproducing every generated
+image or PDF. Updating these notes does not commit, push, deploy, or regenerate
+manuals.
+
+Refresh the branch hashes, tracked inventory, and verification evidence when
+files or responsibilities change. Record what was actually checked and when;
+do not turn a suggested review question into an asserted finding without evidence.
+
+PROFILE SELECTION REPAIR (LOCAL WORK AFTER THE SNAPSHOT ABOVE)
+------------------------------------------------------------
+The installed UNO container originally published only TCP 8088 and 8443, so
+RetroPie could not reach the worker's UDP 55356 profile listener. A signed off
+request timed out before the fix and succeeded after UDP ingress was added.
+
+New source to review:
+  bricks/local/profile_control/brick_config.yaml
+  bricks/local/profile_control/brick_compose.yaml
+  scripts/profile-relay.py
+  tests/test_profile_relay.py
+
+The relay publishes UDP 55356 and forwards bounded exchanges over the private
+Compose network. It has no token or private data mount. Authentication stays
+in ProfileCommandServer. The App Lab manifest owns this brick, and a real
+App Lab stop/start confirmed that the service and published port return.
+The compatibility updater also adds the include for existing installations.
+
+The worker previously acknowledged commands only after its vision loop handled
+them. Camera startup could delay that response beyond the Pi's retry window.
+The listener now sends a signed queue-admission acknowledgement immediately;
+Dashboard remains the source for confirming the applied profile. Tests cover
+this while no consumer is draining the queue. The hook reports queued versus
+rejected accurately and handles missing configuration without blocking games.
+
+Only two supported games originally matched this cabinet's archive filenames.
+The remaining defaults covered .nes files, while the cabinet uses .7z. Exact
+archive entries and the Sesame Street 123 filename spelling were added without
+replacing existing local mappings. Matching remains exact and case-insensitive.
+
+Live testing also exposed a USB camera call that blocked the vision loop. Camera
+open, read, and close now use one serialized daemon worker; profile handling stays
+in the responsive main loop. Active profile changes reuse the camera and tracker.
+Regression tests verify that off applies while camera open or read is blocked.
+
+Historical verification at this stage: all 113 software tests passed. On the actual Pi and UNO, installed
+launch hooks selected Joust -> program_b, Gun.Smoke -> program_g, and Sesame
+Street 123 -> program_f using the cabinet's .7z filenames. A temporary custom
+mapping selected program_h. Every game-end hook selected off; an unregistered
+game also selected off. Final state: off, with controller delivery stopped.
+This exercised the real hooks and status endpoint, not gameplay or hand tracking.
+
+These changes were later incorporated into the 0.3.0 source described at the top.
+
+WEB GAMES AND PERSONAL TUNING (UNCOMMITTED)
+-----------------------------------------
+New game_registry.py owns strict JSON validation, revision-checked atomic writes,
+previous-save restoration, bounded one-use HMAC challenges, and the paired UNO
+client. The new powerglove-games service is separate from virtual input delivery.
+Its configured registry directory is the only writable system configuration path.
+
+New tuning.py owns an expiring single-owner session, fresh confidence-filtered
+worker samples, suggestions from a resting baseline and three repetitions, and
+atomic data/gesture-tuning.json overlays. gesture.py resolves independent channels
+across profile-specific recognition and menu feedback. Defaults remain unchanged
+without overrides. web_features.py supplies the Games editor and Tune panel.
+
+Live checks: browser save changed Joust's .7z mapping to program_h; the installed
+launch hook selected program_h; browser restoration returned the original mapping.
+The live camera produced a completed baseline recording. Browser preview and save
+changed the index thresholds to 0.6/0.4 with controller delivery stopped. Following
+an application restart, both program_b and super_glove_ball used those values.
+Reset restored supplied thresholds and the test finished with profile off.
+Full suggested-threshold analysis is covered by deterministic sampling tests;
+user gesture-and-release walkthrough remains a hands-on usability check.
+
+Verification at this stage: 134 automated tests passed. Source/documentation audits,
+browser script parsing, the then-current ten PDF editions, and the installation ZIP passed.
+The new Games and Tune interfaces were checked in the actual browser. The user
+also confirmed capturing measurements through Tune. The full seven-stage analysis
+has deterministic regression coverage; individual comfort still needs human use.
+Temporary game mappings and personal threshold overrides were restored. The backup
+created solely by the mapping test was removed; existing mappings were preserved.
+Final deployment has a running worker, no reported application error, controller
+output stopped, and a reachable paired registry containing 27 filename entries.
+
+UI CLEANUP
+----------
+Games is embedded after pairing in Setup, with /games redirecting to the section.
+Games button state is scoped to its own section so loading cannot disable Setup.
+Tune thresholds use a compact table under the camera; instructions/actions remain
+in the adjacent card. Matrix state 8 renders a centered T while a tuning lease
+is active, including before camera frames arrive. Ordinary practice remains L.
+
+Documentation refresh (2026-09-04)
+- Replaced Dashboard, Learn, Setup, and Help screenshots; added Games and Tune.
+- Camera images blurred in the browser before screenshot capture; no unblurred originals saved.
+- All maintained Markdown reviewed for the updated UI; printable editions regenerated.
+
+NATIVE CORE, RELEASE INSTALLERS, AND CURRENT SAFETY WORK
+-------------------------------------------------------
+Review these files together for the current Super Glove Ball and installation path:
+
+  native/nestopia-powerglove/README.md
+  native/nestopia-powerglove/CHANGES.md
+  native/nestopia-powerglove/nestopia-powerglove.patch
+  scripts/build-nestopia-powerglove.sh
+  scripts/install-nestopia-powerglove.sh
+  scripts/configure-super-glove-ball-core.py
+  scripts/run-nestopia-powerglove-trace.py
+  scripts/benchmark-direction-response.py
+  src/powerglove_vision/native_state.py
+  tests/test_native_core.py
+  tests/test_native_state.py
+  tests/test_sgb_core_setup.py
+  tests/test_direction_benchmark.py
+  docs/super-glove-ball-native.md
+  docs/direction-response-benchmark.md
+  docs/power-glove-rom-input-audit.md
+
+The receiver writes one coherent 64-byte version-1 latest-sample record. The
+custom core consumes one current sample per emulated frame with no queue or
+second smoothing stage. Wrong-profile, stale, uncalibrated, and lost-tracking
+samples are neutral. Exact-ROM tests confirm a ten-byte MSB-first packet,
+$A0/$5F detection, $3F termination, $82 Start, and continuous X/Y.
+
+Review these files together for release installation and update ownership:
+
+  scripts/install-uno-q.sh
+  scripts/install-retropie.sh
+  scripts/install-package.py
+  scripts/installation-manifest.py
+  scripts/build-install-packages.py
+  tests/test_install_packages.py
+  tests/test_installation_manifest.py
+
+The release scripts verify checksums and install the same published version on
+both machines. config/profiles.json is release-owned and replaced during an
+update. data/device.json, data/calibration.json, and data/gesture-tuning.json are
+personal state and remain preserved. The compiled GPLv2 Nestopia core is built
+locally and is not included in the ordinary MIT-licensed installation archive.
+
+Menu Guard is a shared safety pose, not a game-specific mapping. Read the pose
+priority in gesture.py alongside test_gesture.py: curled thumb and ring with
+clearly extended index, middle, and pinky takes priority over the V-sign, cancels
+a pending Start pulse, and suppresses D-pad, A, B, Start, and Select while held.

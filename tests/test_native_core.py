@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Required installed records to identify the exact local patch.
 #   2026-09-04 - Added isolation, protocol evidence, and distribution checks.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -80,9 +81,11 @@ class NativeCoreTests(unittest.TestCase):
         self.assertIn('POWERGLOVE-VISION-CHANGES.md', installer)
         self.assertIn("GNU General Public License, version 2", notice)
         self.assertIn("not a compiled core", notice)
+        self.assertIn("6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec", notice)
         self.assertIn("Martin Freij", changes)
         self.assertIn("leaves it byte-for-byte unchanged", changes)
         self.assertIn("camera-to-Nestopia Y orientation", changes)
+        self.assertIn("6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec", changes)
 
     def test_patch_does_not_remove_upstream_attribution(self):
         patch = (ROOT / "native/nestopia-powerglove/nestopia-powerglove.patch").read_text()
