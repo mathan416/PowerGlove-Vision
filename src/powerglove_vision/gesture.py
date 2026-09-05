@@ -183,10 +183,17 @@ class Hysteresis:
 class HeldGesture:
     """Turns a deliberately held pose into one short button pulse."""
 
-    def __init__(self, hold_seconds: float = 0.15, pulse_seconds: float = 0.18) -> None:
+    def __init__(
+        self,
+        hold_seconds: float = 0.15,
+        pulse_seconds: float = 0.18,
+        release_seconds: float = 0.0,
+    ) -> None:
         self.hold_seconds = hold_seconds
         self.pulse_seconds = pulse_seconds
+        self.release_seconds = release_seconds
         self.started_at: float | None = None
+        self.release_started_at: float | None = None
         self.pulse_until = 0.0
         self.fired = False
 
@@ -194,7 +201,18 @@ class HeldGesture:
         """Return a short pulse after a pose remains stable for the configured hold time."""
         if not matches:
             self.started_at = None
-            self.fired = False
+            if self.fired and self.release_seconds > 0:
+                if self.release_started_at is None:
+                    self.release_started_at = now
+                elif now - self.release_started_at >= self.release_seconds:
+                    self.fired = False
+                    self.release_started_at = None
+            else:
+                self.fired = False
+                self.release_started_at = None
+            return now < self.pulse_until
+        self.release_started_at = None
+        if self.fired:
             return now < self.pulse_until
         if self.started_at is None:
             self.started_at = now
@@ -206,6 +224,7 @@ class HeldGesture:
     def cancel(self) -> None:
         """Discard both a forming pose and any pulse that is still active."""
         self.started_at = None
+        self.release_started_at = None
         self.pulse_until = 0.0
         self.fired = False
 
@@ -237,7 +256,9 @@ class GestureEngine:
         self._pull_was_active = False
         self._program_toggle = False
         self._zap_until = 0.0
-        self._start_gesture = HeldGesture()
+        # Start is especially disruptive during play. Require a deliberate V
+        # hold, then a sustained non-V release before allowing another pulse.
+        self._start_gesture = HeldGesture(hold_seconds=0.65, release_seconds=0.30)
         self._select_gesture = HeldGesture()
         self._menu_guard_active = False
         self._switches = {

@@ -1,5 +1,9 @@
 # Changelog
 
+- Hardened the V-sign Start command after live Gun Smoke/FCEUmm testing exposed
+  accidental pause pulses. Start now requires a stable 0.65-second hold and a
+  continuous 0.30-second non-V release before it can rearm; movement, A/B, and
+  Select timing are unchanged.
 - Confirmed the exact Super Glove Ball ROM's ten-byte native packet, MSB-first reads, `$A0`/`$5F` detection, `$3F` terminator, native `$82` Start, and continuous X/Y behavior in a deterministic headless trace.
 - Corrected the custom Nestopia core to wrap the exact ROM's stream at ten bytes, center zero precisely, and neutralize stale, lost, uncalibrated, and wrong-profile samples instead of retaining a prior coordinate.
 - Added reversible per-ROM native Nestopia/FCEUmm selection plus a RetroPie-only isolated core installer; stock Nestopia remains untouched.

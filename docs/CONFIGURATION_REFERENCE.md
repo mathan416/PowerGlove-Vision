@@ -178,7 +178,7 @@ indicators do not change a game's gesture mapping.
 | Reading or control | Meaning |
 | --- | --- |
 | Finger curl | Glove Academy shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Default ordinary curl actions engage at 0.50 and release below 0.35; saved personal pairs override these values. |
-| V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold for 0.15 seconds to send Start. |
+| V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold steadily for 0.65 seconds to send Start. A non-V pose must then remain visible for 0.30 seconds before Start can rearm. |
 | Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for 0.15 seconds to send Select. |
 | Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward or backward movement relative to the calibrated hand size. |
 | Calibrate | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |

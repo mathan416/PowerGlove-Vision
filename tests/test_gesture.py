@@ -109,9 +109,11 @@ class GestureTests(unittest.TestCase):
     def test_comfortable_v_requires_both_curled_and_both_straight_fingers(self):
         pose = dict(index_curl=.23, middle_curl=.22, ring_curl=.50, pinky_curl=.45)
         engine = calibrated_engine("program_h")
-        for t in (.1, .2, .26):
+        for t in (.1, .2, .26, .70):
             state = engine.update(hand(t, palm_x=.8, **pose))
             self.assertFalse(any(state.dpad.values()))
+        self.assertFalse(state.buttons["start"])
+        state = engine.update(hand(.76, palm_x=.8, **pose))
         self.assertTrue(state.buttons["start"])
         engine.update(hand(1.2, **pose))
         self.assertTrue(engine.menu_feedback()["recognized"])
@@ -347,6 +349,25 @@ class GestureTests(unittest.TestCase):
         engine.update(hand(1.5))
         self.assertIsNone(engine.menu_feedback()["pose"])
 
+    def test_v_sign_requires_sustained_release_before_it_can_rearm(self):
+        engine = calibrated_engine()
+        pose = dict(index_curl=0.1, middle_curl=0.1, ring_curl=0.9, pinky_curl=0.9)
+        engine.update(hand(.10, **pose))
+        self.assertTrue(engine.update(hand(.76, **pose)).buttons["start"])
+
+        # A momentary recognition break must not turn the same hand shape into
+        # a second pause command when the V pose immediately returns.
+        engine.update(hand(1.00))
+        self.assertFalse(engine.update(hand(1.10, **pose)).buttons["start"])
+        self.assertFalse(engine.update(hand(2.00, **pose)).buttons["start"])
+
+        # Rearm only after a continuous, clearly non-V interval, then require
+        # the full deliberate hold again.
+        engine.update(hand(2.10))
+        engine.update(hand(2.41))
+        self.assertFalse(engine.update(hand(2.50, **pose)).buttons["start"])
+        self.assertTrue(engine.update(hand(3.16, **pose)).buttons["start"])
+
     def test_held_thumbs_up_pulses_select_without_attacking(self):
         engine = calibrated_engine()
         pose = dict(thumb_curl=0.1, index_curl=0.9, middle_curl=0.9, ring_curl=0.9, pinky_curl=0.9)
@@ -389,7 +410,7 @@ class GestureTests(unittest.TestCase):
         self.assertIsNone(engine.menu_feedback()["pose"])
 
         forming_v = engine.update(hand(.30, pinky_curl=.45, **common))
-        start = engine.update(hand(.46, pinky_curl=.45, **common))
+        start = engine.update(hand(.96, pinky_curl=.45, **common))
         self.assertFalse(forming_v.buttons["menu_guard"])
         self.assertTrue(start.buttons["start"])
         self.assertFalse(start.buttons["menu_guard"])
@@ -410,9 +431,9 @@ class GestureTests(unittest.TestCase):
         engine = calibrated_engine("super_glove_ball")
         v = dict(index_curl=.1, middle_curl=.1, ring_curl=.9, pinky_curl=.9)
         engine.update(hand(.10, **v))
-        self.assertTrue(engine.update(hand(.26, **v)).buttons["start"])
+        self.assertTrue(engine.update(hand(.76, **v)).buttons["start"])
 
-        guard = engine.update(hand(.27, thumb_curl=.9, index_curl=.1,
+        guard = engine.update(hand(.77, thumb_curl=.9, index_curl=.1,
                                    middle_curl=.1, ring_curl=.9, pinky_curl=.1))
         self.assertTrue(guard.buttons["menu_guard"])
         self.assertFalse(guard.buttons["start"])

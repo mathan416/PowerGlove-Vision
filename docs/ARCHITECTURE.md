@@ -136,7 +136,7 @@ what the game receives. An indicator remaining active is therefore not a promise
 of a continuously held game button.
 
 V-sign and thumbs-up also require the correct extended/curled fingers and the
-short debounce (0.15 seconds), then issue a short menu
+deliberate debounce (0.65 seconds for Start and 0.15 seconds for Select), then issue a short menu
 pulse. Live pose feedback uses the same finger checks. Personal pairs supply the
 closed-finger activation and extended-finger release boundaries; untouched
 fingers use the existing menu defaults. A confirmed lesson can remain complete

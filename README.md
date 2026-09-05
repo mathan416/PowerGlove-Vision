@@ -98,10 +98,12 @@ similar reference, but ordinary tracking variation means the saved numbers will
 not be identical. A completed calibration is saved atomically and reused across
 games and restarts; an incomplete attempt does not replace the previous file.
 
-Across the profiles, briefly show a **V sign** to send Start and
+Across the profiles, hold a **V sign** steadily for about two-thirds of a second to send Start and
 a **thumbs-up with the other fingers closed** to send Select. These poses
 suppress A/B attacks; some profiles can still generate directional or auxiliary
-input, so keep your hand near its resting position while using them.
+input, so keep your hand near its resting position while using them. Start sends
+only one press and must see a clearly non-V pose for 0.30 seconds before it can
+trigger again.
 
 ### Programs A–I
 

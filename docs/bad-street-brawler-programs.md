@@ -56,7 +56,7 @@ open Bad Street Brawler first.
 
 | Gesture | See it | Controller result |
 | --- | --- | --- |
-| Briefly show a V sign | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause |
+| Hold a V sign steadily | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause after about two-thirds of a second |
 | Briefly show a thumbs-up with the other fingers closed | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
 
 These menu poses suppress A/B attacks while they form. Some programs can still
