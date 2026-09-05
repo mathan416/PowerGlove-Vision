@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added a collapsed Pixel Pal answer reveal to illustrated guides.
 #   2026-09-03 - Added the built-in Help library and Markdown reading view.
 #   2026-09-03 - Added a live, non-secret cabinet connection reference.
 #   2026-09-03 - Renamed the installation route while preserving its original alias.
@@ -384,6 +385,7 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
     blocks = []
     headings = []
     used_anchors: set[str] = set()
+    extra_digit_answer_open = False
     index = 0
     while index < len(lines):
         line = lines[index]
@@ -426,7 +428,14 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
             level = len(heading.group(1))
             title = heading.group(2).strip()
             anchor = _anchor(title, used_anchors)
-            headings.append((level, anchor, re.sub(r"[`*_]", "", title)))
+            if title == "Pixel Pal's Extra-Digit Hunt answer":
+                blocks.append(
+                    "<details class=extra-digit-answer>"
+                    "<summary>Reveal Pixel Pal's answer</summary>"
+                )
+                extra_digit_answer_open = True
+            else:
+                headings.append((level, anchor, re.sub(r"[`*_]", "", title)))
             blocks.append(f"<h{level} id='{anchor}'>{_inline(title)}</h{level}>")
             index += 1
             continue
@@ -501,4 +510,6 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
             paragraph.append(upcoming.strip())
             index += 1
         blocks.append("<p>{}</p>".format(_inline(" ".join(paragraph))))
+    if extra_digit_answer_open:
+        blocks.append("</details>")
     return "\n".join(blocks), headings

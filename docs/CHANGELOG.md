@@ -5,6 +5,18 @@ This file records user-visible PowerGlove Vision changes. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
+## Unreleased
+
+### Added
+
+- Added Pixel Pal's Extra-Digit Hunt to the two illustrated gameplay guides.
+  Readers count every preserved six-digit glove once per appearance, then find
+  the verified per-guide answer at the back. Built-in Help keeps the answer
+  behind an explicit reveal, accessible descriptions identify qualifying art,
+  and a checked manifest prevents future artwork changes from making the answer
+  stale. The App Lab package builder now refreshes its tracked checksum companion
+  after each successful build so guide updates cannot leave a stale digest.
+
 ## [0.3.0] - 2026-09-05
 
 Stable feature release covering shared recognition, native Super Glove Ball

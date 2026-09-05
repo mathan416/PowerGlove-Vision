@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "rule": "Count every hand showing five fingers plus a thumb once per appearance, including repeated artwork.",
+  "guides": {
+    "GAMEPLAY_GUIDE.md": {
+      "answer": 6,
+      "images": {
+        "images/gestures/actions/finger-curl.png": {
+          "hands_per_appearance": 1,
+          "occurrences": 4
+        },
+        "images/gestures/actions/close-all-fingers.png": {
+          "hands_per_appearance": 1,
+          "occurrences": 1
+        },
+        "images/gestures/actions/index-push-combination.png": {
+          "hands_per_appearance": 1,
+          "occurrences": 1
+        }
+      },
+      "locations": [
+        "Bad Street Brawler",
+        "Joust",
+        "Defender II",
+        "Sesame Street 1-2-3",
+        "Gun Smoke",
+        "Start with A, D, and H"
+      ]
+    },
+    "bad-street-brawler-programs.md": {
+      "answer": 3,
+      "images": {
+        "images/gestures/actions/finger-curl.png": {
+          "hands_per_appearance": 1,
+          "occurrences": 2
+        },
+        "images/gestures/actions/close-all-fingers.png": {
+          "hands_per_appearance": 1,
+          "occurrences": 1
+        }
+      },
+      "locations": [
+        "B - Joust rig",
+        "E - Defender rig",
+        "F - Yes / No rig"
+      ]
+    }
+  }
+}

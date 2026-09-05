@@ -9,6 +9,10 @@ worked and how PowerGlove Vision recreates their controls with a camera.
 **Pixel Pal says:** Pick one program, practise one gesture, then try a round.
 For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE.md#your-gesture-reference).
 
+> **Pixel Pal's Extra-Digit Hunt:** Some glove illustrations have five fingers
+> plus a thumb. Count every six-digit hand once per appearance, including
+> repeated artwork. Pixel Pal reveals the answer at the back of this guide.
+
 ## Choose a program and try it
 
   1. Use the selector below to choose a program for your game or experiment.
@@ -86,7 +90,7 @@ finger actions.
 | --- | --- | --- |
 | Move the hand left or right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Steer left or right |
 | Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | B button; see the [Joust play card](GAMEPLAY_GUIDE.md#joust) for its in-game use |
-| Curl the index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger" width="72"> | Pulsed flap input |
+| Curl the index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Pulsed flap input |
 
 Use this profile for Joust and any game where rhythmic, repeated presses matter.
 
@@ -119,7 +123,7 @@ experiments that need inverted direction mappings.
 | Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Move the ship |
 | Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Fire |
 | Roll the wrist left or right | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist" width="96"> | Smart bomb |
-| Curl the ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger" width="72"> | Rapid horizontal movement |
+| Curl the ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Rapid horizontal movement |
 
 Use this profile for Defender II and multi-action shooters.
 
@@ -127,7 +131,7 @@ Use this profile for Defender II and multi-action shooters.
 
 | Gesture | See it | Controller result |
 | --- | --- | --- |
-| Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Close all fingers" width="72"> | No |
+| Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing all fingers" width="72"> | No |
 | Move an open hand in any direction | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move an open hand in any direction" width="96"> | Yes |
 
 Use this profile for Sesame Street 1-2-3 and simple choice-driven games.
@@ -244,3 +248,15 @@ Saved thresholds apply across profiles, including these programs. Movement
 controls use separate activation and release thresholds, while program-specific
 button pulses and mappings remain in effect. Extended-only fingers retain their
 existing settings. Practice and tuning pause controller delivery.
+
+<!-- PAGEBREAK -->
+
+## Pixel Pal's Extra-Digit Hunt answer
+
+<img src="images/gestures/v2/pixel-pal.png" alt="Pixel Pal reveals the Extra-Digit Hunt answer" width="180">
+
+**Pixel Pal's answer: 3 six-digit hands.**
+
+They appear once each in Program B's finger-curl illustration, Program E's
+finger-curl illustration, and Program F's closed-hand illustration. Every
+appearance counts, even when the same artwork returns.

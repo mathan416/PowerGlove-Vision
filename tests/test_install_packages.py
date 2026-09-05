@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Required App Lab builds to refresh their checksum companion.
 #   2026-09-04 - Added two-machine installation regression coverage.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -28,6 +29,12 @@ spec.loader.exec_module(installer)
 
 
 class PackageContentTests(unittest.TestCase):
+    def test_app_lab_builder_refreshes_companion_checksum(self):
+        builder = (ROOT / 'scripts/build-app-lab-package.sh').read_text()
+        self.assertIn('readonly OUTPUT_SHA="${OUTPUT_ZIP}.sha256"', builder)
+        self.assertIn('hashlib.sha256(archive.read_bytes()).hexdigest()', builder)
+        self.assertIn('mv "${OUTPUT_SHA_TMP}" "${OUTPUT_SHA}"', builder)
+
     def test_local_matrix_exports_rejected_but_guide_images_allowed(self):
         spec = importlib.util.spec_from_file_location(
             'package_verifier', ROOT / 'scripts/verify-app-lab-package.py')

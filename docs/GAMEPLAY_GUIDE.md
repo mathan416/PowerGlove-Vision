@@ -22,6 +22,10 @@ appears and **Calibrate** becomes available before continuing.
 
 <img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
 
+> **Pixel Pal's Extra-Digit Hunt:** Some glove illustrations have five fingers
+> plus a thumb. Count every six-digit hand once per appearance, including
+> repeated artwork. Pixel Pal reveals the answer at the back of this guide.
+
 ### Check the selected game
 
 | Matrix code | See it | Selected game |
@@ -95,7 +99,7 @@ vitality runs out.
 | Move hand left / right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Walk left / right |
 | Raise / lower hand | <img src="images/gestures/actions/vertical-movement.png" alt="Raise or lower the whole hand" width="96"> | Jump / crouch |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Pulsed B move |
-| Curl middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | A+B force move |
+| Curl middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | A+B force move |
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | A plus that direction |
 | Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Glove Zap |
 
@@ -158,7 +162,7 @@ their eggs before they hatch, and stay clear of the lava.
 | Do this | See it | Result |
 | --- | --- | --- |
 | Move hand left / right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Steer left / right |
-| Curl index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | Pulsed A: steady flap |
+| Curl index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Pulsed A: steady flap |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | B: faster flap |
 | Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
 | Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select game mode |
@@ -217,7 +221,7 @@ humanoids before abductors carry them away and turn them into mutants.
 | Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Fly up, down, left, or right |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | A: fire |
 | Roll wrist either way | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist in either direction" width="96"> | B: smart bomb |
-| Curl ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Finger-curl motion" width="72"> | Rapid left/right evasive thrash |
+| Curl ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Rapid left/right evasive thrash |
 | Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
 
 **Play smart:** Watch the scanner as much as the ship. Intercept abductors early;
@@ -247,7 +251,7 @@ physical Yes or No answer.
 | Do this | See it | Result |
 | --- | --- | --- |
 | Move an open hand in any direction | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move an open hand in any direction" width="96"> | A: Yes |
-| Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Close all fingers" width="72"> | B: No |
+| Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing all fingers" width="72"> | B: No |
 | Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
 | Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select |
 
@@ -277,7 +281,7 @@ each wanted poster, and collect the bounty by beating the stage boss.
 | Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Walk in that direction |
 | Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | A: shoot diagonally right |
 | Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | B: shoot diagonally left |
-| Curl index while pushing | <img src="images/gestures/actions/index-push-combination.png" alt="Combine a finger curl with a push toward the camera" width="96"> | A+B: shoot straight ahead |
+| Curl index while pushing | <img src="images/gestures/actions/index-push-combination.png" alt="One six-digit glove curling a finger beside a glove pushing toward the camera" width="96"> | A+B: shoot straight ahead |
 | Curl thumb and ring finger | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="96"> | Suppress all ordinary controller output |
 
 **Play smart:** A stage keeps looping until you obtain its wanted poster. Keep
@@ -334,7 +338,7 @@ ROM assignment and are useful starting points for these experiments.
 | --- | --- | --- | --- |
 | **A - Pinball** | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist for the pinball tilt action" width="176"> | Pinball and games driven by two independent actions | Index curl is A, thumb curl is Up, wrist tilt is B, and pulling back toggles combined flippers. Ordinary directional movement is disabled. |
 | **D - Mirror world** | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="176"> | A game you already know well, a party challenge, or an inverted-direction accessibility experiment | Every direction is reversed. Thumb and index provide A and B. Expect your muscle memory to complain loudly. |
-| **H - General play** | <img src="images/gestures/actions/finger-curl.png" alt="Curl a finger for a general-purpose action button" width="176"> | Two-button platform, maze, puzzle, and action games | Hand movement supplies the D-pad. Index and thumb pulse A and B, so games that require a long held button may be a poor fit. |
+| **H - General play** | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger for a general-purpose action button" width="176"> | Two-button platform, maze, puzzle, and action games | Hand movement supplies the D-pad. Index and thumb pulse A and B, so games that require a long held button may be a poor fit. |
 
 Try Program H first for general play, or Program A for pinball controls.
 Program D turns a familiar game into a new coordination challenge without
@@ -481,3 +485,15 @@ pinky must be clearly extended, while the V-sign's pinky must be clearly curled;
 the space between those thresholds deliberately recognizes neither pose. Menu
 guard also suppresses Start and Select while active, so repositioning cannot
 accidentally open or pause a game menu.
+
+<!-- PAGEBREAK -->
+
+## Pixel Pal's Extra-Digit Hunt answer
+
+<img src="images/gestures/v2/pixel-pal.png" alt="Pixel Pal reveals the Extra-Digit Hunt answer" width="180">
+
+**Pixel Pal's answer: 6 six-digit hands.**
+
+They appear once each in the Bad Street Brawler, Joust, Defender II, Sesame
+Street 1-2-3, and Gun Smoke play cards, plus once in the **Start with A, D, and
+H** table. Every appearance counts, even when the same artwork returns.

@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept Pixel Pal's Extra-Digit Hunt counts synchronized with guide art.
 #   2026-09-04 - Guarded the Nestopia revision and patch digest in third-party records.
 #   2026-09-04 - Limited Help coverage checks to guides directly under docs.
 #   2026-09-03 - Added documentation and generated-PDF consistency checks.
@@ -89,6 +90,48 @@ def check_native_component_record(errors: list[str]) -> None:
     for path in records.values():
         if digest not in path.read_text():
             errors.append(f"Nestopia patch SHA-256 is stale or missing: {path.relative_to(ROOT)}")
+
+
+def check_extra_digit_hunt(errors: list[str]) -> None:
+    """Keep the playful published answers synchronized with visible artwork."""
+    path = ROOT / "docs/extra-digit-hunt.json"
+    try:
+        manifest = json.loads(path.read_text())
+        guides = manifest["guides"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        errors.append(f"cannot read Extra-Digit Hunt manifest: {exc}")
+        return
+    for filename, guide in guides.items():
+        source_path = ROOT / "docs" / filename
+        try:
+            source = source_path.read_text()
+            answer = int(guide["answer"])
+            images = guide["images"]
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            errors.append(f"invalid Extra-Digit Hunt guide record for {filename}: {exc}")
+            continue
+        calculated = 0
+        tags = re.findall(r"<img\s+[^>]+>", source, re.IGNORECASE)
+        for image, record in images.items():
+            expected = int(record["occurrences"])
+            hands = int(record["hands_per_appearance"])
+            matches = [tag for tag in tags if f'src="{image}"' in tag]
+            if len(matches) != expected:
+                errors.append(
+                    f"Extra-Digit Hunt expected {expected} uses of {image} in {filename}; "
+                    f"found {len(matches)}"
+                )
+            if any("six-digit" not in tag.lower() for tag in matches):
+                errors.append(f"Extra-Digit Hunt accessibility text is missing for {image} in {filename}")
+            calculated += len(matches) * hands
+        if calculated != answer:
+            errors.append(
+                f"Extra-Digit Hunt answer for {filename} is {answer}; artwork totals {calculated}"
+            )
+        if f"**Pixel Pal's answer: {answer} six-digit hands.**" not in source:
+            errors.append(f"Extra-Digit Hunt published answer is stale in {filename}")
+        if "Count every six-digit hand once per appearance" not in source:
+            errors.append(f"Extra-Digit Hunt instructions are missing from {filename}")
 
 
 def tracked_markdown() -> list[Path]:
@@ -185,6 +228,7 @@ def main() -> int:
     args = build_parser().parse_args()
     errors: list[str] = []
     check_native_component_record(errors)
+    check_extra_digit_hunt(errors)
     markdown = tracked_markdown()
     for path in markdown:
         # Distribution-wide licensing notices stay beside the root LICENSE.

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Styled Pixel Pal's collapsed Extra-Digit Hunt answer.
 #   2026-09-04 - Added compact Pixel Pal artwork and the default /dashboard route.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added live Dashboard profile selection and idle presentation.
@@ -13,7 +14,6 @@
 #   2026-09-03 - Added the dynamic cabinet connection page.
 #   2026-09-03 - Served allowlisted PDF editions from the Help Center.
 #   2026-09-03 - Added automatic Learn-page practice activation and restoration.
-#   2026-09-03 - Added descriptive names to the shared profile selectors.
 #   2026-09-03 - Made cold vision startup visible on Dashboard and Learn.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
 #   2026-09-03 - Clarified shutdown/restart limitations and consistent button label.
@@ -121,7 +121,7 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .events{{height:170px;overflow:auto;background:#080a10;border-radius:9px;padding:12px;color:#c9d2ec;font-size:13px}}.events div{{padding:3px 0;border-bottom:1px solid #171b25}}
 .learn-grid{{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:14px;align-items:start}}.learn-camera{{position:relative}}.learn-camera .camera{{height:min(55vh,500px);aspect-ratio:auto;margin:0}}.practice-badge{{position:absolute;left:12px;top:12px;padding:7px 10px;border-radius:999px;background:#090b11dc;border:1px solid var(--green);color:var(--green);font-size:12px}}.lesson-number{{color:var(--cyan);font-size:12px;letter-spacing:1.5px;text-transform:uppercase}}.lesson-title{{font:900 clamp(26px,4vw,40px)/1.05 system-ui;margin:8px 0}}.lesson-cue{{color:var(--muted);min-height:72px}}.lesson-result{{border:1px solid var(--line);border-radius:10px;padding:12px;margin:14px 0;background:#090b11}}.lesson-result.ready{{border-color:var(--green);color:var(--green)}}.lesson-progress{{display:flex;gap:5px;margin:14px 0}}.lesson-progress i{{height:7px;flex:1;border-radius:9px;background:#303748}}.lesson-progress i.done{{background:var(--green)}}.lesson-progress i.current{{background:var(--cyan)}}.live-readout{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}}.live-readout>div{{padding:10px;border-radius:9px;background:#090b11;text-align:center}}.live-readout strong{{display:block;font:800 18px system-ui;margin-top:4px}}
 form{{display:grid;gap:16px}}.formgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}}label{{display:grid;gap:7px;color:var(--muted);font-size:13px}}input,select{{width:100%;background:#090b11;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;font:16px inherit}}input:focus,select:focus{{outline:2px solid var(--blue);border-color:transparent}}.check{{display:flex;align-items:center;gap:10px}}.check input{{width:auto}}.notice{{min-height:24px;color:var(--cyan)}}code{{color:var(--cyan)}}
-details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}details.advanced summary{{color:var(--cyan);cursor:pointer;font-weight:800}}details.advanced p{{color:var(--muted);max-width:760px}}
+details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}details.advanced summary{{color:var(--cyan);cursor:pointer;font-weight:800}}details.advanced p{{color:var(--muted);max-width:760px}}.markdown-body details.extra-digit-answer{{margin-top:42px;padding:18px;border:2px solid #087ebd;border-radius:12px;background:#e7f7fc}}.markdown-body details.extra-digit-answer summary{{cursor:pointer;color:#075fc4;font-weight:800;font-size:18px}}.markdown-body details.extra-digit-answer h2{{margin-top:20px}}
 .help-group{{margin-top:28px}}.help-group>h2{{margin-bottom:12px;color:var(--cyan)}}.guide-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}}
 .guide-card{{position:relative;display:block;min-height:145px;padding:20px 52px 20px 20px;color:var(--ink);text-decoration:none;background:linear-gradient(145deg,#1b2030,#11141d);border:1px solid var(--line);border-radius:14px;transition:transform .15s,border-color .15s}}
 .guide-card:hover{{transform:translateY(-2px);border-color:var(--cyan)}}.guide-card h2{{margin:0 0 8px}}.guide-card p{{margin:0;color:var(--muted)}}.guide-arrow{{position:absolute;right:20px;top:17px;color:var(--cyan);font-size:25px}}

@@ -155,6 +155,25 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"width='176'", page)
         self.assertIn(b"/help/gameplay.md", page)
         self.assertIn(b"/help-pdf/gameplay.pdf", page)
+        self.assertIn(b"Pixel Pal&#x27;s Extra-Digit Hunt", page)
+        self.assertIn(b"<details class=extra-digit-answer>", page)
+        self.assertIn(b"<summary>Reveal Pixel Pal's answer</summary>", page)
+        self.assertIn(b"Pixel Pal&#x27;s answer: 6 six-digit hands.", page)
+
+        programs = help_document_page("programs")
+        self.assertIsNotNone(programs)
+        assert programs is not None
+        self.assertIn(b"Pixel Pal&#x27;s answer: 3 six-digit hands.", programs)
+
+    def test_extra_digit_answer_is_collapsed_and_omitted_from_contents(self):
+        rendered, headings = render_markdown(
+            "# Hunt\n\n## Pixel Pal's Extra-Digit Hunt answer\n\n"
+            "**Pixel Pal's answer: 1 six-digit hand.**"
+        )
+        self.assertIn("<details class=extra-digit-answer>", rendered)
+        self.assertIn("<summary>Reveal Pixel Pal's answer</summary>", rendered)
+        self.assertTrue(rendered.endswith("</details>"))
+        self.assertNotIn("Pixel Pal's Extra-Digit Hunt answer", [title for _level, _anchor, title in headings])
 
     def test_help_guides_keep_only_the_shared_header_logo(self):
         for slug, width in (("gameplay", 680), ("programs", 620), ("installation", 680)):
