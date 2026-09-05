@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Distinguished confirmed recognition from unmapped native fields.
 #   2026-09-04 - Required installed records to identify the exact local patch.
 #   2026-09-04 - Added isolation, protocol evidence, and distribution checks.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -57,11 +58,19 @@ class NativeCoreTests(unittest.TestCase):
         ):
             self.assertIn(evidence, patch)
 
-    def test_compatibility_record_separates_confirmed_and_unknown_fields(self):
+    def test_compatibility_record_separates_confirmed_recognition_and_native_mapping(self):
         record = (ROOT / "docs/super-glove-ball-native.md").read_text()
         self.assertIn("NESdev material is a source of testable hypotheses", record)
         self.assertIn("Detection signature, packet length, boundaries, and bit order | Confirmed", record)
-        self.assertIn("Z, wrist rotation, finger state, and action-button encoding | Unknown", record)
+        self.assertIn(
+            "Native packet encoding for Z, wrist rotation, finger state, and action buttons | "
+            "Not yet mapped in-game; deliberately neutral",
+            record,
+        )
+        self.assertIn(
+            "Camera recognition and FCEUmm output for depth, roll, fingers, and actions are confirmed",
+            record,
+        )
         self.assertIn("explicit FCEUmm", record)
 
     def test_trace_runner_records_digest_phases_and_safe_neutral_cases(self):
