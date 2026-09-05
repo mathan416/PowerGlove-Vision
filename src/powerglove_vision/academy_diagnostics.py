@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept diagnostics compatible with the supported Python 3.7 runtime.
 #   2026-09-06 - Added local guided capture with aggregate-only reporting.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -12,7 +13,6 @@
 
 from __future__ import annotations
 
-import statistics
 import time
 from pathlib import Path
 
@@ -58,7 +58,10 @@ class AcademyDiagnostics:
         if self.writer is not None:
             self.writer.release()
             self.writer = None
-        self.output.unlink(missing_ok=True)
+        try:
+            self.output.unlink()
+        except FileNotFoundError:
+            pass
 
     def expire(self) -> None:
         """Cancel an abandoned capture after its fixed inactivity limit."""
@@ -124,11 +127,11 @@ class AcademyDiagnostics:
             cue_results.append({
                 "label": cue[0], "title": cue[1], "frames": len(frames),
                 "detection_percent": round(detected / len(frames) * 100, 1) if frames else 0.0,
-                "confidence_mean": round(statistics.fmean(confidences), 3) if confidences else None,
+                "confidence_mean": round(sum(confidences) / len(confidences), 3) if confidences else None,
                 "inference_ms_p50": _percentile(inference, .50),
                 "inference_ms_p95": _percentile(inference, .95),
                 "sample_age_ms_p95": _percentile(ages, .95),
-                "hand_luma_mean": round(statistics.fmean(luma), 1) if luma else None,
+                "hand_luma_mean": round(sum(luma) / len(luma), 1) if luma else None,
                 "recognized": recognized,
             })
         self.report = {

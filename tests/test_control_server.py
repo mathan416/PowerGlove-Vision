@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept mocked forwarding assertions compatible with Python 3.7.
 #   2026-09-05 - Verified atomic Academy controls and fresh-frame navigation gates.
 #   2026-09-05 - Verified the Academy completion trophy artwork.
 #   2026-09-05 - Verified Academy camera recovery and public calibration forwarding.
@@ -307,7 +308,7 @@ class ControlStateTests(unittest.TestCase):
             response = connection.getresponse()
             response.read()
             self.assertEqual(response.status, 204)
-            forwarded = open_worker.call_args.args[0]
+            forwarded = open_worker.call_args[0][0]
             self.assertEqual(forwarded.full_url, "http://127.0.0.1:8089/calibrate")
             self.assertEqual(forwarded.method, "POST")
             connection.close()

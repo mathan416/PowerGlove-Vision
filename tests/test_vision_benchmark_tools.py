@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept development-script loading compatible with Python 3.7.
 #   2026-09-05 - Added coverage for user-paced guided benchmark capture.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -26,7 +27,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def load_script(name: str):
     """Load a hyphenated development script as a test module."""
     path = ROOT / "scripts" / name
-    spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
+    module_name = name[:-3] if name.endswith(".py") else name
+    spec = importlib.util.spec_from_file_location(module_name, path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

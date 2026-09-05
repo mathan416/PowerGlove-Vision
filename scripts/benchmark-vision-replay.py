@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept aggregate means compatible with Python 3.7.
 #   2026-09-05 - Added repeatable MediaPipe backend, thread, size, and preview comparisons.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -15,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import statistics
 import sys
 import time
 from math import ceil
@@ -145,7 +145,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         "preview": "open" if preview else "closed", "frames": frame_index,
         "inference_ms": {"p50": percentile(inference, .50),
                          "p95": percentile(inference, .95),
-                         "mean": round(statistics.fmean(inference), 2) if inference else None},
+                         "mean": round(sum(inference) / len(inference), 2) if inference else None},
         "preview_encode_ms": {"p50": percentile(encoded_ms, .50),
                               "p95": percentile(encoded_ms, .95)},
         "detection_continuity_percent": round(sum(detected) / len(detected) * 100, 2) if detected else 0,
