@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-04 - Guarded the Nestopia revision and patch digest in third-party records.
 #   2026-09-04 - Limited Help coverage checks to guides directly under docs.
 #   2026-09-03 - Added documentation and generated-PDF consistency checks.
 #   2026-09-03 - Registered the illustrated gameplay handbook and PDF edition.
@@ -18,6 +19,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -63,6 +65,30 @@ PDF_EDITIONS = {
     "docs/super-glove-ball-native.md": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
     "docs/direction-response-benchmark.md": "PowerGlove-Vision-Direction-Response.pdf",
 }
+
+
+def check_native_component_record(errors: list[str]) -> None:
+    """Keep the pinned Nestopia source and local patch tied to their notices."""
+    build = (ROOT / "scripts/build-nestopia-powerglove.sh").read_text()
+    match = re.search(r"^revision=([0-9a-f]{40})$", build, re.MULTILINE)
+    if not match:
+        errors.append("Nestopia build script has no exact 40-character revision pin")
+        return
+    revision = match.group(1)
+    patch = ROOT / "native/nestopia-powerglove/nestopia-powerglove.patch"
+    digest = hashlib.sha256(patch.read_bytes()).hexdigest()
+    records = {
+        "third-party component inventory": ROOT / "docs/THIRD_PARTY_COMPONENTS.md",
+        "root third-party notices": ROOT / "THIRD_PARTY_NOTICES.md",
+        "native-core README": ROOT / "native/nestopia-powerglove/README.md",
+        "native-core change ledger": ROOT / "native/nestopia-powerglove/CHANGES.md",
+    }
+    for label, path in records.items():
+        if revision not in path.read_text():
+            errors.append(f"Nestopia revision is missing from {label}: {path.relative_to(ROOT)}")
+    for path in records.values():
+        if digest not in path.read_text():
+            errors.append(f"Nestopia patch SHA-256 is stale or missing: {path.relative_to(ROOT)}")
 
 
 def tracked_markdown() -> list[Path]:
@@ -158,6 +184,7 @@ def main() -> int:
     """Run documentation checks and return a CI-friendly process status."""
     args = build_parser().parse_args()
     errors: list[str] = []
+    check_native_component_record(errors)
     markdown = tracked_markdown()
     for path in markdown:
         # Distribution-wide licensing notices stay beside the root LICENSE.

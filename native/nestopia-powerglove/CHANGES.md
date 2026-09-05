@@ -13,6 +13,7 @@ headers, copyright notices, Git history, or `COPYING` file.
 | Revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
 | License | GNU General Public License, version 2 or later as stated by the affected Nestopia source |
 | Patch | `native/nestopia-powerglove/nestopia-powerglove.patch` |
+| Patch SHA-256 | `6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec` |
 
 At that revision, `source/core/input/NstInpPowerGlove.cpp` begins with
 Nestopia's original 2003–2008 Martin Freij copyright and GPL notice. The patch

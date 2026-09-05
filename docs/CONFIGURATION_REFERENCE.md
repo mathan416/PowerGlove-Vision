@@ -159,7 +159,6 @@ preloading cannot resolve that condition.
 
 Glove Academy is the renamed Learn section. Existing `/learn` bookmarks still
 work. The matrix continues to show **L** for lessons and **T** for tuning.
-Older screenshots may still show the former Learn label.
 
 Glove Academy starts the camera even when **Gestures off** is selected and uses a
 mapping-independent practice profile. It pauses controller delivery and restores the selected profile
@@ -171,7 +170,7 @@ reload Glove Academy if you want to begin practice again.
 The sixteen lessons include A (index curl), B (thumb curl), Glove Zap (forward
 push), Pull Back, Start, Select, roll left, roll right, close hand, and menu guard.
 Menu guard requires curled thumb/ring with index, middle, and pinky extended and
-suppresses movement plus A/B. Completing every lesson earns Glove Master; skipped
+suppresses movement, A, B, Start, and Select. Completing every lesson earns Glove Master; skipped
 lessons must be revisited. **Start again** clears session progress. The practice
 indicators do not change a game's gesture mapping.
 

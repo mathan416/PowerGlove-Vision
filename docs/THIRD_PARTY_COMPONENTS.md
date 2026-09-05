@@ -114,8 +114,12 @@ license does not replace the license of Nestopia or the resulting modified core.
 | Pinned revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
 | Upstream license | GNU General Public License, version 2 |
 | Local modification | `native/nestopia-powerglove/nestopia-powerglove.patch` |
+| Patch SHA-256 | `6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec` |
+| Modified upstream files | `libretro/libretro.cpp`; `source/core/input/NstInpPowerGlove.cpp` |
 | Modification ledger | `native/nestopia-powerglove/CHANGES.md` |
 | Build recipe | `scripts/build-nestopia-powerglove.sh` |
+| Built core name | `nestopia_powerglove_libretro.so` on RetroPie |
+| Installed core directory | `/opt/retropie/libretrocores/lr-nestopia-powerglove/` |
 
 Ordinary releases contain the patch and build recipe, not a compiled Nestopia
 core. If the user accepts the RetroPie installer's optional native-core step,
@@ -135,7 +139,43 @@ patch and build instructions, all upstream notices, and the GPLv2 license. A
 Git commit or patch URL alone is not the project's binary-distribution plan.
 ROM images are never part of a source or binary core artifact.
 
-## Updating either component
+At runtime, RetroArch loads the custom core only for an explicitly selected ROM.
+The launch entry passes the read-only latest-sample file through
+`POWERGLOVE_NATIVE_STATE`; the default path is `/run/powerglove/native-state`.
+The patch registers a separately named **Power Glove Vision** controller and
+identifies the library as **Nestopia PowerGlove**. Invalid, stale, uncalibrated,
+lost-tracking, or wrong-profile samples are neutralized. The compatibility
+record in [Super Glove Ball native compatibility](super-glove-ball-native.md)
+separates exact-ROM-confirmed behavior from fields that remain unknown.
+
+The local patch changes only `libretro/libretro.cpp` and
+`source/core/input/NstInpPowerGlove.cpp`. SHA-256 values for both pristine
+upstream files are recorded in the modification ledger. The build applies the
+patch only after checking out the pinned commit, rejects unrelated source-tree
+changes, and verifies that Nestopia's original 22-line Power Glove copyright
+and GPL header remains byte-for-byte identical.
+
+## External RetroPie emulator dependencies
+
+PowerGlove Vision uses RetroPie-provided emulator software but does not include
+those binaries in its installation archives. When either dependency is absent,
+the RetroPie installer can ask the user's existing RetroPie Setup installation
+to install it. That operation remains governed by RetroPie and the upstream
+licenses.
+
+| Component | PowerGlove Vision use | Upstream and license | Distribution boundary |
+| --- | --- | --- | --- |
+| RetroArch | Libretro frontend used to load FCEUmm and `lr-nestopia-powerglove` | [RetroArch](https://github.com/libretro/RetroArch), GPLv3 | Installed by RetroPie; not modified or redistributed by PowerGlove Vision |
+| FCEUmm | Default NES core for standard D-pad/button mappings and the complete Super Glove Ball fallback | [FCEUmm](https://github.com/libretro/libretro-fceumm), GPLv2 | Stock RetroPie core; not modified or redistributed by PowerGlove Vision |
+
+The deterministic direction benchmark separately builds stock FCEUmm revision
+`236ccdfc911e84c60fea6b9d0699c2d440a8de14` in an isolated working directory.
+That pin makes the benchmark reproducible; it does not replace the user's
+RetroPie core, install FCEUmm, or make the benchmark binary a release artifact.
+
+## Updating runtime components
+
+### MediaPipe wheel or Hand Landmarker model
 
 Before publishing a wheel or model update, complete these steps. The
 [command reference](CONFIGURATION_REFERENCE.md#build-inspect-or-maintain-project-files)
@@ -146,6 +186,21 @@ explains the build and verification scripts.
   3. If repackaging another wheel, record every difference from upstream and retain its license files.
   4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
   5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the UNO Q before publishing the package.
+
+### Modified Nestopia core
+
+Before changing the Nestopia revision or native patch:
+
+  1. Select an exact upstream commit from the official libretro Nestopia repository. Record the commit, upstream license, affected pristine-file SHA-256 values, and new patch SHA-256 in this document and `native/nestopia-powerglove/CHANGES.md`.
+  2. Update the identical revision pin in `scripts/build-nestopia-powerglove.sh`, the native-core README, the modification ledger, tests, and compatibility/benchmark documents. Do not use a moving branch or tag as the build identity.
+  3. Rebase `native/nestopia-powerglove/nestopia-powerglove.patch` onto a clean checkout. Preserve all upstream headers and notices. The guarded build must still reject changes to the original `NstInpPowerGlove.cpp` header.
+  4. Run the native-core, state-bridge, installer, selection, exact-ROM trace, safe-neutral, and direction-response tests. Reconfirm packet length, detection, bit order, boundaries, timing, X/Y orientation, Start behavior, tracking-loss release, and the explicit FCEUmm rollback on the cabinet.
+  5. Build the RetroPie installation archive and verify it contains the patch, build/install recipes, modification ledger, and third-party notices, but no ROM or compiled core. If publishing a binary separately, provide the exact complete corresponding source and GPL materials described above.
+
+When the benchmark FCEUmm pin changes, record the new official revision in the
+benchmark document and rerun both the native and standard-joypad lanes. Normal
+RetroPie FCEUmm and RetroArch upgrades remain the responsibility of RetroPie;
+retest controller selection and fallback gameplay before claiming compatibility.
 
 ### Application screenshots
 

@@ -28,6 +28,12 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+- Expanded the third-party runtime inventory for the modified Nestopia core
+  with its patch checksum, affected files, runtime/install boundaries, GPL
+  preservation rules, and pinned-update procedure. Documented stock RetroArch
+  and FCEUmm as externally installed RetroPie dependencies and added an audit
+  check that prevents the Nestopia revision or patch digest from drifting away
+  from the published notices.
 - Preserved Nestopia's original source copyright and GPL header verbatim,
   added a separate file-by-file PowerGlove Vision modification ledger, made
   the native-core build reject header changes, and installed that ledger beside

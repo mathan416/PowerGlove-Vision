@@ -53,11 +53,11 @@ All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#co
 ### Download and package on your computer
 
   1. Install Arduino App Lab on your development computer. Run `command -v git python3 bash rsync zip` and install any missing tools.
-  2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `dev` branch and build its UNO Q installation ZIP.
+  2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `main` branch and build its UNO Q installation ZIP.
   3. Confirm that verification reports **App Lab installation ZIP verified**.
 
 ```sh
-git clone --branch dev https://github.com/mathan416/PowerGlove-Vision.git
+git clone --branch main https://github.com/mathan416/PowerGlove-Vision.git
 cd PowerGlove-Vision
 scripts/build-app-lab-package.sh
 python3 scripts/verify-app-lab-package.py
@@ -94,13 +94,13 @@ hooks before you can pair it with the UNO Q. Run the following in a terminal
 **on the Raspberry Pi running RetroPie**. You can use a local terminal or SSH
 with your RetroPie account.
 
-For a new installation, download the same `dev` branch used on the UNO Q:
+For a new installation, download the same `main` branch used on the UNO Q:
 
 ```sh
 sudo apt update
 sudo apt install -y git
 cd ~
-git clone --branch dev https://github.com/mathan416/PowerGlove-Vision.git
+git clone --branch main https://github.com/mathan416/PowerGlove-Vision.git
 cd PowerGlove-Vision
 ```
 
@@ -116,6 +116,13 @@ and pairing commands under `/opt/powerglove/bin/`, and adds the game-launch
 hooks. It also installs the controller mapping and the 45-second startup timer.
 An **ACTION** result asking you to pair or verify gameplay is expected on first
 installation. Correct any **FAIL** result before continuing to pairing.
+
+If a registered Super Glove Ball ROM is present, the installer offers to build
+the optional `lr-nestopia-powerglove` core from its pinned Nestopia source. It
+installs under a separate name and leaves stock Nestopia untouched. The ROM's
+saved emulator remains FCEUmm until you explicitly choose the native core from
+RetroPie's per-ROM launch menu. Declining the optional build leaves the complete
+FCEUmm fallback available.
 
 For an existing installation, `--peer` does not replace the saved UNO Q address.
 If that address has changed, update `/etc/powerglove/launcher.json` on RetroPie.
@@ -252,6 +259,17 @@ Return to Dashboard, select an active profile, and watch for the camera view.
 The app retries camera initialization automatically. Keep **Camera** set to
 `auto` unless you have identified a specific capture device to select.
 
+### Place the camera before calibrating
+
+  1. Put the camera in its normal cabinet position before calibration.
+  2. Stand or sit at your normal playing distance. Keep your comfortable center and the full area you intend to reach inside the camera view, with room at every edge.
+  3. Hold a relaxed open hand at that center and select **Calibrate**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
+  4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable UNO Q work and game stutter.
+
+Recalibrate after moving the camera, changing your playing distance, or changing
+your normal center. Returning to the same position produces a similar reference,
+although normal camera variation means the saved numbers will not be identical.
+
 ## Website screenshots
 
 These are reference screenshots, not live views. Open the browser URLs above
@@ -262,9 +280,9 @@ These screenshots were refreshed on September 4, 2026.
 
 ![Dashboard showing Gestures off and controller diagnostics](images/debug-dashboard.png)
 
-### Learn
+### Glove Academy
 
-![Learn page with its camera imagery blurred for privacy](images/learn-page.png)
+![Glove Academy practice mode with its camera imagery blurred for privacy](images/learn-page.png)
 
 ### Tune gestures
 
@@ -313,6 +331,22 @@ suppresses game input. Leaving Learn restores the selected profile.
 RetroPie launch hooks select the registered profile when a recognized game
 starts. If you launch an unregistered game or a game for a system other than NES or
 Famicom, the launch hook selects **Gestures off**. Ending a game also turns gestures off.
+For a registered game, a six-second launch guard pauses controller output so
+hand movement cannot operate RetroPie's pre-emulator runcommand menu. Output
+resumes automatically when the guard ends, provided the controller was already
+started. The guard does not start a controller that was stopped.
+
+### Shared menu and safety gestures
+
+| Gesture | Result |
+| --- | --- |
+| Hold a clear V sign steadily for 0.65 seconds | Sends one short Start pulse. Keep a clearly non-V pose visible for 0.30 seconds before Start can trigger again. This prevents an accidental pause while moving or firing. |
+| Briefly show a thumbs-up with the other fingers closed | Sends Select. |
+| Curl the thumb and ring finger together | Menu guard suppresses movement, A, B, Start, and Select while you reposition your hand. Output returns immediately when the pose ends. |
+
+Start and Select poses suppress A/B while they form. Keep your hand near its
+calibrated center because some profiles can still produce auxiliary output from
+wrist, depth, or other finger states.
 
 ### Start with these reusable profiles
 
@@ -321,6 +355,52 @@ Famicom, the launch hook selects **Gestures off**. Ending a game also turns gest
 | A | Pinball and games with two independent actions | Index curl sends A; thumb curl sends Up; wrist roll sends B. Pulling back toggles combined flippers. Ordinary hand movement does not control the D-pad. |
 | D | A reversed-direction challenge | Hand movement sends the opposite direction. Thumb curl sends A; index curl sends B. |
 | H | General NES and Famicom experiments | Hand movement controls the D-pad. Index curl pulses A; thumb curl pulses B. Avoid this profile when a game needs a continuously held action button. |
+
+### Registered Power Glove games
+
+These assignments select recognition output only; calibration and gesture
+thresholds remain shared. Except for Super Glove Ball's optional native path,
+the games use standard NES controller input through FCEUmm.
+
+| Game | Profile | Emulator path |
+| --- | --- | --- |
+| Bad Street Brawler | `bad_street_brawler` | FCEUmm |
+| Super Glove Ball | `super_glove_ball` | `lr-nestopia-powerglove` native X/Y, or FCEUmm fallback |
+| Joust | `program_b` | FCEUmm |
+| Gyruss | `program_c` | FCEUmm |
+| Defender II | `program_e` | FCEUmm |
+| Sesame Street 1-2-3 | `program_f` | FCEUmm |
+| Gun Smoke | `program_g` | FCEUmm |
+| Knight Rider | `program_i` | FCEUmm |
+
+### Super Glove Ball: choose native or FCEUmm
+
+Open RetroPie's launch menu while starting Super Glove Ball and choose the
+emulator for that ROM. RetroPie remembers the per-ROM choice.
+
+  - **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the usable camera field. Exact-ROM tests confirm controller detection, native Start, and X/Y. Unconfirmed native fields remain neutral.
+  - **`lr-fceumm`** remains the complete fallback. It stays in standard joystick mode for the whole session and uses the same responsive movement, finger gestures, and buttons as other FCEUmm games.
+
+Choose FCEUmm again from the same launch menu whenever you want to compare the
+fallback. A failed or incomplete native setup does not remove it.
+
+### Gun Smoke: tested FCEUmm controls
+
+The `program_g` path was tested end to end from the UNO Q through RetroPie and
+FCEUmm. Use these controls:
+
+| Gesture | Gun Smoke action |
+| --- | --- |
+| Move the whole hand | Walk left, right, up, or down. Returning toward center releases promptly. |
+| Roll wrist left or right | Add left or right movement. |
+| Curl index finger | A: shoot diagonally right. |
+| Push toward camera | B: shoot diagonally left. |
+| Curl index while pushing | A+B: shoot straight ahead. |
+| Curl thumb and ring finger | Menu guard: suppress movement and firing while repositioning. |
+
+Use the deliberate V-sign hold for Start or pause. Camera height and distance
+strongly affect comfort: place the camera first, use a position that leaves the
+full movement region visible, and then calibrate.
 
 ### Try a profile in a game
 
