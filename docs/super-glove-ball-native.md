@@ -26,12 +26,14 @@ implementation.
 | A custom core can consume one coherent latest sample per emulated frame | Confirmed in build and unit tests | Versioned 64-byte read-only record with matching even guards; there is no queue or second smoothing stage. |
 | Missing, uncalibrated, wrong-profile, or older-than-250 ms samples are neutral | Confirmed in implementation tests | The receiver also publishes a neutral record on transport timeout and shutdown. |
 | The candidate core builds separately from stock Nestopia | Confirmed at pinned revision `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` | Its library name is `Nestopia PowerGlove`; stock source and installed cores are not modified. |
-| Candidate X/Y encoding reaches Nestopia's existing Power Glove device | Confirmed for the exact ROM | Minimum, center, and maximum X/Y each produced distinct packets and moved the Robo-Glove to the corresponding screen edge or center. |
+| Candidate X/Y encoding reaches Nestopia's existing Power Glove device | Confirmed for the exact ROM | Minimum, center, and maximum X/Y each produced distinct packets. Cabinet validation corrected the camera-to-Nestopia Y orientation. |
 | Detection signature, packet length, boundaries, and bit order | Confirmed | The ROM assembled inverse `$A0` as `$5F`, strobed once per byte, read ten bytes/80 bits per sample MSB first, and required the final stored byte to be `$3F`. |
 | Start encoding | Confirmed | Native byte 6 value `$82` left the title screen and began play while the controller stayed in native mode. |
 | Z, wrist rotation, finger state, and action-button encoding | Unknown and deliberately neutral | Vary one field at a time now that detection and X/Y are repeatable. Start is the sole confirmed button exception. |
 | Poll timing tolerances | Partially confirmed | The headless run sustained ten-byte polling throughout its native phases; hardware timing margins still need cabinet validation. |
 | Headless X/Y activation and release responsiveness | Confirmed for the exact ROM | All four axes visibly diverged by frame 3; a 3.1% positive-X step also diverged by frame 3. See the [direction-response benchmark](direction-response-benchmark.md). |
+| Cabinet field mapping and stabilization | Confirmed for live tuning | Continuous X/Y maps each side of the calibrated neutral point to the corresponding usable camera boundary, retaining an 8% tracking margin. Light adaptive damping operates in camera space, reducing near-rest jitter without delaying deliberate travel. FCEUmm D-pad thresholds remain hand-relative and unchanged. |
+| Portable defaults versus neutral calibration | Confirmed in application and installer tests | Full-field mapping, stabilization, and recognition thresholds ship in the release-owned profile baseline. The camera/player-specific neutral reference uses 24 observations at 70% confidence or better and remains private across updates. |
 | Explicit FCEUmm joystick fallback for the same ROM | Confirmed | The ROM enters play using standard Start, requests only the libretro joypad callback, and activates/releases every D-pad direction visibly by frame 3. |
 
 The validated ROM is `Super Glove Ball (USA)` with SHA-256
@@ -139,14 +141,20 @@ On the RetroPie host, build/install and then opt in one exact ROM:
 
 ```sh
 sudo scripts/install-nestopia-powerglove.sh
-sudo python3 scripts/configure-super-glove-ball-core.py --rom "/home/pi/RetroPie/roms/nes/Super Glove Ball (USA).7z" --mode native --apply
+sudo python3 scripts/configure-super-glove-ball-core.py \
+  --rom "/home/pi/RetroPie/roms/nes/Super Glove Ball (USA).7z" \
+  --mode native --apply
 ```
 
-The selector also writes the libretro device value `517` required to connect the
-Power Glove device. Roll back only that ROM at any time:
+The selector writes the libretro device value `517` and also supplies
+`--device=1:517` to RetroArch. The explicit launch option ensures this RetroArch
+build attaches the Power Glove to port 1 before the ROM performs its detection
+poll. Roll back only that ROM at any time:
 
 ```sh
-sudo python3 scripts/configure-super-glove-ball-core.py --rom "/home/pi/RetroPie/roms/nes/Super Glove Ball (USA).7z" --mode fceumm --apply
+sudo python3 scripts/configure-super-glove-ball-core.py \
+  --rom "/home/pi/RetroPie/roms/nes/Super Glove Ball (USA).7z" \
+  --mode fceumm --apply
 ```
 
 For each later field—Z, rotation, one finger at a time, and one button at a

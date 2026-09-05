@@ -47,7 +47,10 @@ automatic startup. It includes the early-start hourglass helper and the Shutdown
 button's system helper. No separate helper commands are needed. Existing pairing,
 calibration, and personal tuning are preserved when updating. The supplied
 `config/profiles.json` baseline is backed up and replaced so current shared
-recognition defaults take effect.
+recognition defaults take effect. That baseline includes the tested movement
+hysteresis, native full-field mapping, and low-lag stabilization. The installer
+does not copy a maintainer's neutral-hand coordinates: those measurements depend
+on each camera, distance, and playing position.
 
 If the script reports a failure, stop and follow its message. If `curl` is missing,
 install it with `sudo apt-get install curl ca-certificates`, then retry. The
@@ -122,7 +125,7 @@ pairing route works, follow the [token-management reference](CONFIGURATION_REFER
 
 ## 5. Calibrate and test a game
 
-  1. On Dashboard, select a profile, wait for the camera, and show your hand. Use **Calibrate** if this is your first session or your resting position produces unwanted movement.
+  1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Calibrate** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
   2. Select **Start controller**. This allows controller packets to reach RetroPie and creates the virtual input device.
   3. On RetroPie, run `grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices`. Look for the device name **PowerGlove Vision**. If it is missing, check pairing and the receiver service before changing emulator settings.
   4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **PowerGlove Vision**. Menu labels can vary with the RetroArch version.
@@ -135,6 +138,13 @@ Bad Street Brawler's Glove Zap uses simultaneous Left + Right through the
 standard gamepad path. The RetroPie installer checks the game-specific FCEUmm option. Follow any
 remaining ACTION message and rerun the installer after resolving it. See [Glove Zap setup](CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
 No extra-trigger assignment or receiver change is required.
+
+A calibration uses 24 clear observations with at least 70% tracking confidence.
+Repeating it from the same position should give closely comparable center,
+scale, wrist, and jitter values, but natural landmark variation prevents an
+exact numeric match. Calibration is shared by every profile. Closing Dashboard
+after this check stops its 5 fps diagnostic preview work without stopping hand
+tracking or controller delivery.
 
 For Super Glove Ball testing, enter RetroPie's launch menu while starting the
 ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the

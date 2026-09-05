@@ -42,6 +42,18 @@ class TuningTests(unittest.TestCase):
         self.assertLess(pair['off'], pair['on'])
         self.assertLess(pair['on'], .8)
 
+    def test_idle_manager_skips_live_measurement_work_and_reuses_configuration(self):
+        manager = TuningManager(self.path, lambda: self.now)
+        config = GestureConfig()
+        self.assertIs(manager.configuration(config), config)
+        self.assertIs(manager.configuration(config), config)
+        manager.observe(
+            HandObservation(1, True, .99, .7, .2, .3, 1.0, index_curl=.8),
+            self.calibration, config, True,
+        )
+        self.assertEqual(manager.latest, {})
+        self.assertFalse(manager.ready)
+
     def test_noisy_overlapping_incomplete_or_inconsistent_samples_rejected(self):
         with self.assertRaises(ValueError): suggest('index', self.phases()[:2])
         for phase in (0, 1, 2):

@@ -87,6 +87,19 @@ may replace a Dashboard selection when a game starts or ends.
 
 ### Vision startup and timing
 
+Camera capture uses the complete 640×480 field of view at 60 fps, allowing each
+recognition pass to begin with a recent frame even when inference runs more
+slowly. On
+MediaPipe builds that expose the legacy graph, its two inference stages use up
+to four CPU threads (`--inference-threads 4`) to reduce latency. Unsupported
+builds safely retain MediaPipe's normal inference behavior.
+
+Camera-preview drawing and JPEG encoding run only while a browser is actively
+watching the Dashboard or Glove Academy stream. Closing those pages leaves the
+camera tracker and controller active but reserves preview work for gameplay.
+When a preview is open, it is limited to 5 fps (`--preview-fps 5`) so the live
+diagnostic view does not compete with controller recognition for every frame.
+
 The worker preloads OpenCV and MediaPipe on its background vision thread as
 soon as its control server is available. Preloading imports the libraries;
 it does not open the camera, create a hand tracker, or process images. The
@@ -181,7 +194,7 @@ interpretation because its depth units differ.
 Glove Academy and gameplay share held finger and movement states. Glove Zap and Pull Back
 remain recognized until movement falls below their respective release thresholds, and a confirmed menu pose
 still satisfies its lesson after the short controller pulse ends. The browser
-preview is capped at 15 fps; status updates follow each tracking calculation.
+preview is capped at 5 fps; status updates follow each tracking calculation.
 
 The app reuses its saved resting reference across Glove Academy, gameplay, profile
 changes, and restarts. It calibrates automatically only when that reference is
@@ -193,6 +206,10 @@ and recovery details.
 
 **Start controller** and **Stop controller** affect live delivery only. After
 an application or system restart, delivery remains stopped until you start it.
+When RetroPie announces a registered game, a six-second launch guard sends no
+controller packets while the runcommand screen is active. Delivery resumes
+automatically afterward if it was already started; the guard does not change the
+saved profile or turn a stopped controller on.
 
 ### Active UNO Q device file
 
@@ -533,6 +550,10 @@ useful for understanding the defaults; personal tuning is managed through Glove 
 | --- | --- | --- |
 | `move_on` | Palm displacement from center, normalized by palm size | Movement activates sooner |
 | `move_off` | Palm displacement at which active movement releases | Movement stays active farther back toward center |
+| `coordinate_edge_margin` | Camera margin excluded from native X/Y travel | Native travel reaches its edge closer to the camera boundary |
+| `coordinate_smoothing_min` | Minimum weight assigned to the newest native coordinate | Small native movements respond more immediately but may show more jitter |
+| `coordinate_smoothing_max` | Maximum newest-coordinate weight during deliberate travel | Large native movements catch up less quickly |
+| `coordinate_motion_boost` | How quickly movement raises the coordinate weight toward its maximum | Native travel receives less immediate acceleration |
 | `curl_on` | Normalized finger curl, where `0` is straight and `1` is tightly curled | Curl actions activate with less bend |
 | `curl_off` | Curl amount at which an active curl releases | Curl stays active until the finger is straighter |
 | `roll_on` | Wrist rotation from the centred angle | Roll actions activate with less rotation |
@@ -552,6 +573,10 @@ The supplied shared recognition defaults are:
 {
   "move_on": 0.28,
   "move_off": 0.14,
+  "coordinate_edge_margin": 0.08,
+  "coordinate_smoothing_min": 0.70,
+  "coordinate_smoothing_max": 1.00,
+  "coordinate_motion_boost": 4.00,
   "curl_on": 0.50,
   "curl_off": 0.35,
   "roll_on": 0.58,
@@ -837,9 +862,20 @@ See the installation guide for the investigation status and Arduino guidance.
 
 ## Saved neutral-hand calibration
 
-The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, wrist angle, and normal X/Y positional jitter; it is not a personally trained gesture model. The jitter estimate can raise the shared movement thresholds above their baseline, but never makes them more sensitive. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating position.
+The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, wrist angle, and normal X/Y positional jitter; it is not a personally trained gesture model. The jitter estimate can raise the shared movement thresholds above their baseline, but never makes them more sensitive. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating or standing position.
 
-On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Hold your hand in a comfortable neutral position, then use **Calibrate** if necessary. A storage failure is reported as `calibration_save_error` in status; the reference remains usable in memory but will not survive a worker restart. The file is local runtime data, not a source or release-package file.
+On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Calibration requires 24 complete observations at 70% hand confidence or better. It averages palm center and apparent size, uses a circular mean for wrist angle, and records the 95th-percentile X/Y deviation as normal jitter. Hold a relaxed open hand still at the intended neutral point and distance. Repeating from the same physical setup should produce a close reference, not identical floating-point values, because camera landmarks vary from frame to frame.
+
+The release-owned `config/profiles.json` contains the portable starting point:
+movement thresholds, coordinate range, stabilization, finger, roll, depth,
+pulse, and tracking-loss defaults. The installer's package validator requires
+that file and the recognition modules, and updates back up and replace the
+shared profile file. It deliberately excludes `data/calibration.json`; copying
+one person's palm coordinates and apparent scale to another camera would create
+a misleading neutral point. Existing neutral calibration and personal gesture
+tuning remain preserved during updates. A storage failure is reported as
+`calibration_save_error` in status; the reference remains usable in memory but
+will not survive a worker restart.
 
 ## Command-line reference
 
@@ -1019,7 +1055,7 @@ maintainer's board and is not appropriate for other installations.
 
 | Script or setting | Arguments and defaults | Effect |
 | --- | --- | --- |
-| `scripts/deploy-uno-q-wifi.sh` | Optional positional `USER@HOST`; `-h` or `--help` | Transfers the Linux application, preserves `data/`, restarts the container, and checks web routes. Does not update RetroPie or flash the matrix sketch. |
+| `scripts/deploy-uno-q-wifi.sh` | Optional positional `USER@HOST`; `-h` or `--help`; optional `UNO_Q_SSH_IDENTITY` private-key path | Transfers the Linux application, preserves `data/`, restarts the container, and checks web routes. Does not update RetroPie or flash the matrix sketch. |
 | `UNO_Q_SSH_TARGET` | Environment variable; overridden by a positional destination | Sets the SSH destination. Without either setting, deployment falls back to the maintainer's board. |
 | `UNO_Q_APP_DIR` | Environment variable; default `/home/arduino/ArduinoApps/powerglove-vision` | Remote deployment directory. Changing it does not change the shutdown helper's fixed path or the machine installer's path requirement. |
 | `scripts/install-uno-q-shutdown-helper.sh` | Optional positional `USER@HOST`; `-h` or `--help` | Installs the fixed shutdown watcher, service, and readiness rule. Uses the positional destination, then `UNO_Q_SSH_TARGET`, then the maintainer's fallback. The application directory is fixed. |

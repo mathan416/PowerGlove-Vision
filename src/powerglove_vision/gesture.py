@@ -75,6 +75,13 @@ class GestureConfig:
     """Hold movement, curl, roll, depth, pulse, and tracking-loss thresholds."""
     move_on: float = 0.28
     move_off: float = 0.14
+    # Retained so older profile files remain loadable; native X/Y now use the
+    # calibrated center and camera boundaries instead of hand-width gain.
+    coordinate_gain: float = 0.35
+    coordinate_edge_margin: float = 0.08
+    coordinate_smoothing_min: float = 0.70
+    coordinate_smoothing_max: float = 1.00
+    coordinate_motion_boost: float = 4.00
     curl_on: float = 0.50
     curl_off: float = 0.35
     roll_on: float = 0.58
@@ -143,6 +150,13 @@ def _clamp(value: float, low: float, high: float) -> float:
 def _axis(value: float) -> int:
     """Convert a normalized signed value to the virtual gamepad axis range."""
     return round(_clamp(value, -1.0, 1.0) * AXIS_MAX)
+
+
+def _field_axis(position: float, center: float, margin: float) -> int:
+    """Map either side of a calibrated center to the usable camera boundary."""
+    edge = _clamp(margin, 0.0, 0.45)
+    span = center - edge if position < center else 1.0 - edge - center
+    return _axis((position - center) / max(0.05, span))
 
 
 def _circular_delta(value: float, origin: float) -> float:
@@ -217,6 +231,8 @@ class GestureEngine:
         self._sequence = 0
         self._last_seen = 0.0
         self._last_state: ControllerState | None = None
+        self._filtered_palm_x: float | None = None
+        self._filtered_palm_y: float | None = None
         self._push_was_active = False
         self._pull_was_active = False
         self._program_toggle = False
@@ -258,10 +274,15 @@ class GestureEngine:
         self._program_toggle = False
         self._zap_until = 0.0
         self._menu_guard_active = False
+        self._filtered_palm_x = None
+        self._filtered_palm_y = None
 
     def _collect_calibration(self, observation: HandObservation) -> None:
         """Accumulate valid frames and derive a stable neutral-hand reference."""
-        if observation.detected and observation.palm_scale > 0.01:
+        # Use the same confidence floor as guided tuning. A weakly located hand
+        # must not shift the shared center, scale, wrist, or jitter reference.
+        if (observation.detected and observation.confidence >= 0.70
+                and observation.palm_scale > 0.01):
             self._samples.append(observation)
         if len(self._samples) < self.calibration_frames:
             return
@@ -346,6 +367,8 @@ class GestureEngine:
             self._start_gesture.update(False, observation.timestamp)
             self._select_gesture.update(False, observation.timestamp)
             self._menu_guard_active = False
+            self._filtered_palm_x = None
+            self._filtered_palm_y = None
             for switch in self._switches.values():
                 switch.active = False
             self._last_state = ControllerState.released(
@@ -380,6 +403,25 @@ class GestureEngine:
         roll = _circular_delta(observation.roll, reference.roll) / (math.pi / 2)
 
         cfg = self.config
+        # Stabilize continuous coordinates without delaying deliberate motion.
+        # A nearly stationary hand gets stronger filtering; a large change
+        # raises alpha toward the configured maximum and catches up quickly.
+        if self._filtered_palm_x is None or self._filtered_palm_y is None:
+            self._filtered_palm_x = observation.palm_x
+            self._filtered_palm_y = observation.palm_y
+        else:
+            for name, value in (
+                ("_filtered_palm_x", observation.palm_x),
+                ("_filtered_palm_y", observation.palm_y),
+            ):
+                previous = getattr(self, name)
+                alpha = _clamp(
+                    cfg.coordinate_smoothing_min
+                    + abs(value - previous) * cfg.coordinate_motion_boost,
+                    cfg.coordinate_smoothing_min,
+                    cfg.coordinate_smoothing_max,
+                )
+                setattr(self, name, previous + alpha * (value - previous))
         dpad = {
             "left": self._switches["left"].negative(dx, *cfg.movement_pair("left", reference)),
             "right": self._switches["right"].positive(dx, *cfg.movement_pair("right", reference)),
@@ -508,8 +550,14 @@ class GestureEngine:
             confidence=observation.confidence,
             calibrated=True,
             axes={
-                "x": _axis(dx / 1.25),
-                "y": _axis(dy / 1.25),
+                # Native coordinates span the usable camera field on each side
+                # of neutral. Direction switches retain hand-relative thresholds.
+                "x": _field_axis(
+                    self._filtered_palm_x, reference.palm_x, cfg.coordinate_edge_margin
+                ),
+                "y": _field_axis(
+                    self._filtered_palm_y, reference.palm_y, cfg.coordinate_edge_margin
+                ),
                 "z": _axis(depth / 0.75),
                 "roll": _axis(roll),
             },

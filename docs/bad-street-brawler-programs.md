@@ -181,7 +181,9 @@ The launch hook sends an authenticated profile request. The UNO Q releases held
 controls, changes the mapping, reuses the saved calibration, and acknowledges
 the new profile on its blue matrix. If no valid calibration is saved, it collects
 an initial reference while you hold your open hand still in a comfortable
-resting position.
+resting position. It uses 24 observations at 70% confidence or better; repeating
+the same center, distance, and wrist pose produces a similar rather than
+bit-for-bit identical reference.
 
 ```json
 {

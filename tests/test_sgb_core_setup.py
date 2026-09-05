@@ -4,6 +4,11 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added reversible Super Glove Ball core-selection coverage.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify reversible per-ROM native and FCEUmm selection."""
 
 import importlib.util
 import tempfile
@@ -40,6 +45,7 @@ class SuperGloveBallCoreSetupTests(unittest.TestCase):
         native.write_bytes(b"native")
         system_path, system_text, games_path, games_text = sgb.plan(self.prefix, self.rom, "native")
         self.assertIn("POWERGLOVE_NATIVE_STATE=/run/powerglove/native-state", system_text)
+        self.assertIn("--device=1:517", system_text)
         self.assertIn(str(native), system_text)
         option_path, option_text = sgb.native_options(self.prefix)
         self.assertIn("--appendconfig " + str(option_path), system_text)

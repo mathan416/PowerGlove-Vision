@@ -67,6 +67,14 @@ and repeatable updates while preserving personal settings. The release-owned
 personal tuning under `data/` remain in place. Installer assets
 must be published before the release download commands become available.
 
+The tested shared baseline includes responsive `0.28` activation and `0.14`
+release thresholds, full-camera-field native X/Y mapping with an 8% edge margin,
+and low-lag adaptive coordinate stabilization. These are suitable starting
+values for every installation. A neutral calibration is different: it records
+the palm center, apparent hand size, wrist angle, and resting jitter for one
+camera and playing position, so the installer never substitutes another
+person's recorded coordinates for yours.
+
 When a registered Super Glove Ball ROM is present, the RetroPie installer offers
 to build the optional native core locally from pinned GPLv2 Nestopia source. If
 you decline, nothing changes and FCEUmm remains available. If you accept, both
@@ -83,6 +91,12 @@ changing your playing position. Direction activation and release are shared by
 all FCEUmm profiles and automatically rise above measured resting-hand jitter;
 you do not normally calibrate each direction. Some profiles replace ordinary hand movement
 with wrist steering or other controls, as shown below.
+
+Calibration accepts 24 clear hand observations at 70% confidence or better.
+Holding the same neutral pose at the same distance should reproduce a very
+similar reference, but ordinary tracking variation means the saved numbers will
+not be identical. A completed calibration is saved atomically and reused across
+games and restarts; an incomplete attempt does not replace the previous file.
 
 Across the profiles, briefly show a **V sign** to send Start and
 a **thumbs-up with the other fingers closed** to send Select. These poses
@@ -158,6 +172,12 @@ FCEUmm and the same global recognition settings.
 With **Gestures off** selected, the camera stays closed. Choose an active profile
 or open Glove Academy to begin. Wait for the camera view before practicing or
 playing; starting immediately after a reboot can take longer.
+
+The live camera is diagnostic rather than part of controller output. Preview
+drawing, landmark detail, and JPEG encoding occur only while a browser is
+watching the stream and are capped at 5 fps. Close Dashboard or Glove Academy
+while playing to reserve all avoidable work for recognition; tracking and
+controller delivery continue normally.
 
 **Stop controller** pauses delivery while leaving active tracking available.
 **Gestures off** closes the camera. **Shutdown** requests a Linux halt, but

@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
-# Build the pinned stock FCEUmm core used by the deterministic response benchmark.
+# Project: PowerGlove Vision
+# File: scripts/build-fceumm-benchmark.sh
+# Purpose: Build the pinned stock FCEUmm core used by the deterministic response benchmark.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added an isolated pinned FCEUmm benchmark build.
+# Full history: docs/CHANGELOG.md and Git history.
 set -eu
 
 revision=236ccdfc911e84c60fea6b9d0699c2d440a8de14

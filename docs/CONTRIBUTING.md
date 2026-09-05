@@ -43,9 +43,9 @@ Keep headings, images, and captions together where practical when checking PDFs.
 
 ## Source style and documentation
 
-Every executable script, source file, service unit, and application
-configuration file that supports comments must begin with the standard
-project header. Preserve a shebang
+Every project-authored executable script, source file, service unit, and
+application configuration file that supports comments must begin with the
+standard project header. Preserve a shebang
 as the first line when one is required. The header must identify:
 
   - project and repository-relative filename;
@@ -54,6 +54,14 @@ as the first line when one is required. The header must identify:
   - `SPDX-License-Identifier: MIT`;
   - a short dated change log;
   - `docs/CHANGELOG.md` and Git as the complete history.
+
+Imported or modified third-party source is the exception: retain its original
+header, authorship, copyright, and license language verbatim. Do not replace or
+prepend those notices with the PowerGlove Vision header. Keep project changes
+in a separate patch and an additive component change ledger, and install or
+distribute that ledger with the upstream license and notices. If a vendor source
+tree is accepted later, place it under `third_party/` or `vendor/`; the source
+audit deliberately exempts those paths from project-header requirements.
 
 Python modules need a useful module docstring. Public classes and functions,
 plus non-obvious security, protocol, lifecycle, and numerical helpers, need
@@ -214,6 +222,10 @@ share the scanning-letter matrix renderer and its 160-millisecond frame timing.
 Before releasing recognition changes, validate three-step hand setup and
 individual tuning, including users who skip setup. Exercise V-sign and thumbs-up
 with different curl ranges, incorrect extended fingers, and incomplete releases.
+Verify neutral calibration ignores undetected, incomplete-scale, and sub-70%
+confidence observations; requires 24 accepted frames in production; preserves
+the previous saved reference until atomic completion; and reproduces a close,
+not necessarily identical, result for the same simulated stance.
 Check insufficient samples, tracking loss, overlapping ranges, and calibration
 changes. Verify preview expiry, save/reload, selected-component reset, existing
 version-1 files, and controller suppression throughout tuning. Automatic

@@ -47,6 +47,47 @@ class GestureTests(unittest.TestCase):
         self.assertFalse(state.calibrated)
         self.assertFalse(any(state.dpad.values()))
 
+    def test_calibration_uses_only_confident_complete_hand_samples(self):
+        engine = GestureEngine("bad_street_brawler", calibration_frames=3)
+        for t, changes in (
+            (0.0, {"confidence": .69, "palm_x": .9}),
+            (0.1, {"palm_scale": .01, "palm_x": .9}),
+            (0.2, {"detected": False, "palm_x": .9}),
+        ):
+            self.assertFalse(engine.update(hand(t, **changes)).calibrated)
+        for t, x in ((.3, .49), (.4, .50), (.5, .51)):
+            engine.update(hand(t, palm_x=x))
+        self.assertTrue(engine.calibrated)
+        self.assertAlmostEqual(engine.calibration.palm_x, .5)
+
+    def test_repeated_calibration_from_same_pose_stays_close(self):
+        first = GestureEngine("super_glove_ball", calibration_frames=4)
+        second = GestureEngine("super_glove_ball", calibration_frames=4)
+        for index, (x, y, scale, roll) in enumerate((
+            (.598, .621, .064, -2.04),
+            (.603, .618, .063, -2.02),
+            (.600, .623, .065, -2.03),
+            (.601, .620, .064, -2.05),
+        )):
+            first.update(hand(index / 10, palm_x=x, palm_y=y,
+                              palm_scale=scale, roll=roll))
+        for index, (x, y, scale, roll) in enumerate((
+            (.602, .619, .064, -2.03),
+            (.599, .622, .065, -2.04),
+            (.604, .620, .063, -2.02),
+            (.600, .621, .064, -2.05),
+        )):
+            second.update(hand(index / 10, palm_x=x, palm_y=y,
+                               palm_scale=scale, roll=roll))
+        self.assertAlmostEqual(first.calibration.palm_x,
+                               second.calibration.palm_x, delta=.003)
+        self.assertAlmostEqual(first.calibration.palm_y,
+                               second.calibration.palm_y, delta=.003)
+        self.assertAlmostEqual(first.calibration.palm_scale,
+                               second.calibration.palm_scale, delta=.002)
+        self.assertAlmostEqual(first.calibration.roll,
+                               second.calibration.roll, delta=.02)
+
     def test_comfortable_index_curl_uses_shared_held_state(self):
         engine = calibrated_engine("program_h")
         for t, curl, active in ((.1, .29, False), (.2, .54, True),
@@ -174,8 +215,37 @@ class GestureTests(unittest.TestCase):
     def test_super_glove_preserves_analogue_and_fingers(self):
         engine = calibrated_engine("super_glove_ball")
         state = engine.update(hand(0.1, palm_x=0.58, ring_curl=0.8))
-        self.assertGreater(state.axes["x"], 0)
+        expected_x = round((0.58 - 0.50) / (0.50 - engine.config.coordinate_edge_margin) * 32767)
+        self.assertEqual(state.axes["x"], expected_x)
         self.assertEqual(state.fingers["ring"], 2)
+
+    def test_continuous_coordinates_span_the_usable_camera_field(self):
+        left = calibrated_engine("super_glove_ball").update(hand(0.1, palm_x=0.08))
+        right = calibrated_engine("super_glove_ball").update(hand(0.1, palm_x=0.92))
+        top = calibrated_engine("super_glove_ball").update(hand(0.1, palm_y=0.08))
+        bottom = calibrated_engine("super_glove_ball").update(hand(0.1, palm_y=0.92))
+        self.assertEqual(left.axes["x"], -32767)
+        self.assertEqual(right.axes["x"], 32767)
+        self.assertEqual(top.axes["y"], -32767)
+        self.assertEqual(bottom.axes["y"], 32767)
+
+    def test_continuous_coordinates_smooth_jitter_but_follow_large_motion(self):
+        engine = calibrated_engine("super_glove_ball")
+        first = engine.update(hand(0.1, palm_x=0.60))
+        jitter = engine.update(hand(0.2, palm_x=0.602))
+        usable_half_width = 0.50 - engine.config.coordinate_edge_margin
+        raw_jitter_step = round(0.002 / usable_half_width * 32767)
+        self.assertLess(jitter.axes["x"] - first.axes["x"], raw_jitter_step)
+        moved = engine.update(hand(0.3, palm_x=0.80))
+        raw_large_motion = round((0.80 - 0.50) / usable_half_width * 32767)
+        self.assertEqual(moved.axes["x"], raw_large_motion)
+
+    def test_continuous_filter_resets_after_tracking_loss(self):
+        engine = calibrated_engine("super_glove_ball")
+        engine.update(hand(0.1, palm_x=0.70))
+        engine.update(HandObservation(timestamp=0.3, detected=False))
+        centered = engine.update(hand(0.4))
+        self.assertEqual(centered.axes["x"], 0)
 
     def test_all_cartridge_free_programs_are_available(self):
         for letter in "abcdefghi":

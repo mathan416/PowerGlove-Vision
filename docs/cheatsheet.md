@@ -438,6 +438,11 @@ Calibration records your resting hand position, apparent size, and wrist angle
 in the UNO Q's `data/calibration.json`. It survives profile changes, Learn
 sessions, and restarts. Include it in private backups. Recalibrate when your
 physical setup changes or the resting hand position produces unwanted movement.
+The app uses 24 clear observations at 70% confidence or better. Returning to the
+same center, distance, and wrist pose produces a similar reference, although
+normal camera variation means the saved values will not be exactly equal.
+Installers preserve this private reference while replacing the shared tested
+recognition baseline in `config/profiles.json`.
 The camera overlay's **Right** or **Left** label identifies the hand; its score
 is confidence in that identification, not confidence in a movement command.
 

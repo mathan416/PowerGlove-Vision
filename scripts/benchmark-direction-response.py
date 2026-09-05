@@ -5,6 +5,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added matched native and FCEUmm direction-response benchmarks.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Measure core input pickup and first input-caused video divergence in frames."""
 
@@ -56,6 +59,7 @@ class BenchmarkFrontend(trace_runner.HeadlessFrontend):
         super().__init__(scratch)
 
     def input_state(self, port: int, device: int, _index: int, ident: int) -> int:
+        """Record joypad queries and return the current deterministic mask."""
         if port == 0:
             self.input_devices.add(device)
         if port != 0 or device != trace_runner.RETRO_DEVICE_JOYPAD:
@@ -100,6 +104,7 @@ class Session:
         self.version = (information.library_version or b"").decode(errors="replace")
 
     def run(self, joypad_mask: int = 0) -> tuple[int | None, bool]:
+        """Advance one emulated frame and report its video CRC and input poll."""
         self.frontend.joypad_mask = joypad_mask
         self.frontend.run_number += 1
         run_number = self.frontend.run_number
@@ -107,6 +112,7 @@ class Session:
         return self.frontend.last_video_crc, run_number in self.frontend.queried_runs
 
     def save(self) -> bytes:
+        """Serialize the current deterministic emulator state."""
         size = self.core.retro_serialize_size()
         payload = ctypes.create_string_buffer(size)
         if not size or not self.core.retro_serialize(payload, size):
@@ -114,11 +120,13 @@ class Session:
         return payload.raw
 
     def load(self, payload: bytes) -> None:
+        """Restore a previously serialized emulator state."""
         buffer = ctypes.create_string_buffer(payload)
         if not self.core.retro_unserialize(buffer, len(payload)):
             raise RuntimeError(self.name + " rejected its savestate")
 
     def close(self) -> None:
+        """Unload the ROM and release the libretro core."""
         self.core.retro_unload_game()
         self.core.retro_deinit()
 
@@ -238,6 +246,7 @@ def benchmark_fceumm(core: Path, rom: Path, scratch: Path, frames: int,
 
 
 def native_sample(writer: NativeStateWriter, sequence: int, x: int = 0, y: int = 0) -> None:
+    """Publish one valid calibrated native X/Y sample for a benchmark frame."""
     writer.write({
         "sequence": sequence, "profile": "super_glove_ball",
         "detected": True, "calibrated": True,
@@ -276,11 +285,13 @@ def benchmark_native(core: Path, rom: Path, state: Path, scratch: Path, frames: 
         sequence = 10000
         stimuli = {
             "left": (-32767, 0), "right": (32767, 0),
-            "up": (0, 32767), "down": (0, -32767),
+            # Native-state Y follows camera coordinates: negative is up.
+            "up": (0, -32767), "down": (0, 32767),
         }
         directions = {}
         for name, (x, y) in stimuli.items():
             def before(branch, _frame, x=x, y=y):
+                """Publish neutral or changed coordinates before each branch frame."""
                 nonlocal sequence
                 sequence += 1
                 native_sample(writer, sequence, *(x, y) if branch == "changed" else (0, 0))
@@ -296,6 +307,7 @@ def benchmark_native(core: Path, rom: Path, state: Path, scratch: Path, frames: 
             active_saved = session.save()
 
             def before_release(branch, _frame, x=x, y=y):
+                """Continue the hold or return the changed branch to neutral."""
                 nonlocal sequence
                 sequence += 1
                 native_sample(writer, sequence, *((0, 0) if branch == "changed" else (x, y)))
@@ -309,6 +321,7 @@ def benchmark_native(core: Path, rom: Path, state: Path, scratch: Path, frames: 
         sweep = {}
         for magnitude in (1024, 2048, 4096, 8192, 16384, 32767):
             def before(branch, _frame, magnitude=magnitude):
+                """Publish one positive-X magnitude only to the changed branch."""
                 nonlocal sequence
                 sequence += 1
                 native_sample(writer, sequence, magnitude if branch == "changed" else 0, 0)
@@ -327,6 +340,7 @@ def benchmark_native(core: Path, rom: Path, state: Path, scratch: Path, frames: 
 
 
 def parser() -> argparse.ArgumentParser:
+    """Build the deterministic benchmark command-line interface."""
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("--nestopia-core", type=Path, required=True)
     result.add_argument("--super-glove-ball-rom", type=Path, required=True)
@@ -342,6 +356,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main() -> int:
+    """Run requested core lanes and emit their machine-readable report."""
     args = parser().parse_args()
     if not 1 <= args.frames <= 120:
         raise ValueError("--frames must be between 1 and 120")

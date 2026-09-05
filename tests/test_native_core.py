@@ -4,6 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added isolation, protocol evidence, and distribution checks.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Check the reproducible native research spike without building over the network."""
 
@@ -24,6 +27,8 @@ class NativeCoreTests(unittest.TestCase):
         self.assertNotIn("reset --hard", script)
         self.assertIn('cat-file -e "$revision^{commit}"', script)
         self.assertIn('make -C "$source_dir/libretro" -j"${JOBS:-2}" >&2', script)
+        self.assertIn("The patch changed Nestopia's original copyright/license header", script)
+        self.assertIn("NstInpPowerGlove.cpp", script)
 
     def test_patch_has_coherent_stale_safe_xy_bridge_and_trace(self):
         patch = (ROOT / "native/nestopia-powerglove/nestopia-powerglove.patch").read_text()
@@ -36,8 +41,8 @@ class NativeCoreTests(unittest.TestCase):
             "glove.y =",
             "glove.x = 128",
             "glove.y = 128",
-            "Nestopia emits Y as 128-glove.y",
-            "(uint8_t)(0U - (uint8_t)",
+            "Nestopia's 128-glove.y packet",
+            "host value directly compensates",
             "PowerGloveVisionNativeEnabled() ? 10U : 12U",
             "glove.distance = 0",
             "glove.wrist = 0",
@@ -69,10 +74,23 @@ class NativeCoreTests(unittest.TestCase):
     def test_distribution_keeps_gpl_notice_with_installed_core(self):
         installer = (ROOT / "scripts/install-nestopia-powerglove.sh").read_text()
         notice = (ROOT / "native/nestopia-powerglove/README.md").read_text()
+        changes = (ROOT / "native/nestopia-powerglove/CHANGES.md").read_text()
         self.assertIn('destination/source/COPYING', installer)
         self.assertIn('target/COPYING', installer)
+        self.assertIn('POWERGLOVE-VISION-CHANGES.md', installer)
         self.assertIn("GNU General Public License, version 2", notice)
         self.assertIn("not a compiled core", notice)
+        self.assertIn("Martin Freij", changes)
+        self.assertIn("leaves it byte-for-byte unchanged", changes)
+        self.assertIn("camera-to-Nestopia Y orientation", changes)
+
+    def test_patch_does_not_remove_upstream_attribution(self):
+        patch = (ROOT / "native/nestopia-powerglove/nestopia-powerglove.patch").read_text()
+        removed = [line[1:] for line in patch.splitlines()
+                   if line.startswith("-") and not line.startswith("---")]
+        protected_words = ("copyright", "license", "nestopia is free software", "martin freij")
+        self.assertFalse(any(word in line.lower()
+                             for line in removed for word in protected_words))
 
 
 if __name__ == "__main__":

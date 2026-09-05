@@ -166,10 +166,10 @@ index 3c7d92f..13b4fca 100644
 +   /* X/Y are the evidence-gated spike. Keep every unverified field neutral
 +    * until controlled ROM traces establish its encoding and semantics. */
 +   glove.x = (uint8_t)((((int32_t)sample.x + 32767) * 255 + 32767) / 65534);
-+   /* Nestopia emits Y as 128-glove.y, unlike X's glove.x-128. Mirror the
-+    * host value here so both packet axes span signed -128..127 cleanly. */
-+   glove.y = (uint8_t)(0U - (uint8_t)
-+      ((((int32_t)sample.y + 32767) * 255 + 32767) / 65534));
++   /* Camera Y increases downward. Cabinet validation showed that passing the
++    * host value directly compensates for Nestopia's 128-glove.y packet
++    * transform; the earlier negation inverted physical up and down. */
++   glove.y = (uint8_t)((((int32_t)sample.y + 32767) * 255 + 32767) / 65534);
 +   if (sample.buttons & (1 << 2))
 +      glove.buttons |= Core::Input::Controllers::PowerGlove::START;
 +   if (sample.buttons & (1 << 3))

@@ -4,6 +4,11 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added audited Power Glove ROM mapping coverage.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify the audited Power Glove game registry and protocol classifications."""
 
 import json
 import unittest

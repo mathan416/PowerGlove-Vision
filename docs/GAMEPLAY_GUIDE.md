@@ -30,6 +30,9 @@ appears and **Calibrate** becomes available before continuing.
 | **GB** | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> | Super Glove Ball |
 
 Confirm the profile on Dashboard and select **Start controller** when ready.
+At game launch, controls pause for six seconds so hand movement cannot operate
+RetroPie's runcommand screen. They resume automatically once the launch guard
+ends; you do not need to select **Start controller** again.
 
 ### The two gestures that work everywhere
 
@@ -341,7 +344,7 @@ changing the ROM or emulator.
 
   1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
   2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
-  3. Use **Calibrate** if your resting hand position produces unwanted movement or your physical setup has changed. Hold still while calibration completes, then select **Start controller** and return to the game.
+  3. Use **Calibrate** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended center and distance while 24 clear observations are collected, then select **Start controller** and return to the game. The same stance should produce a closely comparable—but not numerically identical—reference.
   4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
 
 The selection is temporary. Starting or ending a game sends a new command

@@ -54,6 +54,7 @@ class SharedDebugState:
         self.lock = threading.Lock()
         self.jpeg: bytes | None = None
         self.status: dict = {}
+        self.stream_clients = 0
         self.calibrate_requested = False
         self.controller_request: bool | None = None
         self.profile_request: tuple[str | None, str, str] | None = None
@@ -75,6 +76,21 @@ class SharedDebugState:
             if clear_frame:
                 self.jpeg = None
             self.status = status
+
+    def stream_opened(self) -> None:
+        """Record one active camera-preview consumer."""
+        with self.lock:
+            self.stream_clients += 1
+
+    def stream_closed(self) -> None:
+        """Release one active camera-preview consumer."""
+        with self.lock:
+            self.stream_clients = max(0, self.stream_clients - 1)
+
+    def has_stream_clients(self) -> bool:
+        """Return whether drawing and encoding a preview frame is useful."""
+        with self.lock:
+            return self.stream_clients > 0
 
     def request_calibration(self) -> None:
         """Queue one hand-centering request."""
@@ -179,13 +195,15 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/status":
                 with shared.lock:
                     status = dict(shared.status)
+                    status["preview_clients"] = shared.stream_clients
                 if shared.tuning is not None:
                     status["tuning"] = shared.tuning.snapshot()
                 body = json.dumps(status, indent=2).encode()
                 self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body)
             elif self.path == "/stream":
-                self.send_response(200); self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame"); self.end_headers()
+                shared.stream_opened()
                 try:
+                    self.send_response(200); self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame"); self.end_headers()
                     while True:
                         with shared.lock:
                             jpeg = shared.jpeg
@@ -194,6 +212,8 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                         threading.Event().wait(0.05)
                 except (BrokenPipeError, ConnectionResetError):
                     pass
+                finally:
+                    shared.stream_closed()
             else:
                 self.send_error(404)
 

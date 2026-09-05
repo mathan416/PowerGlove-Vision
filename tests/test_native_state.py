@@ -4,6 +4,11 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added native latest-sample encoding and safety coverage.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify the guarded latest-sample record used by custom Nestopia."""
 
 import tempfile
 import time

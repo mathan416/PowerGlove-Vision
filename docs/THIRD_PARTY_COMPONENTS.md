@@ -114,6 +114,7 @@ license does not replace the license of Nestopia or the resulting modified core.
 | Pinned revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
 | Upstream license | GNU General Public License, version 2 |
 | Local modification | `native/nestopia-powerglove/nestopia-powerglove.patch` |
+| Modification ledger | `native/nestopia-powerglove/CHANGES.md` |
 | Build recipe | `scripts/build-nestopia-powerglove.sh` |
 
 Ordinary releases contain the patch and build recipe, not a compiled Nestopia
@@ -121,7 +122,11 @@ core. If the user accepts the RetroPie installer's optional native-core step,
 the target machine downloads the pinned upstream source, including its author
 notices and `COPYING` file, applies the patch, and builds for its own processor.
 The core installer places `COPYING` and the local distribution note beside the
-installed binary. Stock Nestopia remains untouched and FCEUmm remains available.
+installed binary. It also installs the separate PowerGlove Vision modification
+ledger. The original Nestopia copyright/GPL header in
+`NstInpPowerGlove.cpp` remains byte-for-byte intact, and the build stops if a
+future patch changes it. Stock Nestopia remains untouched and FCEUmm remains
+available.
 
 If prebuilt cores are published in the future, produce separately identified
 artifacts for every tested RetroPie architecture. Accompany each binary with

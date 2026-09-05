@@ -72,7 +72,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--camera", default="auto", help="camera index, or 'auto'")
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
-    parser.add_argument("--fps", type=int, default=30)
+    parser.add_argument("--fps", type=int, default=60)
+    parser.add_argument(
+        "--inference-threads", type=int, default=4,
+        help="CPU threads for the legacy MediaPipe inference calculators",
+    )
+    parser.add_argument(
+        "--preview-fps", type=float, default=5.0,
+        help="maximum diagnostic camera-preview rate",
+    )
     parser.add_argument("--glove-color", choices=("none", "white", "black"), default="none")
     parser.add_argument("--no-mirror", action="store_true")
     parser.add_argument("--config", type=Path)
@@ -83,6 +91,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile-listen", default="0.0.0.0")
     parser.add_argument("--profile-port", type=int, default=55356)
     parser.add_argument("--controller-enabled", action="store_true", help="begin sending controller packets")
+    parser.add_argument(
+        "--launch-guard-ms", type=int, default=6000,
+        help="pause controller packets after a RetroPie game-start request",
+    )
     return parser
 
 
@@ -179,7 +191,12 @@ def _prepare_vision(args):
             raise RuntimeError(f"MediaPipe hand model not found: {model_path}")
         log_startup_stage("model verification/recovery", preparation_started)
         cv2, capture = _open_camera(args)
-        tracker = MediaPipeTracker(args.glove_color, mirror=not args.no_mirror, model_path=model_path)
+        tracker = MediaPipeTracker(
+            args.glove_color,
+            mirror=not args.no_mirror,
+            model_path=model_path,
+            inference_threads=args.inference_threads,
+        )
         log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
     except Exception:
@@ -190,6 +207,11 @@ def _prepare_vision(args):
 def _effective_profile(profile: str | None, practice_mode: bool) -> str | None:
     """Choose a tracking profile while preserving an intentionally selected off state."""
     return PRACTICE_PROFILE if practice_mode else profile
+
+
+def _launch_guard_active(deadline: float, now: float | None = None) -> bool:
+    """Return whether RetroPie's pre-emulator input guard is still active."""
+    return (time.monotonic() if now is None else now) < deadline
 
 
 def _base_status(
@@ -248,7 +270,9 @@ def main() -> int:
     retry_at = 0.0
     read_failures = 0
     preview_at = 0.0
+    latest_diagnostics = {}
     vision_error: str | None = None
+    launch_guard_until = 0.0
 
     matrix.set_status(MatrixStatus.GESTURES_IDLE if current_profile is None else MatrixStatus.LOADING)
     matrix.set_profile(current_profile)
@@ -280,6 +304,13 @@ def main() -> int:
                     if request is not None:
                         current_game = request.rom or request.system or "No game"
                         profile_source = "RetroPie launch hook"
+                        # runcommand-onstart fires before RetroArch owns the
+                        # display. Keep an already-enabled glove from driving
+                        # the launch/configuration menu, then resume without
+                        # changing the user's explicit Start/Stop choice.
+                        if request.profile is not None:
+                            guard_ms = max(0, int(getattr(args, "launch_guard_ms", 6000)))
+                            launch_guard_until = time.monotonic() + guard_ms / 1000.0
                     else:
                         assert dashboard_request is not None
                         profile_source = dashboard_request[1]
@@ -384,7 +415,9 @@ def main() -> int:
                 if vision_job is None:
                     vision_job = _background_call(capture.read)
                     vision_operation = "read"
-                time.sleep(0.01)
+                # Poll quickly enough that a completed camera frame does not
+                # spend a visible fraction of the tracking interval waiting.
+                time.sleep(0.002)
                 continue
             ok, frame = completed_frame
             if not ok:
@@ -407,7 +440,13 @@ def main() -> int:
                 continue
             read_failures = 0
             inference_started = time.monotonic()
+            preview_watched = shared.has_stream_clients()
+            preview_due = preview_watched and inference_started >= preview_at
+            tracker.preview_enabled = preview_due
+            tracker.diagnostics_enabled = preview_due
             result = tracker.process(frame)
+            if preview_due:
+                latest_diagnostics = result.diagnostics
             if startup_timer is not None:
                 log_startup_stage("first inference", inference_started)
             engine.config = shared.tuning.configuration(engine_base_config)
@@ -423,7 +462,11 @@ def main() -> int:
                     print(f"Calibration retained in memory but not saved: {exc}", file=sys.stderr, flush=True)
             inference_finished = time.monotonic()
             # Gameplay output takes priority over matrix RPC and browser preview work.
-            receiver_available = sender.send(state) if controller_enabled and not practice_mode and not shared.tuning.active() else False
+            launch_guard_active = _launch_guard_active(launch_guard_until)
+            receiver_available = sender.send(state) if (
+                controller_enabled and not practice_mode and not shared.tuning.active()
+                and not launch_guard_active
+            ) else False
             sent_at = time.monotonic()
             matrix.set_status(
                 (MatrixStatus.TUNING if shared.tuning.active() else MatrixStatus.LEARNING)
@@ -449,7 +492,15 @@ def main() -> int:
             status["receiver_error"] = (
                 "Practice mode; controller transmission is paused"
                 if practice_mode
-                else (sender.last_error if controller_enabled else "Controller connection stopped")
+                else (
+                    "RetroPie launch guard; controller transmission is paused"
+                    if controller_enabled and launch_guard_active
+                    else (sender.last_error if controller_enabled else "Controller connection stopped")
+                )
+            )
+            status["launch_guard_active"] = launch_guard_active
+            status["launch_guard_remaining_ms"] = max(
+                0, round((launch_guard_until - time.monotonic()) * 1000)
             )
             status["controller_enabled"] = controller_enabled
             status["camera_available"] = True
@@ -462,15 +513,15 @@ def main() -> int:
             status["finger_curls"] = result.observation.fingers
             status["curl_threshold"] = engine.config.pair("index")[0]
             status["tuning"] = shared.tuning.snapshot()
-            status.update(result.diagnostics)
+            status.update(latest_diagnostics)
             # Publish control feedback every inference; encode video at most 15 fps.
             shared.update_status(status)
             if startup_timer is not None:
                 log_startup_stage("activation to active status", startup_timer)
                 startup_timer = None
-            if time.monotonic() < preview_at:
+            if not preview_due:
                 continue
-            preview_at = time.monotonic() + 1.0 / 15.0
+            preview_at = time.monotonic() + 1.0 / max(1.0, args.preview_fps)
             cv2.putText(
                 result.frame,
                 "PRACTICE" if practice_mode else (

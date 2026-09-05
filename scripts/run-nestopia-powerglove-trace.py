@@ -5,6 +5,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added deterministic exact-ROM native packet tracing.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Drive the research libretro core without installing it or retaining a ROM."""
 

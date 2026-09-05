@@ -5,6 +5,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added reversible native/FCEUmm per-ROM selection.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Safely select a Super Glove Ball emulator without changing other ROMs."""
 
@@ -89,7 +92,15 @@ def native_registration(prefix: Path) -> tuple[Path, str, Path, str]:
     if command == template or "%ROM%" not in command:
         raise ValueError("Cannot derive a safe native launch command from lr-fceumm.")
     option_path, option_text = native_options(prefix)
-    command = command.replace("%ROM%", "--appendconfig " + str(option_path) + " %ROM%", 1)
+    # RetroArch does not consistently apply input_libretro_device_p1 early
+    # enough for this core on RetroPie. Force the same validated device ID on
+    # the command line so retro_set_controller_port_device() is called for
+    # port 1 before the ROM begins polling the glove.
+    command = command.replace(
+        "%ROM%",
+        "--device=1:" + str(POWER_GLOVE_DEVICE) + " --appendconfig " + str(option_path) + " %ROM%",
+        1,
+    )
     command = "POWERGLOVE_NATIVE_STATE=/run/powerglove/native-state " + command
     return system_path, replace_setting(system_text, NATIVE, command), option_path, option_text
 

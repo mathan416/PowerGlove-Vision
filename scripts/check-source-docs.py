@@ -8,6 +8,7 @@
 # Change log:
 #   2026-09-03 - Added the repository source-documentation audit.
 #   2026-09-03 - Added the GitHub Actions workflow to audited configuration.
+#   2026-09-04 - Preserved upstream headers in accepted third-party source trees.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Audit tracked source files for required headers and useful Python docstrings."""
@@ -39,6 +40,7 @@ COMMENTED_CONFIGS = {
     "pyproject.toml",
 }
 UNDOCUMENTED_FRAMEWORK_METHODS = {"__init__", "do_GET", "do_POST", "log_message"}
+THIRD_PARTY_PREFIXES = ("third_party/", "vendor/")
 
 
 def tracked_source_files() -> list[Path]:
@@ -62,12 +64,16 @@ def tracked_source_files() -> list[Path]:
 
 def header_errors(path: Path) -> list[str]:
     """Return required header markers absent from a source file's opening block."""
+    if str(path).startswith(THIRD_PARTY_PREFIXES):
+        return []
     opening = "\n".join((ROOT / path).read_text().splitlines()[:20])
     return [marker for marker in HEADER_MARKERS if marker not in opening]
 
 
 def python_documentation_errors(path: Path) -> list[str]:
     """Return missing module or production interface docstrings for one Python file."""
+    if str(path).startswith(THIRD_PARTY_PREFIXES):
+        return []
     tree = ast.parse((ROOT / path).read_text(), filename=str(path))
     errors = []
     if ast.get_docstring(tree) is None:

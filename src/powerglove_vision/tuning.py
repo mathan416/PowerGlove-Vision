@@ -154,6 +154,7 @@ class TuningManager:
         self.last_frame = None
         self.calibration = None
         self.finger_feedback = {}
+        self._configuration_cache = None
 
     def _expire(self):
         """Discard temporary state when the browser lease ends."""
@@ -182,9 +183,14 @@ class TuningManager:
         """Overlay personal or preview thresholds without altering shipped defaults."""
         with self.lock:
             self._expire()
+            cache_key = (id(config), self.revision)
+            if self._configuration_cache is not None and self._configuration_cache[0] == cache_key:
+                return self._configuration_cache[1]
             values = dict(self.saved)
             values.update(self.preview or {})
-            return replace(config, thresholds=copy.deepcopy(values))
+            configured = replace(config, thresholds=copy.deepcopy(values)) if values else config
+            self._configuration_cache = (cache_key, configured)
+            return configured
 
     def snapshot(self) -> dict:
         """Return browser-safe progress and measurements without recording images."""
@@ -213,6 +219,13 @@ class TuningManager:
         """Sample each worker frame once, accepting only calibrated high-confidence hands."""
         with self.lock:
             self._expire()
+            if self.calibration is not None and calibration != self.calibration and self.session:
+                self.invalidate()
+            self.calibration = calibration
+            if not self.session:
+                self.ready = False
+                self.finger_feedback = {}
+                return
             self.last_observed = self.clock()
             self.base_config = replace(config, thresholds={})
             self.ready = calibrated and observation.detected and observation.confidence >= .7
@@ -222,9 +235,6 @@ class TuningManager:
                 requirements = dict.fromkeys(requirements, False)
             self.finger_feedback = finger_pose_feedback(config, self.gesture, requirements, self.latest)
             self.effective = {key: dict(zip(("on", "off"), config.pair(key))) for key in CHANNELS}
-            if self.calibration is not None and calibration != self.calibration and self.session:
-                self.invalidate()
-            self.calibration = calibration
             if not self.recording:
                 return
             started, samples = self.recording

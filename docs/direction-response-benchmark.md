@@ -86,7 +86,5 @@ python3 scripts/benchmark-direction-response.py \
 ```
 
 On macOS, use the emitted `.dylib` paths instead of `.so`. Build products,
-scratch state, reports, and ROMs are not release-package content.
-
-Add `--fceumm-rom "/path/to/Gun.Smoke (USA).nes"` to include the optional
-FCEUmm reference lane in the same report.
+scratch state, reports, and ROMs are not release-package content. The runner's
+`--fceumm-rom` option adds the optional Gun.Smoke reference lane.

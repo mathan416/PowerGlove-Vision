@@ -39,6 +39,7 @@ default target is:
 
 Environment overrides:
   UNO_Q_SSH_TARGET  SSH destination
+  UNO_Q_SSH_IDENTITY  Optional private-key path for this UNO Q
   UNO_Q_APP_DIR     Remote App Lab application directory
 USAGE
   exit 0
@@ -59,12 +60,20 @@ readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
 readonly REMOTE_ARCHIVE="/tmp/powerglove-vision-deploy.tar"
 readonly LOCAL_ARCHIVE="$(mktemp)"
 readonly LOCAL_METADATA_DIR="$(mktemp -d)"
-readonly -a SSH_OPTIONS=(
+SSH_OPTIONS=(
   -o BatchMode=yes
   -o ConnectTimeout=30
   -o ServerAliveInterval=10
   -o ServerAliveCountMax=12
 )
+if [[ -n "${UNO_Q_SSH_IDENTITY:-}" ]]; then
+  if [[ ! -f "${UNO_Q_SSH_IDENTITY}" ]]; then
+    echo "error: UNO_Q_SSH_IDENTITY is not a readable file" >&2
+    exit 2
+  fi
+  SSH_OPTIONS+=(-i "${UNO_Q_SSH_IDENTITY}")
+fi
+readonly -a SSH_OPTIONS
 
 # Always remove the local staging archive, including after an interrupted upload.
 cleanup() {
@@ -131,11 +140,11 @@ curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/learn" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help" >/dev/null
-for HELP_SLUG in cabinet installation gameplay programs configuration security components contributing changelog; do
+for HELP_SLUG in cabinet installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
   curl --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help/${HELP_SLUG}" >/dev/null
 done
-for PDF_SLUG in overview installation gameplay programs configuration security components contributing changelog; do
+for PDF_SLUG in overview installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
   curl --fail --silent --show-error --max-time 15 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help-pdf/${PDF_SLUG}.pdf" >/dev/null
 done

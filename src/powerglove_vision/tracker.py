@@ -111,6 +111,66 @@ def _finger_curls(points: list) -> dict:
     return {name + "_curl": max(bends) for name, bends in _finger_bends(points).items()}
 
 
+def _finger_curls_from_bends(bends: dict) -> dict:
+    """Collapse already-measured joints without repeating angle calculations."""
+    return {name + "_curl": max(values) for name, values in bends.items()}
+
+
+def _legacy_hands(mp, cpu_threads: int):
+    """Build the lite legacy graph, enabling safe CPU parallelism when supported."""
+    settings = {
+        "static_image_mode": False,
+        "max_num_hands": 1,
+        "model_complexity": 0,
+        "min_detection_confidence": 0.55,
+        "min_tracking_confidence": 0.55,
+    }
+    base = mp.solutions.hands.Hands(**settings)
+    if cpu_threads <= 1:
+        return base
+    try:
+        from google.protobuf import text_format
+        from mediapipe.calculators.tensor import inference_calculator_pb2
+        from mediapipe.framework import calculator_pb2
+        from mediapipe.python.solution_base import SolutionBase
+
+        graph = calculator_pb2.CalculatorGraphConfig()
+        text_format.Parse(base._graph.text_config, graph)
+        modified = 0
+        for node in graph.node:
+            if node.calculator != "InferenceCalculatorCpu":
+                continue
+            options = node.options.Extensions[
+                inference_calculator_pb2.InferenceCalculatorOptions.ext
+            ]
+            options.cpu_num_thread = cpu_threads
+            modified += 1
+        if modified != 2:
+            raise RuntimeError(f"expected two CPU inference nodes, found {modified}")
+        threaded = SolutionBase(
+            graph_config=graph,
+            side_inputs={
+                "model_complexity": 0,
+                "num_hands": 1,
+                "use_prev_landmarks": True,
+            },
+            outputs=[
+                "multi_hand_landmarks",
+                "multi_hand_world_landmarks",
+                "multi_handedness",
+            ],
+        )
+    except Exception as exc:
+        print(
+            f"Vision startup: parallel MediaPipe inference unavailable: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return base
+    base.close()
+    return threaded
+
+
 class MediaPipeTracker:
     """Run single-hand tracking and produce normalized controller observations."""
     def __init__(
@@ -118,6 +178,7 @@ class MediaPipeTracker:
         glove_color: str = "none",
         mirror: bool = True,
         model_path: Path | str | None = None,
+        inference_threads: int = 4,
     ) -> None:
         try:
             import cv2
@@ -134,6 +195,8 @@ class MediaPipeTracker:
         self.mp = mp
         self.glove_color = glove_color
         self.mirror = mirror
+        self.preview_enabled = True
+        self.diagnostics_enabled = True
         self._last_timestamp_ms = -1
         self._tasks = not hasattr(mp, "solutions")
         if self._tasks:
@@ -155,13 +218,7 @@ class MediaPipeTracker:
             )
             self.hands = mp.tasks.vision.HandLandmarker.create_from_options(options)
         else:
-            self.hands = mp.solutions.hands.Hands(
-                static_image_mode=False,
-                max_num_hands=1,
-                model_complexity=0,
-                min_detection_confidence=0.55,
-                min_tracking_confidence=0.55,
-            )
+            self.hands = _legacy_hands(mp, max(1, int(inference_threads)))
 
         log_startup_stage("tracker construction", started)
 
@@ -172,6 +229,7 @@ class MediaPipeTracker:
     def process(self, frame: Any, timestamp: float | None = None) -> TrackingResult:
         """Track and annotate one frame, returning a neutral observation when no hand is found."""
         cv2 = self.cv2
+        annotate = self.preview_enabled
         now = time.monotonic() if timestamp is None else timestamp
         if self.mirror:
             frame = cv2.flip(frame, 1)
@@ -187,6 +245,8 @@ class MediaPipeTracker:
             result = self.hands.process(rgb)
             detected = result.multi_hand_landmarks
         if not detected:
+            if not annotate:
+                return TrackingResult(HandObservation(now, False), frame)
             cv2.putText(
                 frame, "Show one hand to the camera", (20, 36),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, (30, 80, 255), 2,
@@ -214,7 +274,8 @@ class MediaPipeTracker:
 
         height, width = frame.shape[:2]
         curl_points = _camera_curl_points(result, landmarks, self._tasks, width, height)
-        curls = _finger_curls(curl_points)
+        bends = _finger_bends(curl_points)
+        curls = _finger_curls_from_bends(bends)
         observation = HandObservation(
             timestamp=now,
             detected=True,
@@ -225,16 +286,20 @@ class MediaPipeTracker:
             roll=roll,
             **curls,
         )
-        height, width = frame.shape[:2]
-        for start, end in CONNECTIONS:
-            a, b = landmarks[start], landmarks[end]
-            cv2.line(frame, (int(a.x * width), int(a.y * height)),
-                     (int(b.x * width), int(b.y * height)), (255, 180, 30), 2)
-        for point in landmarks:
-            cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (20, 255, 120), -1)
-        label = f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}"
-        cv2.putText(frame, label, (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 240, 100), 2)
-        return TrackingResult(observation, frame, {
-            "finger_bends": _finger_bends(curl_points),
-            "hand_landmarks": [[p.x, p.y] for p in landmarks],
-        })
+        if annotate:
+            height, width = frame.shape[:2]
+            for start, end in CONNECTIONS:
+                a, b = landmarks[start], landmarks[end]
+                cv2.line(frame, (int(a.x * width), int(a.y * height)),
+                         (int(b.x * width), int(b.y * height)), (255, 180, 30), 2)
+            for point in landmarks:
+                cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (20, 255, 120), -1)
+            label = f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}"
+            cv2.putText(frame, label, (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 240, 100), 2)
+        diagnostics = {}
+        if self.diagnostics_enabled:
+            diagnostics = {
+                "finger_bends": bends,
+                "hand_landmarks": [[p.x, p.y] for p in landmarks],
+            }
+        return TrackingResult(observation, frame, diagnostics)

@@ -215,6 +215,10 @@ class ControlStateTests(unittest.TestCase):
         assert document is not None
         self.assertTrue(document[0].startswith(b"%PDF-"))
         self.assertEqual(document[1], "PowerGlove-Vision-Gameplay-Guide.pdf")
+        self.assertEqual(
+            guide_pdf("native-super-glove-ball")[1],
+            "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+        )
         self.assertIsNone(guide_pdf("quick-reference"))
         self.assertIsNone(guide_pdf("../../data/device"))
 
@@ -528,6 +532,18 @@ class ControlStateTests(unittest.TestCase):
         shared.request_controller(True)
         self.assertTrue(shared.take_controller_request())
         self.assertIsNone(shared.take_controller_request())
+
+    def test_preview_work_tracks_active_stream_consumers(self):
+        shared = SharedDebugState()
+        self.assertFalse(shared.has_stream_clients())
+        shared.stream_opened()
+        shared.stream_opened()
+        self.assertTrue(shared.has_stream_clients())
+        shared.stream_closed()
+        self.assertTrue(shared.has_stream_clients())
+        shared.stream_closed()
+        shared.stream_closed()
+        self.assertFalse(shared.has_stream_clients())
 
     def test_worker_profile_request_is_consumed_once_and_normalizes_off(self):
         shared = SharedDebugState()

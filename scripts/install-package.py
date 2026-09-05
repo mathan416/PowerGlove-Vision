@@ -59,14 +59,26 @@ def unpack(archive, destination, machine, version):
         meta = json.loads(package.read("PowerGlove-Vision/install-release.json"))
         if meta != {"format": 1, "machine": machine, "version": version}:
             raise ValueError("Package version or target does not match the requested release")
-        required = ["scripts/setup-machine.py", "scripts/installation-manifest.py", "src/powerglove_vision/receiver.py", "config/games.json"]
+        required = [
+            "scripts/setup-machine.py",
+            "scripts/installation-manifest.py",
+            "src/powerglove_vision/receiver.py",
+            "src/powerglove_vision/gesture.py",
+            "src/powerglove_vision/tracker.py",
+            "src/powerglove_vision/tuning.py",
+            "src/powerglove_vision/vision_app.py",
+            "config/games.json",
+            "config/profiles.json",
+        ]
         required += (["app.yaml", "sketch/sketch.yaml", "sketch/sketch.ino", "scripts/uno-q-early-start.py",
                       "uno-q/powerglove-early-start.service", "uno-q/powerglove-system-shutdown.path"]
                      if machine == "uno-q" else [
                          "retropie/powerglove-receiver.service",
                          "scripts/install-nestopia-powerglove.sh",
+                         "scripts/configure-super-glove-ball-core.py",
                          "native/nestopia-powerglove/nestopia-powerglove.patch",
                          "native/nestopia-powerglove/README.md",
+                         "native/nestopia-powerglove/CHANGES.md",
                      ])
         for relative in required:
             if "PowerGlove-Vision/" + relative not in seen:

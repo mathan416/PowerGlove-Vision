@@ -52,10 +52,17 @@ class ArchiveTests(unittest.TestCase):
                 dict(format=1, machine=machine, version='dev-test')))
             for name in ('scripts/setup-machine.py', 'scripts/installation-manifest.py',
                          'scripts/install-nestopia-powerglove.sh',
-                         'src/powerglove_vision/receiver.py', 'config/games.json',
+                         'scripts/configure-super-glove-ball-core.py',
+                         'src/powerglove_vision/receiver.py',
+                         'src/powerglove_vision/gesture.py',
+                         'src/powerglove_vision/tracker.py',
+                         'src/powerglove_vision/tuning.py',
+                         'src/powerglove_vision/vision_app.py',
+                         'config/games.json', 'config/profiles.json',
                          'retropie/powerglove-receiver.service',
                          'native/nestopia-powerglove/nestopia-powerglove.patch',
-                         'native/nestopia-powerglove/README.md'):
+                         'native/nestopia-powerglove/README.md',
+                         'native/nestopia-powerglove/CHANGES.md'):
                 output.writestr('PowerGlove-Vision/' + name, 'test')
             if extra:
                 output.writestr(*extra)
@@ -109,6 +116,8 @@ class ArchiveTests(unittest.TestCase):
                 self.assertEqual((app / 'app.yaml').read_text(), 'new application')
                 (app / 'data').mkdir()
                 (app / 'data/device.json').write_text('private-pairing-and-tuning')
+                (app / 'data/calibration.json').write_text('private-neutral-reference')
+                (app / 'data/gesture-tuning.json').write_text('private-gesture-thresholds')
                 (app / 'docs').mkdir()
                 (app / 'docs/cheatsheet.md').write_text('local cabinet')
                 (app / '.cache').mkdir()
@@ -117,6 +126,8 @@ class ArchiveTests(unittest.TestCase):
                 installer.stage_unoq(source, setup)
                 installer.stage_unoq(source, setup)
                 self.assertEqual((app / 'data/device.json').read_text(), 'private-pairing-and-tuning')
+                self.assertEqual((app / 'data/calibration.json').read_text(), 'private-neutral-reference')
+                self.assertEqual((app / 'data/gesture-tuning.json').read_text(), 'private-gesture-thresholds')
                 self.assertEqual((app / 'docs/cheatsheet.md').read_text(), 'local cabinet')
                 command.assert_any_call('runuser', '-u', 'arduino', '--', 'arduino-app-cli', 'app', 'start', app)
                 self.assertTrue(list((root / 'backups').rglob('app.yaml')))

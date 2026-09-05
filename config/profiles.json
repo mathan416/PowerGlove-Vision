@@ -2,6 +2,10 @@
   "recognition": {
     "move_on": 0.28,
     "move_off": 0.14,
+    "coordinate_edge_margin": 0.08,
+    "coordinate_smoothing_min": 0.70,
+    "coordinate_smoothing_max": 1.00,
+    "coordinate_motion_boost": 4.00,
     "curl_on": 0.50,
     "curl_off": 0.35,
     "roll_on": 0.58,

@@ -6,6 +6,10 @@ Nestopia core. It is built from upstream revision
 `nestopia-powerglove.patch`. It is not an MIT-licensed component of
 PowerGlove Vision.
 
+PowerGlove Vision's additions and corrections are recorded separately in
+[`CHANGES.md`](CHANGES.md). The patch retains upstream source-file headers;
+this project does not replace them with PowerGlove Vision attribution.
+
 Upstream Nestopia and the resulting modified core are distributed under the
 GNU General Public License, version 2. The pinned upstream source contains the
 author notices and complete `COPYING` text. The local installer copies that

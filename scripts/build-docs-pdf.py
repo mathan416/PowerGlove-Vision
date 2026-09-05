@@ -532,6 +532,9 @@ def main():
     security = docs / "SECURITY.md"
     contributing = docs / "CONTRIBUTING.md"
     gameplay = docs / "GAMEPLAY_GUIDE.md"
+    input_audit = docs / "power-glove-rom-input-audit.md"
+    native_sgb = docs / "super-glove-ball-native.md"
+    direction_response = docs / "direction-response-benchmark.md"
     build(
         overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
         "Power Glove Vision Project Overview",
@@ -600,7 +603,19 @@ def main():
           "PowerGlove Vision Matrix Display Guide",
           "Recognize animations, mode letters, pairing, and startup feedback.",
           "Display reference")
-    print(f"Built 12 PDF guides on {date.today().isoformat()}")
+    build(input_audit, OUTPUT / "PowerGlove-Vision-Input-Audit.pdf",
+          "Power Glove Game Input Audit",
+          "ROM evidence for native packets and conventional controller mappings.",
+          "Compatibility evidence")
+    build(native_sgb, OUTPUT / "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+          "Super Glove Ball Native Compatibility",
+          "Confirmed behavior, open questions, tracing, and safe fallback operation.",
+          "Native compatibility record")
+    build(direction_response, OUTPUT / "PowerGlove-Vision-Direction-Response.pdf",
+          "Direction-response Benchmark",
+          "Matched-state native Nestopia and FCEUmm response measurements.",
+          "Benchmark report")
+    print(f"Built 15 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

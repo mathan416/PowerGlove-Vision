@@ -59,6 +59,9 @@ PDF_EDITIONS = {
     "docs/SECURITY.md": "PowerGlove-Vision-Security.pdf",
     "docs/CONTRIBUTING.md": "PowerGlove-Vision-Contributing.pdf",
     "docs/GAMEPLAY_GUIDE.md": "PowerGlove-Vision-Gameplay-Guide.pdf",
+    "docs/power-glove-rom-input-audit.md": "PowerGlove-Vision-Input-Audit.pdf",
+    "docs/super-glove-ball-native.md": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+    "docs/direction-response-benchmark.md": "PowerGlove-Vision-Direction-Response.pdf",
 }
 
 
@@ -158,7 +161,11 @@ def main() -> int:
     markdown = tracked_markdown()
     for path in markdown:
         # Distribution-wide licensing notices stay beside the root LICENSE.
-        if path not in {Path("README.md"), Path("THIRD_PARTY_NOTICES.md")} and path.parts[0] != "docs":
+        if path not in {
+            Path("README.md"), Path("THIRD_PARTY_NOTICES.md"),
+            Path("native/nestopia-powerglove/README.md"),
+            Path("native/nestopia-powerglove/CHANGES.md"),
+        } and path.parts[0] != "docs":
             errors.append(f"project Markdown must be under docs/: {path}")
         for target in local_targets(path):
             if not (ROOT / target).exists():

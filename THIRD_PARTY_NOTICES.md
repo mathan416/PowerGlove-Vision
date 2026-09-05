@@ -43,4 +43,6 @@ Pinned revision: `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`
 
 Modification and distribution details are recorded in
 [`native/nestopia-powerglove/README.md`](native/nestopia-powerglove/README.md)
+and the additive
+[`native/nestopia-powerglove/CHANGES.md`](native/nestopia-powerglove/CHANGES.md)
 and [Third-party runtime components](docs/THIRD_PARTY_COMPONENTS.md).

@@ -70,10 +70,12 @@ sockets. These functions are kept separate from camera inference.
   8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
 The worker also publishes diagnostic state after inference. Browser video is
-encoded at most fifteen times per second. Controller sending occurs before
-matrix and browser-preview work, so the browser refresh rate is not the
-controller state update rate. `inference_ms` and `send_ms` measure local stages;
-neither is an end-to-end camera-to-game latency measurement.
+encoded at most five times per second and only while a stream consumer is
+connected. Detailed joint and landmark diagnostics follow that preview cadence;
+finger geometry itself is calculated once for recognition. Controller sending
+occurs before matrix and browser-preview work, so the browser refresh rate is
+not the controller state update rate. `inference_ms` and `send_ms` measure local
+stages; neither is an end-to-end camera-to-game latency measurement.
 
 The current transport is ordinary gamepad emulation. Bad Street Brawler maps
 Glove Zap to a 180 ms simultaneous Left + Right pulse on each push activation;
@@ -199,19 +201,22 @@ that use that finger; it does not change the button assignments in a game profil
 | --- | --- | --- |
 | `config/profiles.json` | Shipped project source | One shared set of recognition parameters; profiles remain output mappings |
 | `data/gesture-tuning.json` | UNO Q, persistent | Global personal activation/release pairs; version-1 format |
-| `data/calibration.json` | UNO Q, persistent | Neutral palm position, apparent scale, and wrist angle |
+| `data/calibration.json` | UNO Q, private persistent | Neutral palm position, apparent scale, wrist angle, and positional jitter for the installed camera and player |
 | `data/device.json` | UNO Q, private persistent settings | Destination, selected settings, pairing-related configuration |
 | Tuning samples, preview, leases | Worker memory only | Temporary measurement and ownership state |
 | `config/games.json` | Shipped default registry | Exact ROM-name mappings copied to the RetroPie installation |
 | RetroPie registry and launcher settings | RetroPie, persistent | Active game-to-profile mappings and UNO destination |
 | `data/models/hand_landmarker.task` | UNO Q, verified cache | Reusable pretrained hand-landmark model |
 
-Neutral calibration is distinct from hand setup. It centers position, depth,
-and roll, records ordinary X/Y jitter, and lets movement thresholds rise only
+Neutral calibration is distinct from hand setup. It accepts 24 detected hand
+observations at 70% confidence or better, centers position, depth, and roll,
+records 95th-percentile X/Y jitter, and lets movement thresholds rise only
 when needed to remain safely above that noise; hand setup establishes finger thresholds. The app reuses valid neutral
 calibration across Glove Academy, profile changes, camera reconnects, and worker restarts.
 Recalibrate after moving the camera or changing playing position. Ordinary
 updates preserve `data/` rather than replacing it with example configuration.
+The portable release baseline is `config/profiles.json`; raw neutral coordinates
+are deliberately machine- and player-local.
 
 ![Profile-selection flow from RetroPie launch hook through the UNO relay and worker](images/architecture/profile.png)
 

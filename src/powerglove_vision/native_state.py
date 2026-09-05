@@ -4,6 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-04 - Added a guarded read-only latest-sample record for custom Nestopia.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Expose the latest validated controller sample through a fixed local record."""
 

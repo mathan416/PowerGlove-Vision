@@ -40,6 +40,9 @@ PUBLIC_PDF_NAMES = {
     "PowerGlove-Vision-Overview.pdf",
     "PowerGlove-Vision-Security.pdf",
     "PowerGlove-Vision-Third-Party-Components.pdf",
+    "PowerGlove-Vision-Input-Audit.pdf",
+    "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+    "PowerGlove-Vision-Direction-Response.pdf",
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
@@ -71,6 +74,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/scripts/benchmark-direction-response.py",
     "PowerGlove-Vision/native/nestopia-powerglove/nestopia-powerglove.patch",
     "PowerGlove-Vision/native/nestopia-powerglove/README.md",
+    "PowerGlove-Vision/native/nestopia-powerglove/CHANGES.md",
     "PowerGlove-Vision/docs/super-glove-ball-native.md",
     "PowerGlove-Vision/docs/direction-response-benchmark.md",
     "PowerGlove-Vision/docs/power-glove-rom-input-audit.md",

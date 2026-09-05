@@ -24,6 +24,23 @@ authoritative record for line-level and file-level history.
 
 ## Unreleased
 
+- Preserved Nestopia's original source copyright and GPL header verbatim,
+  added a separate file-by-file PowerGlove Vision modification ledger, made
+  the native-core build reject header changes, and installed that ledger beside
+  the optional core and its upstream `COPYING` file.
+- Made explicit and automatic neutral calibration accept only complete hand
+  observations at 70% confidence or better. Documented its 24-frame averaging,
+  circular wrist mean, 95th-percentile jitter measurement, repeatability limits,
+  atomic replacement, and separation from portable recognition defaults.
+- Hardened release validation so installer packages must contain the shared
+  profile baseline and current recognition, tracking, tuning, and native-core
+  selection modules. Update tests now explicitly preserve neutral calibration
+  and personal gesture tuning while replacing release-owned defaults.
+- Removed avoidable gameplay diagnostics: finger geometry is measured once,
+  detailed landmarks are prepared only at the 5 fps preview cadence, and idle
+  tuning skips measurement work while unchanged configurations are reused.
+- Allowed UNO Q deployments to select an explicit SSH identity and expanded
+  the live deployment gate to verify every published technical guide and PDF.
 - Made Menu Guard and the V-sign mutually exclusive with a clear pinky deadband.
   Menu Guard now has priority, cancels pending Start pulses, and suppresses every
   ordinary controller button while the safety pose is active.
