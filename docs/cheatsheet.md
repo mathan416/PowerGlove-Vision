@@ -391,7 +391,7 @@ the games use standard NES controller input through FCEUmm.
 Open RetroPie's launch menu while starting Super Glove Ball and choose the
 emulator for that ROM. RetroPie remembers the per-ROM choice.
 
-  - **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the usable camera field. Exact-ROM tests confirm controller detection, native Start, and X/Y. Unconfirmed native fields remain neutral.
+  - **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the usable camera field. Exact-ROM tests confirm controller detection, native Start, and X/Y. Depth, roll, finger, and action recognition are confirmed elsewhere; only their native in-game packet mapping remains neutral.
   - **`lr-fceumm`** remains the complete fallback. It stays in standard joystick mode for the whole session and uses the same responsive movement, finger gestures, and buttons as other FCEUmm games.
 
 Choose FCEUmm again from the same launch menu whenever you want to compare the

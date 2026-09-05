@@ -30,7 +30,7 @@ implementation.
 | Candidate X/Y encoding reaches Nestopia's existing Power Glove device | Confirmed for the exact ROM | Minimum, center, and maximum X/Y each produced distinct packets. Cabinet validation corrected the camera-to-Nestopia Y orientation. |
 | Detection signature, packet length, boundaries, and bit order | Confirmed | The ROM assembled inverse `$A0` as `$5F`, strobed once per byte, read ten bytes/80 bits per sample MSB first, and required the final stored byte to be `$3F`. |
 | Start encoding | Confirmed | Native byte 6 value `$82` left the title screen and began play while the controller stayed in native mode. |
-| Z, wrist rotation, finger state, and action-button encoding | Unknown and deliberately neutral | Vary one field at a time now that detection and X/Y are repeatable. Start is the sole confirmed button exception. |
+| Native packet encoding for Z, wrist rotation, finger state, and action buttons | Not yet mapped in-game; deliberately neutral | Camera recognition and FCEUmm output for depth, roll, fingers, and actions are confirmed. Vary one native packet field at a time now that detection and X/Y are repeatable. Start is the sole confirmed native button exception. |
 | Poll timing tolerances | Confirmed for tested sessions | Headless runs sustained ten-byte polling throughout native phases, and live cabinet sessions remained stable. Broader hardware and timing stress coverage remains useful. |
 | Headless X/Y activation and release responsiveness | Confirmed for the exact ROM | All four axes visibly diverged by frame 3; a 3.1% positive-X step also diverged by frame 3. See the [direction-response benchmark](direction-response-benchmark.md). |
 | Cabinet field mapping and stabilization | Confirmed for live tuning | Continuous X/Y maps each side of the calibrated neutral point to the corresponding usable camera boundary, retaining an 8% tracking margin. Light adaptive damping operates in camera space, reducing near-rest jitter without delaying deliberate travel. FCEUmm D-pad thresholds remain hand-relative and unchanged. |
@@ -159,6 +159,7 @@ sudo python3 scripts/configure-super-glove-ball-core.py \
   --mode fceumm --apply
 ```
 
-For each later field—Z, rotation, one finger at a time, and one button at a
-time—repeat the neutral baseline, single-variable trace, and observable-state
-comparison. Preserve unknown bytes and timing behavior conservatively.
+To add those already-recognized controls to the native path, vary Z, rotation,
+one finger, and one button field at a time. Repeat the neutral baseline,
+single-variable trace, and observable in-game comparison. Preserve unknown bytes
+and timing behavior conservatively.

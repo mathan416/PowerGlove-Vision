@@ -149,7 +149,9 @@ tracking or controller delivery.
 For Super Glove Ball testing, enter RetroPie's launch menu while starting the
 ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the
 ordinary D-pad and buttons for the whole session. The native core uses absolute
-X/Y and currently keeps unconfirmed native fields neutral. A per-ROM selection
+X/Y and currently keeps the not-yet-mapped native in-game fields neutral. Shared
+depth, roll, finger, and action recognition remains confirmed and available to
+FCEUmm profiles. A per-ROM selection
 is remembered, so choose FCEUmm again whenever you want the complete fallback.
 
 
