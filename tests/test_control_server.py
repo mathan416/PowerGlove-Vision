@@ -9,7 +9,6 @@
 #   2026-09-05 - Verified atomic Academy controls and fresh-frame navigation gates.
 #   2026-09-05 - Verified the Academy completion trophy artwork.
 #   2026-09-05 - Verified Academy camera recovery and public calibration forwarding.
-#   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified atomic publication of host shutdown requests.
 #   2026-09-03 - Verified the bundled Help library, Markdown reader, and assets.
