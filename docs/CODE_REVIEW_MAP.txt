@@ -2,14 +2,16 @@ POWERGLOVE VISION - FILE HIERARCHY AND CODE REVIEW MAP
 ===================================================
 Updated: September 5, 2026 (America/Toronto)
 Source: /Users/mathan/Developer/PowerGlove
-Inventory: 279 tracked paths at main commit 9220db219b156764849a42817b656f31c6c07d9a.
-Release metadata is 0.3.0. The September 5 documentation reconciliation,
-generated-manual updates, and native-core attribution audit are included.
+Inventory: 280 tracked paths in the v0.3.1 release candidate based on dev commit
+c876a648b6ebdf21309c5a96de9585961c307e5d.
+Release metadata is 0.3.1. The September 5 documentation reconciliation,
+generated-manual updates, native-core attribution audit, and Pixel Pal's
+Extra-Digit Hunt are included.
 This is a reading aid, not a claim of a completed code/security audit.
 
 CURRENT SNAPSHOT AND VERIFIED WORK
 ----------------------------------
-PowerGlove Vision 0.3.0 uses one shared recognition layer and two RetroPie input
+PowerGlove Vision 0.3.1 uses one shared recognition layer and two RetroPie input
 paths. FCEUmm remains the complete standard-joypad path for every registered NES
 game and for Super Glove Ball fallback. The separately named
 lr-nestopia-powerglove core supplies native Super Glove Ball detection, Start,
@@ -22,7 +24,7 @@ versioned native-state bridge. The Help library exposes fourteen public PDFs;
 the cabinet quick reference remains private.
 
 Verification completed for this snapshot:
-  - All 243 automated tests passed locally on September 5 after the native-core,
+  - All 245 automated tests passed locally on September 5 after the native-core,
     installation, calibration, recognition, and documentation updates.
   - Documentation validation passed for all maintained Markdown and PDF files.
   - Fifteen project PDFs and the updated Console Guide PDFs were rendered and
@@ -544,8 +546,8 @@ Unit tests are useful evidence, not a replacement for real camera/gameplay tests
 Fresh-machine installation remains untested even though existing-machine updates,
 calibration retention and hostname resolution have been exercised.
 
-Review edits on dev. Main contains the reviewed 0.3.0 code, but a published tag is
-not moved when main receives a later merge. A Git push does not deploy the UNO Q.
+Review edits on dev. Main receives only reviewed release merges; a published tag
+is not moved when main receives a later merge. A Git push does not deploy the UNO Q.
 
 SUGGESTED FIRST REVIEW SESSION
 ------------------------------
