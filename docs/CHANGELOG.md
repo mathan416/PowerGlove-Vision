@@ -5,7 +5,10 @@ This file records user-visible PowerGlove Vision changes. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
-## Unreleased
+## [0.3.1] - 2026-09-05
+
+Documentation and Help maintenance release adding Pixel Pal's deliberately
+spoiler-free guide game and keeping packaged documentation verifiable.
 
 ### Added
 
