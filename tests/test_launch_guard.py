@@ -23,7 +23,9 @@ class LaunchGuardTests(unittest.TestCase):
     def test_default_camera_path_prefers_low_latency(self):
         args = build_parser().parse_args(["--receiver", "console", "--token", "x" * 16])
         self.assertEqual(args.fps, 60)
+        self.assertEqual(args.camera_format, "MJPG")
         self.assertEqual(args.inference_threads, 4)
+        self.assertEqual(args.tracker_backend, "legacy")
         self.assertEqual(args.preview_fps, 5.0)
 
     def test_guard_expires_at_deadline(self):

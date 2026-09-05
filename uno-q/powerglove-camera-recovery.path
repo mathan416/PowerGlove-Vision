@@ -1,0 +1,19 @@
+# Project: PowerGlove Vision
+# File: uno-q/powerglove-camera-recovery.path
+# Purpose: Watch for a guarded camera-recovery request from the unprivileged app.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-05 - Added guarded camera-recovery request monitoring.
+# Full history: docs/CHANGELOG.md and Git history.
+
+[Unit]
+Description=Watch for a PowerGlove Vision camera recovery request
+
+[Path]
+PathExists=/home/arduino/ArduinoApps/powerglove-vision/data/camera-recovery-request
+Unit=powerglove-camera-recovery.service
+
+[Install]
+WantedBy=multi-user.target

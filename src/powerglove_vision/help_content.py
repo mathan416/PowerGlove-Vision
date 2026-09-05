@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Promoted the project overview PDF into technical documentation.
 #   2026-09-05 - Added a collapsed Pixel Pal answer reveal to illustrated guides.
 #   2026-09-03 - Added the built-in Help library and Markdown reading view.
 #   2026-09-03 - Added a live, non-secret cabinet connection reference.
@@ -35,11 +36,12 @@ HELP_GUIDES = (
     {"slug": "programs", "title": "Programs A-I", "file": "bad-street-brawler-programs.md", "description": "The original Power Glove programs and their camera-based equivalents.", "group": "User manuals"},
     {"slug": "matrix", "title": "Matrix display guide", "file": "MATRIX_GUIDE.md", "description": "Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.", "group": "User manuals"},
     {"slug": "installation", "title": "Installation and setup", "file": "INSTALL_README.md", "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.", "group": "User manuals"},
+    {"slug": "overview", "title": "Project overview", "file": None, "description": "The complete project at a glance: architecture, controls, security, deployment, and current status.", "group": "Technical documentation", "href": "/help-pdf/overview.pdf"},
     {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Technical documentation"},
+    {"slug": "configuration", "title": "Configuration reference", "file": "CONFIGURATION_REFERENCE.md", "description": "Every public setting, template, generated file, and installed location.", "group": "Technical documentation"},
     {"slug": "input-audit", "title": "Power Glove game input audit", "file": "power-glove-rom-input-audit.md", "description": "ROM-level evidence separating native Power Glove input from standard controller mappings.", "group": "Technical documentation"},
     {"slug": "native-super-glove-ball", "title": "Super Glove Ball native compatibility", "file": "super-glove-ball-native.md", "description": "Confirmed, disproven, and unknown details for the custom Nestopia path.", "group": "Technical documentation"},
     {"slug": "direction-response", "title": "Direction-response benchmark", "file": "direction-response-benchmark.md", "description": "Reproducible headless response measurements for native Nestopia and FCEUmm.", "group": "Technical documentation"},
-    {"slug": "configuration", "title": "Configuration reference", "file": "CONFIGURATION_REFERENCE.md", "description": "Every public setting, template, generated file, and installed location.", "group": "Technical documentation"},
     {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Inspect, maintain, and remove the UNO Q startup helper included by the installer.", "group": "Technical documentation"},
     {"slug": "security", "title": "Security and privacy", "file": "SECURITY.md", "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.", "group": "Technical documentation"},
     {"slug": "components", "title": "Third-party components", "file": "THIRD_PARTY_COMPONENTS.md", "description": "MediaPipe, model, license, checksum, and runtime provenance.", "group": "Technical documentation"},
@@ -141,10 +143,10 @@ def help_index_content() -> str:
             if guide["group"] != group:
                 continue
             cards.append(
-                "<a class='guide-card' href='/help/{slug}'>"
+                "<a class='guide-card' href='{href}'>"
                 "<span class=guide-arrow aria-hidden=true>→</span>"
                 "<h2>{title}</h2><p>{description}</p></a>".format(
-                    slug=html.escape(str(guide["slug"]), quote=True),
+                    href=html.escape(str(guide.get("href", f'/help/{guide["slug"]}')), quote=True),
                     title=html.escape(str(guide["title"])),
                     description=html.escape(str(guide["description"])),
                 )
@@ -155,7 +157,6 @@ def help_index_content() -> str:
         "<p class=lead>Read the maintained PowerGlove Vision guides directly on this UNO Q. "
         "Start with This cabinet for your current connections, or choose a guide below. The manuals are available offline.</p>"
         + "".join(sections)
-        + "<p><a href='/help-pdf/overview.pdf'>Project overview PDF</a></p>"
     )
 
 
@@ -272,9 +273,9 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
 def _reading_shell(slug: str, rendered: str, contents: str, toolbar_extra: str) -> str:
     """Wrap rendered Help content in the shared toolbar, guide navigation, and contents pane."""
     guide_links = "".join(
-        "<a class='{current}' href='/help/{slug}'>{title}</a>".format(
+        "<a class='{current}' href='{href}'>{title}</a>".format(
             current="current" if item["slug"] == slug else "",
-            slug=html.escape(str(item["slug"]), quote=True),
+            href=html.escape(str(item.get("href", f'/help/{item["slug"]}')), quote=True),
             title=html.escape(str(item["title"])),
         )
         for item in HELP_GUIDES

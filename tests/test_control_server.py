@@ -5,6 +5,9 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Verified atomic Academy controls and fresh-frame navigation gates.
+#   2026-09-05 - Verified the Academy completion trophy artwork.
+#   2026-09-05 - Verified Academy camera recovery and public calibration forwarding.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified atomic publication of host shutdown requests.
@@ -13,8 +16,7 @@
 #   2026-09-03 - Verified public PDF links, routes, and allowlisting.
 #   2026-09-03 - Verified Dashboard profile switching and healthy idle status.
 #   2026-09-03 - Verified Learn-page practice leases and Dashboard restoration.
-#   2026-09-03 - Verified shared descriptive profile labels and stable IDs.
-#   2026-09-03 - Used Python 3.7-compatible mock argument access.
+#   2026-09-03 - Verified shared profile labels and Python 3.7-compatible mocks.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
@@ -117,6 +119,15 @@ class ControlStateTests(unittest.TestCase):
         for page in (DASHBOARD, LEARN, SETUP, help_index_page()):
             self.assertIn(b"href=/help>Help", page)
 
+    def test_dashboard_exposes_realtime_performance_readings(self):
+        self.assertIn(b'id=performance', DASHBOARD)
+        self.assertIn(b'Inference p50 / p95', DASHBOARD)
+        self.assertIn(b'Camera read \xe2\x86\x92 send p50 / p95', DASHBOARD)
+        self.assertIn(b'Changed control \xe2\x86\x92 send p50 / p95', DASHBOARD)
+        self.assertIn(b'Frame waiting before inference p50 / p95', DASHBOARD)
+        self.assertIn(b'capture_skipped_total', DASHBOARD)
+        self.assertIn(b'tracker_backend_label||s.tracker_backend', DASHBOARD)
+
     def test_help_index_lists_the_public_guides(self):
         page = help_index_page()
         self.assertIn(b"Help, without leaving the glove", page)
@@ -126,6 +137,14 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"This cabinet", page)
         self.assertNotIn(b"cheatsheet", page.lower())
         self.assertIn(b"/help-pdf/overview.pdf", page)
+        technical = page.index(b"Technical documentation")
+        overview = page.index(b"/help-pdf/overview.pdf", technical)
+        architecture = page.index(b"/help/architecture", technical)
+        configuration = page.index(b"/help/configuration", technical)
+        input_audit = page.index(b"/help/input-audit", technical)
+        self.assertLess(overview, architecture)
+        self.assertLess(architecture, configuration)
+        self.assertLess(configuration, input_audit)
         self.assertIsNotNone(help_document_page("field-guide"))
 
     def test_cabinet_reference_uses_request_address_and_public_config(self):
@@ -158,7 +177,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Pixel Pal&#x27;s Extra-Digit Hunt", page)
         self.assertIn(b"<details class=extra-digit-answer>", page)
         self.assertIn(b"<summary>Reveal Pixel Pal's answer</summary>", page)
-        self.assertIn(b"Pixel Pal&#x27;s answer: 6 six-digit hands.", page)
+        self.assertIn(b"Pixel Pal&#x27;s answer: 7 six-digit hands.", page)
 
         programs = help_document_page("programs")
         self.assertIsNotNone(programs)
@@ -269,8 +288,31 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"pagehide", LEARN)
         self.assertIn(b"keepalive:true", LEARN)
         self.assertIn(b"data-src=/stream", LEARN)
+        self.assertIn(b"Camera unavailable. Check that it is connected", LEARN)
+        self.assertIn(b"Camera image unavailable. Reconnecting", LEARN)
+        self.assertIn(b"$('learn-camera').onerror", LEARN)
+        self.assertIn(b"cameraRetryAt=Date.now()+1000", LEARN)
         self.assertNotIn(b"/api/controller", LEARN)
         self.assertIn(b"Lesson 1 of 16", LEARN)
+
+    @mock.patch("powerglove_vision.control_server.urllib.request.urlopen")
+    def test_calibration_request_is_forwarded_to_worker(self, open_worker):
+        """Both web calibration buttons must reach the private vision worker."""
+        open_worker.return_value.__enter__.return_value = mock.MagicMock()
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+            connection.request("POST", "/calibrate")
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 204)
+            forwarded = open_worker.call_args.args[0]
+            self.assertEqual(forwarded.full_url, "http://127.0.0.1:8089/calibrate")
+            self.assertEqual(forwarded.method, "POST")
+            connection.close()
+        finally:
+            servers.shutdown()
 
     def test_dashboard_load_clears_practice_and_restores_selected_mode(self):
         self.assertIn(b"/api/practice", DASHBOARD)
@@ -363,7 +405,7 @@ class ControlStateTests(unittest.TestCase):
             self.assertIn(b"seconds}s elapsed", page)
             self.assertIn(b"updateCalibration(s)", page)
         self.assertLess(LEARN.index(b"startupMessage(s),starting="),
-                        LEARN.index(b"if(s.sequence===lastSequence)return"))
+                        LEARN.index(b"sequence<=sequenceFloor"))
 
     def test_footer_version_and_application_start_metadata(self):
         from powerglove_vision import __version__
@@ -389,10 +431,24 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"image:'wrist-roll-right.png'", LEARN)
         self.assertIn(b"image:'close-all-fingers.png'", LEARN)
         self.assertIn(b"image:'menu-guard.png'", LEARN)
+        self.assertIn(b"pixel-pal-gold-cup.png", LEARN)
+        self.assertIn(b"Pixel Pal holds a golden award cup", LEARN)
         self.assertIn(b"setInterval(update,75)", LEARN)
         self.assertIn(b"id=practice-actions", LEARN)
         self.assertIn(b"s.menu_gesture?.recognized", LEARN)
         self.assertIn(b"lessons[index].instant?0", LEARN)
+
+    def test_learn_navigation_invalidates_stale_recognition_work(self):
+        self.assertIn(b"function cancelLessonAdvance(){lessonRevision++", LEARN)
+        self.assertIn(b"function beginTransition(){sequenceFloor=Math.max", LEARN)
+        self.assertIn(b"if(requestRevision!==lessonRevision)return", LEARN)
+        self.assertIn(b"sequence<=sequenceFloor", LEARN)
+        self.assertIn(b"sequence<latestSequence", LEARN)
+        self.assertIn(
+            b"setTimeout(()=>finishLesson(advanceRevision),700)", LEARN
+        )
+        self.assertIn(b"$('restart-training').onclick=restartTraining", LEARN)
+        self.assertIn(b"if(trainingComplete)restartTraining()", LEARN)
 
     def test_profile_selectors_use_descriptive_names_and_stable_ids(self):
         expected = {

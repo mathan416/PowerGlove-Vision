@@ -82,7 +82,7 @@ cd /home/arduino/ArduinoApps/powerglove-vision
 sudo python3 scripts/setup-machine.py uno-q
 ```
 
-This installs host support for local names and the shutdown helper, sets the app
+This installs host support for local names, shutdown, and guarded USB-camera recovery, sets the app
 to start at boot, and restarts it. Review every **FAIL** or **ACTION** result.
 The installer requires the application directory shown above. Run `exit` after
 setup to leave the UNO Q terminal. Check Dashboard and Learn before pairing.
@@ -141,12 +141,23 @@ The deployment preserves the UNO Q's private `data/` directory and restarts the
 application. It updates the UNO Q only. To update RetroPie, update its source
 checkout and rerun the RetroPie installer above; it preserves local settings.
 
-The UNO Q installer includes the shutdown helper. To update or repair that
-helper separately, run this from your development computer's project checkout:
+The UNO Q installer includes the shutdown and camera-recovery helpers. To update
+or repair them separately, run this from your development computer's project checkout:
 
 ```sh
 scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
 ```
+
+To install or repair only camera recovery without touching shutdown support:
+
+```sh
+scripts/install-uno-q-camera-recovery-helper.sh arduino@UNO-Q-NAME.local
+```
+
+The camera does not need to be connected during installation. The first healthy
+camera sighting enrolls the one UVC camera and its actual parent hub. Moving the
+camera to another hub updates the association automatically the next time vision
+sees it. Until that first sighting, recovery intentionally has no hub to reset.
 
 The terminal prompts for the UNO Q account password if needed. The helper
 requests a Linux halt; the tested board restarts afterward. See the shutdown
@@ -282,14 +293,15 @@ These screenshots were refreshed on September 4, 2026.
 
 ### Glove Academy
 
-![Glove Academy practice mode with its camera imagery blurred for privacy](images/learn-page.png)
+![Glove Academy practice lesson with its live camera area excluded for privacy](images/learn-page.png)
 
 ### Tune gestures
 
-![Tune mode with thresholds below the blurred camera](images/tune-page.png)
+![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
 
-The matrix shows **T** while tuning. Instructions and recording controls sit beside
-the camera on a wide screen; Activation and Release are underneath the camera.
+The matrix shows **T** while tuning. Pixel Pal's instruction and primary action sit
+beside the camera on a wide screen; numerical values and diagnostics are collapsed
+under **Advanced**.
 
 ### Setup
 
@@ -336,13 +348,14 @@ hand movement cannot operate RetroPie's pre-emulator runcommand menu. Output
 resumes automatically when the guard ends, provided the controller was already
 started. The guard does not start a controller that was stopped.
 
-### Shared menu and safety gestures
+### Shared recognition and safety gestures
 
-| Gesture | Result |
-| --- | --- |
-| Hold a clear V sign steadily for 0.65 seconds | Sends one short Start pulse. Keep a clearly non-V pose visible for 0.30 seconds before Start can trigger again. This prevents an accidental pause while moving or firing. |
-| Briefly show a thumbs-up with the other fingers closed | Sends Select. |
-| Curl the thumb and ring finger together | Menu guard suppresses movement, A, B, Start, and Select while you reposition your hand. Output returns immediately when the pose ends. |
+| Gesture | See it | Result |
+| --- | --- | --- |
+| Hold a clear V sign steadily for 0.50 seconds | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="128"> | Sends one short Start pulse. Keep a clearly non-V pose visible for 0.30 seconds before Start can trigger again. This prevents an accidental pause while moving or firing. |
+| Briefly show a thumbs-up with the other fingers closed | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="128"> | Sends Select. |
+| Close your hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="128"> | Produces the shared closed-hand recognition state; a game profile decides whether it has controller output. |
+| Curl the thumb and ring finger together | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="128"> | Menu guard suppresses movement, A, B, Start, and Select while you reposition your hand. Output returns immediately when the pose ends. |
 
 Start and Select poses suppress A/B while they form. Keep your hand near its
 calibrated center because some profiles can still produce auxiliary output from
@@ -457,15 +470,15 @@ the UNO Q must publish UDP `55356`, and the registry must match the exact archiv
 
 ### Tune a gesture
 
-  1. Open Learn, show your hand, and switch on **Tune gestures**.
-  2. Select a gesture and record your relaxed baseline.
-  3. Record three repetitions of the gesture and its release, following the prompts.
-  4. Select **Analyze and preview**, then try the suggested values.
-  5. Select **Save for all profiles**, or discard the preview. **Restore defaults** resets the selected components.
+  1. Open Learn, show your whole hand, and switch on **Tune gestures**.
+  2. Tell Pixel Pal whether this is a new hand, a hard gesture, an accidental gesture, or an off-centre play area.
+  3. Follow one prompt at a time. When tracking has been clear and steady for one second, select **I'm ready** and follow the countdown.
+  4. Try the preview twice, release it twice, and remain neutral for three seconds.
+  5. Save the personalization when the guided check passes. Manual values and selective reset are under **Advanced**.
 
 Controller delivery stays paused during tuning. Start it explicitly from Dashboard
 when ready to play. See [Tune gesture sensitivity](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity)
-for guidance on noisy samples, neutral calibration, and shared finger thresholds.
+for the recording recipes, neutral calibration, image-quality advice, and shared recognition settings.
 
 ## Service and configuration reference
 
@@ -481,6 +494,10 @@ for guidance on noisy samples, neutral calibration, and shared finger thresholds
 | UNO Q shutdown action | `powerglove-system-shutdown.service`; requests a Linux halt |
 | UNO Q readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
 | UNO Q boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
+| UNO Q camera recovery watcher | `powerglove-camera-recovery.path` |
+| UNO Q camera recovery action | `powerglove-camera-recovery.service`; performs one guarded reset of the last observed parent hub |
+| UNO Q camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use |
+| UNO Q camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera and hub identity/path |
 
 The boot rule creates the readiness marker; it does not initiate shutdown or
 prove that shutdown has completed. The watcher responds to a separate
@@ -493,6 +510,8 @@ Verify the helper **on the UNO Q** without requesting a shutdown:
 ```sh
 systemctl is-enabled powerglove-system-shutdown.path
 systemctl is-active powerglove-system-shutdown.path
+systemctl is-enabled powerglove-camera-recovery.path
+systemctl is-active powerglove-camera-recovery.path
 ls -l /home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled
 ```
 

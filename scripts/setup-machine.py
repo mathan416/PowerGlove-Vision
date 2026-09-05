@@ -176,9 +176,20 @@ def install_unoq(peer):
     for suffix, directory in (("path", "/etc/systemd/system"), ("service", "/etc/systemd/system"), ("conf", "/etc/tmpfiles.d")):
         name = "powerglove-system-shutdown." + suffix
         write_file(Path(directory) / name, (app / "uno-q" / name).read_bytes())
+    for suffix, directory in (("path", "/etc/systemd/system"), ("service", "/etc/systemd/system"), ("conf", "/etc/tmpfiles.d")):
+        name = "powerglove-camera-recovery." + suffix
+        write_file(Path(directory) / name, (app / "uno-q" / name).read_bytes())
+    write_file(
+        "/usr/local/libexec/powerglove-camera-recovery",
+        (app / "uno-q" / "powerglove-camera-recovery.py").read_bytes(),
+        0o755,
+    )
+    run("/usr/local/libexec/powerglove-camera-recovery", "--configure-if-present")
     run("systemctl", "daemon-reload")
     run("systemd-tmpfiles", "--create", "/etc/tmpfiles.d/powerglove-system-shutdown.conf")
+    run("systemd-tmpfiles", "--create", "/etc/tmpfiles.d/powerglove-camera-recovery.conf")
     run("systemctl", "enable", "--now", "powerglove-system-shutdown.path")
+    run("systemctl", "enable", "--now", "powerglove-camera-recovery.path")
     # Use the same idempotent Compose transformation as Wi-Fi deployment.
     import runpy
     configure = runpy.run_path(str(app / "scripts/configure-uno-q-mdns.py"))["configure"]

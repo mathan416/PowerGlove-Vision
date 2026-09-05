@@ -5,6 +5,9 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Measured fresh-frame publication and controller-transition latency.
+#   2026-09-05 - Reported clear proven and experimental tracker names.
+#   2026-09-05 - Added latest-frame capture, timing telemetry, and async previews.
 #   2026-09-04 - Preloaded vision libraries while keeping idle capture off.
 #   2026-09-04 - Logged camera and first-frame startup stage durations.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -38,12 +41,53 @@ from .gesture import GestureConfig, GestureEngine, load_calibration, save_calibr
 from .matrix import MatrixStatus, UnoQMatrix
 from .model import ControllerState
 from .profile_control import ProfileCommandServer, read_token
+from .realtime import LatestFrameCapture, LatestPreviewEncoder, RollingPerformance
 from .runtime_assets import ensure_hand_landmarker_model
 from .tracker import MediaPipeTracker, log_startup_stage
 from .transport import UdpSender
 
 
 PRACTICE_PROFILE = "practice"
+
+
+def _controller_signature(state: ControllerState) -> tuple:
+    """Return gameplay-visible state without sequence, time, or confidence noise."""
+    return (
+        state.profile,
+        state.detected,
+        state.calibrated,
+        tuple(sorted(state.axes.items())),
+        tuple(sorted(state.dpad.items())),
+        tuple(sorted(state.buttons.items())),
+        tuple(sorted(state.fingers.items())),
+        tuple(state.events),
+    )
+
+
+def _academy_image_quality(frame, diagnostics: dict, cv2) -> dict:
+    """Return advisory hand framing and lighting feedback without retaining pixels."""
+    points = diagnostics.get("hand_landmarks") or []
+    if len(points) != 21:
+        return {"whole_hand_visible": False, "warning": "Show your whole hand clearly."}
+    xs = [max(0.0, min(1.0, float(point[0]))) for point in points]
+    ys = [max(0.0, min(1.0, float(point[1]))) for point in points]
+    margin = min(min(xs), min(ys), 1 - max(xs), 1 - max(ys))
+    whole = margin >= .025
+    height, width = frame.shape[:2]
+    left, right = max(0, int(min(xs) * width)), min(width, int(max(xs) * width) + 1)
+    top, bottom = max(0, int(min(ys) * height)), min(height, int(max(ys) * height) + 1)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    hand_luma = float(gray[top:bottom, left:right].mean()) if right > left and bottom > top else 0.0
+    background_luma = float(gray.mean())
+    warning = ""
+    if not whole:
+        warning = "Move a little farther into the frame so every fingertip is visible."
+    elif hand_luma < 55:
+        warning = "Your hand looks dark. Add light in front of you if recognition is difficult."
+    elif background_luma - hand_luma > 50:
+        warning = "The background is much brighter than your hand. Face a light or turn away from the bright window."
+    return {"whole_hand_visible": whole, "hand_luma": round(hand_luma, 1),
+            "background_luma": round(background_luma, 1), "warning": warning}
 
 
 def _shutdown_on_signal(_signum: int, _frame: object) -> None:
@@ -74,8 +118,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=int, default=60)
     parser.add_argument(
+        "--camera-format", choices=("MJPG", "YUYV"), default="MJPG",
+        help="requested V4L2 pixel format for controlled capture benchmarks",
+    )
+    parser.add_argument(
         "--inference-threads", type=int, default=4,
         help="CPU threads for the legacy MediaPipe inference calculators",
+    )
+    parser.add_argument(
+        "--tracker-backend", choices=("legacy", "tasks-video"), default="legacy",
+        help=("MediaPipe Hands (proven; legacy) or MediaPipe Tasks Video "
+              "(experimental; tasks-video)"),
     )
     parser.add_argument(
         "--preview-fps", type=float, default=5.0,
@@ -113,7 +166,9 @@ def _open_camera(args: argparse.Namespace):
         candidate = cv2.VideoCapture(camera_device, backend)
         log_startup_stage("camera open", started)
         started = time.monotonic()
-        candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        candidate.set(
+            cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*args.camera_format)
+        )
         candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
         candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
         candidate.set(cv2.CAP_PROP_FPS, args.fps)
@@ -125,7 +180,17 @@ def _open_camera(args: argparse.Namespace):
             ok, _frame = candidate.read()
             if ok:
                 log_startup_stage("first camera frame", started)
-                return cv2, candidate
+                fourcc = int(candidate.get(cv2.CAP_PROP_FOURCC))
+                negotiated_format = "".join(
+                    chr((fourcc >> (8 * index)) & 0xFF) for index in range(4)
+                ).rstrip("\x00")
+                metadata = {
+                    "camera_format": negotiated_format or args.camera_format,
+                    "camera_width": round(candidate.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                    "camera_height": round(candidate.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                    "camera_fps": round(candidate.get(cv2.CAP_PROP_FPS), 1),
+                }
+                return cv2, LatestFrameCapture(candidate, _frame, metadata=metadata)
             time.sleep(0.1)
         candidate.release()
     raise CameraUnavailableError(f"camera '{args.camera}' is unavailable; waiting for a USB camera")
@@ -183,19 +248,22 @@ def _prepare_vision(args):
     print("Vision startup: preparation started", file=sys.stderr, flush=True)
     capture = tracker = None
     try:
-        model_path = args.model
-        if model_path is None or model_path.name == "hand_landmarker.task":
-            data_directory = model_path.parent.parent if model_path is not None else Path("data")
-            model_path = ensure_hand_landmarker_model(data_directory)
-        elif not model_path.is_file():
-            raise RuntimeError(f"MediaPipe hand model not found: {model_path}")
-        log_startup_stage("model verification/recovery", preparation_started)
+        model_path = None
+        if args.tracker_backend == "tasks-video":
+            model_path = args.model
+            if model_path is None or model_path.name == "hand_landmarker.task":
+                data_directory = model_path.parent.parent if model_path is not None else Path("data")
+                model_path = ensure_hand_landmarker_model(data_directory)
+            elif not model_path.is_file():
+                raise RuntimeError(f"MediaPipe hand model not found: {model_path}")
+        log_startup_stage("tracker asset selection", preparation_started)
         cv2, capture = _open_camera(args)
         tracker = MediaPipeTracker(
             args.glove_color,
             mirror=not args.no_mirror,
             model_path=model_path,
             inference_threads=args.inference_threads,
+            backend=args.tracker_backend,
         )
         log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
@@ -261,6 +329,8 @@ def main() -> int:
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
     shared = SharedDebugState()
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
+    preview_encoder = LatestPreviewEncoder(shared.update_frame)
+    performance = RollingPerformance()
     server = start_debug_server(shared, args.web_host, args.web_port)
     capture = tracker = engine = cv2 = None
     vision_job = _background_call(_preload_vision_libraries)
@@ -269,6 +339,12 @@ def main() -> int:
     startup_timer = None
     retry_at = 0.0
     read_failures = 0
+    capture_failure_since = None
+    last_capture_sequence = 0
+    last_capture_at = None
+    capture_skipped_total = 0
+    last_inference_started = None
+    last_controller_signature = None
     preview_at = 0.0
     latest_diagnostics = {}
     vision_error: str | None = None
@@ -293,6 +369,7 @@ def main() -> int:
             practice_request = shared.take_practice_request()
             transition_requested = profile_requested or practice_request is not None
             if transition_requested:
+                last_controller_signature = None
                 if controller_enabled and engine is not None:
                     sender.send(ControllerState.released(
                         2_147_483_647, time.monotonic(), engine.profile, engine.calibrated
@@ -331,6 +408,7 @@ def main() -> int:
                     )
                     retry_at = 0.0
                     read_failures = 0
+                    capture_failure_since = None
                     vision_error = None
                 matrix.set_profile(None if practice_mode else current_profile)
                 if practice_mode:
@@ -355,20 +433,19 @@ def main() -> int:
 
             if shared.take_calibration_request() and engine is not None:
                 engine.begin_calibration()
+                last_controller_signature = None
 
             vision_profile = _effective_profile(current_profile, practice_mode)
-            completed_frame = None
             if vision_job is not None and vision_job.done():
                 try:
                     result = vision_job.result()
                     if vision_operation == "open":
                         cv2, capture, tracker = result
+                        last_capture_sequence = 0
+                        last_capture_at = None
+                        capture_failure_since = None
                         vision_error = None
-                    elif vision_operation == "read":
-                        completed_frame = result
                 except Exception as exc:
-                    if vision_operation == "read":
-                        completed_frame = (False, None)
                     vision_error = str(exc)
                     retry_at = time.monotonic() + 5.0
                     print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
@@ -411,18 +488,20 @@ def main() -> int:
                 engine_base_config = _load_config(vision_profile, args.config)
                 engine = GestureEngine(vision_profile, shared.tuning.configuration(engine_base_config),
                                        calibration=retained_calibration)
-            if completed_frame is None:
-                if vision_job is None:
-                    vision_job = _background_call(capture.read)
-                    vision_operation = "read"
-                # Poll quickly enough that a completed camera frame does not
-                # spend a visible fraction of the tracking interval waiting.
-                time.sleep(0.002)
+            captured_frame = capture.latest_after(last_capture_sequence)
+            if captured_frame is None:
+                time.sleep(0.001)
                 continue
-            ok, frame = completed_frame
-            if not ok:
+            previous_capture_sequence = last_capture_sequence
+            last_capture_sequence = captured_frame.sequence
+            capture_skipped_total += max(
+                0, captured_frame.sequence - previous_capture_sequence - 1
+            )
+            if not captured_frame.ok:
                 read_failures += 1
-                if read_failures >= max(10, args.fps * 2):
+                if capture_failure_since is None:
+                    capture_failure_since = captured_frame.captured_at
+                if time.monotonic() - capture_failure_since >= 2.0:
                     vision_job = _background_call(_close_vision, capture, tracker)
                     vision_operation = "close"
                     capture = tracker = engine = cv2 = None
@@ -436,14 +515,29 @@ def main() -> int:
                     shared.update_status(status, clear_frame=True)
                     matrix.set_status(MatrixStatus.ERROR)
                 else:
-                    time.sleep(0.05)
+                    time.sleep(0.005)
                 continue
             read_failures = 0
+            capture_failure_since = None
+            frame = captured_frame.frame
             inference_started = time.monotonic()
+            capture_age_ms = max(
+                0.0, (inference_started - captured_frame.captured_at) * 1000
+            )
+            capture_interval_ms = (
+                None if last_capture_at is None
+                else max(0.0, (captured_frame.captured_at - last_capture_at) * 1000)
+            )
+            inference_interval_ms = (
+                None if last_inference_started is None
+                else max(0.0, (inference_started - last_inference_started) * 1000)
+            )
+            last_capture_at = captured_frame.captured_at
+            last_inference_started = inference_started
             preview_watched = shared.has_stream_clients()
             preview_due = preview_watched and inference_started >= preview_at
             tracker.preview_enabled = preview_due
-            tracker.diagnostics_enabled = preview_due
+            tracker.diagnostics_enabled = preview_due or shared.tuning.active()
             result = tracker.process(frame)
             if preview_due:
                 latest_diagnostics = result.diagnostics
@@ -451,7 +545,6 @@ def main() -> int:
                 log_startup_stage("first inference", inference_started)
             engine.config = shared.tuning.configuration(engine_base_config)
             state = engine.update(result.observation)
-            shared.tuning.observe(result.observation, engine.calibration, engine.config, engine.calibrated)
             if engine.calibrated and engine.calibration is not retained_calibration:
                 retained_calibration = engine.calibration
                 try:
@@ -468,6 +561,42 @@ def main() -> int:
                 and not launch_guard_active
             ) else False
             sent_at = time.monotonic()
+            inference_ms = (inference_finished - inference_started) * 1000
+            send_ms = (sent_at - inference_finished) * 1000
+            sample_age_ms = max(0.0, (sent_at - captured_frame.captured_at) * 1000)
+            signature = _controller_signature(state)
+            transition_age_ms = None
+            if receiver_available and signature != last_controller_signature:
+                transition_age_ms = sample_age_ms
+            if receiver_available:
+                last_controller_signature = signature
+            performance.record(
+                capture_age_ms=capture_age_ms,
+                capture_interval_ms=capture_interval_ms,
+                inference_ms=inference_ms,
+                inference_interval_ms=inference_interval_ms,
+                send_ms=send_ms,
+                sample_age_ms=sample_age_ms,
+                controller_transition_age_ms=transition_age_ms,
+            )
+            recognition = engine.recognition_feedback()
+            push_feedback = engine.push_feedback(result.observation)
+            pull_feedback = engine.pull_feedback(result.observation)
+            recognized = [name for name, active in state.dpad.items() if active]
+            recognized.extend(name for name, active in state.buttons.items() if active)
+            recognized.extend(name for name, active in recognition.items() if active)
+            if push_feedback["active"]:
+                recognized.append("push")
+            if pull_feedback["active"]:
+                recognized.append("pull")
+            image_quality = _academy_image_quality(result.frame, result.diagnostics, cv2) \
+                if shared.tuning.active() else {}
+            shared.tuning.observe(
+                result.observation, engine.calibration, engine.config, engine.calibrated,
+                frame=result.frame, image_quality=image_quality,
+                performance={"inference_ms": inference_ms, "sample_age_ms": sample_age_ms},
+                recognized=recognized,
+            )
             matrix.set_status(
                 (MatrixStatus.TUNING if shared.tuning.active() else MatrixStatus.LEARNING)
                 if practice_mode
@@ -478,8 +607,26 @@ def main() -> int:
                 )
             )
             status = state.to_dict()
-            status["inference_ms"] = round((inference_finished - inference_started) * 1000, 1)
-            status["send_ms"] = round((sent_at - inference_finished) * 1000, 1)
+            status["inference_ms"] = round(inference_ms, 1)
+            status["send_ms"] = round(send_ms, 1)
+            status["sample_age_ms"] = round(sample_age_ms, 1)
+            status["tracker_backend"] = tracker.backend
+            status["tracker_backend_label"] = tracker.backend_label
+            status.update(capture.metadata)
+            status["capture_sequence"] = captured_frame.sequence
+            status["capture_age_ms"] = round(capture_age_ms, 1)
+            status["capture_interval_ms"] = (
+                None if capture_interval_ms is None else round(capture_interval_ms, 1)
+            )
+            status["capture_skipped_total"] = capture_skipped_total
+            status["inference_interval_ms"] = (
+                None if inference_interval_ms is None else round(inference_interval_ms, 1)
+            )
+            status["inference_hz"] = (
+                None if not inference_interval_ms else round(1000.0 / inference_interval_ms, 1)
+            )
+            status["performance"] = performance.snapshot()
+            status.update(preview_encoder.metrics())
             status["calibration_save_error"] = calibration_save_error
             status["calibration_retained"] = retained_calibration is not None
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
@@ -506,15 +653,15 @@ def main() -> int:
             status["camera_available"] = True
             status["vision_state"] = "active"
             status["menu_gesture"] = engine.menu_feedback()
-            status["push_gesture"] = engine.push_feedback(result.observation)
-            status["pull_gesture"] = engine.pull_feedback(result.observation)
+            status["push_gesture"] = push_feedback
+            status["pull_gesture"] = pull_feedback
             status["finger_active"] = engine.curl_feedback(result.observation)
-            status["recognition"] = engine.recognition_feedback()
+            status["recognition"] = recognition
             status["finger_curls"] = result.observation.fingers
             status["curl_threshold"] = engine.config.pair("index")[0]
             status["tuning"] = shared.tuning.snapshot()
             status.update(latest_diagnostics)
-            # Publish control feedback every inference; encode video at most 15 fps.
+            # Publish control feedback every inference; encode previews asynchronously.
             shared.update_status(status)
             if startup_timer is not None:
                 log_startup_stage("activation to active status", startup_timer)
@@ -522,18 +669,14 @@ def main() -> int:
             if not preview_due:
                 continue
             preview_at = time.monotonic() + 1.0 / max(1.0, args.preview_fps)
-            cv2.putText(
+            preview_encoder.submit(
                 result.frame,
                 "PRACTICE" if practice_mode else (
                     "CALIBRATING - hold still" if not engine.calibrated else vision_profile.replace("_", " ").upper()
                 ),
-                (20, result.frame.shape[0] - 24),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.65,
-                (0, 210, 255) if engine is not None and not engine.calibrated else (255, 255, 255), 2,
+                (0, 210, 255) if engine is not None and not engine.calibrated else (255, 255, 255),
+                cv2,
             )
-            encoded, jpeg = cv2.imencode(".jpg", result.frame, [cv2.IMWRITE_JPEG_QUALITY, 78])
-            if encoded:
-                shared.update(jpeg.tobytes(), status)
     except KeyboardInterrupt:
         matrix.set_status(MatrixStatus.OFF)
         return 0
@@ -550,6 +693,7 @@ def main() -> int:
         if vision_job is None:
             _close_vision(capture, tracker)
         sender.close()
+        preview_encoder.close()
         profile_server.close()
         server.shutdown()
 

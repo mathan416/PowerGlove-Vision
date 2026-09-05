@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added guarded host USB-recovery requests for sustained camera outages.
+#   2026-09-05 - Re-enroll the camera after each unavailable-to-healthy transition.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -13,7 +15,9 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
+from typing import Callable, Mapping
 
 
 _NON_CAMERA_MARKERS = ("codec", "decoder", "encoder", "m2m", "venus")
@@ -21,6 +25,66 @@ _NON_CAMERA_MARKERS = ("codec", "decoder", "encoder", "m2m", "venus")
 
 class CameraUnavailableError(RuntimeError):
     """Raised when a configured camera cannot provide video frames."""
+
+
+class CameraRecoveryRequester:
+    """Request at most one host USB reset during each continuous camera outage."""
+
+    def __init__(
+        self,
+        marker: Path,
+        request: Path,
+        *,
+        delay: float = 15.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self.marker = marker
+        self.request = request
+        self.delay = max(0.0, float(delay))
+        self.clock = clock
+        self._missing_since: float | None = None
+        self._requested = False
+        self._was_available = False
+
+    def _create_request(self) -> None:
+        """Atomically signal the fixed host-side recovery watcher."""
+        self.request.parent.mkdir(parents=True, exist_ok=True)
+        self.request.touch(exist_ok=True)
+
+    def observe(self, status: Mapping[str, object]) -> bool:
+        """Create one request after a sustained camera error; return when created."""
+        if bool(status.get("camera_available")):
+            self._missing_since = None
+            self._requested = False
+            newly_available = not self._was_available
+            self._was_available = True
+            if self.marker.is_file() and newly_available:
+                self._create_request()
+                return True
+            return False
+
+        self._was_available = False
+
+        state = str(status.get("vision_state", ""))
+        error = str(status.get("vision_error", ""))
+        if state == "idle":
+            self._missing_since = None
+            self._requested = False
+            return False
+        if state != "error" or "camera" not in error.lower():
+            return False
+
+        now = self.clock()
+        if self._missing_since is None:
+            self._missing_since = now
+        if self._requested or now - self._missing_since < self.delay:
+            return False
+        if not self.marker.is_file():
+            return False
+
+        self._create_request()
+        self._requested = True
+        return True
 
 
 def discover_camera_devices(

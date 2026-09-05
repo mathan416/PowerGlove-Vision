@@ -12,6 +12,9 @@
     "roll_off": 0.40,
     "push_on": 0.34,
     "push_off": 0.18,
+    "depth_confirm_frames": 2,
+    "depth_motion_window_ms": 250,
+    "depth_motion_delta": 0.10,
     "pulse_hz": 7.0,
     "loss_release_ms": 120
   }

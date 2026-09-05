@@ -115,56 +115,50 @@ class HookTests(unittest.TestCase):
 
 
 class VisionControlTests(unittest.TestCase):
-    def test_off_applies_during_blocked_camera_open_or_read(self):
+    def test_off_applies_during_blocked_camera_open(self):
         from types import SimpleNamespace
         from unittest.mock import MagicMock
         from powerglove_vision import vision_app
         from powerglove_vision.profile_control import ProfileRequest
 
-        for operation in ("open", "read"):
-            blocked = threading.Event()
-            release = threading.Event()
-            finished = threading.Event()
-            sent = []
-            capture = MagicMock()
-            tracker = MagicMock()
-            def wait_for_release():
-                blocked.set()
-                release.wait(2)
-                finished.set()
-                return False, None
-            capture.read.side_effect = wait_for_release
-            def prepare(_args):
-                if operation == "open":
-                    wait_for_release()
-                return MagicMock(), capture, tracker
-            def take():
-                if blocked.is_set() and not sent:
-                    sent.append(True)
-                    return ProfileRequest("off-test", None, "nes", "", ("127.0.0.1", 1))
-                return None
-            def update(state, **_kwargs):
-                if sent and state.get("active_profile") == "off":
-                    raise KeyboardInterrupt
-            server = MagicMock(); server.take.side_effect = take
-            shared = MagicMock()
-            shared.take_profile_request.return_value = None
-            shared.take_practice_request.return_value = None
-            shared.take_controller_request.return_value = None
-            shared.take_calibration_request.return_value = False
-            shared.update_status.side_effect = update
-            args = SimpleNamespace(profile="program_h", no_matrix=True, controller_enabled=False,
-                                   token="test-profile-token", receiver="", port=55355,
-                                   profile_listen="127.0.0.1", profile_port=55356,
-                                   web_host="127.0.0.1", web_port=8089, config=None)
-            try:
-                with patch.object(vision_app, "build_parser") as parser, patch.object(vision_app, "load_calibration", return_value=None), patch.object(vision_app, "UnoQMatrix"), patch.object(vision_app, "UdpSender"), patch.object(vision_app, "ProfileCommandServer", return_value=server), patch.object(vision_app, "SharedDebugState", return_value=shared), patch.object(vision_app, "start_debug_server"), patch.object(vision_app.signal, "signal"), patch.object(vision_app, "_prepare_vision", side_effect=prepare):
-                    parser.return_value.parse_args.return_value = args
-                    started = time.monotonic()
-                    self.assertEqual(vision_app.main(), 0)
-                    self.assertLess(time.monotonic() - started, 1)
-                    self.assertTrue(sent)
-                    self.assertFalse(release.is_set())
-            finally:
-                release.set()
-                self.assertTrue(finished.wait(1))
+        blocked = threading.Event()
+        release = threading.Event()
+        finished = threading.Event()
+        sent = []
+        capture = MagicMock()
+        tracker = MagicMock()
+        def wait_for_release():
+            blocked.set()
+            release.wait(2)
+            finished.set()
+            return MagicMock(), capture, tracker
+        def take():
+            if blocked.is_set() and not sent:
+                sent.append(True)
+                return ProfileRequest("off-test", None, "nes", "", ("127.0.0.1", 1))
+            return None
+        def update(state, **_kwargs):
+            if sent and state.get("active_profile") == "off":
+                raise KeyboardInterrupt
+        server = MagicMock(); server.take.side_effect = take
+        shared = MagicMock()
+        shared.take_profile_request.return_value = None
+        shared.take_practice_request.return_value = None
+        shared.take_controller_request.return_value = None
+        shared.take_calibration_request.return_value = False
+        shared.update_status.side_effect = update
+        args = SimpleNamespace(profile="program_h", no_matrix=True, controller_enabled=False,
+                               token="test-profile-token", receiver="", port=55355,
+                               profile_listen="127.0.0.1", profile_port=55356,
+                               web_host="127.0.0.1", web_port=8089, config=None)
+        try:
+            with patch.object(vision_app, "build_parser") as parser, patch.object(vision_app, "load_calibration", return_value=None), patch.object(vision_app, "UnoQMatrix"), patch.object(vision_app, "UdpSender"), patch.object(vision_app, "ProfileCommandServer", return_value=server), patch.object(vision_app, "SharedDebugState", return_value=shared), patch.object(vision_app, "start_debug_server"), patch.object(vision_app.signal, "signal"), patch.object(vision_app, "_prepare_vision", side_effect=lambda _args: wait_for_release()):
+                parser.return_value.parse_args.return_value = args
+                started = time.monotonic()
+                self.assertEqual(vision_app.main(), 0)
+                self.assertLess(time.monotonic() - started, 1)
+                self.assertTrue(sent)
+                self.assertFalse(release.is_set())
+        finally:
+            release.set()
+            self.assertTrue(finished.wait(1))

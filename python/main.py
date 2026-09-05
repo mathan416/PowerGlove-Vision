@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Request one guarded host USB reset after a sustained camera outage.
+#   2026-09-05 - Selected the deployed legacy-lite tracker explicitly.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Delegated idle and active vision lifecycle to the persistent worker.
@@ -69,7 +71,8 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
         "--profile", str(settings.get("profile", "bad_street_brawler")),
         "--glove-color", str(settings.get("glove_color", "none")),
         "--camera", str(settings.get("camera", "auto")),
-        "--model", str(model_path),
+        "--camera-format", "MJPG",
+        "--tracker-backend", "legacy",
         "--web-host", "127.0.0.1", "--web-port", "8089", "--no-matrix",
     ]
     if controller_enabled:
@@ -84,7 +87,12 @@ def main() -> int:
     matrix = UnoQMatrix()
     matrix.set_status(MatrixStatus.LOADING)
     from powerglove_vision.control_server import start_control_server
+    from powerglove_vision.camera import CameraRecoveryRequester
     control_server, control = start_control_server(CONFIG_PATH, pairing_display=matrix.show_pairing)
+    camera_recovery = CameraRecoveryRequester(
+        APP_ROOT / "data" / ".camera-recovery-enabled",
+        APP_ROOT / "data" / "camera-recovery-request",
+    )
     matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
 
     environment = dict(os.environ)
@@ -126,6 +134,12 @@ def main() -> int:
                     with urllib.request.urlopen("http://127.0.0.1:8089/status", timeout=0.3) as response:
                         status = json.load(response)
                     control.update_worker(status)
+                    if camera_recovery.observe(status):
+                        print(
+                            "PowerGlove Vision: requested guarded USB camera preparation/recovery",
+                            file=sys.stderr,
+                            flush=True,
+                        )
                     active_profile = status.get("active_profile")
                     matrix.set_profile(
                         None if status.get("practice_mode") or active_profile == "off"

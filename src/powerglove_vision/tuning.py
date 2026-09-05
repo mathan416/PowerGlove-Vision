@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Added the family-facing personalization wizard and validation gate.
 #   2026-09-04 - Added guided gesture sampling and persistent personal thresholds.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -19,6 +20,7 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
+from .academy_diagnostics import AcademyDiagnostics
 from .gesture import GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
 
 CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
@@ -31,9 +33,35 @@ LABELS = {key: key.replace("_", " ").capitalize() for key in GESTURES}
 LABELS.update({key: "Curl " + key + " finger" for key in FINGERS})
 LABELS["thumb"] = "Curl thumb"
 LABELS["hand_setup"] = "Set up my hand"
-LABELS.update(start="Start — V sign", select="Select — thumbs-up", closed_hand="Closed hand",
+LABELS.update(start="Start — Make the V sign", select="Select — Give a thumbs-up", closed_hand="Closed hand",
               menu_guard="Menu guard — thumb and ring", push="Glove Zap — push toward camera", pull="Pull Back — away from camera",
               roll_left="Roll wrist left", roll_right="Roll wrist right")
+
+PROBLEMS = {
+    "setup": "Set up a new hand",
+    "difficult": "A gesture is hard to trigger",
+    "accidental": "A gesture happens accidentally",
+    "off_center": "Movement feels off-center",
+}
+SUGGESTION_BIAS = {
+    "setup": (.65, .30),
+    "difficult": (.55, .30),
+    "accidental": (.75, .40),
+}
+DEPTH_GESTURES = {"push", "pull"}
+MOVEMENT_GESTURES = {"left", "right", "up", "down", "roll_left", "roll_right"}
+
+
+def tuning_recipe(gesture: str) -> dict:
+    """Describe the family-facing recording sequence for one recognition control."""
+    if gesture in DEPTH_GESTURES:
+        return {"kind": "motion", "durations": [2.0, 6.0, 2.0],
+                "steps": ["Starting position", "Three motions and returns", "Return to start"]}
+    if gesture in MOVEMENT_GESTURES:
+        return {"kind": "movement", "durations": [2.0, 2.0, 2.0],
+                "steps": ["Starting position", "Move and hold", "Return to start"]}
+    return {"kind": "pose", "durations": [2.0, 2.0, 2.0],
+            "steps": ["Open hand", "Make the pose", "Open hand again"]}
 
 
 def validate_overrides(values: dict) -> dict:
@@ -93,7 +121,8 @@ def validate_recorded_pose(gesture: str, phases: list, config: GestureConfig) ->
                              "At least 90% of measurements must match the complete pose. Record again.")
 
 
-def suggest(gesture: str, phases: list, config: GestureConfig | None = None) -> dict:
+def suggest(gesture: str, phases: list, config: GestureConfig | None = None,
+            activation_fraction: float = .65, release_fraction: float = .30) -> dict:
     """Separate rest noise from one performed gesture and two open-hand recordings."""
     if len(phases) != 3 or any(len(phase) < 12 for phase in phases):
         raise ValueError("Record open hand, the gesture, and open hand again.")
@@ -112,11 +141,17 @@ def suggest(gesture: str, phases: list, config: GestureConfig | None = None) -> 
         if not positive:
             continue
         low = max(0.0, percentile(rest, .95))
-        high = min(percentile(repetition, .10) for repetition in active)
+        # Depth recording deliberately includes three returns to neutral, so use
+        # its upper quartile rather than treating the returns as failed motion.
+        active_fraction = .75 if gesture in DEPTH_GESTURES else .10
+        high = min(percentile(repetition, active_fraction) for repetition in active)
         gap = high - low
         if gap < .08:
             raise ValueError("The resting and performed measurements overlap for " + channel + ". Try a clearer movement and fully release it.")
-        suggestion[channel] = {"on": round(low + gap * .65, 4), "off": round(low + gap * .30, 4)}
+        suggestion[channel] = {
+            "on": round(low + gap * activation_fraction, 4),
+            "off": round(low + gap * release_fraction, 4),
+        }
     suggestion = validate_overrides(suggestion)
     current = config if config is not None else GestureConfig()
     candidate = replace(current, thresholds=dict(current.thresholds, **suggestion))
@@ -154,24 +189,38 @@ class TuningManager:
         self.last_frame = None
         self.calibration = None
         self.finger_feedback = {}
+        self.image_quality = {}
+        self.diagnostics = AcademyDiagnostics(self.path.parent, clock)
+        self.problem = None
+        self.wizard_step = "problem"
+        self.ready_since = None
+        self.test_started = None
+        self.test_was_active = False
+        self.test_cycles = 0
+        self.test_neutral_seconds = 0.0
+        self.test_last_at = None
+        self.test_passed = False
         self._configuration_cache = None
 
     def _expire(self):
         """Discard temporary state when the browser lease ends."""
+        self.diagnostics.expire()
         if self.session and self.clock() >= self.expires:
             self.session = None
             self.preview = None
             self.phases = []
             self.recording = None
             self.revision += 1
-        if self.recording and self.clock() - self.recording[0] >= 3:
+        if self.recording and self.clock() - self.recording[0] >= self.recording[2]:
             samples = self.recording[1]
             self.recording = None
             if len(samples) >= 12:
                 self.phases.append(samples)
                 self.error = None
+                self.wizard_step = "record"
             else:
                 self.error = "Not enough clear hand measurements. Keep your palm visible and retry this step."
+                self.wizard_step = "record"
 
     def active(self) -> bool:
         """Return whether an unexpired tuning owner exists."""
@@ -206,16 +255,26 @@ class TuningManager:
                     "recording": self.recording is not None, "completed_phases": len(self.phases),
                     "samples": len(self.recording[1]) if self.recording else 0,
                     "ready": self.ready and self.clock() - self.last_observed < 2,
+                    "stable_ready": bool(self.ready_since is not None and self.clock() - self.ready_since >= 1),
+                    "problem": self.problem, "problems": PROBLEMS, "wizard_step": self.wizard_step,
+                    "recipe": tuning_recipe(self.gesture),
+                    "test": {"active": self.test_started is not None, "cycles": self.test_cycles,
+                             "neutral_seconds": round(self.test_neutral_seconds, 1),
+                             "passed": self.test_passed},
+                    "image_quality": copy.deepcopy(self.image_quality),
+                    "diagnostic": self.diagnostics.snapshot(),
                     "error": self.error, "revision": self.revision}
 
     def invalidate(self):
         """Invalidate measurement sessions after an explicit neutral calibration."""
         with self.lock:
             self.phases, self.recording, self.preview = [], None, None
+            self._reset_test()
             self.revision += 1
             self.error = "Neutral calibration changed. Record your open hand again."
 
-    def observe(self, observation, calibration, config, calibrated):
+    def observe(self, observation, calibration, config, calibrated, *, frame=None,
+                image_quality=None, performance=None, recognized=None):
         """Sample each worker frame once, accepting only calibrated high-confidence hands."""
         with self.lock:
             self._expire()
@@ -228,28 +287,83 @@ class TuningManager:
                 return
             self.last_observed = self.clock()
             self.base_config = replace(config, thresholds={})
-            self.ready = calibrated and observation.detected and observation.confidence >= .7
+            self.image_quality = dict(image_quality or {})
+            self.ready = (calibrated and observation.detected and observation.confidence >= .7
+                          and self.image_quality.get("whole_hand_visible", True))
+            if self.ready:
+                if self.ready_since is None:
+                    self.ready_since = self.clock()
+            else:
+                self.ready_since = None
             self.latest = measurements(observation, calibration)
             requirements = GESTURES[self.gesture]
             if len(self.phases) in (0, 2):
                 requirements = dict.fromkeys(requirements, False)
             self.finger_feedback = finger_pose_feedback(config, self.gesture, requirements, self.latest)
             self.effective = {key: dict(zip(("on", "off"), config.pair(key))) for key in CHANNELS}
+            self._observe_test(config, set(recognized or ()))
+            if frame is not None:
+                self.diagnostics.observe(frame, {
+                    "detected": observation.detected,
+                    "confidence": observation.confidence,
+                    "inference_ms": (performance or {}).get("inference_ms"),
+                    "sample_age_ms": (performance or {}).get("sample_age_ms"),
+                    "hand_luma": self.image_quality.get("hand_luma"),
+                    "recognized": list(recognized or ()),
+                })
             if not self.recording:
                 return
-            started, samples = self.recording
+            started, samples, duration = self.recording
             if (calibrated and observation.detected and observation.confidence >= .7
                     and observation.timestamp != self.last_frame and len(samples) < 180
                     and all(math.isfinite(v) for v in self.latest.values())):
                 samples.append(dict(self.latest))
             self.last_frame = observation.timestamp
-            if self.clock() - started >= 3:
+            if self.clock() - started >= duration:
                 self.recording = None
                 if len(samples) < 12:
                     self.error = "Not enough clear hand measurements. Keep your palm visible and retry this step."
                 else:
                     self.phases.append(samples)
                     self.error = None
+
+    def _reset_test(self) -> None:
+        """Clear the temporary guided preview-validation state."""
+        self.test_started = None
+        self.test_was_active = False
+        self.test_cycles = 0
+        self.test_neutral_seconds = 0.0
+        self.test_last_at = None
+        self.test_passed = False
+
+    def _selected_active(self, config: GestureConfig) -> bool:
+        """Evaluate the selected preview using the same component boundaries."""
+        if not self.ready:
+            return False
+        if self.gesture in ("start", "select", "closed_hand", "menu_guard", "hand_setup"):
+            requirements = GESTURES[self.gesture]
+            return all(item["matches"] for item in finger_pose_feedback(
+                config, self.gesture, requirements, self.latest).values())
+        on = config.pair(self.gesture)[0]
+        return self.latest.get(self.gesture, 0.0) >= on
+
+    def _observe_test(self, config: GestureConfig, recognized: set[str]) -> None:
+        """Count complete preview activations, releases, and neutral time."""
+        if self.test_started is None or self.test_passed:
+            return
+        now = self.clock()
+        # Depth gestures keep the gameplay two-frame/motion confirmation rule;
+        # a stationary near or far hand cannot pass the guided test.
+        active = self.gesture in recognized if self.gesture in DEPTH_GESTURES else self._selected_active(config)
+        if self.test_last_at is not None and not active:
+            self.test_neutral_seconds += max(0.0, min(.5, now - self.test_last_at))
+        if self.test_was_active and not active:
+            self.test_cycles += 1
+        self.test_was_active = active
+        self.test_last_at = now
+        self.test_passed = self.test_cycles >= 2 and self.test_neutral_seconds >= 3.0
+        if self.test_passed:
+            self.wizard_step = "save"
 
     def command(self, data: dict) -> dict:
         """Validate ownership, stage recordings, preview changes, and atomically save."""
@@ -270,6 +384,7 @@ class TuningManager:
             if action in ("begin", "heartbeat"):
                 return self.snapshot()
             if action == "end":
+                self.diagnostics.cancel()
                 self.expires = 0
                 self._expire()
             elif action == "select":
@@ -279,6 +394,23 @@ class TuningManager:
                 self.gesture, self.phases, self.recording, self.preview = gesture, [], None, None
                 self.error = None
                 self.finger_feedback = {}
+                self.wizard_step = "record"
+                self._reset_test()
+                self.revision += 1
+            elif action == "choose_problem":
+                problem = data.get("problem")
+                if problem not in PROBLEMS:
+                    raise ValueError("Choose what you would like to fix.")
+                self.problem = problem
+                self.phases, self.recording, self.preview = [], None, None
+                self._reset_test()
+                if problem == "setup":
+                    self.gesture, self.wizard_step = "hand_setup", "record"
+                elif problem == "off_center":
+                    self.wizard_step = "center"
+                else:
+                    self.wizard_step = "gesture"
+                self.error = None
                 self.revision += 1
             elif action == "record":
                 if self.recording or len(self.phases) >= 3:
@@ -288,12 +420,62 @@ class TuningManager:
                 self.preview = None
                 self.revision += 1
                 self.error = None
-                self.recording = (self.clock(), [])
+                self.recording = (self.clock(), [], 3.0)
+            elif action == "wizard_record":
+                if self.recording or len(self.phases) >= 3:
+                    raise ValueError("Finish or restart this recording first.")
+                if self.ready_since is None or self.clock() - self.ready_since < 1:
+                    raise ValueError("Keep your whole hand clearly visible for a moment, then try again.")
+                recipe = tuning_recipe(self.gesture)
+                self.preview = None
+                self._reset_test()
+                self.wizard_step = "recording"
+                self.error = None
+                self.revision += 1
+                self.recording = (self.clock(), [], recipe["durations"][len(self.phases)])
             elif action == "suggest":
                 self.preview = None
                 self.revision += 1
-                self.preview = suggest(self.gesture, self.phases, self.configuration(self.base_config))
+                activation, release = SUGGESTION_BIAS.get(self.problem or "setup", SUGGESTION_BIAS["setup"])
+                self.preview = suggest(self.gesture, self.phases, self.configuration(self.base_config),
+                                       activation, release)
+                self.wizard_step = "test"
+                self._reset_test()
                 self.revision += 1
+            elif action == "start_test":
+                if not self.preview:
+                    raise ValueError("Analyze the recordings before testing the adjustment.")
+                self._reset_test()
+                self.test_started = self.clock()
+                self.test_last_at = self.test_started
+                self.wizard_step = "test"
+            elif action == "wizard_save":
+                if not self.test_passed or not self.preview:
+                    raise ValueError("Complete the guided try-it test before saving.")
+                merged = dict(self.saved, **validate_overrides(self.preview))
+                atomic_write(self.path, json.dumps({"version": 1, "thresholds": merged}, indent=2) + "\n")
+                self.saved, self.preview = merged, None
+                self.wizard_step = "done"
+                self.error = None
+                self.revision += 1
+            elif action == "wizard_back":
+                self.phases, self.recording, self.preview = [], None, None
+                self._reset_test()
+                if self.wizard_step in ("record", "recording") and self.problem in ("difficult", "accidental"):
+                    self.wizard_step = "gesture"
+                else:
+                    self.wizard_step = "problem"
+                    self.problem = None
+                self.error = None
+                self.revision += 1
+            elif action == "diagnostic_begin":
+                self.diagnostics.begin()
+            elif action == "diagnostic_record":
+                if self.ready_since is None or self.clock() - self.ready_since < 1:
+                    raise ValueError("Keep your whole hand clearly visible before recording this step.")
+                self.diagnostics.record()
+            elif action == "diagnostic_cancel":
+                self.diagnostics.cancel()
             elif action in ("preview", "save"):
                 values = validate_overrides(data.get("thresholds"))
                 if not values or set(values) - set(GESTURES[self.gesture]):
@@ -304,6 +486,8 @@ class TuningManager:
                     self.saved, self.preview = merged, None
                 else:
                     self.preview = values
+                    self.wizard_step = "test"
+                    self._reset_test()
                 self.error = None
                 self.revision += 1
             elif action == "reset":

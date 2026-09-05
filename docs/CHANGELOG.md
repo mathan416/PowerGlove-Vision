@@ -5,6 +5,77 @@ This file records user-visible PowerGlove Vision changes. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
+## [Unreleased]
+
+Development toward 0.3.2 focuses on lower-latency camera interpretation and
+faster inference for more responsive play.
+
+### Changed
+
+- Replaced Glove Academy's threshold-first Tune panel with a Pixel Pal-guided
+  personalization wizard. Families choose the problem, confirm clear framing,
+  record gesture-specific steps, pass a two-use preview test, and then save only
+  affected shared components. Raw numerical controls now live under Advanced.
+- Added dedicated **Show your hand** and **Find neutral** artwork, clearer Start
+  and Select lesson titles, and an intentional **Set this as my center** action.
+- Added an optional local Academy diagnostic. It exercises the deployed proven
+  tracker, emits an aggregate report without images or landmarks, and deletes
+  its temporary video after analysis, cancellation, or a 30-minute abandonment.
+- Added advisory hand-framing, darkness, and backlighting guidance without
+  changing camera exposure automatically.
+- Reduced the deliberate V-sign Start hold from 650 ms to 500 ms while
+  retaining its short pulse, interruption cancellation, Menu Guard priority,
+  and 300 ms visible-release rearm guard. Select remains a 150 ms hold.
+- Evaluate directions, finger curls, wrist rolls, and Closed Hand on every fresh
+  inference result. Glove Zap and Pull Back now reject stationary near/far hands
+  and one-frame scale jumps by requiring two beyond-threshold observations plus
+  0.10 normalized palm-scale motion in the intended direction within 250 ms.
+  Existing held, pulsed, turbo, and toggle mappings remain unchanged.
+- Added rolling camera-read-to-send and changed-control-to-send p50/p95 readings
+  to Dashboard, including continuous native X/Y changes. The native coordinate
+  benchmark now verifies a deliberate step reaches 90% within 150 ms without
+  adding another queue or core-side smoothing.
+- Added local-only fixed and user-paced camera record/replay tools for identical-frame comparisons of
+  MediaPipe Hands thread counts, experimental Tasks Video, 640×480 versus
+  full-field 512×384, and preview-open versus preview-closed cost. The recorder
+  covers near/far, gesture, jitter, depth, and recovery cues. Guided capture
+  keeps a live browser preview visible, records each step only after player
+  confirmation, and releases the camera when complete. Clips are temporary and
+  never used for training.
+- On the deployed UNO Q, preliminary 300-sample steady-state windows kept the
+  640×480 camera-read-to-decision p95 at 127.9 ms with Dashboard closed and
+  125.7 ms with its stream open. A 16-lane guided replay retained MediaPipe
+  Hands at 640×480 with four threads: Tasks Video roughly doubled inference
+  latency, and 512×384 did not meet the required 15% improvement while producing
+  more false activations. Controller-enabled game measurements remain a
+  separate acceptance step.
+
+- Promoted the Project Overview PDF to the first position in built-in Help's
+  Technical Documentation section and reordered that section from broad system
+  orientation through increasingly specialized implementation material.
+- Made the deployed legacy-lite MediaPipe tracker explicit while retaining an
+  opt-in Tasks Video path for controlled comparisons. Camera capture now drains
+  continuously into a newest-frame slot, background JPEG work can drop stale
+  previews, and live diagnostics report frame freshness, inference cadence,
+  skipped captures, and preview cost.
+- Named the tracker choices **MediaPipe Hands (proven)** and **MediaPipe Tasks
+  Video (experimental)** in Dashboard and documentation while retaining the
+  stable `legacy` and `tasks-video` command identifiers.
+- Replaced Glove Academy's mislabeled single-finger curl in the **Close your
+  hand** lesson with a dedicated closed-fist illustration. The intentionally
+  six-digit glove remains part of Pixel Pal's Extra-Digit Hunt, and the pose is
+  now shown in the Gameplay Guide, Configuration Reference, quick reference,
+  and Programs A-I manual wherever closed-hand recognition is taught.
+- Made **Skip lesson**, **Previous**, and automatic lesson completion mutually
+  consistent. Manual navigation now invalidates older recognition responses and
+  pending automatic advances, so one button press changes the lesson once.
+- Added guarded UNO Q recovery for one UVC camera. Installation may run without
+  a camera; the first healthy sighting records the camera and its real parent hub
+  in a root-owned allowlist, and a later healthy sighting updates the association
+  if the camera moves. After a sustained outage the helper validates and resets
+  only the last observed hub. Recovery is rate-limited, never loops during one
+  outage, and leaves ordinary camera reopen attempts as the first response.
+
 ## [0.3.1] - 2026-09-05
 
 Documentation and Help maintenance release adding Pixel Pal's deliberately

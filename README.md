@@ -13,14 +13,19 @@ gamepad named **PowerGlove Vision**.
 The project includes eleven profiles: nine reusable Programs A–I and dedicated
 controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
 profile automatically when you launch a registered game. Glove Academy mode lets you
-practise without sending input to the cabinet.
+practise without sending input to the cabinet. Its optional Pixel Pal-guided
+personalization wizard adjusts recognition to a player's hand without retraining
+the model, changing game mappings, or exposing raw thresholds during normal use.
 
 The cabinet supports two Super Glove Ball paths. `lr-fceumm` is the complete,
 standard-joystick fallback and remains the safe default. The separately named
 `lr-nestopia-powerglove` core supplies native absolute X/Y coordinates; exact-ROM
 traces and deterministic headless tests confirm detection, Start, four-direction
 activation/release, small continuous movement, and safe neutralization. Native Z,
-roll, finger/action fields, and physical cabinet behavior are not yet complete.
+roll, and finger/action fields remain deliberately neutral until trace evidence
+confirms them. Live cabinet sessions confirm Start, corrected Y orientation,
+controllable full-field X/Y movement, and low-lag stabilization; further play
+testing can continue refining feel without changing the native packet contract.
 
 ## Choose a guide
 
@@ -39,6 +44,7 @@ roll, finger/action fields, and physical cabinet behavior are not yet complete.
 
 | You want to… | Read… |
 | --- | --- |
+| Get the complete project at a glance | [Project overview PDF](output/pdf/PowerGlove-Vision-Overview.pdf) |
 | Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
@@ -72,8 +78,8 @@ Use the same release on both devices. Download `install-uno-q.sh` and
 [release](https://github.com/mathan416/PowerGlove-Vision/releases). Run the first
 on the UNO Q and the second on RetroPie as your normal login user. Each verifies
 its package and requests sudo access when needed. The UNO installer includes
-the Arduino sketch, early-start helper, and shutdown helper; no separate App Lab
-import or helper installation is needed.
+the Arduino sketch, early-start helper, shutdown helper, and guarded USB-camera
+recovery helper; no separate App Lab import or helper installation is needed.
 
 Follow the [Installation Guide](docs/INSTALL_README.md) for copyable commands,
 pairing, calibration, and your first game. Both scripts also support `--check`
@@ -113,7 +119,7 @@ similar reference, but ordinary tracking variation means the saved numbers will
 not be identical. A completed calibration is saved atomically and reused across
 games and restarts; an incomplete attempt does not replace the previous file.
 
-Across the profiles, hold a **V sign** steadily for about two-thirds of a second to send Start and
+Across the profiles, hold a **V sign** steadily for half a second to send Start and
 a **thumbs-up with the other fingers closed** to send Select. These poses
 suppress A/B attacks; some profiles can still generate directional or auxiliary
 input, so keep your hand near its resting position while using them. Start sends
@@ -154,7 +160,10 @@ illustrations; the [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) adds objecti
 | Push toward the camera | Glove Zap: short simultaneous Left + Right pulse |
 
 Push toward the camera for Glove Zap, then return to your starting distance
-before trying again. Bad Street Brawler needs its game-specific emulator setting;
+before trying again. A push or pull must cross its threshold on two consecutive
+fresh observations and travel at least 0.10 palm-scale units in the intended
+direction within 250 ms. This rejects a one-frame scale jump and a stationary
+hand that merely begins near or far from the camera. Bad Street Brawler needs its game-specific emulator setting;
 see the [configuration reference](docs/CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
 
 ### Super Glove Ball
@@ -190,11 +199,28 @@ With **Gestures off** selected, the camera stays closed. Choose an active profil
 or open Glove Academy to begin. Wait for the camera view before practicing or
 playing; starting immediately after a reboot can take longer.
 
-The live camera is diagnostic rather than part of controller output. Preview
-drawing, landmark detail, and JPEG encoding occur only while a browser is
-watching the stream and are capped at 5 fps. Close Dashboard or Glove Academy
-while playing to reserve all avoidable work for recognition; tracking and
-controller delivery continue normally.
+The live camera is diagnostic rather than part of controller output. Camera
+capture continuously keeps only the newest frame, and browser JPEG encoding
+runs on a separate latest-preview worker that may drop stale preview jobs. The
+preview remains capped at 5 fps. Closing Dashboard or Glove Academy still avoids
+optional drawing and encoding work; tracking and controller delivery continue.
+
+Strong light behind the player can leave the hand dark even when the room looks
+bright. Prefer light from the camera side or move bright windows out of the
+background. The project does not force hardware backlight compensation: on the
+tested Razer Kiyo Pro it made the measured backlit scene darker, and aggressive
+manual exposure can trade brightness for motion blur and reduced frame rate.
+
+The UNO Q host helper supports one UVC camera. Installation works with or without
+the camera connected. On the first healthy sighting it records the camera and its
+actual parent USB hub in a root-owned allowlist, disables autosuspend for both,
+and automatically updates that association if the camera is later moved to a
+different hub. If the camera remains missing for 15 seconds while vision is
+requested, PowerGlove Vision makes one guarded recovery attempt for that outage
+by resetting only the last successfully observed hub. This can briefly interrupt
+USB Ethernet; Wi-Fi remains available. If a camera has never been seen—or does
+not return after that attempt—reconnect or power-cycle it and check the hub and
+cable rather than repeatedly resetting it.
 
 **Stop controller** pauses delivery while leaving active tracking available.
 **Gestures off** closes the camera. **Shutdown** requests a Linux halt, but
@@ -203,19 +229,23 @@ it is safe to remove power. See the installation guide before using Shutdown.
 
 ![Dashboard showing the selected profile and controller readings](docs/images/debug-dashboard.png)
 
-The screenshots below show the current interface. Camera imagery is blurred for privacy.
+The screenshots below show the current interface. Camera imagery is blurred or
+excluded for privacy.
 
-![Glove Academy in Tune mode, with thresholds below the blurred camera](docs/images/tune-page.png)
+![Glove Academy with Pixel Pal guiding the personalization choices](docs/images/tune-page.png)
 
 In **Glove Academy**, switch on **Tune gestures** to adjust sensitivity. The UNO Q shows
 a scanning **T** during tuning and a matching scanning **L** during ordinary practice. Both modes pause game input.
 
-Tuning uses three recordings of three seconds each: open hand, gesture, open hand.
-Optional **Set up my hand** uses open hand, gentle fist with the thumb outside,
-open hand to measure all five fingers. Preview before saving. Saved Activation
-and Release thresholds apply in gameplay across profiles. **Glove Zap** and
-**Pull Back** have separate practice lessons and tuning controls; movement tuning
-ends by returning to the starting position and camera distance.
+Pixel Pal first asks what feels wrong, then presents one instruction at a time.
+Recording starts only after the whole hand has been tracked clearly and steadily;
+the user presses **I'm ready** and sees a countdown. The wizard previews a
+conservative adjustment, requires two successful uses and releases plus three
+neutral seconds, and enables Save only after that check passes. Saved recognition
+settings apply across profiles. Numerical thresholds, selective reset, manual
+preview, and the private diagnostic capture live under **Advanced**. Diagnostic
+video remains on the UNO Q, is deleted after analysis or cancellation, and its
+downloadable aggregate report contains no pictures or per-frame hand data.
 
 ![Games editor in the lower part of Setup](docs/images/games-section.png)
 

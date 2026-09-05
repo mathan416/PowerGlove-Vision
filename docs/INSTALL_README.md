@@ -213,8 +213,12 @@ It also explains compatibility, package building, backups, and recovery.
   project release. Do not bypass the installer's compatibility check.
 - **Website does not open:** try the UNO Q's current IP address instead of its
   hostname. Use HTTP on port 8088 and HTTPS on port 8443.
-- **Camera missing:** check the powered hub, cable, and camera connection. Open
-  Glove Academy and wait for the camera view.
+- **Camera missing:** open Glove Academy and wait for the camera view. The UNO Q
+  host helper automatically enrolls the single UVC camera and its parent hub on
+  first successful use, even if no camera was connected during installation.
+  After enrollment it makes one guarded reset attempt during a sustained outage.
+  If it remains missing, reconnect or power-cycle the camera and check the powered
+  hub and cable; USB Ethernet may briefly disconnect during recovery.
 - **No controller in RetroArch:** finish pairing, select Start controller, and
   select PowerGlove Vision for Port 1 using your physical controller.
 - **Partial installation:** correct the reported problem and rerun the same

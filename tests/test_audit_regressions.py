@@ -14,6 +14,7 @@ import json
 import runpy
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -178,8 +179,15 @@ class AuditRegressionTests(unittest.TestCase):
             return None
         def background(fn,*args):
             future=Future(); future.set_result(fn(*args)); return future
-        capture=Mock(); capture.read.return_value=(True,Mock())
-        tracker=Mock(); tracker.process.side_effect=frame
+        capture=Mock(); capture.metadata={"camera_format":"MJPG"}
+        capture_sequence=[0]
+        def latest_after(_sequence):
+            capture_sequence[0]+=1
+            return SimpleNamespace(sequence=capture_sequence[0],captured_at=time.monotonic(),
+                                   ok=True,frame=Mock())
+        capture.latest_after.side_effect=latest_after
+        tracker=Mock(); tracker.process.side_effect=frame; tracker.backend='legacy'
+        tracker.backend_label='MediaPipe Hands (proven)'
         cv=Mock(); cv.imencode.return_value=(False,None)
         v=vision_app
         with patch.object(v,'_background_call',side_effect=background), \

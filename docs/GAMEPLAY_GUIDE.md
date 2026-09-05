@@ -42,7 +42,7 @@ ends; you do not need to select **Start controller** again.
 
 | Gesture | See it | Result |
 | --- | --- | --- |
-| Hold a V sign steadily | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause after about two-thirds of a second |
+| Hold a V sign steadily | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause after half a second |
 | Briefly show a thumbs-up with the other fingers closed | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
 
 The menu poses suppress A/B attacks while they form. Some profiles can still
@@ -50,6 +50,13 @@ produce directional or auxiliary output from wrist, depth, or finger gestures;
 keep your hand near its calibrated resting position while using menu poses. If a game
 needs Select and a direction at exactly the same time, use the physical
 controller for that combination. Recalibrate if your resting hand position produces unwanted movement.
+
+Gameplay evaluates directions, finger curls, wrist rolls, and Closed Hand on
+every fresh inference result. Glove Zap and Pull Back add a short motion check:
+two consecutive observations beyond the shared threshold plus at least 0.10
+normalized palm-scale travel in the correct direction within 250 ms. Once
+confirmed, their existing release hysteresis and each Program's held, pulsed,
+turbo, or toggle mapping remain unchanged.
 
 The small pictures in each game card are pose reminders. Paired arrows show the
 available movement or wrist-roll directions; paired pictures show a combined
@@ -423,30 +430,31 @@ you practise gestures but does not train or save a personal recognition model.
 
 ## Make the controls fit your hand
 
-Tuning is optional: adjust only controls that are difficult or trigger accidentally.
-The selector features hand setup, V-sign, thumbs-up, finger curls, Glove Zap, and
-Pull Back. Directions, wrist rolls, closed hand, and menu guard are under **More
-adjustments**. Try neutral calibration first if basic directions feel wrong.
+Tuning is optional. Open **Glove Academy**, switch on **Tune gestures**, and let
+Pixel Pal ask what feels wrong: a new hand, a difficult gesture, an accidental
+gesture, or movement that feels off-center. This personalizes numerical gesture
+boundaries; it does not retrain MediaPipe or save ordinary camera images.
 
-For **Glove Zap**, record starting position → push toward camera and hold → return
-to the starting position and distance. For **Pull Back**, record starting position
-→ pull away and hold → return to the starting position and distance. Keep your
-hand comfortably open and palm facing the camera. Each recording lasts three
-seconds. Forward push and pull-back have independent thresholds; hand setup does
-not calibrate them. For directions and wrist rolls, likewise return to your
-starting position, distance, and wrist orientation for the final recording.
+The wizard shows one instruction at a time. When your complete hand has been
+tracked clearly for a moment, select **I'm ready** and follow the countdown.
+Finger and menu poses use open hand, performed pose, then open hand again.
+Directions and rolls use starting position, movement, then return. Glove Zap and
+Pull Back use three short motions and returns so a stationary near or far hand
+cannot masquerade as movement.
 
-If a gesture needs too much movement or fires accidentally, open **Glove Academy** and
-switch on **Tune gestures**. Record open hand → gesture → open hand, three seconds each. Keep your open hand comfortable, fingers and thumb gently extended, wrist straight, centered at a consistent distance. Optionally choose **Set up my hand** first and use a gentle fist with the thumb outside for the middle step. Live feedback identifies fingers that do not yet match the gesture. Preview the suggested thresholds before choosing
-**Save for all profiles**. Your games keep their button assignments; the selected
-gesture becomes easier or harder to activate everywhere it is used.
+After analysis, use the gesture twice and return to neutral. Saving becomes
+available after two clean activations/releases and three neutral seconds without
+a false activation. Your game button assignments, pulses, turbo, and held
+behavior remain unchanged. Only the selected shared recognition components are
+saved.
 
-![Tune mode with a blurred camera view and editable thresholds](images/tune-page.png)
+![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
 
-The threshold table is below the camera; recording instructions are beside it.
+The normal wizard hides numerical values. Open **Advanced thresholds and
+diagnostics** only when you need expert controls or a temporary diagnostic run.
 The matrix shows a scanning **T** during tuning, matching Glove Academy’s scanning **L**,
 and controller delivery stays paused.
-Camera imagery in this screenshot is blurred for privacy.
+The live camera area is excluded from this screenshot for privacy.
 
 | Mode | See it | Controller output |
 | --- | --- | --- |
@@ -470,10 +478,16 @@ remain extended; it suppresses controls while you reposition. Saved tuning value
 drive gameplay recognition globally, while each game profile only decides button
 assignments, pulses, and toggles.
 
-Tune one difficult gesture without repeating hand setup. Follow the live finger
-feedback and preview before saving. **Discard / record again** clears unsaved work;
-**Restore defaults** resets the selected components, or all five fingers for hand
-setup. Start controller delivery from Dashboard when ready.
+| Academy gesture | See it | What recognition expects |
+| --- | --- | --- |
+| Close your hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="128"> | Curl the thumb and every finger into a comfortable closed hand. |
+| Menu guard | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="128"> | Curl only thumb and ring; keep index, middle, and pinky extended. |
+
+Tune one difficult gesture without repeating hand setup. Pixel Pal reports
+framing and advisory lighting problems in plain language. It never changes the
+camera exposure automatically. Advanced restore resets only the selected
+components, or all five fingers for hand setup. Start controller delivery from
+Dashboard when ready.
 
 Automatic tuning requires at least 90% of clear samples to match the complete
 pose and identifies any finger that needs a retry. V-sign requires straight
@@ -492,8 +506,9 @@ accidentally open or pause a game menu.
 
 <img src="images/gestures/v2/pixel-pal.png" alt="Pixel Pal reveals the Extra-Digit Hunt answer" width="180">
 
-**Pixel Pal's answer: 6 six-digit hands.**
+**Pixel Pal's answer: 7 six-digit hands.**
 
 They appear once each in the Bad Street Brawler, Joust, Defender II, Sesame
-Street 1-2-3, and Gun Smoke play cards, plus once in the **Start with A, D, and
-H** table. Every appearance counts, even when the same artwork returns.
+Street 1-2-3, and Gun Smoke play cards, once in the Glove Academy closed-hand
+table, and once in the **Start with A, D, and H** table. Every appearance counts,
+even when the same artwork returns.

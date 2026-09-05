@@ -70,6 +70,11 @@ class SharedDebugState:
             self.jpeg = jpeg
             self.status = status
 
+    def update_frame(self, jpeg: bytes) -> None:
+        """Replace only the preview image without restoring an older status snapshot."""
+        with self.lock:
+            self.jpeg = jpeg
+
     def update_status(self, status: dict, *, clear_frame: bool = False) -> None:
         """Publish diagnostics without requiring a camera frame."""
         with self.lock:

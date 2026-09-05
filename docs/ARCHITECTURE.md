@@ -60,7 +60,9 @@ sockets. These functions are kept separate from camera inference.
 
 ![Nine-stage flow from a camera frame to the game response](images/architecture/input.png)
 
-  1. The camera layer opens a UVC capture source. OpenCV supplies frames to the tracker.
+  1. The camera layer opens a UVC capture source. A dedicated OpenCV capture
+     thread drains it continuously and publishes only the newest frame; older
+     unprocessed frames are superseded rather than queued.
   2. MediaPipe identifies the hand landmarks. The tracker produces a `HandObservation`: detection, confidence, timestamp, palm position and scale, wrist roll, and normalized finger curls.
   3. The gesture engine compares that observation with the saved neutral calibration and effective thresholds. Directions are relative to the calibrated palm; apparent hand-size change supplies forward/backward movement.
   4. Shared activation/release states and held menu poses feed the selected profile's mapping. The result is a `ControllerState`, including buttons, D-pad, axes, finger values, events, sequence, and tracking/calibration metadata.
@@ -70,12 +72,14 @@ sockets. These functions are kept separate from camera inference.
   8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
 The worker also publishes diagnostic state after inference. Browser video is
-encoded at most five times per second and only while a stream consumer is
-connected. Detailed joint and landmark diagnostics follow that preview cadence;
-finger geometry itself is calculated once for recognition. Controller sending
-occurs before matrix and browser-preview work, so the browser refresh rate is
-not the controller state update rate. `inference_ms` and `send_ms` measure local
-stages; neither is an end-to-end camera-to-game latency measurement.
+submitted at most five times per second and only while a stream consumer is
+connected. A separate single-slot worker performs JPEG encoding and discards a
+superseded preview instead of delaying gameplay. Detailed joint and landmark
+diagnostics follow that preview cadence; finger geometry itself is calculated
+once for recognition. Controller sending occurs before optional preview work,
+so the browser refresh rate is not the controller state update rate. Capture
+age, inference cadence, skipped frames, preview cost, and send time expose the
+local stages; none alone is an end-to-end camera-to-game latency measurement.
 
 The current transport is ordinary gamepad emulation. Bad Street Brawler maps
 Glove Zap to a 180 ms simultaneous Left + Right pulse on each push activation;
@@ -136,27 +140,34 @@ what the game receives. An indicator remaining active is therefore not a promise
 of a continuously held game button.
 
 V-sign and thumbs-up also require the correct extended/curled fingers and the
-deliberate debounce (0.65 seconds for Start and 0.15 seconds for Select), then issue a short menu
+deliberate debounce (0.50 seconds for Start and 0.15 seconds for Select), then issue a short menu
 pulse. Live pose feedback uses the same finger checks. Personal pairs supply the
 closed-finger activation and extended-finger release boundaries; untouched
 fingers use the existing menu defaults. A confirmed lesson can remain complete
 after its brief controller pulse has ended.
 
-![Tuning flow: choose scope, record three phases, analyze, preview, and save](images/architecture/tuning.png)
+Directions, curls, rolls, and Closed Hand are evaluated from every fresh
+inference result without an additional confirmation timer. Depth actions are
+motion-confirmed: Glove Zap and Pull Back need two consecutive beyond-threshold
+observations and at least 0.10 normalized palm-scale movement in the correct
+direction within 250 ms. Reversal, calibration, profile transition, or tracking
+loss discards an unfinished candidate. Confirmed actions retain their existing
+hysteresis and profile-specific output semantics.
+
+![Personalization flow: choose a problem, record guided phases, pass a preview test, and save](images/architecture/tuning.png)
 
 | Tuning scope | First recording | Middle recording | Final recording |
 | --- | --- | --- | --- |
-| Set up my hand | Comfortable open hand | Gentle fist, thumb curled outside fingers | Comfortable open hand |
+| Set up a new hand | Comfortable open hand | Gentle fist, thumb curled outside fingers | Comfortable open hand |
 | Finger/menu pose | Comfortable open hand | Selected gesture held steadily | Comfortable open hand |
-| Glove Zap | Open hand at starting distance | Push toward camera and hold | Return to starting distance |
-| Pull Back | Open hand at starting distance | Move away from camera and hold | Return to starting distance |
+| Glove Zap | Open hand at starting distance | Three pushes and returns | Return to starting distance |
+| Pull Back | Open hand at starting distance | Three pull-backs and returns | Return to starting distance |
 | Direction or wrist roll | Starting position and wrist angle | Selected movement held steadily | Return to starting position and angle |
 
-Each recording lasts three seconds. Comfortable open means fingers and thumb
-gently extended, wrist straight, hand centered, and camera distance consistent.
-The interface replaces the ambiguous instruction to relax with an explicit pose.
-Easy controls need no tuning; directions, wrist rolls, and other combinations
-remain available under **More adjustments**.
+Pose, direction, and roll recordings last two seconds; the repeated depth-motion
+step lasts six. Recording is enabled after a calibrated hand at 70% confidence
+has remained completely inside the image for one second. A user-controlled
+two-second countdown precedes every sample.
 
 Each step needs at least twelve accepted samples. The manager accepts calibrated,
 detected hands with confidence at least 0.7, rejects repeated frames and
@@ -165,9 +176,10 @@ no samples; too few samples require a retry. Neutral calibration changes invalid
 recordings and previews.
 
 For each adjusted component, analysis compares the 95th percentile of both
-open/rest phases with the 10th percentile of the performed phase. It requires a
-gap of at least 0.08. Activation sits 65% into that gap and release 30% into it.
-An overlap error names the component and leaves no automatic suggestion.
+open/rest phases with the performed phase. It requires a gap of at least 0.08.
+Standard setup places activation/release at 65%/30% of the gap; difficult and
+accidental paths use 55%/30% and 75%/40%. Repeated depth motion uses its upper
+quartile so returns to neutral are not misread as failed movement.
 
 Hand setup observes both states for all five fingers. Individual gesture tuning
 can run without it. Fingers extended throughout retain their existing settings;
@@ -181,11 +193,11 @@ that should be extended. Thumbs-up checks a straight thumb and four curled
 fingers; it does not impose an upward screen direction. Manual threshold edits
 validate range and scope, not recorded pose quality. Live testing is still needed.
 
-**Analyze and preview** temporarily applies a suggestion. **Save for all profiles**
-atomically merges selected pairs into saved settings. **Discard / record again**
-clears unsaved work. **Restore defaults** removes saved overrides for the selected
-components; hand setup resets all five finger components. There is no saved
-camera recording from this process.
+The candidate is temporary until the same recognition path observes two complete
+activation/release cycles and three neutral seconds. Only then can the wizard
+atomically merge selected pairs into the saved version-1 file. Raw controls remain
+inside Advanced. Normal personalization retains no camera recording. The separate
+diagnostic path deletes its temporary AVI after producing an aggregate-only report.
 
 ## Profile and configuration flows
 
@@ -299,7 +311,7 @@ error, receiver/gamepad state, then emulator/game mapping.
 The versioned `install-uno-q.sh` and `install-retropie.sh` entry points download
 matching packages and call the shared host installer. The UNO route uses App
 Lab CLI to build/upload the sketch and start the app; it installs both startup
-and shutdown helpers. The RetroPie route installs the receiver and launch
+and fixed-purpose shutdown/camera-recovery helpers. The RetroPie route installs the receiver and launch
 integration, then checks emulator and registered-game configuration.
 
 There are two deployable parts. Python, website, documentation, assets, and

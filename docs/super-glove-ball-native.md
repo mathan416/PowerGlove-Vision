@@ -1,9 +1,10 @@
 # Super Glove Ball native-input compatibility record
 
-This document records evidence for the experimental `lr-nestopia-powerglove`
-core. It intentionally separates observations from hypotheses. The supported
-fallback is still FCEUmm using PowerGlove Vision's shared responsive D-pad and
-gesture recognition.
+This document records evidence for the separately named `lr-nestopia-powerglove`
+core. It intentionally separates observations from hypotheses. Native detection,
+Start, continuous X/Y, orientation, stale-state safety, and live cabinet control
+are confirmed for the exact tested ROM. FCEUmm remains the supported explicit
+fallback using PowerGlove Vision's shared responsive D-pad and gesture recognition.
 
 ## Evidence order
 
@@ -30,7 +31,7 @@ implementation.
 | Detection signature, packet length, boundaries, and bit order | Confirmed | The ROM assembled inverse `$A0` as `$5F`, strobed once per byte, read ten bytes/80 bits per sample MSB first, and required the final stored byte to be `$3F`. |
 | Start encoding | Confirmed | Native byte 6 value `$82` left the title screen and began play while the controller stayed in native mode. |
 | Z, wrist rotation, finger state, and action-button encoding | Unknown and deliberately neutral | Vary one field at a time now that detection and X/Y are repeatable. Start is the sole confirmed button exception. |
-| Poll timing tolerances | Partially confirmed | The headless run sustained ten-byte polling throughout its native phases; hardware timing margins still need cabinet validation. |
+| Poll timing tolerances | Confirmed for tested sessions | Headless runs sustained ten-byte polling throughout native phases, and live cabinet sessions remained stable. Broader hardware and timing stress coverage remains useful. |
 | Headless X/Y activation and release responsiveness | Confirmed for the exact ROM | All four axes visibly diverged by frame 3; a 3.1% positive-X step also diverged by frame 3. See the [direction-response benchmark](direction-response-benchmark.md). |
 | Cabinet field mapping and stabilization | Confirmed for live tuning | Continuous X/Y maps each side of the calibrated neutral point to the corresponding usable camera boundary, retaining an 8% tracking margin. Light adaptive damping operates in camera space, reducing near-rest jitter without delaying deliberate travel. FCEUmm D-pad thresholds remain hand-relative and unchanged. |
 | Portable defaults versus neutral calibration | Confirmed in application and installer tests | Full-field mapping, stabilization, and recognition thresholds ship in the release-owned profile baseline. The camera/player-specific neutral reference uses 24 observations at 70% confidence or better and remains private across updates. |
@@ -108,8 +109,9 @@ packet. Traces may contain gameplay timing but no camera imagery.
 
 ## Exact-ROM validation gate
 
-The exact-ROM software gate below now passes for detection, Start, X/Y, and safe
-neutralization. Before enabling the per-ROM emulator choice on a cabinet:
+The exact-ROM software gate below passes for detection, Start, X/Y, safe
+neutralization, and the tested cabinet path. Repeat it before enabling the
+per-ROM emulator choice on another cabinet or after changing the core protocol:
 
   1. Record the ROM digest and retain the ROM outside release packages.
   2. Trace controller strobes and configuration writes from power-on through the game's detection decision.
