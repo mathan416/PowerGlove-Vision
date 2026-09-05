@@ -32,6 +32,7 @@ roll, finger/action fields, and physical cabinet behavior are not yet complete.
 | Find a command or connection reminder | [Quick Reference](docs/cheatsheet.md) |
 | Learn a game's gestures and try a short challenge | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) |
 | Choose or experiment with Programs A–I | [Programs A–I manual](docs/bad-street-brawler-programs.md) |
+| Join Pixel Pal's suspiciously well-fingered scavenger hunt | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) and [Programs A–I manual](docs/bad-street-brawler-programs.md) |
 | Recognize matrix animations and letters | [Matrix display guide](docs/MATRIX_GUIDE.md) |
 
 ### Technical documentation
@@ -44,6 +45,20 @@ roll, finger/action fields, and physical cabinet behavior are not yet complete.
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
 | Check dependency provenance or release history | [Third-party components](docs/THIRD_PARTY_COMPONENTS.md) and [Changelog](docs/CHANGELOG.md) |
+
+### Pixel Pal's Extra-Digit Hunt
+
+Pixel Pal has discovered that a few illustrated gloves left the art department
+with a generous interpretation of hand anatomy. Naturally, this is now a game.
+
+Count every illustrated hand showing five fingers plus a thumb. Count each
+appearance, even when the same artwork returns. Pixel Pal has tucked the answers
+at the back of the two illustrated guides and behind a reveal in built-in Help,
+so there are no spoilers here.
+
+An automated documentation check keeps the answers synchronized with the art.
+The art itself remains untouched in the interests of arcade archaeology - and
+because it is far too funny to fix.
 
 ## Quick start
 
