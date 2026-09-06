@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Require fresh centering after player changes before delivery.
@@ -625,7 +626,7 @@ def main() -> int:
                 retained_calibration = engine.calibration
                 try:
                     save_calibration(calibration_path, retained_calibration)
-                    shared.tuning.finish_center()
+                    shared.tuning.finish_center(retained_calibration)
                     calibration_save_error = None
                 except OSError as exc:
                     calibration_save_error = str(exc)

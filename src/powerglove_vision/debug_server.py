@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Expose bounded player operations and enforce fresh centering.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -236,7 +237,7 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                         raise ValueError("Expected a tuning operation")
                     result = shared.tuning.player_command(data) if self.path == "/players" else shared.tuning.command(data)
                     if (shared.tuning.active() or shared.tuning.needs_center() or
-                            (self.path == "/players" and data.get("action") in ("create", "select", "delete", "restore"))):
+                            (self.path == "/players" and data.get("action") in ("create", "select", "delete", "restore", "reuse_calibration"))):
                         shared.request_controller(False)
                     body, code = json.dumps(result).encode(), 200
                 except (ValueError, OSError) as exc:

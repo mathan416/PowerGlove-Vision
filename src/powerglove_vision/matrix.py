@@ -4,14 +4,15 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add idle-only brightness and bounded background connection indicators.
 #   2026-09-06 - Read and cache the running matrix firmware source identity.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added a gestures-idle state distinct from system shutdown.
 #   2026-09-03 - Added a dedicated Learn-mode matrix state.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Drive UNO Q LED matrix status, pairing, and active-profile displays through Router Bridge."""
 
@@ -131,6 +132,9 @@ class UnoQMatrix:
                 threading.Thread(target=self._probe_console, args=(key,), daemon=True,
                                  name="matrix-connections").start()
             connections = self._probe_result if now - self._probe_at < 30 else 0
+        from .wifi_status import read_wifi_status
+        if read_wifi_status() == "connected":
+            connections |= 4
         value = (("on", "dim", "off").index(mode), connections)
         if value == self._attract_sent or now < self._attract_retry or not self.available:
             return

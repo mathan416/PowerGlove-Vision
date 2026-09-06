@@ -4,9 +4,10 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
-# Change log:
-#   2026-09-06 - Cover player isolation, stale writes, calibration gates, and recovery.
 # Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
+#   2026-09-06 - Cover player isolation, stale writes, calibration gates, and recovery.
 
 """Exercise persisted user data rather than matching implementation strings."""
 import json
@@ -37,7 +38,7 @@ class PlayerTests(unittest.TestCase):
         restored = TuningManager(self.path)
         self.assertEqual(restored.player_snapshot()["players"][0]["name"], "Alex")
         self.assertEqual(restored.saved, self.manager.saved)
-        self.assertEqual(json.loads(self.path.read_text())["version"], 3)
+        self.assertEqual(json.loads(self.path.read_text())["version"], 4)
 
     def test_version_two_player_data_migrates_with_progress_and_backup(self):
         saved={'version':2,'active':'default','generation':4,'players':{'default':{
@@ -47,7 +48,7 @@ class PlayerTests(unittest.TestCase):
         self.command('rename',name='Iain B')
         self.assertEqual(self.manager.player_snapshot()['progress']['completed'],[0,1])
         self.assertEqual(json.loads(self.path.with_name('gesture-tuning-v2-backup.json').read_text()),saved)
-        self.assertEqual(json.loads(self.path.read_text())['version'],3)
+        self.assertEqual(json.loads(self.path.read_text())['version'],4)
 
     def test_players_isolate_tuning_and_progress(self):
         self.command("progress", progress={"course":1,"completed":[0,1],"lesson":2})
@@ -69,7 +70,7 @@ class PlayerTests(unittest.TestCase):
 
     def test_export_is_allowlisted_and_restore_requires_fresh_center(self):
         backup=self.command("export")["backup"]
-        self.assertEqual(set(backup),{"format","version","name","thresholds","calibration"})
+        self.assertEqual(set(backup),{"format","version","name","thresholds","calibration","effective_thresholds","source"})
         backup["thresholds"]={"thumb":{"on":.7,"off":.4}}
         self.command("restore",backup=backup)
         self.assertTrue(self.manager.needs_center())
@@ -112,18 +113,49 @@ class PlayerTests(unittest.TestCase):
         self.assertIsNone(self.manager.apply_calibration_restore())
         self.assertTrue(self.manager.needs_center())
 
-    def test_old_backups_still_restore_and_calibration_reuse_is_explicit(self):
+    def test_version_one_portable_backups_are_rejected_without_mutation(self):
         old={'format':'powerglove-hand-settings','version':1,'name':'Old','thresholds':{'index':{'on':.8,'off':.4}}}
-        self.command('restore',backup=old)
-        self.assertEqual(self.manager.saved,old['thresholds'])
-        self.assertTrue(self.manager.needs_center())
-        with self.assertRaises(ValueError):self.command('restore',backup=old,reuse_calibration=True)
+        before=self.path.read_bytes()
+        with self.assertRaisesRegex(ValueError,'Version-1'):
+            self.command('restore',backup=old)
+        self.assertEqual(self.path.read_bytes(),before)
+
+    def test_original_version_two_backups_remain_supported(self):
         backup=self.command('export')['backup']
-        self.assertIsNone(backup['calibration'])
-        backup['calibration']={'version':2,'neutral':dict(palm_x=.5,palm_y=.5,palm_scale=.2,roll=0)}
+        del backup['effective_thresholds'];del backup['source']
         self.command('restore',backup=backup)
-        self.assertIsNone(self.manager.apply_calibration_restore())
         self.assertTrue(self.manager.needs_center())
+
+    def test_player_centers_are_isolated_and_reuse_needs_confirmation(self):
+        from powerglove_vision.model import Calibration
+        first=Calibration(.3,.4,.2,0)
+        second=Calibration(.6,.5,.3,0)
+        self.manager.begin_center();self.manager.finish_center(first)
+        self.command('create',name='Sam')
+        self.assertFalse(self.manager.player_snapshot()['has_saved_calibration'])
+        self.manager.begin_center();self.manager.finish_center(second)
+        self.command('select',id='default')
+        self.assertTrue(self.manager.needs_center())
+        self.assertEqual(self.command('export')['backup']['calibration']['neutral']['palm_x'],.3)
+        with self.assertRaises(ValueError):self.command('reuse_calibration')
+        self.command('reuse_calibration',confirmed=True)
+        restarted=TuningManager(self.path)
+        self.assertEqual(restarted.apply_calibration_restore(),first)
+        self.assertFalse(restarted.needs_center())
+
+    def test_effective_thresholds_are_complete_and_import_is_explicit(self):
+        from powerglove_vision.tuning import CHANNELS
+        backup=self.command('export')['backup']
+        self.assertEqual(set(backup['effective_thresholds']),set(CHANNELS))
+        self.assertEqual(set(backup['source']),{'version','commit'})
+        self.command('restore',backup=backup)
+        self.assertEqual(self.manager.saved,backup['thresholds'])
+        self.command('restore',backup=backup,use_effective_thresholds=True)
+        self.assertEqual(self.manager.saved,backup['effective_thresholds'])
+        # Explicit saved values survive different future default thresholds.
+        from powerglove_vision.gesture import GestureConfig
+        effective=self.manager.configuration(GestureConfig())
+        self.assertEqual(effective.pair('index'),tuple(backup['effective_thresholds']['index'][k] for k in ('on','off')))
 
     def test_invalid_calibration_never_changes_settings(self):
         import copy

@@ -4,7 +4,9 @@
 // Author: Iain Bennett
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
+// Full history: docs/CHANGELOG.md and Git history.
 // Change log:
+//   2026-09-06 - Implement approved player and connectivity refinements.
 //   2026-09-06 - Add idle-only On, Dim, and connection-pixel attract settings.
 //   2026-09-06 - Expose the compiled matrix source fingerprint through Router Bridge.
 //   2026-09-06 - Add an idle lightning flash, clearer fingers and cuff, and a softer glow.
@@ -14,7 +16,6 @@
 //   2026-09-03 - Added the gestures-idle Power Glove attract animation.
 //   2026-09-03 - Refined the attract animation with cuff travel, spark motion, and grayscale pulsing.
 //   2026-09-03 - Added a scanning L animation for Learn mode.
-// Full history: docs/CHANGELOG.md and Git history.
 
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
@@ -372,7 +373,7 @@ void set_powerglove_status(int status) {
 // Only idle rendering consumes these settings; active mode artwork is unchanged.
 int set_powerglove_attract(int mode, int connections) {
   requestedAttract = mode >= 0 && mode <= 2 ? mode : 0;
-  requestedConnections = connections & 3;
+  requestedConnections = connections & 7;
   return requestedAttract;
 }
 
@@ -484,6 +485,7 @@ void refreshMatrix() {
       pixels[7 * 13] = 1; // App running.
       pixels[7 * 13 + 2] = (connections & 1) ? 1 : 0;
       pixels[7 * 13 + 4] = (connections & 2) ? 1 : 0;
+      pixels[7 * 13 + 6] = (connections & 4) ? 1 : 0;
       matrix.draw(pixels);
       nextFrameAt = now + 1000;
       return;

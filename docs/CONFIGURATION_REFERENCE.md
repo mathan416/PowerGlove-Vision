@@ -286,7 +286,7 @@ A typical device configuration file contains the following fields:
 ```
 
 `matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
-or `off` (three faint app/network/paired-console indicators). Change it using
+or `off` (four faint app/console/paired-console/Wi-Fi indicators). Change it using
 **Setup → Matrix attract mode**. This writes the private device configuration
 without restarting vision or changing controller state. Existing files that omit
 it retain the original animation. The separate guarded `POST /api/attract`
@@ -549,58 +549,74 @@ reset or update another player. Saving errors pause lesson recognition until
 saved state is available again.
 
 Switching players, adding/deleting the active player, and restoring settings
-pause controller output. A complete backup can reuse calibration after explicit
-confirmation that camera and playing positions match. Otherwise, select **Set this as my center**, wait for calibration,
-then explicitly start controller output on Dashboard. Finish tuning and turn
-**Tune gestures** off before switching players or restoring settings.
+pause controller output. Each player keeps a separate saved calibration. After
+switching, select **Set this as my center**, or **Reuse my saved center** and
+confirm that the camera and playing position are unchanged. A new player has
+no saved center. Reuse applies through the same durable restore path as a backup;
+output stays paused until you explicitly start it. Finish tuning and turn
+**Tune gestures** off before changing players or restoring settings.
 
 **Back up hand setup** downloads `powerglove-hand-setup.json` with format
-`powerglove-hand-setup`, version `2`, player `name`, saved `thresholds`, and
-`calibration`. Empty thresholds mean supplied defaults. Calibration contains
-version `2` and `neutral` values: `palm_x`, `palm_y`, `palm_scale`, `roll`,
-`noise_x`, and `noise_y`. It is `null` if no valid reference exists or the active
-player still needs centering; set your center before making a complete backup.
+`powerglove-hand-setup` and version `2`. Fields are `name`, personal `thresholds`,
+`calibration`, `effective_thresholds`, and `source` (`version`, `commit`). Empty
+personal thresholds mean no personal overrides. Effective thresholds contain
+all thirteen activation/release pairs, including the supplied defaults in use.
+They let a later restore retain those sensitivity values when defaults change.
+Game mappings, recognition algorithms, and all other software behavior are not
+frozen by a hand backup.
 
-**Restore hand setup** opens a review before any changes. Version-2 backups
-replace the active player's name and sensitivity, keeping Academy progress.
-Select **My camera position and playing position match this backup** only when
-both match; the app then restores calibration as well. Leave it unchecked to
-restore sensitivity and require a fresh center. In both cases controller output
-stays paused until you explicitly start it. Old `powerglove-hand-settings`
-version-1 backups remain readable; they restore sensitivity, keep the current
-name, and require fresh centering. Cancel closes the review without changes.
+Calibration contains version `2` and `neutral` values: `palm_x`, `palm_y`,
+`palm_scale`, `roll`, `noise_x`, and `noise_y`. It comes from this player's saved
+reference, even when fresh centering is currently required after switching.
+It is `null` if this player has no saved reference. The app does not assume that
+a stored center still matches the present physical setup.
+
+**Restore hand setup** opens a review before any changes. It replaces the active
+player's name and sensitivity while keeping Academy progress. Check **Restore
+the complete saved sensitivity** to use `effective_thresholds`; leave it unchecked
+to restore personal adjustments with the installed defaults. Independently,
+check **My camera position and playing position match this backup** to reuse
+calibration. Otherwise set a fresh center. Controls stay paused until Start.
+
+Version 2 is the first supported portable backup format. Existing version-2
+files without `effective_thresholds` or `source` still restore their personal
+adjustments and calibration. Version-1 `powerglove-hand-settings` exports are
+rejected without changing anything. Cancel closes the review without changes.
 
 ![Review before restoring a complete hand setup](images/hand-setup-restore.png)
 
 Backups exclude pairing tokens, Wi-Fi credentials, device addresses, images,
 landmarks, and Academy progress. Unknown fields, non-finite/out-of-range values,
-device configuration files, and files larger than 8 KB are rejected. Reuse is
-explicit: the API requires boolean `reuse_calibration: true` with a valid
-reference. Otherwise fresh centering is required.
+device configuration files, and files larger than 8 KB are rejected. The API
+requires boolean `reuse_calibration: true` for backup calibration reuse and
+`use_effective_thresholds: true` for complete sensitivity restoration.
 
-`data/gesture-tuning.json` version 3 stores `version`, `active`, `generation`,
+`data/gesture-tuning.json` version 4 stores `version`, `active`, `generation`,
 `players`, and nullable `calibration_restore`. Each player has `name`,
-`thresholds`, `progress` (`course`, `completed`, `lesson`), and `needs_center`.
-Course version 1 uses sixteen zero-based lesson indices. Generations reject
-stale writes after switches/restores/resets. Calibration remains Controller-wide
-in `data/calibration.json`, not a separate saved center for each player.
+`thresholds`, `progress` (`course`, `completed`, `lesson`), `needs_center`, and
+nullable `calibration`. Course version 1 uses sixteen zero-based lesson indices.
+Generations reject stale writes after switches/restores/resets. The active
+working reference is mirrored in `data/calibration.json`; individual references
+are kept in the player store. Migration associates an existing valid reference
+only with the currently centered player, not with every preset.
 
-A confirmed reuse atomically saves sensitivity, name, and a pending calibration
-reference while keeping output gated. The worker writes calibration, then clears
-the pending reference and centering gate. An interrupted restore resumes after
-restart; a failed write leaves output paused. Switching players cancels an
-unapplied reference. Export waits until a pending restore finishes.
+Confirmed reuse atomically stores a pending calibration while keeping output
+gated. The worker writes the active calibration, then clears the pending reference
+and centering gate. An interrupted restore resumes after restart; a failed write
+leaves output paused. Switching players cancels an unapplied reference. Export
+waits until a pending restore finishes.
 
-Versions 1 and 2 load without changing values, names, or progress. Before the
-first write, a private `data/gesture-tuning-v1-backup.json` or
-`data/gesture-tuning-v2-backup.json` is retained as appropriate. Files use mode
-`0600` and survive upgrades. Older apps cannot read version 3; when deliberately
-rolling back, stop the app and restore its previous-version backup privately.
-Never commit personal settings to Git.
+Internal store versions 1–3 migrate without losing names, sensitivity, or progress.
+Before the first write, `data/gesture-tuning-vN-backup.json` retains the old
+store, where N is its version. This internal recovery migration is separate from
+the unsupported version-1 portable export format. Files use mode `0600` and
+survive upgrades. Older apps cannot read version 4; stop the app and restore the
+appropriate private store backup when deliberately rolling back.
 
 `POST /api/players` supports `read`, `progress`, `reset_progress`, `create`,
-`select`, `rename`, `delete`, `export`, and `restore`. Non-read requests include
-`player` and `generation`. JSON bodies are limited to 8192 bytes and require
+`select`, `rename`, `delete`, `export`, `restore`, and `reuse_calibration`.
+Non-read requests include `player` and `generation`. Saved-player reuse also
+requires `confirmed: true`. JSON bodies are limited to 8192 bytes and require
 `X-PowerGlove-Action: players` and the same origin checks as tuning. Names and
 progress are available on the trusted LAN; presets are not login accounts.
 
@@ -1016,10 +1032,37 @@ no network interface or published port. The app prefers this private socket;
 the direct host socket remains a compatibility fallback. Both sockets are
 runtime files, not configuration to back up or distribute.
 
-All gameplay and pairing lookups use this resolver. Answers expire after five
-seconds, so DHCP changes do not require editing an address. Ordinary DNS names
+Gameplay and pairing use this resolver. Controller-state sends use a background
+address refresher: one lookup at a time, refreshed every five seconds and retried
+after two seconds on failure. The send path only reads its cached address. It
+drops that frame when no address is ready; it does not queue states for later.
+A last successful address expires after ten seconds if refresh stops succeeding.
+Literal IPv4 addresses need no background lookup. Pairing and administrative
+requests still resolve synchronously outside the movement loop. Resolver answers
+expire after five seconds, so DHCP changes do not require editing an address. Ordinary DNS names
 use the system resolver. Generic container `getent` is not the app's mDNS test;
 use Connection's hostname test or the setup command's check mode.
+
+## Independent Wi-Fi status
+
+The host runs `powerglove-wifi-status.timer` every five seconds. Its oneshot
+`powerglove-wifi-status.service` runs as `arduino`, invokes
+`/usr/local/libexec/powerglove-wifi-status`, and reads wireless carrier state
+under `/sys/class/net`. It cannot configure Wi-Fi and records no SSID, address,
+or password. The fixed output `data/wifi-status.json` contains version `1`,
+`state` (`connected`, `disconnected`, or `unavailable`), and `observed_at`.
+The application treats records older than fifteen seconds, future timestamps,
+missing files, and malformed records as unavailable. Ethernet connectivity alone
+does not light the Wi-Fi pixel. This file is disposable telemetry, not a setting.
+
+Normal Controller installation and `scripts/deploy-uno-q-wifi.sh` install or
+upgrade the sampler with managed-file backups. Repair it alone with
+`sudo python3 scripts/setup-machine.py uno-q --wifi-status-only` on the host.
+Setup shows its status; Off attract mode adds Wi-Fi as the fourth bottom-left
+pixel after app, console-service reachability, and authenticated-console response.
+The new pixel requires the matching matrix firmware. Active game modes, T, L,
+pairing, and startup artwork are unchanged. A dark Wi-Fi pixel can mean disconnected
+or unavailable; Setup distinguishes those states.
 
 ## Known limitation: PowerGlove Vision Controller restarts after Shutdown
 
@@ -1073,6 +1116,7 @@ also lets those checks read protected token files.
 | `MACHINE` | Required | `retropie` or `uno-q`; selects the machine to install or inspect. |
 | `--peer HOST` | None | Required for a new RetroPie launcher configuration; supplies the PowerGlove Vision Controller hostname or IPv4 address. Existing launcher settings are preserved. On PowerGlove Vision Controller, it prints guidance but does not change the saved receiver address. |
 | `--check` | Off | Checks the existing installation without installing, restarting, or changing it. |
+| `--wifi-status-only` | Off | With `uno-q`, install/update only the unprivileged Wi-Fi status sampler. Cannot be combined with `--check`. Normal setup and Wi-Fi deployment include it automatically. |
 | `-h`, `--help` | — | Prints usage and exits. |
 
 Exit codes are `0` for success, `1` for an installation/check failure, and `2`

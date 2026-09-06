@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Add atomic player presets and credential-free hand backups.
 
@@ -72,15 +73,16 @@ def blank_progress():
 
 class PlayerSettings:
     """Keep imported data narrow and commit memory only after the disk write."""
-    def __init__(self, path, validate):
+    def __init__(self, path, validate, channels):
         self.path, self.validate = path, validate
+        self.channels = set(channels)
         self.error = None
         self.legacy_backup = None
         self.legacy_backup_version = 1
-        self.data = {"version": 3, "active": "default", "generation": 0,
+        self.data = {"version": 4, "active": "default", "generation": 0,
                      "calibration_restore": None,
                      "players": {"default": {"name": "Player 1", "thresholds": {},
-                         "progress": blank_progress(), "needs_center": False}}}
+                         "progress": blank_progress(), "needs_center": False, "calibration": None}}}
         try:
             if path.exists():
                 if path.stat().st_size > 65536:
@@ -93,9 +95,9 @@ class PlayerSettings:
                     self.legacy_backup = json.dumps({"version": 1, "thresholds": self.active["thresholds"]}, indent=2) + "\n"
                 else:
                     self.data = self.validate_store(saved)
-                    if saved.get("version") == 2:
+                    if saved.get("version") in (2, 3):
                         self.legacy_backup = json.dumps(saved, indent=2) + "\n"
-                        self.legacy_backup_version = 2
+                        self.legacy_backup_version = saved["version"]
         except (OSError, ValueError, KeyError, TypeError):
             self.error = "Saved player settings could not be loaded. Restore a hand-settings backup to recover; the original file has not been changed."
 
@@ -105,7 +107,15 @@ class PlayerSettings:
         if isinstance(data, dict) and data.get("version") == 2 and "calibration_restore" not in data:
             data["version"] = 3
             data["calibration_restore"] = None
-        if not isinstance(data, dict) or set(data) != {"version", "active", "generation", "players", "calibration_restore"} or type(data["version"]) is not int or data["version"] != 3:
+        if isinstance(data, dict) and data.get("version") == 3:
+            data["version"] = 4
+            if not isinstance(data.get("players"), dict):
+                raise ValueError("Invalid players")
+            for item in data["players"].values():
+                if not isinstance(item, dict):
+                    raise ValueError("Invalid player record")
+                item["calibration"] = None
+        if not isinstance(data, dict) or set(data) != {"version", "active", "generation", "players", "calibration_restore"} or type(data["version"]) is not int or data["version"] != 4:
             raise ValueError("Unsupported player settings")
         players = data["players"]
         if not isinstance(players, dict) or not 1 <= len(players) <= MAX_PLAYERS or data["active"] not in players:
@@ -115,11 +125,13 @@ class PlayerSettings:
         for key, item in players.items():
             if not isinstance(key, str) or not 1 <= len(key) <= 32 or not key.isalnum():
                 raise ValueError("Invalid player identifier")
-            if not isinstance(item, dict) or set(item) != {"name", "thresholds", "progress", "needs_center"} or type(item["needs_center"]) is not bool:
+            if not isinstance(item, dict) or set(item) != {"name", "thresholds", "progress", "needs_center", "calibration"} or type(item["needs_center"]) is not bool:
                 raise ValueError("Invalid player record")
             item["name"] = player_name(item["name"])
             item["thresholds"] = self.validate(item["thresholds"])
             item["progress"] = progress(item["progress"])
+            if item["calibration"] is not None:
+                item["calibration"] = calibration_value(item["calibration"])
         pending = data["calibration_restore"]
         if pending is not None:
             data["calibration_restore"] = calibration_value(pending)
@@ -152,6 +164,7 @@ class PlayerSettings:
                 "players": [{"id": key, "name": item["name"]} for key, item in self.data["players"].items()],
                 "progress": copy.deepcopy(self.active["progress"]),
                 "needs_center": self.active["needs_center"],
+                "has_saved_calibration": self.active["calibration"] is not None,
                 "restoring_calibration": self.data["calibration_restore"] is not None, "error": self.error}
 
     def save_thresholds(self, values):
@@ -160,11 +173,13 @@ class PlayerSettings:
         data["players"][data["active"]]["thresholds"] = self.validate(values)
         self.commit(data)
 
-    def centered(self, generation):
+    def centered(self, generation, reference=None):
         """Only acknowledge calibration started for the still-active player."""
-        if generation == self.data["generation"] and self.active["needs_center"]:
+        if generation == self.data["generation"]:
             data = copy.deepcopy(self.data)
             data["players"][data["active"]]["needs_center"] = False
+            if reference is not None:
+                data["players"][data["active"]]["calibration"] = calibration_value({"version":2,"neutral":asdict(reference)})
             data["calibration_restore"] = None
             self.commit(data)
 
@@ -178,8 +193,9 @@ class PlayerSettings:
         if action == "export":
             if self.error:
                 raise ValueError(self.error)
-            return {"backup": {"format": "powerglove-hand-settings", "version": 1,
-                    "name": self.active["name"], "thresholds": copy.deepcopy(self.active["thresholds"])}}
+            return {"backup": {"format": "powerglove-hand-setup", "version": 2,
+                    "name": self.active["name"], "thresholds": copy.deepcopy(self.active["thresholds"]),
+                    "calibration": copy.deepcopy(self.active["calibration"])}}
         data = copy.deepcopy(self.data)
         item = data["players"][data["active"]]
         if action in ("create", "select", "delete", "restore"):
@@ -197,7 +213,7 @@ class PlayerSettings:
             name = player_name(request.get("name"))
             key = uuid.uuid4().hex
             data["players"][key] = {"name": name, "thresholds": copy.deepcopy(item["thresholds"]),
-                "progress": blank_progress(), "needs_center": True}
+                "progress": blank_progress(), "needs_center": True, "calibration": None}
             data["active"] = key
             data["generation"] += 1
         elif action == "select":
@@ -208,6 +224,12 @@ class PlayerSettings:
                 return self.snapshot()
             data["active"] = key
             data["players"][key]["needs_center"] = True
+            data["generation"] += 1
+        elif action == "reuse_calibration":
+            if request.get("confirmed") is not True or item["calibration"] is None:
+                raise ValueError("Confirm unchanged camera and playing positions before reusing a saved center.")
+            item["needs_center"] = True
+            data["calibration_restore"] = copy.deepcopy(item["calibration"])
             data["generation"] += 1
         elif action == "rename":
             item["name"] = player_name(request.get("name"))
@@ -222,19 +244,33 @@ class PlayerSettings:
             backup = request.get("backup")
             if not isinstance(backup, dict) or type(backup.get("version")) is not int:
                 raise ValueError("Choose a PowerGlove hand-setup backup.")
-            legacy = backup.get("format") == "powerglove-hand-settings" and backup["version"] == 1
             complete = backup.get("format") == "powerglove-hand-setup" and backup["version"] == 2
-            keys = {"format", "version", "name", "thresholds"} | ({"calibration"} if complete else set())
-            if not (legacy or complete) or set(backup) != keys:
-                raise ValueError("Choose a supported hand-setup backup. Device and pairing files cannot be imported.")
+            required = {"format", "version", "name", "thresholds", "calibration"}
+            optional = {"effective_thresholds", "source"}
+            if not complete or not required <= set(backup) or set(backup) - required - optional:
+                raise ValueError("Choose a version-2 hand-setup backup. Version-1 and device/pairing files are not supported.")
             name = player_name(backup["name"])
-            reference = calibration_value(backup["calibration"]) if complete and backup["calibration"] is not None else None
+            reference = calibration_value(backup["calibration"]) if backup["calibration"] is not None else None
+            effective = backup.get("effective_thresholds")
+            if effective is not None:
+                effective = self.validate(effective)
+                if set(effective) != self.channels:
+                    raise ValueError("Effective thresholds must include every hand channel.")
+            source = backup.get("source")
+            if source is not None:
+                if (not isinstance(source, dict) or set(source) != {"version", "commit"}
+                        or any(not isinstance(v, str) or len(v) > 80 or not v.isprintable() for v in source.values())):
+                    raise ValueError("Invalid backup software identity.")
+            use_effective = request.get("use_effective_thresholds", False)
+            if type(use_effective) is not bool or (use_effective and effective is None):
+                raise ValueError("This backup has no complete effective thresholds.")
             reuse = request.get("reuse_calibration", False)
             if type(reuse) is not bool or (reuse and reference is None):
                 raise ValueError("This backup has no usable calibration to reuse.")
-            item["thresholds"] = self.validate(backup["thresholds"])
-            if complete:
-                item["name"] = name
+            overrides = self.validate(backup["thresholds"])
+            item["thresholds"] = effective if use_effective else overrides
+            item["name"] = name
+            item["calibration"] = reference
             item["needs_center"] = True
             if reuse:
                 data["calibration_restore"] = reference

@@ -45,7 +45,7 @@ they are not missing from the game actions confirmed in the completed session.
 
 Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
 or turn it Off except for faint connection pixels. This does not change game
-displays, T, L, or gesture recognition. The setting saves without a tracker restart.
+displays, T, L, or gesture recognition. The setting saves without a tracker restart. Off mode has separate app, console-service, authenticated-console, and Wi-Fi pixels; Setup distinguishes unavailable Wi-Fi status from disconnection. The fourth pixel needs the updated firmware.
 
 Setup now groups connection and startup settings, secure pairing, matrix attract
 mode, and controller/power actions. **Check console address** tests name resolution;
@@ -55,7 +55,7 @@ are reported while the tracker reconnects.
 
 The [development review and parking lot](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
 records completed fixes and decisions for a later session, including latency,
-player calibration, and backup behavior across future default changes.
+transport authentication and further web-module cleanup. Approved player calibration, backup compatibility, background hostname refresh, and independent Wi-Fi indication are implemented.
 
 ## Choose a guide
 
@@ -98,7 +98,7 @@ because it is far too funny to fix.
 
 The web footer shows exact software and running matrix firmware identities.
 Glove Academy supports twelve player presets, saved lesson progress, and portable
-complete hand-setup backups containing name, sensitivity adjustments, and calibration. Switching players requires fresh centering. Navigation
+version-2 hand-setup backups containing name, personal and effective sensitivity, software identity, and per-player calibration. Switching players requires fresh centering or explicit same-position reuse. Version-1 portable backups are no longer accepted. Navigation
 and controls adapt to phone and tablet widths.
 
 ## Quick start

@@ -519,12 +519,12 @@ assignments, pulses, and toggles.
 Choose a player in **Your player** before practicing. Each player's hand
 sensitivity and lesson progress are retained on the Controller across browsers
 and restarts. Add or select another player to keep family members' settings
-separate. Switching players pauses controls until you set your center again.
+separate. Each player keeps a saved center. Switching pauses controls until you set a fresh center or choose **Reuse my saved center** and confirm unchanged camera and playing positions.
 Use **Players and hand-setup backups → Back up hand setup** to save your name,
-sensitivity adjustments, and calibration. Restore opens a review: reuse the saved
+personal and complete sensitivity, software identity, and calibration. Restore opens a review: reuse the saved
 calibration only if the camera and your playing position match, or leave that
 option unchecked and set a fresh center. Controls remain paused until you start
-them. Old sensitivity-only backups still work. Backups exclude credentials and
+them. Restore can explicitly retain the complete saved sensitivity, including the defaults used when the backup was made. Version-2 backups are supported; version-1 sensitivity-only files are rejected. Backups exclude credentials and
 Academy progress.
 
 ![Player selection and complete hand-setup backups](images/player-settings.png)

@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Add a persistent idle attract setting without restarting vision.
 #   2026-09-06 - Add player controls, exact version details, and responsive layouts.
@@ -624,6 +625,8 @@ class ControlState:
                         "matched" if self.firmware_identity == self.build_identity.get("firmware_expected") else "different"},
             })
         config = self.public_config()
+        from .wifi_status import read_wifi_status
+        status["wifi_status"] = read_wifi_status()
         status["connection_configured"] = config["connection_configured"]
         status.setdefault("configured_profile", config["profile"])
         return status
@@ -771,7 +774,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                         else:
                             raise ValueError("Unknown Games action.")
                     else:
-                        if path == "/api/players" and incoming.get("action") in ("create", "select", "delete", "restore"):
+                        if path == "/api/players" and incoming.get("action") in ("create", "select", "delete", "restore", "reuse_calibration"):
                             # Persist stop before changing players, including across a supervisor restart.
                             state.set_controller_enabled(False)
                         request = urllib.request.Request(WORKER_URL + ("/players" if path == "/api/players" else "/tuning"), method="POST",

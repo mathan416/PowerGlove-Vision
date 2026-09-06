@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Persist separate player sensitivity and Academy progress.
 #   2026-09-06 - Added the family-facing personalization wizard and validation gate.
@@ -166,7 +167,11 @@ class TuningManager:
     def __init__(self, path, clock=time.monotonic):
         self.path, self.clock = Path(path), clock
         self.lock = threading.RLock()
-        self.players = PlayerSettings(self.path, validate_overrides)
+        self.players = PlayerSettings(self.path, validate_overrides, CHANNELS)
+        if not self.players.error and not self.players.active["needs_center"] and self.players.active["calibration"] is None:
+            reference = load_calibration(self.path.with_name("calibration.json"))
+            if reference is not None:
+                self.players.active["calibration"] = calibration_value({"version":2,"neutral":asdict(reference)})
         self.saved = copy.deepcopy(self.players.active["thresholds"])
         self.error = self.players.error
         self.center_generation = None
@@ -213,13 +218,25 @@ class TuningManager:
                 result = self.players.command(data)
                 if self.players.data["calibration_restore"] is not None:
                     raise ValueError("Calibration restore is still being applied. Try the backup again shortly.")
-                reference = None if self.needs_center() else load_calibration(self.path.with_name("calibration.json"))
+                reference = self.players.active["calibration"]
+                if reference is None and not self.needs_center():
+                    current = load_calibration(self.path.with_name("calibration.json"))
+                    reference = calibration_value({"version":2,"neutral":asdict(current)}) if current else None
                 backup = result["backup"]
-                backup.update(format="powerglove-hand-setup", version=2,
-                              calibration=calibration_value({"version":2,"neutral":asdict(reference)}) if reference else None)
+                from .versioning import current_identity
+                identity = current_identity()
+                # Use shipped configuration even before the camera has ever run.
+                config_path = Path(__file__).resolve().parents[2] / "config/profiles.json"
+                import json
+                configured = json.loads(config_path.read_text()) if config_path.exists() else {}
+                base = GestureConfig(**configured.get("recognition", configured.get("program_defaults", {})))
+                effective = replace(base, thresholds=copy.deepcopy(self.saved))
+                backup.update(calibration=copy.deepcopy(reference),
+                    effective_thresholds={key:dict(zip(("on","off"),effective.pair(key))) for key in CHANNELS},
+                    source={"version":str(identity.get("version", "unknown")) + ("+modified" if identity.get("dirty") else ""), "commit":identity.get("commit") or "unknown"})
                 return result
             result = self.players.command(data)
-            if data.get("action") in ("create", "select", "delete", "restore"):
+            if data.get("action") in ("create", "select", "delete", "restore", "reuse_calibration"):
                 self.saved = copy.deepcopy(self.players.active["thresholds"])
                 self.error = self.players.error
                 self.preview, self.phases, self.recording = None, [], None
@@ -239,6 +256,7 @@ class TuningManager:
             data = copy.deepcopy(self.players.data)
             data["calibration_restore"] = None
             data["players"][data["active"]]["needs_center"] = False
+            data["players"][data["active"]]["calibration"] = copy.deepcopy(pending)
             self.players.commit(data)
             return reference
 
@@ -252,10 +270,13 @@ class TuningManager:
         with self.lock:
             self.center_generation = self.players.data["generation"]
 
-    def finish_center(self):
+    def finish_center(self, reference=None):
         """Persist successful calibration only for its original player."""
         with self.lock:
-            self.players.centered(self.center_generation)
+            generation = self.center_generation
+            if generation is None and not self.players.active["needs_center"]:
+                generation = self.players.data["generation"]
+            self.players.centered(generation, reference)
             self.center_generation = None
 
     def _expire(self):

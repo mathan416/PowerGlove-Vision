@@ -9,9 +9,21 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Per-player saved calibration with explicit same-position reuse after switching;
+  internal stores migrate to version 4 with private recovery backups.
+- Version-2 hand backups now include all effective sensitivity pairs and software
+  identity. Restore separately reviews complete sensitivity and calibration reuse.
+  Earlier version-2 files work; version-1 portable exports are no longer accepted.
+- Background hostname refresh removes synchronous DNS/mDNS work from controller
+  sends without queuing frames or states. An isolated 12-lookup Controller sample
+  measured 2.35 ms median and 107.54 ms maximum cold-cache lookup time before this change.
+- Independent host Wi-Fi health in Setup and a fourth faint Off-mode pixel.
+  Normal setup/deployment installs an unprivileged sampler. Requires updated matrix
+  firmware; active game, T/L, pairing, and startup displays are unchanged.
+
 - Complete hand-setup backups with player name, saved sensitivity, and calibration;
   restore review offers explicit same-position calibration reuse or fresh centering.
-  Old sensitivity-only backups remain supported. Restore pauses controller output,
+  Portable backups now start at version 2, as noted above. Restore pauses controller output,
   preserves Academy progress, and resumes safely after an interrupted calibration
   write. Existing player stores migrate with retained backups and unchanged progress.
 

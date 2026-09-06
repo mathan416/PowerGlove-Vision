@@ -574,3 +574,22 @@ with a powered hub and with a direct Mac USB connection. A disappearing website,
 matrix animation, or fixed waiting period does not confirm that power can safely
 be removed. See the [Installation Guide](INSTALL_README.md) for the recorded
 investigation and shutdown guidance.
+
+## Player centers, backups, and Wi-Fi status
+
+Each player retains a separate center. After switching in Glove Academy, set a
+fresh center or select **Reuse my saved center** and confirm unchanged camera
+and playing positions. Controller output remains paused until Start.
+
+Portable backups start at version 2. New exports include personal and complete
+sensitivity, software identity, and the player's saved calibration. Restore
+separately confirms complete sensitivity and calibration reuse. Earlier version-2
+files remain supported; version-1 exports are rejected. Internal player stores
+migrate to version 4 with a private recovery backup.
+
+Off attract mode shows four faint pixels: app, console service, authenticated
+console, and independent Wi-Fi link. Setup distinguishes disconnected Wi-Fi from
+unavailable telemetry. Normal installation/deployment installs the unprivileged
+five-second sampler; repair it with
+`sudo python3 scripts/setup-machine.py uno-q --wifi-status-only` on the host.
+The fourth pixel requires the matching matrix firmware.

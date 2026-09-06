@@ -51,13 +51,13 @@ In **Setup → Matrix attract mode**, select **On**, **Dim**, or **Off** and cho
 default and preserves all eight brightness levels; Dim retains the animation
 with lit pixels mapped to levels 1–2. Off suppresses the animation.
 
-Off keeps three faint pixels along the bottom-left edge, with a dark pixel
+Off keeps four faint pixels along the bottom-left edge, with a dark pixel
 between each indicator. From left to right: the app is running; a TCP connection
 to the configured RetroPie Games service succeeds; and that service answers an
-authenticated request using the paired token. These are reachability and pairing
+authenticated request using the paired token; and the Controller’s own Wi-Fi link is connected. The fourth pixel is independent of RetroPie and requires the updated matrix firmware and host sampler. A dark Wi-Fi pixel means disconnected or unavailable; Setup distinguishes these states. These are reachability and pairing
 indicators, not proof that a running game consumed controller input. An unlit
 network pixel can also mean the console or Games service is off; it does not
-independently diagnose Wi-Fi. Without a configured console only the app pixel lights.
+independently diagnose Wi-Fi; use the fourth pixel and Setup’s Wi-Fi status. Without a configured console, only the app and independently connected Wi-Fi pixels can light.
 
 ![Attract-mode controls in Setup](images/matrix/attract-settings.png)
 

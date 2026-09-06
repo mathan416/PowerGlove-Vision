@@ -5,11 +5,12 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-03 - Added repeatable host installers with backups and explicit health reports.
 #   2026-09-03 - Install and check mDNS dependencies and boot service on both machines.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Run on the target Linux host: setup-machine.py {retropie,uno-q} [--check]."""
 import argparse
@@ -160,6 +161,20 @@ def install_retropie(peer):
     run("systemctl", "enable", "--now", "powerglove-receiver.timer")
 
 
+def install_wifi_status():
+    """Install the same unprivileged Wi-Fi sampler during setup and application updates."""
+    if str(SOURCE) != "/home/arduino/ArduinoApps/powerglove-vision":
+        raise ValueError("Wi-Fi sampler requires the standard App Lab installation path")
+    write_file("/usr/local/libexec/powerglove-wifi-status",
+               (SOURCE / "uno-q/powerglove-wifi-status.py").read_bytes(), 0o755)
+    for suffix in ("service", "timer"):
+        name = "powerglove-wifi-status." + suffix
+        write_file(Path("/etc/systemd/system") / name, (SOURCE / "uno-q" / name).read_bytes())
+    run("systemctl", "daemon-reload")
+    run("systemctl", "enable", "--now", "powerglove-wifi-status.timer")
+    run("systemctl", "start", "powerglove-wifi-status.service")
+
+
 def install_unoq(peer):
     """Complete the CLI-started app with networking, shutdown and early startup."""
     app = SOURCE
@@ -209,6 +224,7 @@ def install_unoq(peer):
     run("runuser", "-u", "arduino", "--", "arduino-app-cli", "properties", "set", "default", app)
     run("docker", "compose", "-f", compose, "up", "-d", "--force-recreate")
     install_early_start()
+    install_wifi_status()
     if peer:
         print("Receiver setting is preserved; choose " + peer + " on the Connection page if needed.")
 
@@ -444,6 +460,8 @@ def check_unoq(report):
     report.command("Shutdown helper enabled", ["systemctl", "is-enabled", "--quiet", "powerglove-system-shutdown.path"])
     report.command("Shutdown helper running", ["systemctl", "is-active", "--quiet", "powerglove-system-shutdown.path"])
     report.check("Shutdown readiness marker", (SOURCE / "data/.shutdown-enabled").exists())
+    report.command("Wi-Fi sampler enabled", ["systemctl", "is-enabled", "--quiet", "powerglove-wifi-status.timer"])
+    report.command("Wi-Fi sampler running", ["systemctl", "is-active", "--quiet", "powerglove-wifi-status.timer"])
     try:
         args = ["arduino-app-cli", "properties", "get", "default", "--format", "json"]
         if os.geteuid() == 0:
@@ -488,10 +506,17 @@ def main():
     parser.add_argument("machine", choices=("retropie", "uno-q"))
     parser.add_argument("--peer", type=valid_host, help="Other machine hostname; required for a new RetroPie installation")
     parser.add_argument("--check", action="store_true", help="Read-only checks; install nothing")
+    parser.add_argument("--wifi-status-only", action="store_true", help="Install/update only the UNO Q Wi-Fi status sampler")
     args = parser.parse_args()
+    if args.wifi_status_only and (args.machine != "uno-q" or args.check):
+        parser.error("--wifi-status-only requires uno-q without --check")
     if sys.platform != "linux" or (not args.check and os.geteuid() != 0):
         parser.error("Run installation on the target Linux machine with sudo")
     try:
+        if args.wifi_status_only:
+            install_wifi_status()
+            print("Wi-Fi status sampler installed; backups: " + str(BACKUPS))
+            return 0
         if not args.check:
             required = ("src/powerglove_vision/receiver.py", "config/games.json",
                         "retropie/powerglove-receiver.timer") if args.machine == "retropie" else (

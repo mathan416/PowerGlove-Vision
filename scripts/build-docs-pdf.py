@@ -5,7 +5,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Keep expanded player settings readable in manual screenshots.
 #   2026-09-05 - Kept each PDF list marker with its wrapped item text.
 #   2026-09-05 - Rendered paired gesture art side by side inside See it table cells.
 #   2026-09-04 - Honoured explicit widths for standalone manual illustrations.
@@ -16,7 +18,6 @@
 #   2026-09-03 - Added contextual gesture images inside gameplay control tables.
 #   2026-09-04 - Added section-link destinations and kept headings with their following content.
 #   2026-09-04 - Indented list markers and text consistently within the body margin.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Build polished, distributable PowerGlove Vision PDF guides."""
 
@@ -364,7 +365,7 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
                 # Interface screenshots need enough space for labels to remain readable.
                 screenshot = image_path.name in {
                     "debug-dashboard.png", "learn-page.png", "tune-page.png",
-                    "setup-page.png", "games-section.png", "help-page.png",
+                    "setup-page.png", "games-section.png", "help-page.png", "player-settings.png",
                 }
                 architecture = image_path.parent.name == "architecture"
                 image = image_flowable(image_path, 6.6 * inch if screenshot or architecture else 6.1 * inch,

@@ -4,11 +4,12 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-05 - Verified native compound hand poses survive transport.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Verify controller packet protocol validation and sender recovery from network failures."""
 
@@ -56,7 +57,8 @@ class TransportTests(unittest.TestCase):
         udp_socket = Mock()
         udp_socket.sendto.side_effect = gaierror(-2, "Name or service not known")
         socket_factory.return_value = udp_socket
-        sender = UdpSender("retropieconsole.local", 55355, "secret")
+        sender = UdpSender("192.0.2.1", 55355, "secret")
+        self.addCleanup(sender.close)
         state = ControllerState.released(1, 1.0, "bad_street_brawler", True)
 
         self.assertFalse(sender.send(state))
@@ -66,7 +68,8 @@ class TransportTests(unittest.TestCase):
 
     @patch("powerglove_vision.transport.socket.socket")
     def test_successful_send_reports_receiver_available(self, socket_factory):
-        sender = UdpSender("retropieconsole.local", 55355, "secret")
+        sender = UdpSender("192.0.2.1", 55355, "secret")
+        self.addCleanup(sender.close)
         state = ControllerState.released(1, 1.0, "bad_street_brawler", True)
 
         self.assertTrue(sender.send(state))

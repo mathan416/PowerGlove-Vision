@@ -235,3 +235,12 @@ files during updates. Expiry or discard removes temporary preview
 state, not saved settings. Numerical validity and sample separation do not prove
 a pose was performed correctly; preview feedback and physical testing are still
 required before release.
+
+## Wi-Fi status sampler
+
+The Wi-Fi sampler runs as `arduino` and only reads host wireless carrier state.
+It publishes a small expiring record in `data/wifi-status.json`; it does not
+collect SSIDs, addresses, passwords, or scans, and cannot change network settings.
+The application retains no controller states while hostname resolution runs in
+the background. Controller message authentication remains the existing trusted-LAN
+protocol; a signed-message migration still awaits a separate decision.

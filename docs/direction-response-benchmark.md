@@ -306,3 +306,18 @@ python3 scripts/benchmark-direction-response.py \
 On macOS, use the emitted `.dylib` paths instead of `.so`. Build products,
 scratch state, reports, and ROMs are not release-package content. The runner's
 `--fceumm-rom` option adds the optional Gun.Smoke reference lane.
+
+## Hostname refresh follow-up — 6 September 2026
+
+Before moving controller hostname refresh out of the send path, twelve isolated
+`.local` lookups on the Controller cleared only that diagnostic process's resolver
+cache. Median lookup duration was 2.35 ms; the maximum was 107.54 ms. This is a
+small lookup sample, not an end-to-end camera-to-game latency measurement.
+
+Controller sends now read a background-refreshed address. A blocked lookup does
+not block a send call or retain any controller samples; unavailable/expired
+addresses skip the current send. Deterministic tests stall resolution while
+attempting 100 states, then verify that only the next new state is sent after
+resolution completes. Capture, inference, movement thresholds, smoothing, native
+state publication, and core consumption are unchanged. The stationary-hand and
+synchronized physical display comparison remain pending.

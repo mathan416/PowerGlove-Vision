@@ -212,7 +212,7 @@ The interface screenshots in `docs/images/` were refreshed from the running
 PowerGlove Vision application on September 4, 2026. They cover Dashboard, Glove Academy,
 Tune, Setup, Games, and Help. Camera imagery is blurred for privacy; gesture
 illustrations remain unchanged. These screenshots are project documentation
-assets and add no runtime dependencies. Setup and its attract-mode panel were
+assets and add no runtime dependencies. Setup, its attract-mode panel, and the player/backup panels were
 refreshed on September 6, 2026 using the current page in an isolated browser
 with simulated device data and placeholder hostnames; these captures do not
 claim live pairing or hardware verification.

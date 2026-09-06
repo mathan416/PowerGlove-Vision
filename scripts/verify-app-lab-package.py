@@ -5,7 +5,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Require the extracted Setup browser module.
 #   2026-09-06 - Required the Rock Paper Scissors browser module.
 #   2026-09-05 - Required the fixed, guided, and replay vision benchmark tools.
@@ -16,7 +18,6 @@
 #   2026-09-03 - Required only the allowlisted public PDF editions.
 #   2026-09-03 - Required the complete host shutdown-helper installation set.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Verify the generated UNO Q App Lab installation ZIP before publication."""
 
@@ -93,6 +94,10 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/images/web/gestures/actions/close-all-fingers.png",
     "PowerGlove-Vision/src/powerglove_vision/web_features.py",
     "PowerGlove-Vision/src/powerglove_vision/setup_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/wifi_status.py",
+    "PowerGlove-Vision/uno-q/powerglove-wifi-status.py",
+    "PowerGlove-Vision/uno-q/powerglove-wifi-status.service",
+    "PowerGlove-Vision/uno-q/powerglove-wifi-status.timer",
     "PowerGlove-Vision/src/powerglove_vision/play_game.py",
     "PowerGlove-Vision/retropie/powerglove-games.service",
     "PowerGlove-Vision/retropie/bin/powerglove-games",

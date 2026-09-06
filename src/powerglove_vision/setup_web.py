@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Organize Setup and keep failed requests and unsaved fields recoverable.
 
 """Setup content is separate from routing so its wording and behavior are reviewable."""
@@ -21,7 +22,7 @@ SETUP_CONTENT = """<style>main a{color:var(--cyan)}#form p{margin:0}#notice:empt
 <div id=pairing-fields><label>RetroPie one-time code<input id=pair-code placeholder=ABCDE-FGHIJ-23456-7ABCD autocomplete=off></label><p>On RetroPie, run <code>sudo /opt/powerglove/bin/powerglove-pair</code> to get a code.</p><button id=pair-code-button type=button>Prepare code pairing</button>
 <details><summary>Pair using an SSH password</summary><div class=formgrid><label>RetroPie username<input id=pair-user value=pi autocomplete=username></label><label>RetroPie SSH password<input id=pair-password type=password autocomplete=current-password disabled></label></div><button id=pair-ssh type=button>Prepare password pairing</button></details>
 <label class=check><input id=verified type=checkbox disabled> I compared the browser certificate fingerprint with the matrix ID</label><label>Controller approval PIN<input id=device-code inputmode=numeric maxlength=6 pattern='[0-9]{6}' placeholder='Six digits shown on the matrix' autocomplete=off disabled></label></div><p id=pair-notice role=status aria-live=polite></p></section>
-<section class=card style="margin-bottom:14px"><h2>Matrix attract mode</h2><form id=attract-form><label>Idle display<select id=matrix-attract><option value=on>On — full animation</option><option value=dim>Dim — gentle animation</option><option value=off>Off — connection pixels only</option></select></label><button type=submit>Save attract mode</button></form><p>Changes only the idle glove animation. Game displays, T, L, startup, errors, and pairing keep their normal brightness. Saves without restarting tracking.</p><details><summary>What the connection pixels mean</summary><p>In Off mode, three faint bottom-left pixels show: app running, console service reachable, and authenticated RetroPie response. They do not confirm Wi-Fi independently or prove that a game received input.</p></details><p id=attract-notice role=status></p></section>
+<section class=card style="margin-bottom:14px"><h2>Matrix attract mode</h2><form id=attract-form><label>Idle display<select id=matrix-attract><option value=on>On — full animation</option><option value=dim>Dim — gentle animation</option><option value=off>Off — connection pixels only</option></select></label><button type=submit>Save attract mode</button></form><p>Changes only the idle glove animation. Game displays, T, L, startup, errors, and pairing keep their normal brightness. Saves without restarting tracking.</p><details><summary>What the connection pixels mean</summary><p>In Off mode, four faint bottom-left pixels show: app running, console service reachable, authenticated RetroPie response, and Wi-Fi connected. The Wi-Fi pixel comes from the Controller’s own wireless link, independently of RetroPie. These indicators do not prove that a game received input.</p></details><p id=wifi-status role=status>Wi-Fi: checking…</p><p id=attract-notice role=status></p></section>
 <section class=card style="margin-bottom:14px"><h2>Controller and power</h2><p>Start arms controller output for a selected game. You can also control delivery from <a href=/dashboard>Dashboard</a>.</p><div class=controls><button type=button id=controller-toggle disabled>Start controller</button><button class=danger type=button id=shutdown-system>Shut down Controller</button></div><p id=controller-notice role=status aria-live=polite></p></section>"""
 
 SETUP_SCRIPT = r"""(()=>{
@@ -54,6 +55,7 @@ async function load(updateFields=false){
 }
 async function initialLoad(){$('notice').textContent='Loading saved settings…';try{await load(true);$('notice').textContent=''}catch(e){$('notice').textContent='Could not load saved settings. '+e.message;$('setup-retry').hidden=false}}
 $('setup-retry').onclick=initialLoad;initialLoad();
+async function wifi(){try{const s=await api('/status');$('wifi-status').textContent='Wi-Fi: '+({connected:'connected',disconnected:'disconnected',unavailable:'status unavailable'}[s.wifi_status]||'status unavailable')}catch(e){$('wifi-status').textContent='Wi-Fi: status unavailable'}}wifi();setInterval(wifi,5000);
 $('secure-note').textContent=secure?'Before pairing, compare the certificate SHA-256 fingerprint in your browser with the ID on the Controller matrix. Then enter its one-time approval PIN.':'Pairing requires the secure Setup page. ';
 if(!secure){const a=document.createElement('a');a.href='https://'+location.hostname+':8443/setup';a.textContent='Open secure Setup';$('secure-note').append(a)}
 for(const id of ['pair-host','pair-user','pair-code','pair-ssh','pair-code-button'])$(id).disabled=!secure;

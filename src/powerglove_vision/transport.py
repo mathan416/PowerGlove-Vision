@@ -4,12 +4,13 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-05 - Carried native closed-hand and index-point recognition states.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Encode bounded controller packets and send them to RetroPie without blocking vision recovery."""
 
@@ -85,7 +86,7 @@ def decode_state(payload: bytes) -> dict:
     return data
 
 
-from .resolver import resolve_ipv4
+from .resolver import BackgroundAddress, resolve_ipv4
 
 
 class UdpSender:
@@ -95,6 +96,7 @@ class UdpSender:
         self.token = token
         self.session = uuid.uuid4().hex
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.address = BackgroundAddress(host, resolve=resolve_ipv4)
         self.last_error: str | None = None
         self._retry_at = 0.0
 
@@ -111,10 +113,14 @@ class UdpSender:
         now = time.monotonic()
         if now < self._retry_at:
             return False
+        address, error = self.address.current()
+        if address is None:
+            self.last_error = error
+            return False
         try:
             self.socket.sendto(
                 encode_state(state, self.token, self.session),
-                (resolve_ipv4(self.destination[0]), self.destination[1])
+                (address, self.destination[1])
             )
         except OSError as exc:
             self.last_error = str(exc)
@@ -130,4 +136,5 @@ class UdpSender:
 
     def close(self) -> None:
         """Close the sender socket."""
+        self.address.close()
         self.socket.close()
