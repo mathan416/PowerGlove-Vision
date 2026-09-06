@@ -1710,6 +1710,13 @@ sudo systemctl daemon-reload
 
 ### Build and install matrix firmware
 
+To preview the idle animation from the actual sketch renderer on a development
+computer, install Pillow and a C++ compiler, then run
+`python3 scripts/build-matrix-animation-preview.py`. It writes `idle-animation.gif`,
+`idle-glove.png`, and `idle-storyboard.png` under `docs/images/matrix/` with the
+sketch's frame timings. Brightness is simulated, not calibrated to physical LEDs.
+This preview does not compile the Arduino firmware or upload anything.
+
 The verified sketch profile is `arduino:zephyr:unoq` with Arduino Zephyr platform
 **1.0.0**. Keep the complete pinned `sketch/sketch.yaml`; installing a newer
 platform by itself does not rebuild or flash PowerGlove. A compile-only check

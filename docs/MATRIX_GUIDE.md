@@ -15,7 +15,7 @@ what to do next.
 | Arduino boot logo | <img src="images/matrix/Boot.jpg" alt="Boot matrix display" width="104"> | The PowerGlove Vision Controller's system software is starting, before PowerGlove Vision controls the display. | Wait for the app's hourglass or normal display. |
 | System heart animation | <img src="images/matrix/Heart.jpg" alt="Heart matrix display" width="104"> | The board is progressing through system startup. | Wait for the app display. |
 | Pulsing hourglass | <img src="images/matrix/Hourglass.jpg" alt="Hourglass matrix display" width="104"> | PowerGlove Vision is starting. | Allow startup to finish. If it persists, check Dashboard. |
-| Glove animation with moving cuff, curling fingers, and a spark | <img src="images/matrix/Glove.jpg" alt="Glove matrix display" width="104"> | Gestures are off; the app is in its idle mode. | Open Glove Academy to practice, or choose a game profile on Dashboard. |
+| Lightning flash, moving cuff, curling glove, and a spark | <img src="images/matrix/idle-glove.png" alt="Simulated idle glove display" width="104"> | Gestures are off; the app is in its idle mode. | Open Glove Academy to practice, or choose a game profile on Dashboard. |
 | A large scanning **L** | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Play or Glove Academy lessons are active. L stands for local play or lessons. | Follow the game or practice moves shown in your browser; controller output is paused. |
 | A large scanning **T** | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Gesture tuning is active, including hand setup. | Follow the recording, preview, and save instructions in Glove Academy. Controller output is paused. |
 | A steady **A-I**, **BS**, or **GB** | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | A game profile is selected, but a calibrated hand is not currently being reported as tracked. | Show your hand and check tracking/calibration on Dashboard. |
@@ -46,10 +46,20 @@ Dashboard and check the startup or error message.
 
 ## The idle glove show
 
-<img src="images/matrix/Glove.jpg" alt="Idle glove: gestures are off; one frame of the repeating animation." width="320">
+<img src="images/matrix/idle-glove.png" alt="Simulated idle glove: separated fingers, thumb, and wrist cuff." width="320">
 
-The glove curls, reopens, and glows while gestures are off. Open Glove Academy
-to practice, or choose a game profile on Dashboard when ready to play.
+The roughly four-second loop opens with a lightning bolt flashing twice. The
+cuff slides in from the right and the hand rises above it, curls into a fist,
+and reopens. A small spark climbs toward the fingertips, then the glove gently
+brightens and settles. Separated fingers and a distinct thumb keep the silhouette
+readable; a dim palm, highlighted edges, and a wrist buckle use the matrix's
+eight brightness levels (0 is off, 1–7 are lit).
+
+The illustration above simulates the LED levels; actual brightness and glow
+depend on the physical display. Open Glove Academy to practice, or choose a game
+profile on Dashboard when ready to play. Existing installations need a
+[matrix firmware update](CONFIGURATION_REFERENCE.md#build-and-install-matrix-firmware)
+to show the revised animation; copying website files alone does not update it.
 
 A flashing spark here does **not** mean you performed Glove Zap. This animation
 means gestures are off. It is different from selecting a game profile and merely

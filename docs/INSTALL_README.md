@@ -244,7 +244,7 @@ For diagnostic commands or manual repair, use the
 | Arduino boot logo | <img src="images/matrix/Boot.jpg" alt="Boot matrix display" width="104"> | System startup, before the app display. |
 | System heart | <img src="images/matrix/Heart.jpg" alt="Heart matrix display" width="104"> | System startup is progressing. |
 | Pulsing hourglass | <img src="images/matrix/Hourglass.jpg" alt="Hourglass matrix display" width="104"> | PowerGlove Vision is starting. |
-| Animated glove | <img src="images/matrix/Glove.jpg" alt="Glove matrix display" width="104"> | Gestures are off. |
+| Lightning and animated glove | <img src="images/matrix/idle-glove.png" alt="Simulated glove matrix display" width="104"> | Gestures are off. The revised animation requires updated matrix firmware. |
 | Scanning `L` | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Play or Glove Academy practice is active; controller output is paused. |
 | Scanning `T` | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Tune gestures is active; controller output is paused. |
 | `A`–`I` | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | The corresponding profile is selected; Program A is shown. |

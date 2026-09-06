@@ -104,6 +104,11 @@ and repeatable updates while preserving personal settings. The release-owned
 personal tuning under `data/` remain in place. Installer assets
 must be published before the release download commands become available.
 
+When gestures are off, the matrix plays a lightning-and-glove animation with
+curling fingers, a travelling spark, and a soft grayscale glow. See the
+[Matrix display guide](docs/MATRIX_GUIDE.md); the revised loop requires updated
+matrix firmware.
+
 The tested shared baseline includes responsive `0.28` activation and `0.14`
 release thresholds, full-camera-field native X/Y mapping with an 8% edge margin,
 and low-lag adaptive coordinate stabilization. These are suitable starting

@@ -37,6 +37,11 @@ faster inference for more responsive play.
 
 ### Changed
 
+- Refined the idle matrix animation with a double-flash lightning bolt, separated
+  fingers and thumb, a consistent cuff buckle, a longer fist hold, and a smaller
+  travelling spark. Grayscale shading and a gradual glow finish the four-second
+  loop. Added a preview rendered from the sketch's actual frames; physical LED
+  appearance remains a separate check. Requires a matrix firmware update.
 - Updated native compatibility test assertions to match the already documented
   completed-game confirmation and deliberately neutral unused packet fields.
 - Adopted **PowerGlove Vision Controller** as the user-facing name for the

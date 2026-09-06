@@ -5,6 +5,7 @@
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
 // Change log:
+//   2026-09-06 - Add an idle lightning flash, clearer fingers and cuff, and a softer glow.
 //   2026-09-04 - Share the scanning letter animation between Learn and Tune.
 //   2026-09-02 - Added to PowerGlove Vision.
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -87,29 +88,35 @@ const char* const errorFrame[8] = {
 // state. Edge highlighting gives the tiny monochrome image depth without
 // saturating the palm into an unreadable rectangle.
 const char* const idleOpenGlove[8] = {
-  "....#.#.#.#..", "....#.#.#.#..", "...########..", "..#########..",
-  "..########...", "...######....", "...####......", "...####......",
+  "......#.#....", "....#.#.#.#..", "....#.#.#.#..", ".#..#######..",
+  ".##.######...", "..########...", "...####......", "...####......",
 };
 
 const char* const idleCurlGlove[8] = {
-  ".............", "....#.#.#.#..", "...########..", "..#########..",
-  "..########...", "...######....", "...####......", "...####......",
+  ".............", ".............", "....#.#.#.#..", ".#..#######..",
+  ".##.######...", "..########...", "...####......", "...####......",
 };
 
 const char* const idleFistGlove[8] = {
-  ".............", "...######....", "..########...", "..########...",
-  "..########...", "...######....", "...####......", "...####......",
+  ".............", ".............", "...#######...", "..########...",
+  ".#########...", "..########...", "...####......", "...####......",
+};
+
+// A full-height zigzag silhouette stays readable during the short double flash.
+const char* const idleLightning[8] = {
+  ".......###...", "......###....", ".....###.....", "....#####....",
+  "......##.....", ".....##......", "....##.......", "....#........",
 };
 
 // Per-frame timing makes the entrance, finger curl, spark, and outline pulse
 // distinct. The final frame holds long enough to serve as a friendly idle icon.
 const uint16_t idleFrameDurations[] = {
-  75, 75, 75, 105,              // energy streak
-  105, 105, 105, 130,           // cuff travels right-to-left
-  90, 90, 180,                  // glove rises from the cuff
-  90, 125, 90, 150,             // curl, clench, reopen
-  70, 70, 70, 70, 70, 70, 70, 70, // spark and comet trail
-  90, 120, 850,                 // settle, outline pulse, hold
+  120, 90, 160, 100,            // lightning: flash, dim, flash, fade
+  80, 90, 110, 150,             // cuff eases into position
+  100, 120, 230,                // glove rises, then holds open
+  120, 220, 120, 200,           // curl, readable fist hold, reopen
+  80, 80, 80, 80, 80, 80, 80, 80, // spark and comet trail
+  100, 120, 150, 180, 220, 700, // gradual glow and resting hold
 };
 
 // Five-pixel-wide glyphs A-I, B, S, and G. Program profiles use a large
@@ -271,6 +278,13 @@ void drawGlove(
       setPixelMax(pixels, x, y, edge ? edgeBrightness : bodyBrightness);
     }
   }
+  // A dim wrist band and two bright buckle pixels anchor every hand pose.
+  for (int x = 3; x <= 6; ++x) {
+    pixels[6 * 13 + x] = bodyBrightness;
+    pixels[7 * 13 + x] = edgeBrightness;
+  }
+  pixels[6 * 13 + 4] = edgeBrightness;
+  pixels[6 * 13 + 5] = edgeBrightness;
 }
 
 // Render one complete beat of the gestures-paused attract sequence. Motion is
@@ -280,22 +294,21 @@ void drawIdleFrame(uint8_t frame) {
   uint8_t pixels[104] = {0};
 
   if (frame < 4) {
-    const int coreX[] = {0, 4, 8, 12};
+    const uint8_t flash[] = {7, 2, 7, 1};
     for (int y = 0; y < 8; ++y) {
-      const int x = coreX[frame] + abs(y - 3) / 2;
-      setPixelMax(pixels, x - 2, y, 1);
-      setPixelMax(pixels, x - 1, y, 4);
-      setPixelMax(pixels, x, y, 7);
+      for (int x = 0; x < 13; ++x) {
+        if (isGlovePixel(idleLightning, x, y)) {
+          setPixelMax(pixels, x, y, flash[frame]);
+        }
+      }
     }
   } else if (frame < 8) {
     const int cuffX[] = {10, 8, 5, 3};
     const int left = cuffX[frame - 4];
     for (int y = 6; y < 8; ++y) {
-      setPixelMax(pixels, left - 1, y, 2);
       for (int x = left; x < left + 4; ++x) {
-        setPixelMax(pixels, x, y, x == left ? 7 : 4);
+        setPixelMax(pixels, x, y, y == 7 || x == left + 1 || x == left + 2 ? 5 : 2);
       }
-      setPixelMax(pixels, left + 4, y, 2);
     }
   } else if (frame < 11) {
     const int revealRows[] = {5, 3, 0};
@@ -321,13 +334,16 @@ void drawIdleFrame(uint8_t frame) {
     }
     const int x = sparkX[sparkIndex];
     const int y = sparkY[sparkIndex];
-    setPixelMax(pixels, x - 1, y, 4);
-    setPixelMax(pixels, x + 1, y, 4);
-    setPixelMax(pixels, x, y - 1, 4);
-    setPixelMax(pixels, x, y + 1, 4);
+    // Small glints preserve the finger gaps; a full cross obscures the hand.
+    if (sparkIndex == 3 || sparkIndex == 7) {
+      setPixelMax(pixels, x - 1, y, 4);
+      setPixelMax(pixels, x + 1, y, 4);
+    }
     setPixelMax(pixels, x, y, 7);
-  } else if (frame == 24) {
-    drawGlove(pixels, idleOpenGlove, 4, 7);
+  } else if (frame >= 23) {
+    const uint8_t body[] = {1, 2, 3, 2, 1, 1};
+    const uint8_t edge[] = {3, 5, 7, 5, 4, 4};
+    drawGlove(pixels, idleOpenGlove, body[frame - 23], edge[frame - 23]);
   } else {
     drawGlove(pixels, idleOpenGlove, 2, 5);
   }
