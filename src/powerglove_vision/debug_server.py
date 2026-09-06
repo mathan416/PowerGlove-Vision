@@ -4,12 +4,15 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
+#   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
+#   2026-09-06 - Expose bounded player operations and enforce fresh centering.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added runtime profile requests and camera-free status updates.
 #   2026-09-03 - Added expiring browser practice leases for the Learn page.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Expose live worker status, camera frames, calibration, and controller state to the supervisor."""
 
@@ -203,6 +206,7 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                     status["preview_clients"] = shared.stream_clients
                 if shared.tuning is not None:
                     status["tuning"] = shared.tuning.snapshot()
+                    status["player"] = shared.tuning.player_snapshot()
                 body = json.dumps(status, indent=2).encode()
                 self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(body)
             elif self.path == "/stream":
@@ -223,7 +227,7 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                 self.send_error(404)
 
         def do_POST(self) -> None:
-            if self.path == "/tuning" and shared.tuning is not None:
+            if self.path in ("/tuning", "/players") and shared.tuning is not None:
                 try:
                     length = int(self.headers.get("Content-Length", "0"))
                     if not 0 < length <= 8192:
@@ -231,8 +235,9 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                     data = json.loads(self.rfile.read(length))
                     if not isinstance(data, dict):
                         raise ValueError("Expected a tuning operation")
-                    result = shared.tuning.command(data)
-                    if shared.tuning.active():
+                    result = shared.tuning.player_command(data) if self.path == "/players" else shared.tuning.command(data)
+                    if (shared.tuning.active() or shared.tuning.needs_center() or
+                            (self.path == "/players" and data.get("action") in ("create", "select", "delete", "restore", "reuse_calibration"))):
                         shared.request_controller(False)
                     body, code = json.dumps(result).encode(), 200
                 except (ValueError, OSError) as exc:
@@ -254,6 +259,8 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                     enabled = body.get("enabled")
                     if not isinstance(enabled, bool):
                         raise ValueError("enabled must be true or false")
+                    if enabled and shared.tuning is not None and shared.tuning.needs_center():
+                        raise ValueError("Set your center in Glove Academy before starting controls for this player.")
                     shared.request_controller(enabled)
                     response = json.dumps({"controller_enabled": enabled}).encode()
                     self.send_response(200)

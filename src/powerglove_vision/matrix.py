@@ -4,18 +4,24 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
+#   2026-09-06 - Add idle-only brightness and bounded background connection indicators.
+#   2026-09-06 - Read and cache the running matrix firmware source identity.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added a gestures-idle state distinct from system shutdown.
 #   2026-09-03 - Added a dedicated Learn-mode matrix state.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Drive UNO Q LED matrix status, pairing, and active-profile displays through Router Bridge."""
 
 from __future__ import annotations
 
 import time
+import re
+import threading
+import socket
 from enum import IntEnum
 from typing import Any, Callable
 
@@ -71,6 +77,15 @@ class UnoQMatrix:
         self._status_retry_at = 0.0
         self._profile_retry_at = 0.0
         self._call = call
+        self._firmware_checked_at = -60.0
+        self._firmware_id = None
+        self._attract_sent = None
+        self._attract_retry = 0.0
+        self._probe_lock = threading.Lock()
+        self._probe_key = None
+        self._probe_result = 0
+        self._probe_at = -60.0
+        self._probe_running = False
         if enabled and self._call is None:
             try:
                 from arduino.app_utils import Bridge
@@ -85,6 +100,71 @@ class UnoQMatrix:
     def available(self) -> bool:
         """Return whether Router Bridge matrix calls can currently be attempted."""
         return self.enabled and self._call is not None
+
+    def firmware_identity(self):
+        """Read the running sketch identity occasionally, outside the vision worker."""
+        if time.monotonic() - self._firmware_checked_at < 30:
+            return self._firmware_id
+        self._firmware_checked_at = time.monotonic()
+        self._firmware_id = None
+        if self.available:
+            try:
+                result = self._call("get_powerglove_firmware")
+                if isinstance(result, str) and re.fullmatch(r"[0-9a-f]{64}", result):
+                    self._firmware_id = result
+            except Exception:
+                # Older sketches do not expose the identity endpoint.
+                pass
+        return self._firmware_id
+
+    def set_attract(self, settings, idle=False):
+        """Update idle-only settings; check console health outside all frame loops."""
+        mode = settings.get("matrix_attract", "on")
+        if mode not in ("on", "dim", "off"):
+            mode = "on"
+        now = time.monotonic()
+        key = (settings.get("receiver", ""), settings.get("token", ""))
+        with self._probe_lock:
+            if key != self._probe_key:
+                self._probe_key, self._probe_result, self._probe_at = key, 0, -60.0
+            if idle and mode == "off" and not self._probe_running and now - self._probe_at >= 10:
+                self._probe_running = True
+                threading.Thread(target=self._probe_console, args=(key,), daemon=True,
+                                 name="matrix-connections").start()
+            connections = self._probe_result if now - self._probe_at < 30 else 0
+        from .wifi_status import read_wifi_status
+        if read_wifi_status() == "connected":
+            connections |= 4
+        value = (("on", "dim", "off").index(mode), connections)
+        if value == self._attract_sent or now < self._attract_retry or not self.available:
+            return
+        try:
+            self._call("set_powerglove_attract", *value)
+            self._attract_sent = value
+        except Exception:
+            # An older sketch keeps its existing animation until upgraded.
+            self._attract_retry = now + 30
+
+    def _probe_console(self, key):
+        """Distinguish TCP reachability from an authenticated console response."""
+        from .resolver import resolve_ipv4
+        from .game_registry import registry_request, PORT
+        bits = 0
+        try:
+            host, token = key
+            if host:
+                address = resolve_ipv4(host)
+                with socket.create_connection((address, PORT), timeout=2):
+                    bits = 1
+                registry_request({"receiver": address, "token": token}, "read")
+                bits = 3
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        finally:
+            with self._probe_lock:
+                if key == self._probe_key:
+                    self._probe_result, self._probe_at = bits, time.monotonic()
+                self._probe_running = False
 
     def set_status(self, status: MatrixStatus) -> bool:
         """Display a new status unless a temporary pairing display owns the matrix."""

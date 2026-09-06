@@ -14,11 +14,56 @@
 """Verify LED matrix status, profile, and physical pairing-display bridge calls."""
 
 import unittest
+from unittest.mock import patch
 
 from powerglove_vision.matrix import MatrixStatus, UnoQMatrix, status_from_worker
 
 
 class MatrixTests(unittest.TestCase):
+    def test_attract_is_separate_cached_and_idle_probe_only(self):
+        calls = []
+        matrix = UnoQMatrix(call=lambda *args: calls.append(args))
+        with patch('powerglove_vision.matrix.threading.Thread') as thread:
+            matrix.set_attract({'matrix_attract':'off'}, idle=False)
+            matrix.set_status(MatrixStatus.TUNING)
+            matrix.set_attract({'matrix_attract':'off'}, idle=False)
+            thread.assert_not_called()
+            self.assertEqual(calls, [('set_powerglove_attract',2,0), ('set_powerglove_status',8)])
+            matrix.set_attract({'matrix_attract':'off'}, idle=True)
+            thread.return_value.start.assert_called_once()
+        matrix.set_attract({'matrix_attract':'dim'})
+        self.assertEqual(calls[-1], ('set_powerglove_attract',1,0))
+        self.assertEqual(matrix.last_status, MatrixStatus.TUNING)
+
+    def test_connection_pixels_require_reachable_and_authenticated_console(self):
+        matrix = UnoQMatrix(call=lambda *args: None)
+        key = ('cabinet.local','private-token')
+        matrix._probe_key = key
+        with patch('powerglove_vision.resolver.resolve_ipv4', return_value='10.0.0.2'), \
+             patch('powerglove_vision.matrix.socket.create_connection'), \
+             patch('powerglove_vision.game_registry.registry_request', return_value={}) as request:
+            matrix._probe_console(key)
+            self.assertEqual(matrix._probe_result,3)
+            request.side_effect=ValueError('wrong token')
+            matrix._probe_console(key)
+            self.assertEqual(matrix._probe_result,1)
+        with patch('powerglove_vision.resolver.resolve_ipv4', side_effect=OSError):
+            matrix._probe_console(key)
+            self.assertEqual(matrix._probe_result,0)
+
+    def test_running_firmware_identity_is_cached_and_old_firmware_is_unknown(self):
+        calls = []
+        def identify(*args):
+            calls.append(args)
+            return 'a' * 64
+        matrix = UnoQMatrix(call=identify)
+        self.assertEqual(matrix.firmware_identity(), 'a' * 64)
+        self.assertEqual(matrix.firmware_identity(), 'a' * 64)
+        self.assertEqual(calls, [('get_powerglove_firmware',)])
+        def old_firmware(*args):
+            raise RuntimeError('Unknown endpoint')
+        self.assertIsNone(UnoQMatrix(call=old_firmware).firmware_identity())
+
     def test_status_is_sent_over_bridge(self):
         calls = []
         matrix = UnoQMatrix(call=lambda *args: calls.append(args))

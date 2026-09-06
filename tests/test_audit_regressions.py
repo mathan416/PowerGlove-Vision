@@ -72,13 +72,14 @@ class AuditRegressionTests(unittest.TestCase):
             except StopIteration:
                 raise KeyboardInterrupt
         sock.recvfrom.side_effect = receive
+        sock.recvmsg.side_effect = lambda size, space: (lambda pair: (pair[0], [], 0, pair[1]))(sock.recvfrom(size))
         device = Mock()
         release_times = []
         device.release.side_effect = lambda: release_times.append(now[0])
         with patch.object(receiver.socket,'socket',return_value=sock), \
              patch.object(receiver.time,'monotonic',side_effect=lambda:now[0]), \
              patch.object(receiver,'UInputDevice',return_value=device), \
-             patch.object(sys,'argv',['receiver','--token',TOKEN]):
+             patch.object(sys,'argv',['receiver','--token',TOKEN,'--allow-legacy-controller']):
             receiver.main()
         self.assertEqual(device.write_state.call_count,1)
         self.assertLessEqual(release_times[0], .4)

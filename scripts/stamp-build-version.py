@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Stamp exact commits, candidate versions, and expected firmware identity.
 #   2026-09-04 - Derive the displayed version from release and build metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -24,7 +25,7 @@ def main():
     parser.add_argument("destination", type=Path)
     args = parser.parse_args()
     versioning = runpy.run_path(str(root / "src/powerglove_vision/versioning.py"))
-    identity = versioning["build_identity"](root)
+    identity = versioning["exact_build_identity"](root)
     if identity["branch"] == "unknown":
         raise SystemExit("Cannot identify source branch; build from a Git checkout or a named CI branch.")
     args.destination.parent.mkdir(parents=True, exist_ok=True)

@@ -4,8 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
-# Change log:
 # Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Verified Help discovery for Rock Paper Scissors and native validation.
 #   2026-09-05 - Verified persistent armed state and clearer delivery status.
 #   2026-09-05 - Kept mocked forwarding assertions compatible with Python 3.7.
@@ -44,6 +45,47 @@ from powerglove_vision.vision_app import _base_status, _effective_profile
 
 
 class ControlStateTests(unittest.TestCase):
+    def test_players_route_requires_same_origin_and_action_header(self):
+        servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            for extra in ({}, {"X-PowerGlove-Action":"players", "Sec-Fetch-Site":"cross-site"},
+                          {"X-PowerGlove-Action":"players", "Origin":"http://other.invalid"}):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                with mock.patch('powerglove_vision.control_server.urllib.request.urlopen') as forward:
+                    connection.request("POST", "/api/players", json.dumps({"action":"read"}),
+                                       dict({"Content-Type":"application/json"}, **extra))
+                    response = connection.getresponse()
+                    response.read()
+                    self.assertEqual(response.status, 403)
+                    forward.assert_not_called()
+                connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_players_switch_stops_before_forwarding_and_requires_center(self):
+        """A failed or interrupted switch cannot leave a persisted armed marker."""
+        servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            state.set_controller_enabled(True)
+            def fail_forward(*args, **kwargs):
+                self.assertFalse(state.controller_enabled())
+                self.assertFalse(state._controller_marker.exists())
+                raise ValueError("worker unavailable")
+            connection = http.client.HTTPConnection("127.0.0.1", servers.servers[0].server_address[1], timeout=2)
+            with mock.patch('powerglove_vision.control_server.urllib.request.urlopen', side_effect=fail_forward):
+                connection.request("POST", "/api/players", json.dumps({"action":"select", "id":"other"}),
+                                   {"Content-Type":"application/json", "X-PowerGlove-Action":"players"})
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, 400)
+            connection.close()
+            state.worker_status["player"] = {"needs_center": True}
+            with self.assertRaisesRegex(ValueError, "Set your center"):
+                state.set_controller_enabled(True)
+        finally:
+            servers.shutdown()
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.path = Path(self.temporary.name) / "device.json"
@@ -99,6 +141,21 @@ class ControlStateTests(unittest.TestCase):
         public = self.state.public_config()
         self.assertNotIn("token", public)
         self.assertTrue(public["paired"])
+
+    def test_attract_persists_without_restarting_or_changing_controls(self):
+        self.state.set_controller_enabled(True)
+        original = json.loads(self.path.read_text())
+        self.assertEqual(self.state.public_config()['matrix_attract'],'on')
+        for mode in ('off','dim','on'):
+            self.state.save_attract({'mode':mode})
+            self.assertEqual(json.loads(self.path.read_text()),dict(original,matrix_attract=mode))
+            self.assertEqual(self.state.revision,0)
+            self.assertTrue(self.state.controller_enabled())
+        with self.assertRaises(ValueError):
+            self.state.save_attract({'mode':'brightest'})
+        self.state.save_attract({'mode':'dim'})
+        self.state.save_config(original)
+        self.assertEqual(self.state.public_config()['matrix_attract'],'dim')
 
     def test_save_preserves_token_and_updates_connection(self):
         self.state.save_config({
@@ -422,9 +479,9 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"pair-password').disabled=true", SETUP)
         self.assertIn(b"verified').checked", SETUP)
 
-    def test_one_time_code_pairing_is_an_advanced_option(self):
-        self.assertIn(b"Advanced: pair without a RetroPie password", SETUP)
-        self.assertIn(b"Prepare one-time code", SETUP)
+    def test_pairing_methods_are_explicit(self):
+        self.assertIn(b"Pair using an SSH password", SETUP)
+        self.assertIn(b"Prepare code pairing", SETUP)
 
     def test_controller_connection_starts_disarmed_until_player_arms_it(self):
         self.assertFalse(self.state.controller_enabled())
@@ -440,7 +497,7 @@ class ControlStateTests(unittest.TestCase):
 
     def test_shutdown_controls_are_on_dashboard_and_setup(self):
         for page in (DASHBOARD, SETUP):
-            self.assertIn(b">Shutdown</button>", page)
+            self.assertIn(b"id=shutdown-system", page)
             self.assertIn(b"/api/system/shutdown", page)
             self.assertIn(b"restart automatically", page.lower())
             self.assertIn(b"does not confirm it is safe to remove power", page.lower())
@@ -502,7 +559,7 @@ class ControlStateTests(unittest.TestCase):
             b"setTimeout(()=>finishLesson(advanceRevision),700)", LEARN
         )
         self.assertIn(b"$('restart-training').onclick=restartTraining", LEARN)
-        self.assertIn(b"if(trainingComplete)restartTraining()", LEARN)
+        self.assertIn(b"if(trainingComplete)return restartTraining()", LEARN)
 
     def test_profile_selectors_use_descriptive_names_and_stable_ids(self):
         expected = {

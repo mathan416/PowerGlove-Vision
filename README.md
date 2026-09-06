@@ -4,6 +4,8 @@
 
 # PowerGlove Vision
 
+**Release candidate:** [v0.3.2-rc.6](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.6). Update both computers together using the [candidate installation commands](docs/INSTALL_README.md#install-this-release-candidate). The default installer commands select the latest stable release, not this candidate. Live gameplay and latency validation remain pending.
+
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
 a camera connected to the **PowerGlove Vision Controller**, built on an Arduino
 UNO Q. Use your bare hand or a plain glove; there are no glove electronics to
@@ -43,6 +45,20 @@ noticeable latency to refine. Native wrist rotation and the remaining unused
 packet button fields stay neutral until exact-ROM testing gives them a purpose;
 they are not missing from the game actions confirmed in the completed session.
 
+Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
+or turn it Off except for faint connection pixels. This does not change game
+displays, T, L, or gesture recognition. The setting saves without a tracker restart. Off mode has separate app, console-service, authenticated-console, and Wi-Fi pixels; Setup distinguishes unavailable Wi-Fi status from disconnection. The fourth pixel needs the updated firmware.
+
+Setup now groups connection and startup settings, secure pairing, matrix attract
+mode, and controller/power actions. **Check console address** tests name resolution;
+use a running game to verify delivery. Failed requests can be retried, and
+controller actions preserve unsaved connection edits. Pending Start/Stop requests
+are reported while the tracker reconnects.
+
+The [development review and parking lot](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
+records completed fixes and decisions for a later session, including
+latency measurements still awaiting live play. Player calibration, complete backups, background hostname refresh, independent Wi-Fi indication, signed controller sessions, and web-module cleanup are implemented. Controller transport now requires matching version-2 software on both computers; follow the [coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
+
 ## Choose a guide
 
 ### User manuals
@@ -81,6 +97,11 @@ so there are no spoilers here.
 An automated documentation check keeps the answers synchronized with the art.
 The art itself remains untouched in the interests of arcade archaeology - and
 because it is far too funny to fix.
+
+The web footer shows exact software and running matrix firmware identities.
+Glove Academy supports twelve player presets, saved lesson progress, and portable
+version-2 hand-setup backups containing name, personal and effective sensitivity, software identity, and per-player calibration. Switching players requires fresh centering or explicit same-position reuse. Version-1 portable backups are no longer accepted. Navigation
+and controls adapt to phone and tablet widths.
 
 ## Quick start
 
@@ -225,7 +246,7 @@ It keeps Controller software timing separate from network, emulator, and display
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
 | Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
-| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. |
+| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Hand-setting backups are available. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 

@@ -19,6 +19,32 @@ from powerglove_vision import versioning
 
 
 class VersionTests(unittest.TestCase):
+    def test_firmware_hash_ignores_generated_header_but_tracks_sketch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'sketch').mkdir()
+            source = root / 'sketch/sketch.ino'
+            source.write_text('original')
+            first = versioning.firmware_source_id(root)
+            (root / 'sketch/firmware_version.h').write_text('generated')
+            self.assertEqual(versioning.firmware_source_id(root), first)
+            source.write_text('updated')
+            self.assertNotEqual(versioning.firmware_source_id(root), first)
+
+    def test_exported_exact_identity_uses_candidate_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            module = root / 'src/powerglove_vision/versioning.py'
+            module.parent.mkdir(parents=True)
+            module.with_name('_build_info.json').write_text(json.dumps({
+                'version':'0.3.2','branch':'main','commit':'a'*40,'firmware_expected':'b'*64}))
+            (root/'install-release.json').write_text(json.dumps({'version':'v0.3.2-rc.5'}))
+            with patch.object(versioning, '__file__', str(module)):
+                identity = versioning.current_identity()
+            self.assertEqual(identity['release'], 'v0.3.2-rc.5')
+            self.assertEqual(identity['commit'], 'a'*40)
+            self.assertEqual(identity['firmware_expected'], 'b'*64)
+
     def test_main_and_dev_labels(self):
         for branch, expected in [("main", "0.2.5"), ("dev", "0.2.5-dev")]:
             self.assertEqual(versioning.display_version({"version": "0.2.5", "branch": branch}), expected)

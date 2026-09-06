@@ -5,7 +5,10 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
+#   2026-09-06 - Require the extracted Setup browser module.
 #   2026-09-06 - Required the Rock Paper Scissors browser module.
 #   2026-09-05 - Required the fixed, guided, and replay vision benchmark tools.
 #   2026-09-05 - Required the guarded UNO Q USB camera recovery helper.
@@ -15,7 +18,6 @@
 #   2026-09-03 - Required only the allowlisted public PDF editions.
 #   2026-09-03 - Required the complete host shutdown-helper installation set.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Verify the generated UNO Q App Lab installation ZIP before publication."""
 
@@ -50,6 +52,13 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/src/powerglove_vision/controller_protocol.py",
+    "PowerGlove-Vision/src/powerglove_vision/web_common.py",
+    "PowerGlove-Vision/src/powerglove_vision/dashboard_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/academy_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/games_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/tuning_web.py",
+
     "PowerGlove-Vision/scripts/install-uno-q.sh",
     "PowerGlove-Vision/scripts/install-retropie.sh",
     "PowerGlove-Vision/scripts/install-package.py",
@@ -91,6 +100,11 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/images/gestures/actions/close-all-fingers.png",
     "PowerGlove-Vision/docs/images/web/gestures/actions/close-all-fingers.png",
     "PowerGlove-Vision/src/powerglove_vision/web_features.py",
+    "PowerGlove-Vision/src/powerglove_vision/setup_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/wifi_status.py",
+    "PowerGlove-Vision/uno-q/powerglove-wifi-status.py",
+    "PowerGlove-Vision/uno-q/powerglove-wifi-status.service",
+    "PowerGlove-Vision/uno-q/powerglove-wifi-status.timer",
     "PowerGlove-Vision/src/powerglove_vision/play_game.py",
     "PowerGlove-Vision/retropie/powerglove-games.service",
     "PowerGlove-Vision/retropie/bin/powerglove-games",

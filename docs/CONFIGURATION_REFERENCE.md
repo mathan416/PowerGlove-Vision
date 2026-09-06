@@ -71,16 +71,30 @@ the PowerGlove Vision Controller matrix before entering the one-time PIN.
 
 ### Settings shown in the browser
 
+Setup groups **Connection and startup**, **Pair with RetroPie**, **Matrix attract
+mode**, **Controller and power**, and **Games**. Port, camera, and key replacement
+are under **Advanced connection settings**. Key replacement stops output and
+requires pairing again. A saved destination and key are not proof that RetroPie
+has received that key. **Check console address** verifies name resolution only.
+
+A failed initial load offers **Reload saved settings**; connection fields remain
+disabled until loading succeeds. Failed actions can be retried. Start/Stop and
+pairing refreshes retain unsaved connection edits. HTTP 202 from `/api/controller`
+means the latest request is saved but still awaiting worker delivery. The
+supervisor retries it; another explicit request supersedes it. This is separate
+from camera frames and controller packets, which remain newest-state-only.
+
+
 | Setting | Default | Meaning and recommendation |
 | --- | --- | --- |
 | Console hostname or IP | Empty (not configured) | Set your RetroPie hostname (`RETROPIE-NAME.local` in examples) or a reserved LAN address and pair through Connection before starting controls. Glove Academy and local settings work without a destination. Existing saved destinations are preserved. |
-| Controller port | `55355` | PowerGlove Vision Controller to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
-| Startup profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
-| Tracking aid | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
+| Receiver UDP port | `55355` | PowerGlove Vision Controller to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
+| Startup game profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
+| Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
 | Camera | `auto` | Prefer `auto`. Use a number from `0` through `99` only when automatic selection chooses the wrong capture device. |
-| Generate a new token | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
+| Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
 
-Selecting **Save** validates the fields, writes them atomically with private
+Selecting **Save connection settings** validates the fields, writes them atomically with private
 permissions, and restarts the vision worker using the saved calibration.
 Recalibrate only if you have moved the camera, changed your playing position,
 or notice unwanted movement while your hand is at rest.
@@ -185,7 +199,8 @@ The sixteen lessons include A (index curl), B (thumb curl), Glove Zap (forward
 push), Pull Back, Start, Select, roll left, roll right, close hand, and menu guard.
 Menu guard requires curled thumb/ring with index, middle, and pinky extended and
 suppresses movement, A, B, Start, and Select. Completing every lesson earns Glove Master; skipped
-lessons must be revisited. **Start again** clears session progress. The practice
+lessons must be revisited. The award replaces the completed lesson in the same
+card. **Start again** clears session progress and restores the lesson panel. The practice
 indicators do not change a game's gesture mapping.
 
 | Recognition pose | See it | Required hand shape |
@@ -265,9 +280,21 @@ A typical device configuration file contains the following fields:
   "token": "private-random-value-created-by-the-application",
   "profile": "bad_street_brawler",
   "glove_color": "none",
-  "camera": "auto"
+  "camera": "auto",
+  "matrix_attract": "on"
 }
 ```
+
+`matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
+or `off` (four faint app/console/paired-console/Wi-Fi indicators). Change it using
+**Setup → Matrix attract mode**. This writes the private device configuration
+without restarting vision or changing controller state. Existing files that omit
+it retain the original animation. The separate guarded `POST /api/attract`
+accepts `{"mode":"on"}`, `dim`, or `off`, with JSON content type and the
+same-origin `X-PowerGlove-Action: attract` header. Connection indicators use the
+existing authenticated Games service in a background thread; see the
+[Matrix guide](MATRIX_GUIDE.md#attract-brightness-and-connection-pixels) for their
+meaning and refresh interval. Updated matrix firmware is required.
 
 Use the Setup page for routine changes. If you must edit the JSON directly,
 stop the application first, keep the token unchanged, validate the file, and
@@ -347,7 +374,7 @@ must already have the software installed.
 3. Save with Ctrl+O, confirm the filename, and exit with Ctrl+X. Apply the ownership and permission commands above.
 4. Run `sudo systemctl restart powerglove-receiver.service`, then test controller delivery from Dashboard. Clear the token from your clipboard and close the private file afterward.
 
-If you generate a new token in Setup, pair the devices again immediately.
+If you replace the pairing key in Setup, controller output stops; pair the devices again before selecting Start controller.
 Do not transfer the new token through a command-line argument; process listings
 and shell history can expose it.
 
@@ -507,6 +534,94 @@ and rerun PowerGlove Vision Controller setup. On RetroPie, compare the game's ac
 exact entries. Updating the template does not overwrite an installed registry;
 add missing names while preserving your custom mappings.
 
+## Players, Academy progress, and hand-setup backups
+
+Glove Academy's **Your player** card selects the active player on this Controller,
+across browsers and game profiles. Up to twelve players with names of 1–32
+characters can be stored. **Add player** copies current sensitivity, starts fresh
+lesson progress, and selects the new player. Rename/delete controls are under
+**Players and hand-setup backups**; at least one player is retained.
+
+Completed lessons, the current lesson, and Glove Master persist across refreshes
+and restarts. Skips do not count; **Start again** resets the active player's
+progress. Other tabs notice switches/resets, and stale writes cannot undo a
+reset or update another player. Saving errors pause lesson recognition until
+saved state is available again.
+
+Switching players, adding/deleting the active player, and restoring settings
+pause controller output. Each player keeps a separate saved calibration. After
+switching, select **Set this as my center**, or **Reuse my saved center** and
+confirm that the camera and playing position are unchanged. A new player has
+no saved center. Reuse applies through the same durable restore path as a backup;
+output stays paused until you explicitly start it. Finish tuning and turn
+**Tune gestures** off before changing players or restoring settings.
+
+**Back up hand setup** downloads `powerglove-hand-setup.json` with format
+`powerglove-hand-setup` and version `2`. Fields are `name`, personal `thresholds`,
+`calibration`, `effective_thresholds`, and `source` (`version`, `commit`). Empty
+personal thresholds mean no personal overrides. Effective thresholds contain
+all thirteen activation/release pairs, including the supplied defaults in use.
+They let a later restore retain those sensitivity values when defaults change.
+Game mappings, recognition algorithms, and all other software behavior are not
+frozen by a hand backup.
+
+Calibration contains version `2` and `neutral` values: `palm_x`, `palm_y`,
+`palm_scale`, `roll`, `noise_x`, and `noise_y`. It comes from this player's saved
+reference, even when fresh centering is currently required after switching.
+It is `null` if this player has no saved reference. The app does not assume that
+a stored center still matches the present physical setup.
+
+**Restore hand setup** opens a review before any changes. It replaces the active
+player's name and sensitivity while keeping Academy progress. Check **Restore
+the complete saved sensitivity** to use `effective_thresholds`; leave it unchecked
+to restore personal adjustments with the installed defaults. Independently,
+check **My camera position and playing position match this backup** to reuse
+calibration. Otherwise set a fresh center. Controls stay paused until Start.
+
+Version 2 is the first supported portable backup format. Existing version-2
+files without `effective_thresholds` or `source` still restore their personal
+adjustments and calibration. Version-1 `powerglove-hand-settings` exports are
+rejected without changing anything. Cancel closes the review without changes.
+
+![Review before restoring a complete hand setup](images/hand-setup-restore.png)
+
+Backups exclude pairing tokens, Wi-Fi credentials, device addresses, images,
+landmarks, and Academy progress. Unknown fields, non-finite/out-of-range values,
+device configuration files, and files larger than 8 KB are rejected. The API
+requires boolean `reuse_calibration: true` for backup calibration reuse and
+`use_effective_thresholds: true` for complete sensitivity restoration.
+
+`data/gesture-tuning.json` version 4 stores `version`, `active`, `generation`,
+`players`, and nullable `calibration_restore`. Each player has `name`,
+`thresholds`, `progress` (`course`, `completed`, `lesson`), `needs_center`, and
+nullable `calibration`. Course version 1 uses sixteen zero-based lesson indices.
+Generations reject stale writes after switches/restores/resets. The active
+working reference is mirrored in `data/calibration.json`; individual references
+are kept in the player store. Migration associates an existing valid reference
+only with the currently centered player, not with every preset.
+
+Confirmed reuse atomically stores a pending calibration while keeping output
+gated. The worker writes the active calibration, then clears the pending reference
+and centering gate. An interrupted restore resumes after restart; a failed write
+leaves output paused. Switching players cancels an unapplied reference. Export
+waits until a pending restore finishes.
+
+Internal store versions 1–3 migrate without losing names, sensitivity, or progress.
+Before the first write, `data/gesture-tuning-vN-backup.json` retains the old
+store, where N is its version. This internal recovery migration is separate from
+the unsupported version-1 portable export format. Files use mode `0600` and
+survive upgrades. Older apps cannot read version 4; stop the app and restore the
+appropriate private store backup when deliberately rolling back.
+
+`POST /api/players` supports `read`, `progress`, `reset_progress`, `create`,
+`select`, `rename`, `delete`, `export`, `restore`, and `reuse_calibration`.
+Non-read requests include `player` and `generation`. Saved-player reuse also
+requires `confirmed: true`. JSON bodies are limited to 8192 bytes and require
+`X-PowerGlove-Action: players` and the same origin checks as tuning. Names and
+progress are available on the trusted LAN; presets are not login accounts.
+
+![Player selection and portable hand-setup backups](images/player-settings.png)
+
 ## Tune gesture sensitivity
 
 Use **Glove Academy → Tune gestures** to personalize recognition. You do not need to edit
@@ -519,7 +634,7 @@ remains untouched.
 3. Keep the complete hand visible at 70% confidence for one second. Select **I'm ready** and wait through the two-second countdown.
 4. Follow the three recordings. Ordinary poses and movement steps last two seconds. Glove Zap and Pull Back use a six-second middle step containing three motions and returns.
 5. Analyze the recording and try the temporary preview twice. Return to neutral after each use and remain neutral for three seconds.
-6. Save when the guided test passes. Only selected components are merged into the existing version-1 tuning file.
+6. Save when the guided test passes. Only selected components are merged into the active player’s hand settings.
 
 ![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
 
@@ -538,11 +653,11 @@ remain unchanged.
 
 Hand setup learns open and curled thresholds for all five fingers. Individual tuning can be used without setup; it only learns new thresholds for fingers observed both open and curled. Fingers extended throughout retain hand-setup thresholds or existing settings. Feedback uses the same V-sign and thumbs-up checks as recognition. Hand setup reset restores all five finger components; individual reset restores only the selected components. Difficult gestures place activation 55% into the measured rest-to-action gap; accidental gestures use 75% activation and 40% release. Standard setup retains 65% activation and 30% release. Every path rejects a gap below 0.08.
 
-Only adjusted components override all game profiles. Untuned components retain
+Only the active player’s adjusted components override all game profiles. Untuned components retain
 the shared supplied values. Personal adjustments are saved atomically in
 `data/gesture-tuning.json` and survive application restarts and normal updates.
-Normal personalization saves no images or recordings. Existing version-1 files remain compatible;
-hand setup adds ordinary finger pairs rather than a new file format. The versioned format is:
+Normal personalization saves no images or recordings. Existing version-1 files
+migrate as described above; this legacy example remains readable:
 
 ```json
 {
@@ -649,6 +764,25 @@ The saved neutral calibration is reused; recalibrate only if your physical setup
 your resting hand position produces unwanted movement. Gesture-to-button assignments are implemented by each profile in
 the application; threshold changes adjust sensitivity but do not remap buttons.
 
+## Signed controller transport and upgrades
+
+Controller traffic uses `powerglove-vision/2` on UDP `55355`. Domain-separated HMAC-SHA256 covers each entire canonical JSON message, including its kind, session, request/challenge, and input fields. The shared token stays in the existing private configuration files. Messages are authenticated, not encrypted; the trusted-LAN requirements still apply.
+
+A signed hello obtains a receiver-issued challenge before input can be accepted. Session identifiers, request identifiers, and challenges are random 128-bit hex values. The first valid state activates the challenge and retires all earlier challenges; each later state needs an increasing sequence. Receiver restarts require a fresh challenge and do not depend on synchronized clocks. Pending handshakes are limited to eight and expire after three seconds. Datagrams remain bounded to 4096 bytes; duplicate JSON fields, malformed controls, wrong signatures, and retired or replayed input are rejected before uinput/native-state publication.
+
+The sender never queues input during negotiation. It retries hello after 250 milliseconds until established, then every second so a restarted receiver can issue a fresh challenge. Replies return from UDP `55355` to the sender's ephemeral UDP socket. On Linux the receiver uses IP_PKTINFO to reply from the address/interface contacted, preserving container NAT routing when Ethernet and Wi-Fi share a subnet. As an additional compatibility measure, the sender requires the configured source port plus a valid HMAC, session, and fresh request identifier rather than an identical source IP. The sender processes at most eight replies per update without waiting. A successful UDP send is not an acknowledgement of emulator consumption. Handshake/rejected traffic cannot postpone the 250-millisecond release deadline.
+
+### Upgrade both computers together
+
+1. Select **Stop controller** and back up both installations and private settings.
+2. Update RetroPie and the PowerGlove Vision Controller from the same development commit or compatible release. The default new receiver rejects old input, and the new sender does not downgrade to version 1; mixed versions will pause controller delivery.
+3. Restart both applications, confirm matching software identities, then select **Start controller**. Verify neutral/release behavior and actual game input. Profile changes also establish a fresh controller session.
+4. If you must roll back, stop controls and restore both matching application versions. Preserve device settings, calibration/player files, and the paired token; do not restore a mismatched sender/receiver combination.
+
+For a staged upgrade only, the new receiver has `--allow-legacy-controller`. An administrator can temporarily add it to the receiver invocation while the older Controller is being replaced. It is off by default, still exposes the shared token in legacy traffic, and closes for the rest of that receiver process after the first valid version-2 state. Remove the flag after upgrading; a receiver restart would otherwise reopen legacy admission. This compatibility mode does not provide version-2 replay protection. Re-pair after migration if a token may have been observed in old traffic: signing cannot revoke a previously exposed key.
+
+Existing pairing credentials and native emulator files need no format migration. Installation packages include the new protocol and web modules; neither a firmware flash nor a core rebuild is required by this transport change. The separately added fourth Wi-Fi pixel still requires its matching matrix firmware.
+
 ## RetroPie receiver and virtual controller
 
 The receiver verifies authenticated UDP packets and creates a Linux `uinput`
@@ -660,7 +794,7 @@ gamepad named `PowerGlove Vision`. Its installed service is:
 
 The supplied service listens on all local interfaces at UDP port `55355`, reads
 `/etc/powerglove/token`, and releases held controls when a socket receive times out after 250 milliseconds.
-This is a receive timeout, rather than a separate timer for the last valid packet. If you change the controller port in PowerGlove Vision Controller Setup, add
+The receiver measures its release deadline from the last valid packet; rejected traffic cannot postpone release. Both the virtual gamepad and native state are neutralized on timeout. If you change the controller port in PowerGlove Vision Controller Setup, add
 the same `--port` value to the service's `ExecStart`, then reload and restart:
 
 ```sh
@@ -904,7 +1038,7 @@ changing controller mappings.
 
 ## Local hostname resolution inside App Lab
 
-If the console name fails, use **Test console name** in Connection, then follow
+If the console name fails, use **Check console address** in Connection, then follow
 [hostname troubleshooting](CONFIGURATION_REFERENCE.md#faq-what-if-the-console-name-cannot-be-resolved).
 A router-reserved IPv4 address is a fallback, not a setup requirement.
 
@@ -917,10 +1051,37 @@ no network interface or published port. The app prefers this private socket;
 the direct host socket remains a compatibility fallback. Both sockets are
 runtime files, not configuration to back up or distribute.
 
-All gameplay and pairing lookups use this resolver. Answers expire after five
-seconds, so DHCP changes do not require editing an address. Ordinary DNS names
+Gameplay and pairing use this resolver. Controller-state sends use a background
+address refresher: one lookup at a time, refreshed every five seconds and retried
+after two seconds on failure. The send path only reads its cached address. It
+drops that frame when no address is ready; it does not queue states for later.
+A last successful address expires after ten seconds if refresh stops succeeding.
+Literal IPv4 addresses need no background lookup. Pairing and administrative
+requests still resolve synchronously outside the movement loop. Resolver answers
+expire after five seconds, so DHCP changes do not require editing an address. Ordinary DNS names
 use the system resolver. Generic container `getent` is not the app's mDNS test;
 use Connection's hostname test or the setup command's check mode.
+
+## Independent Wi-Fi status
+
+The host runs `powerglove-wifi-status.timer` every five seconds. Its oneshot
+`powerglove-wifi-status.service` runs as `arduino`, invokes
+`/usr/local/libexec/powerglove-wifi-status`, and reads wireless carrier state
+under `/sys/class/net`. It cannot configure Wi-Fi and records no SSID, address,
+or password. The fixed output `data/wifi-status.json` contains version `1`,
+`state` (`connected`, `disconnected`, or `unavailable`), and `observed_at`.
+The application treats records older than fifteen seconds, future timestamps,
+missing files, and malformed records as unavailable. Ethernet connectivity alone
+does not light the Wi-Fi pixel. This file is disposable telemetry, not a setting.
+
+Normal Controller installation and `scripts/deploy-uno-q-wifi.sh` install or
+upgrade the sampler with managed-file backups. Repair it alone with
+`sudo python3 scripts/setup-machine.py uno-q --wifi-status-only` on the host.
+Setup shows its status; Off attract mode adds Wi-Fi as the fourth bottom-left
+pixel after app, console-service reachability, and authenticated-console response.
+The new pixel requires the matching matrix firmware. Active game modes, T, L,
+pairing, and startup artwork are unchanged. A dark Wi-Fi pixel can mean disconnected
+or unavailable; Setup distinguishes those states.
 
 ## Known limitation: PowerGlove Vision Controller restarts after Shutdown
 
@@ -974,6 +1135,7 @@ also lets those checks read protected token files.
 | `MACHINE` | Required | `retropie` or `uno-q`; selects the machine to install or inspect. |
 | `--peer HOST` | None | Required for a new RetroPie launcher configuration; supplies the PowerGlove Vision Controller hostname or IPv4 address. Existing launcher settings are preserved. On PowerGlove Vision Controller, it prints guidance but does not change the saved receiver address. |
 | `--check` | Off | Checks the existing installation without installing, restarting, or changing it. |
+| `--wifi-status-only` | Off | With `uno-q`, install/update only the unprivileged Wi-Fi status sampler. Cannot be combined with `--check`. Normal setup and Wi-Fi deployment include it automatically. |
 | `-h`, `--help` | — | Prints usage and exits. |
 
 Exit codes are `0` for success, `1` for an installation/check failure, and `2`
@@ -994,6 +1156,7 @@ history.
 | `--port NUMBER` | `55355` | UDP port for controller packets; must match PowerGlove Vision Controller settings. |
 | `--token VALUE` | None | Supplies the shared token directly. Use only as an advanced alternative; the value can appear in process arguments. |
 | `--token-file PATH` | None | Reads the shared token from a protected file. Supply exactly one of this flag and `--token`. The token must contain at least 16 characters. |
+| `--allow-legacy-controller` | Off | Temporary version-1 receiver compatibility during a staged upgrade; closes after the first signed state until process restart. Remove after upgrading. |
 | `--timeout-ms NUMBER` | `250` | Socket receive timeout in milliseconds; a timeout releases held controls. Use a positive value. |
 | `--native-state PATH` | `/run/powerglove/native-state` | Versioned latest-sample record for the optional custom Nestopia research core. Failure to create it does not disable FCEUmm/uinput. |
 | `--dry-run` | Off | Prints received controls instead of creating a virtual input device. |
@@ -1106,7 +1269,9 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | --- | --- | --- |
 | `--receiver HOST` | Required | RetroPie hostname or IPv4 address. An empty string permits local-only tracking but cannot deliver controls. |
 | `--port NUMBER` | `55355` | Destination UDP controller port. |
-| `--token VALUE` | Required | Shared token. This worker currently has no `--token-file` flag; its token appears in process arguments. |
+| `--token VALUE` | None | Legacy direct shared token; exposes the value in process arguments. Prefer a private-file option. |
+| `--token-file PATH` | None | Read the shared token from a private text file. |
+| `--device-config PATH` | Supervisor: `data/device.json` | Read the shared token from private device JSON. Supply exactly one of the three token options. Other worker settings still come from their flags. |
 | `--profile NAME` | `bad_street_brawler` | Initial profile, one of the eleven supported profiles or `off`. |
 | `--camera VALUE` | `auto` | Camera selection; use `auto` or a camera index. |
 | `--width PIXELS` | `640` | Requested capture width; the camera may negotiate another size. |
@@ -1518,7 +1683,7 @@ scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
 Enter the PowerGlove Vision Controller `arduino` account password at the remote `sudo` prompt. The
 script does not read or store it. The helper watches only the fixed
 `data/shutdown-request` path and can perform only a system halt. After it is
-installed, **Shutdown** is available on Dashboard and Setup. Each press
+installed, **Shutdown** is available on Dashboard and **Shut down Controller** on Setup. Each press
 requires browser confirmation and warns that the PowerGlove Vision Controller may restart automatically
 and that a disconnected website does not confirm it is safe to remove power. Its boot-time tmpfiles rule recreates the readiness
 marker if the PowerGlove Vision Controller reboots or App Lab replaces the application directory.
@@ -1666,7 +1831,7 @@ its archive extension, if the selected profile is **off**.
 
 ### FAQ: What if the console name cannot be resolved?
 
-1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Test console name**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the PowerGlove Vision Controller app; successful lookup on your laptop alone is not sufficient.
+1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Check console address**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the PowerGlove Vision Controller app; successful lookup on your laptop alone is not sufficient.
 2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
 3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
 4. On the PowerGlove Vision Controller, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
@@ -1674,7 +1839,7 @@ its archive extension, if the selected profile is **off**.
 6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the PowerGlove Vision Controller by name, check that reverse direction separately.
 7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
 
-After fixing the problem, reboot both machines and repeat **Test console name** before testing gameplay. The app-owned resolver has been verified across a PowerGlove Vision Controller reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
+After fixing the problem, reboot both machines and repeat **Check console address** before testing gameplay. The app-owned resolver has been verified across a PowerGlove Vision Controller reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
 
 ## Removing the installation
 
@@ -1709,6 +1874,18 @@ sudo systemctl daemon-reload
 
 
 ### Build and install matrix firmware
+
+The footer's **Software and matrix firmware** details show the candidate when
+available, exact software commit, modified-source indicator, and source SHA-256
+read from the running matrix firmware. The expected fingerprint covers sketch
+sources and the pinned build profile; it is not a compiled-binary hash. Older
+firmware or an unavailable bridge reports **unavailable**. A differing readback
+indicates an update is needed. Expected metadata never substitutes for readback.
+
+After editing sketch sources, run `python3 scripts/stamp-firmware-version.py`
+before compiling. Its `--check` option verifies `sketch/firmware_version.h`;
+packaging/deployment reject stale stamps. App Lab **Run** still uploads firmware.
+Readback runs in the supervisor every thirty seconds, outside the frame path.
 
 To preview the idle animation from the actual sketch renderer on a development
 computer, install Pillow and a C++ compiler, then run

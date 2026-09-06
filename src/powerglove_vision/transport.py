@@ -4,12 +4,14 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-05 - Carried native closed-hand and index-point recognition states.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Encode bounded controller packets and send them to RetroPie without blocking vision recovery."""
 
@@ -21,6 +23,7 @@ import time
 import uuid
 
 from .model import ControllerState
+from .controller_protocol import encode_message, decode_message
 
 
 MAX_PACKET_BYTES = 4096
@@ -29,7 +32,7 @@ MAX_PACKET_BYTES = 4096
 def encode_state(
     state: ControllerState, token: str | None = None, session: str | None = None
 ) -> bytes:
-    """Serialize one controller state into a size-bounded protocol packet."""
+    """Encode legacy v1 fixtures/tools; live UdpSender always uses signed v2."""
     data = state.to_dict(token)
     if session:
         data["session"] = session
@@ -85,7 +88,7 @@ def decode_state(payload: bytes) -> dict:
     return data
 
 
-from .resolver import resolve_ipv4
+from .resolver import BackgroundAddress, resolve_ipv4
 
 
 class UdpSender:
@@ -95,6 +98,12 @@ class UdpSender:
         self.token = token
         self.session = uuid.uuid4().hex
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setblocking(False)
+        self.address = BackgroundAddress(host, resolve=resolve_ipv4)
+        self.challenge = None
+        self.request = None
+        self._hello_at = 0.0
+        self._peer = None
         self.last_error: str | None = None
         self._retry_at = 0.0
 
@@ -111,11 +120,48 @@ class UdpSender:
         now = time.monotonic()
         if now < self._retry_at:
             return False
+        address, error = self.address.current()
+        if address is None:
+            self.last_error = error
+            return False
+        if not self.token:
+            self.last_error = "Pair with RetroPie before starting controls."
+            return False
+        peer = (address, self.destination[1])
+        if peer != self._peer:
+            self._peer = peer
+            self.challenge, self.request, self._hello_at = None, None, 0.0
         try:
-            self.socket.sendto(
-                encode_state(state, self.token, self.session),
-                (resolve_ipv4(self.destination[0]), self.destination[1])
-            )
+            # Drain only a bounded number of small handshake replies; input itself
+            # is never queued. Accept replies only for our newest hello request.
+            for _ in range(8):
+                try:
+                    payload, source = self.socket.recvfrom(MAX_PACKET_BYTES + 1)
+                except BlockingIOError:
+                    break
+                # A multi-homed receiver may reply from its preferred interface.
+                # Its identity is the HMAC plus our fresh request/session, not IP.
+                if source[1] != peer[1]:
+                    continue
+                try:
+                    reply = decode_message(payload, self.token)
+                except (ValueError, UnicodeError, RecursionError):
+                    continue
+                if (reply["kind"] == "challenge" and reply["session"] == self.session
+                        and reply["request"] == self.request):
+                    self.challenge = reply["challenge"]
+            if now >= self._hello_at:
+                self.request = uuid.uuid4().hex
+                self.socket.sendto(encode_message("hello", self.token,
+                    session=self.session, request=self.request), peer)
+                self._hello_at = now + (1.0 if self.challenge else 0.25)
+            if self.challenge is None:
+                self.last_error = "Waiting for the RetroPie controller handshake; update both computers if this persists."
+                return False
+            data = state.to_dict()
+            data.pop("protocol", None)
+            self.socket.sendto(encode_message("state", self.token, session=self.session,
+                challenge=self.challenge, state=data), peer)
         except OSError as exc:
             self.last_error = str(exc)
             self._retry_at = now + 2.0
@@ -127,7 +173,9 @@ class UdpSender:
     def new_session(self) -> None:
         """Allow sequence numbers to restart after an atomic profile change."""
         self.session = uuid.uuid4().hex
+        self.challenge, self.request, self._hello_at = None, None, 0.0
 
     def close(self) -> None:
         """Close the sender socket."""
+        self.address.close()
         self.socket.close()

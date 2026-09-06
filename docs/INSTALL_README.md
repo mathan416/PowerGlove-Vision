@@ -5,6 +5,30 @@ Install PowerGlove Vision with one script on the **PowerGlove Vision Controller
 The scripts prepare the software and startup helpers; you finish by pairing the
 devices, positioning the camera, and testing a game.
 
+Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
+or turn it Off except for faint connection pixels. This does not change game
+displays, T, L, or gesture recognition. The setting saves without a tracker restart.
+
+For an existing installation, this update changes controller transport on both computers. Stop controller output, update both to matching software, then start and test input. Mixed old/new versions do not deliver input with the default settings. See [signed controller transport and upgrades](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) for staged upgrades and rollback.
+
+## Install this release candidate
+
+To test **v0.3.2-rc.6**, close games and stop controller output, then run the matching command on each device. These explicit commands select the candidate; the normal commands later in this guide select the latest stable release.
+
+On the PowerGlove Vision Controller:
+
+```sh
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.6/install-uno-q.sh && bash install-uno-q.sh --version v0.3.2-rc.6
+```
+
+On RetroPie:
+
+```sh
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.6/install-retropie.sh && bash install-retropie.sh --version v0.3.2-rc.6
+```
+
+Verify both report the same candidate, then follow the pairing/first-game checks below. Existing hand settings and pairing files are preserved. The Controller installer also updates the matrix firmware. Review [coordinated transport upgrades and rollback](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) before replacing an older installation. Candidate testing still needs live gameplay, stationary-jitter, and camera-to-display latency checks; see the [changelog](CHANGELOG.md).
+
 ## 1. Prepare your devices
 
 You need a provisioned PowerGlove Vision Controller, a working RetroPie system, a UVC USB camera,
@@ -102,10 +126,10 @@ one-time-code method after both installers finish.
 
 1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair`. Leave the command running; it prints a 20-character code that expires after two minutes.
 2. In your computer's browser, open `https://UNO-Q-NAME.local:8443/setup`. This is the secure Setup page; ordinary HTTP Setup cannot accept pairing credentials.
-3. Enter your RetroPie hostname and its one-time code, then select **Prepare one-time code**.
+3. Enter your RetroPie hostname and its one-time code, then select **Prepare code pairing**.
 4. Read the identifier after `ID` on the Controller's matrix. Compare it with the beginning of the browser certificate's SHA-256 fingerprint. The locally generated certificate may cause a browser warning; verify the fingerprint before continuing.
 5. If the identifiers match, select the confirmation checkbox, enter the six-digit PIN shown after `PN` on the matrix, and select **Complete pairing**.
-6. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
+6. If Setup asks you to save the console destination, select **Save connection settings** above. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
 
 If the code expires, restart the RetroPie command and prepare a new attempt.
 Never paste the private token into a document, screenshot, or support request.
@@ -115,7 +139,7 @@ Never paste the private token into a document, screenshot, or support request.
 Use this route only if RetroPie accepts SSH password login and your account
 can run `sudo` with that password.
 
-1. Open secure Setup and enter the RetroPie hostname and username.
+1. Open secure Setup, expand **Pair using an SSH password**, and enter the RetroPie hostname and username.
 2. Select **Prepare password pairing** and compare the matrix `ID` with the browser certificate fingerprint.
 3. If they match, select the confirmation checkbox, enter the matrix PIN and your RetroPie password, and complete pairing.
 4. Confirm that the receiver service is active on RetroPie.
@@ -123,6 +147,21 @@ can run `sudo` with that password.
 The password is used for one SSH operation and is not stored. If neither
 pairing route works, follow the [token-management reference](CONFIGURATION_REFERENCE.md#pairing-and-token-management).
 
+
+### Connection settings and recovery
+
+**Connection and startup** saves the console address and startup game profile.
+Port, camera, and pairing-key replacement are under **Advanced connection settings**.
+**Check console address** only checks name resolution. If loading fails, use
+**Reload saved settings**; if a save fails, correct or retry it without losing
+fields. Start/Stop may show a pending request while tracking reconnects.
+
+Connection saves restart tracking. The separate **Save attract mode** action
+changes only the idle matrix display. Hand setup, players, and backups are in
+**Glove Academy**. Existing private settings and calibration remain preserved
+through the normal installation/upgrade process; the independent Wi-Fi pixel needs the updated matrix firmware. Normal installation
+and Wi-Fi deployment also install its unprivileged host status sampler. The receiver timeout correction takes effect after updating
+RetroPie as well as the Controller application.
 
 ## 5. Calibrate and test a game
 
@@ -267,7 +306,17 @@ startup sequence. An animation does not prove that shutdown has finished.
 | Connection settings | `http://UNO-Q-NAME.local:8088/setup` |
 | Secure pairing | `https://UNO-Q-NAME.local:8443/setup` |
 
-![Setup page; use HTTPS to enable pairing](images/setup-page.png)
+In Glove Academy, choose or add a player before practicing. Progress and hand
+sensitivity persist across restarts and normal upgrades. Switching players
+requires fresh centering or explicit reuse of that player’s saved center at the same camera and playing position. Restoring a hand-setup backup requires centering unless you explicitly
+reuse its calibration with the same camera and playing positions. Backups include
+name, personal and effective sensitivity, source software identity, and calibration. Version-2 is the first supported portable format; version-1 sensitivity-only files are rejected. The web footer reports
+exact software and running firmware identities; older firmware may report unavailable.
+
+Completing all sixteen lessons replaces the lesson panel with
+the **Glove Master** award. **Start again** restores the lessons.
+
+![Setup connection settings and pairing; use HTTPS to enable pairing](images/setup-page.png)
 
 Help serves the public manuals, illustrations, and PDFs locally. **This cabinet**
 shows addresses derived from your current browser connection and public device

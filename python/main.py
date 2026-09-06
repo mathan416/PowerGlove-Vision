@@ -4,7 +4,11 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
+#   2026-09-06 - Add a persistent idle attract setting without restarting vision.
+#   2026-09-06 - Publish the running matrix firmware identity outside the worker.
 #   2026-09-05 - Request one guarded host USB reset after a sustained camera outage.
 #   2026-09-05 - Selected the deployed legacy-lite tracker explicitly.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -12,7 +16,6 @@
 #   2026-09-03 - Delegated idle and active vision lifecycle to the persistent worker.
 #   2026-09-03 - Displayed a dedicated matrix state during Learn sessions.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Arduino App Lab entry point for PowerGlove Vision."""
 
@@ -50,9 +53,11 @@ def load_device_config() -> dict:
         "profile": "bad_street_brawler",
         "glove_color": "none",
         "camera": "auto",
+        "matrix_attract": "on",
     }
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(settings, indent=2) + "\n")
+    from powerglove_vision.game_registry import atomic_write
+    atomic_write(CONFIG_PATH, json.dumps(settings, indent=2) + "\n")
     return settings
 
 
@@ -67,7 +72,7 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
         "python", "-m", "powerglove_vision.vision_app",
         "--receiver", str(settings.get("receiver", "")),
         "--port", str(settings.get("port", 55355)),
-        "--token", str(settings["token"]),
+        "--device-config", str(CONFIG_PATH),
         "--profile", str(settings.get("profile", "bad_street_brawler")),
         "--glove-color", str(settings.get("glove_color", "none")),
         "--camera", str(settings.get("camera", "auto")),
@@ -131,9 +136,11 @@ def main() -> int:
                         process.kill()
                     break
                 try:
+                    control.flush_controller_request()
                     with urllib.request.urlopen("http://127.0.0.1:8089/status", timeout=0.3) as response:
                         status = json.load(response)
                     control.update_worker(status)
+                    control.update_firmware(matrix.firmware_identity())
                     if camera_recovery.observe(status):
                         print(
                             "PowerGlove Vision: requested guarded USB camera preparation/recovery",
@@ -145,7 +152,9 @@ def main() -> int:
                         None if status.get("practice_mode") or active_profile == "off"
                         else active_profile
                     )
-                    matrix.set_status(status_from_worker(status))
+                    display_status = status_from_worker(status)
+                    matrix.set_attract(control.load_config(), idle=display_status == MatrixStatus.GESTURES_IDLE)
+                    matrix.set_status(display_status)
                 except (OSError, ValueError, TimeoutError):
                     pass
                 time.sleep(0.25)

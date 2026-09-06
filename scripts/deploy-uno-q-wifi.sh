@@ -5,7 +5,10 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Avoid reinstalling an identical enabled Wi-Fi sampler during updates.
+#   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Verified the Rock Paper Scissors page during deployment.
 #   2026-09-05 - Verified the corrected closed-hand Academy artwork.
 #   2026-09-04 - Verified current guide titles, individual gestures, and Pixel Pal.
@@ -17,7 +20,6 @@
 #   2026-09-03 - Preserved PowerGlove Vision as the UNO Q default startup app.
 #   2026-09-03 - Restored shutdown readiness when the host helper is active.
 #   2026-09-03 - Allowed three minutes for a cold App Lab runtime startup.
-# Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
 
@@ -114,6 +116,10 @@ ssh "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
 echo "Checking the host helpers..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "mkdir -p '${REMOTE_APP_DIR}/data'; if systemctl is-active --quiet powerglove-system-shutdown.path; then touch '${REMOTE_APP_DIR}/data/.shutdown-enabled'; else rm -f '${REMOTE_APP_DIR}/data/.shutdown-enabled'; echo 'warning: install scripts/install-uno-q-shutdown-helper.sh to enable Dashboard shutdown' >&2; fi; if systemctl is-active --quiet powerglove-camera-recovery.path; then touch '${REMOTE_APP_DIR}/data/.camera-recovery-enabled'; else rm -f '${REMOTE_APP_DIR}/data/.camera-recovery-enabled'; echo 'warning: install scripts/install-uno-q-shutdown-helper.sh to enable guarded USB camera recovery' >&2; fi"
+
+echo "Updating the independent Wi-Fi status sampler..."
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
+  "if cmp -s '${REMOTE_APP_DIR}/uno-q/powerglove-wifi-status.py' /usr/local/libexec/powerglove-wifi-status && cmp -s '${REMOTE_APP_DIR}/uno-q/powerglove-wifi-status.service' /etc/systemd/system/powerglove-wifi-status.service && cmp -s '${REMOTE_APP_DIR}/uno-q/powerglove-wifi-status.timer' /etc/systemd/system/powerglove-wifi-status.timer && systemctl is-enabled --quiet powerglove-wifi-status.timer && systemctl is-active --quiet powerglove-wifi-status.timer; then echo 'Wi-Fi status sampler is current'; else sudo python3 '${REMOTE_APP_DIR}/scripts/setup-machine.py' uno-q --wifi-status-only; fi"
 
 echo "Restarting the UNO Q application..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \

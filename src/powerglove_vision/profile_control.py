@@ -4,12 +4,13 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-05 - Added renewable active-game leases for safe restart recovery.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Authenticate profile commands and coordinate per-game profile selection between RetroPie and UNO Q."""
 
@@ -201,7 +202,7 @@ class ProfileCommandServer:
                 self.requests.put(request)
                 # Camera/model startup may block the consumer; acknowledge queue admission.
                 self.acknowledge(request, True, profile, queued=True)
-            except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            except (AttributeError, KeyError, TypeError, ValueError, json.JSONDecodeError, RecursionError):
                 continue
 
     def take(self) -> ProfileRequest | None:

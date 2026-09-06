@@ -1,0 +1,19 @@
+# Project: PowerGlove Vision
+# File: uno-q/powerglove-wifi-status.timer
+# Purpose: Refresh independent Wi-Fi health outside the vision application.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Sample host Wi-Fi carrier state every five seconds.
+[Unit]
+Description=PowerGlove Vision Wi-Fi status refresh
+
+[Timer]
+OnBootSec=5
+OnUnitActiveSec=5
+AccuracySec=1
+
+[Install]
+WantedBy=timers.target

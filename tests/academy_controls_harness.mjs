@@ -5,6 +5,7 @@
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
 // Change log:
+//   2026-09-06 - Verify the award replaces lesson content and restart restores it.
 //   2026-09-05 - Added complete lesson, restart, camera, calibration, and tuning interaction coverage.
 // Full history: docs/CHANGELOG.md and Git history.
 
@@ -14,7 +15,7 @@ import vm from "node:vm";
 
 const html = fs.readFileSync(0, "utf8");
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]);
-assert.equal(scripts.length, 3, "expected metadata, Academy, and tuning scripts");
+assert.equal(scripts.length, 4, "expected metadata, Academy, tuning, and player scripts");
 
 class FakeClassList {
   constructor() { this.values = new Set(); }
@@ -130,6 +131,7 @@ const tuningState = {
   effective: {index: {on: .5, off: .35}}, preview: null,
 };
 const response = data => ({ok: true, async json() { return structuredClone(data); }});
+let playerData={active:'default',generation:0,players:[{id:'default',name:'Player 1'}],progress:{course:1,completed:[],lesson:0},needs_center:false,error:null};
 const fetch = async (url, options = {}) => {
   let body = {};
   if (options.body) body = JSON.parse(options.body);
@@ -137,6 +139,11 @@ const fetch = async (url, options = {}) => {
   if (url === "/status") {
     if (delayedStatus) return delayedStatus.promise;
     return response(currentStatus);
+  }
+  if (url === "/api/players") {
+    if(body.action==='progress')playerData.progress=structuredClone(body.progress);
+    if(body.action==='reset_progress'){playerData.generation++;playerData.progress={course:1,completed:[],lesson:0};}
+    return response(playerData);
   }
   if (url === "/api/tuning") {
     tuningState.gesture = body.gesture || tuningState.gesture;
@@ -158,6 +165,7 @@ const context = vm.createContext({
 
 vm.runInContext(scripts[1], context, {filename: "rendered-academy.js"});
 vm.runInContext(scripts[2], context, {filename: "rendered-tuning.js"});
+vm.runInContext(scripts[3], context, {filename: "rendered-players.js"});
 const settle = async () => { for (let index = 0; index < 8; index++) await Promise.resolve(); };
 await settle();
 
@@ -188,7 +196,8 @@ currentStatus.dpad.left = true;
 await context.update();
 await advance(750);
 assert.equal(lesson(), 4);
-byId("restart-training").onclick();
+await byId("restart-training").onclick();
+await settle();
 
 // A response issued before a click cannot complete or advance the new lesson.
 let resolveDelayed;
@@ -235,17 +244,22 @@ const completeCourse = async () => {
   while (byId("practice-lessons").dataset.complete !== "true") await completeCurrent();
 };
 
-byId("restart-training").onclick();
+await byId("restart-training").onclick();
+await settle();
 await completeCourse();
 assert.equal(byId("achievement").hidden, false);
+assert.equal(byId("lesson-content").hidden, true, "award must replace the completed lesson");
 assert.equal(byId("next").textContent, "Start again");
-byId("restart-training").onclick();
+await byId("restart-training").onclick();
+await settle();
 assert.equal(lesson(), 1);
 assert.equal(byId("achievement").hidden, true);
 assert.equal(byId("lesson-progress").innerHTML.includes("done"), false);
+assert.equal(byId("lesson-content").hidden, false, "restart must restore lesson content");
 
 await completeCourse();
-byId("next").onclick();
+await byId("next").onclick();
+await settle();
 assert.equal(lesson(), 1, "lower Start again must reset the course");
 assert.equal(byId("achievement").hidden, true);
 assert.equal(byId("lesson-progress").innerHTML.includes("done"), false);

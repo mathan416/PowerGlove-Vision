@@ -52,6 +52,17 @@ with the packaged MediaPipe wheel. It polls worker status, updates the matrix,
 and retries a worker that stops. The worker's internal HTTP interface is on
 loopback port 8089; the public website is on 8088, with secure Setup on 8443.
 
+The supervisor passes the private `data/device.json` path to the worker using
+`--device-config`; the token itself is absent from process arguments. Device
+configuration mutations are serialized and atomically replace private files.
+Setup content and browser actions live in `setup_web.py`, separate from HTTP routes.
+Start/Stop intent has a single pending slot and serialized delivery attempts;
+the supervisor retries transient failures until the worker handler acknowledges
+acceptance. A newer explicit request supersedes pending intent. This mechanism
+does not buffer camera frames or controller state, and acknowledgement does not
+prove emulator consumption. Receiver socket timeout and last-valid-packet
+expiry both publish neutral native state and release the virtual gamepad.
+
 Two app-owned support containers provide the profile-control UDP relay and
 local-hostname resolution. The profile relay publishes port 55356 and forwards
 packets to the main service without interpreting or authenticating them.
@@ -71,8 +82,8 @@ sockets. These functions are kept separate from camera inference.
 5. The worker sends the state only if controller delivery is armed, a live
    registered-game lease or intentional manual Dashboard context exists, and neither
    practice nor tuning is active.
-6. The sender encodes a bounded JSON datagram with a session identifier and shared token, then sends it to RetroPie over UDP 55355.
-7. The receiver checks protocol, token, and sequence. It creates the real virtual controller when the first accepted packet arrives.
+6. The sender establishes a receiver-issued challenge, then sends bounded HMAC-SHA256 controller datagrams over UDP 55355. Packets contain session and sequence identifiers, never the shared token.
+7. The receiver checks the message HMAC, live challenge, peer, and increasing sequence. It creates the real virtual controller when the first accepted packet arrives.
 8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
 The worker also publishes diagnostic state after inference. Browser video is
@@ -207,7 +218,7 @@ validate range and scope, not recorded pose quality. Live testing is still neede
 
 The candidate is temporary until the same recognition path observes two complete
 activation/release cycles and three neutral seconds. Only then can the wizard
-atomically merge selected pairs into the saved version-1 file. Raw controls remain
+atomically merge selected pairs into the active player’s version-4 record. Raw controls remain
 inside Advanced. Normal personalization retains no camera recording. The separate
 diagnostic path deletes its temporary AVI after producing an aggregate-only report.
 
@@ -216,7 +227,7 @@ diagnostic path deletes its temporary AVI after producing an aggregate-only repo
 ![Threshold precedence and the separate neutral-calibration reference](images/architecture/settings.png)
 
 Effective settings are resolved component by component: shipped shared recognition defaults,
-then saved personal overrides, then temporary Tune preview. The gesture engine
+then the active player’s saved overrides, then temporary Tune preview. The gesture engine
 receives the resulting configuration during frame processing, so saved values
 also apply when controlling a game. Adjusting a finger changes other gestures
 that use that finger; it does not change the button assignments in a game profile.
@@ -224,7 +235,7 @@ that use that finger; it does not change the button assignments in a game profil
 | Data | Owner and lifetime | Purpose |
 | --- | --- | --- |
 | `config/profiles.json` | Shipped project source | One shared set of recognition parameters; profiles remain output mappings |
-| `data/gesture-tuning.json` | PowerGlove Vision Controller, persistent | Global personal activation/release pairs; version-1 format |
+| `data/gesture-tuning.json` | PowerGlove Vision Controller, persistent | Version-4 player presets, per-player calibration, sensitivity, Academy progress, and required-center flag; versions 1–3 migrate with a backup |
 | `data/calibration.json` | PowerGlove Vision Controller, private persistent | Neutral palm position, apparent scale, wrist angle, and positional jitter for the installed camera and player |
 | `data/device.json` | PowerGlove Vision Controller, private persistent settings | Destination, selected settings, pairing-related configuration |
 | Tuning samples, preview, leases | Worker memory only | Temporary measurement and ownership state |
@@ -297,12 +308,37 @@ release carries the patch and build recipe, not a compiled core. See the
 
 ## Interfaces and recovery
 
+Player operations pass through the bounded same-origin `/api/players` endpoint
+into the worker. Its tuning lock owns one atomic player/settings/progress file.
+Generations reject stale writes. Each player retains a saved calibration;
+switching requires fresh centering or explicit same-position reuse. Version-2
+portable backups include personal and effective sensitivity, source software
+identity, name, and the player's neutral reference. They exclude credentials and
+Academy progress. Version-1 portable backups are rejected; earlier version-2
+files remain supported. A version-4 player store journals confirmed calibration
+reuse; the worker writes `calibration.json` before clearing the pending reference
+and centering gate. Output remains paused until Start controller. The journal
+resumes after crashes; internal version-1/2/3 stores migrate with recovery backups
+and unchanged progress. Progress writes occur on lesson transitions, not frames.
+
+Hostname resolution for controller sends runs in one background thread with a
+single cached address. No controller states are retained by that thread. Missing
+or expired addresses cause the current send to be skipped; later calls use their
+own newest state. Host Wi-Fi health is sampled independently by an unprivileged
+systemd timer, which publishes a small expiring JSON record for the supervisor
+and fourth Off-mode matrix pixel. Console reachability remains a separate probe.
+
+Build metadata records the source commit and candidate. A generated sketch
+fingerprint is compiled into firmware and read through Router Bridge in the
+supervisor, independently of the expected packaged value. Missing readback stays
+unavailable; this introduces no firmware RPC in the vision worker's frame path.
+
 | Interface | Direction | Contract |
 | --- | --- | --- |
 | HTTP 8088 | Browser to PowerGlove Vision Controller | Pages, live status/video, ordinary settings and commands |
 | HTTPS 8443 | Browser to PowerGlove Vision Controller | Secure Setup and pairing workflow |
 | HTTP 8089, loopback | Supervisor/web proxy to worker | Internal status, frame and control requests |
-| UDP 55355 | PowerGlove Vision Controller to RetroPie | Controller states, shared token, session and sequence |
+| UDP 55355 | PowerGlove Vision Controller to RetroPie | Signed controller states, session, challenge, and sequence; handshake replies return to the sender socket |
 | UDP 55356 | RetroPie to UNO relay to worker | Signed profile requests and acknowledgements |
 | `/run/powerglove/native-state` | Authenticated RetroPie receiver to custom core | Read-only, guarded latest sample for experimental native input |
 | TCP 55357 | Pairing participants | Temporary one-time-code pairing service |
@@ -310,9 +346,7 @@ release carries the patch and build recipe, not a compiled core. See the
 | Private Unix sockets | App resolver to host Avahi | Local hostname resolution |
 | Router Bridge RPC | Linux supervisor to microcontroller | Matrix status/profile/pairing commands |
 
-The LAN is a trust boundary. Controller JSON includes a shared token and is not
-encrypted or protected by the profile protocol's message HMAC. Do not describe
-all links as equivalent secure channels. Pairing and registry exchange have their
+The LAN remains a trust boundary. Controller version 2 uses its own domain-separated HMAC-SHA256 and receiver-issued challenges. It does not encrypt input. Legacy version-1 input is disabled by default and never emitted by the new sender. Do not describe all links as equivalent secure channels. Pairing and registry exchange have their
 own protections; browser mutations use the existing request-header and Origin
 checks. See the [Security policy](SECURITY.md) for the full trust model.
 
@@ -385,9 +419,10 @@ it does not claim every path has been independently security-audited.
 | Observation/state data objects | `src/powerglove_vision/model.py` |
 | Calibration, thresholds, held gestures, mappings | `src/powerglove_vision/gesture.py` |
 | Recording, suggestions, previews, persistence | `src/powerglove_vision/tuning.py` |
-| Browser pages and public request handling | `src/powerglove_vision/control_server.py` |
+| Public HTTP routing and worker proxy | `src/powerglove_vision/control_server.py` |
+| Shared page shell and maintained browser modules | `web_common.py`, `dashboard_web.py`, `academy_web.py`, `games_web.py`, `tuning_web.py`, `setup_web.py`, `player_web.py` |
 | Worker requests, status, practice leases | `src/powerglove_vision/debug_server.py` |
-| Controller packets and virtual gamepad | `src/powerglove_vision/transport.py`, `receiver.py` |
+| Controller packets and virtual gamepad | `src/powerglove_vision/transport.py`, `controller_protocol.py`, `receiver.py` |
 | Profile requests, launch hooks, UDP relay | `src/powerglove_vision/profile_control.py`, `retropie_hook.py`, `scripts/profile-relay.py` |
 | Paired Games editing | `src/powerglove_vision/game_registry.py` |
 | Pairing and hostname resolution | `src/powerglove_vision/pairing.py`, `python/ssh_pair.py`, `src/powerglove_vision/resolver.py` |
@@ -431,3 +466,20 @@ using the loader release flag, after checking the selected app and sketch
 samples. It never resets, halts, or flashes the sketch. This brings the existing
 hourglass forward while App Lab continues starting. Failure falls back to normal
 App Lab startup; the cold-boot trial was confirmed on the physical board.
+
+### Idle display preferences
+
+The supervisor passes the persisted `matrix_attract` setting to the sketch through
+`set_powerglove_attract(mode, connections)`. Only `PG_GESTURES_IDLE` consumes it;
+there is no global brightness change. In Off mode a bounded background probe
+checks TCP reachability and authenticates the existing RetroPie Games service.
+The supervisor publishes cached indicator bits; capture, recognition, transport,
+T/L displays, and game-state paths are unchanged.
+
+## Signed controller session lifecycle
+
+The nonblocking sender emits a signed hello with random session and request identifiers. RetroPie replies with a fresh random 128-bit challenge; only a signed reply matching the sender's current request, session, and configured receiver port is accepted. On Linux, receiver replies preserve the destination address and receiving interface using IP_PKTINFO, so Ethernet/Wi-Fi multihoming works through container NAT. The sender also permits a different source address when HMAC, request, session, and port match. A valid state activates that challenge. Activation invalidates every older active and pending challenge; subsequent states require increasing sequence numbers. A replayed hello can obtain a new challenge but cannot supply an authenticated state for it. Receiver restarts discard all challenges, so recorded traffic from a previous process cannot activate input.
+
+At most eight pending handshakes are retained, for three seconds each. No input state is retained while negotiating. Hellos repeat every 250 milliseconds before the first challenge, then once per second to recover a receiver restart. The sender reads at most eight replies per update without blocking and sends only that update's state. Periodic handshake traffic does not reset the receiver's input-release deadline. Both native-state publication and uinput remain behind the same accepted-state check; the core and recognition paths are unchanged.
+
+Dashboard and Academy now import their maintained pages from separate modules. Games and personalization have their own modules, and `web_features.py` preserves the existing import surface without obsolete UI definitions. The extracted Dashboard, Academy, Play, and Setup pages are byte-for-byte identical to the previous output.

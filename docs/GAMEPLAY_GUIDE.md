@@ -10,6 +10,10 @@ they produce, and how to try them with other games in your library.
 Find your game below, check its profile, and try the first-round exercise.
 If the system is not installed yet, start with the [Installation Guide](INSTALL_README.md).
 
+Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
+or turn it Off except for faint connection pixels. This does not change game
+displays, T, L, or gesture recognition. The setting saves without a tracker restart.
+
 ## Play Rock Paper Scissors locally
 
 Open **Play** at `http://UNO-Q-NAME.local:8088/play` for a first-to-three match
@@ -35,7 +39,7 @@ appears and **Calibrate** becomes available before continuing.
 
 1. Stand where the camera can see your whole hand with a little room on every side.
 2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
-3. Wait for tracking to settle, then select **Start controller** to arm delivery.
+3. Wait for tracking to settle, then select **Start controller** to arm delivery. If the tracker is reconnecting, the request is shown as pending and retried. A later **Stop controller** replaces the pending Start request.
 4. Launch a registered game. Controls begin only after RetroArch is running and
    its short initialization guard ends.
 5. Move your whole hand away from center for directions. Return to center to stop.
@@ -511,6 +515,22 @@ Menu guard means curling the thumb and ring finger while the other three fingers
 remain extended; it suppresses controls while you reposition. Saved tuning values
 drive gameplay recognition globally, while each game profile only decides button
 assignments, pulses, and toggles.
+
+Choose a player in **Your player** before practicing. Each player's hand
+sensitivity and lesson progress are retained on the Controller across browsers
+and restarts. Add or select another player to keep family members' settings
+separate. Each player keeps a saved center. Switching pauses controls until you set a fresh center or choose **Reuse my saved center** and confirm unchanged camera and playing positions.
+Use **Players and hand-setup backups → Back up hand setup** to save your name,
+personal and complete sensitivity, software identity, and calibration. Restore opens a review: reuse the saved
+calibration only if the camera and your playing position match, or leave that
+option unchecked and set a fresh center. Controls remain paused until you start
+them. Restore can explicitly retain the complete saved sensitivity, including the defaults used when the backup was made. Version-2 backups are supported; version-1 sensitivity-only files are rejected. Backups exclude credentials and
+Academy progress.
+
+![Player selection and complete hand-setup backups](images/player-settings.png)
+
+Complete all sixteen lessons to earn **Glove Master**. The award replaces the
+final lesson card; **Start again** restores the lessons and clears session progress.
 
 | Academy gesture | See it | What recognition expects |
 | --- | --- | --- |

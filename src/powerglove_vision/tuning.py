@@ -4,24 +4,27 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
+#   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
+#   2026-09-06 - Persist separate player sensitivity and Academy progress.
 #   2026-09-06 - Added the family-facing personalization wizard and validation gate.
 #   2026-09-04 - Added guided gesture sampling and persistent personal thresholds.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Personal threshold overlays; samples and previews never become camera recordings."""
 from __future__ import annotations
 
 import copy
-import json
 import math
 import threading
 import time
-from dataclasses import replace
+from dataclasses import replace, asdict
 from pathlib import Path
 
 from .academy_diagnostics import AcademyDiagnostics
-from .gesture import GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
+from .players import PlayerSettings, calibration_value
+from .gesture import load_calibration, save_calibration, GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
 
 CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
             "roll_left", "roll_right", "push", "pull")
@@ -164,16 +167,14 @@ class TuningManager:
     def __init__(self, path, clock=time.monotonic):
         self.path, self.clock = Path(path), clock
         self.lock = threading.RLock()
-        self.saved = {}
-        self.error = None
-        try:
-            if self.path.exists():
-                data = json.loads(self.path.read_text())
-                if data.get("version") != 1:
-                    raise ValueError("Unsupported tuning version")
-                self.saved = validate_overrides(data["thresholds"])
-        except (OSError, ValueError, KeyError, TypeError):
-            self.error = "Saved tuning could not be loaded; using supplied defaults. Restore defaults to replace the invalid file."
+        self.players = PlayerSettings(self.path, validate_overrides, CHANNELS)
+        if not self.players.error and not self.players.active["needs_center"] and self.players.active["calibration"] is None:
+            reference = load_calibration(self.path.with_name("calibration.json"))
+            if reference is not None:
+                self.players.active["calibration"] = calibration_value({"version":2,"neutral":asdict(reference)})
+        self.saved = copy.deepcopy(self.players.active["thresholds"])
+        self.error = self.players.error
+        self.center_generation = None
         self.session = None
         self.expires = 0
         self.gesture = "index"
@@ -201,6 +202,82 @@ class TuningManager:
         self.test_last_at = None
         self.test_passed = False
         self._configuration_cache = None
+
+    def player_snapshot(self):
+        """Read player state under the same lock as recognition settings."""
+        with self.lock:
+            return self.players.snapshot()
+
+    def player_command(self, data):
+        """Change presets without overlapping an active tuning session."""
+        with self.lock:
+            self._expire()
+            if self.session and data.get("action") not in ("read", "progress", "export"):
+                raise ValueError("Finish tuning and switch Tune gestures off before changing players or restoring settings.")
+            if data.get("action") == "export":
+                result = self.players.command(data)
+                if self.players.data["calibration_restore"] is not None:
+                    raise ValueError("Calibration restore is still being applied. Try the backup again shortly.")
+                reference = self.players.active["calibration"]
+                if reference is None and not self.needs_center():
+                    current = load_calibration(self.path.with_name("calibration.json"))
+                    reference = calibration_value({"version":2,"neutral":asdict(current)}) if current else None
+                backup = result["backup"]
+                from .versioning import current_identity
+                identity = current_identity()
+                # Use shipped configuration even before the camera has ever run.
+                config_path = Path(__file__).resolve().parents[2] / "config/profiles.json"
+                import json
+                configured = json.loads(config_path.read_text()) if config_path.exists() else {}
+                base = GestureConfig(**configured.get("recognition", configured.get("program_defaults", {})))
+                effective = replace(base, thresholds=copy.deepcopy(self.saved))
+                backup.update(calibration=copy.deepcopy(reference),
+                    effective_thresholds={key:dict(zip(("on","off"),effective.pair(key))) for key in CHANNELS},
+                    source={"version":str(identity.get("version", "unknown")) + ("+modified" if identity.get("dirty") else ""), "commit":identity.get("commit") or "unknown"})
+                return result
+            result = self.players.command(data)
+            if data.get("action") in ("create", "select", "delete", "restore", "reuse_calibration"):
+                self.saved = copy.deepcopy(self.players.active["thresholds"])
+                self.error = self.players.error
+                self.preview, self.phases, self.recording = None, [], None
+                self.center_generation = None
+                self.revision += 1
+            return result
+
+    def apply_calibration_restore(self):
+        """Finish a durable restore before the worker can resume output; retry after crashes."""
+        from .model import Calibration
+        with self.lock:
+            pending = self.players.data["calibration_restore"]
+            if pending is None:
+                return None
+            reference = Calibration(**pending["neutral"])
+            save_calibration(self.path.with_name("calibration.json"), reference)
+            data = copy.deepcopy(self.players.data)
+            data["calibration_restore"] = None
+            data["players"][data["active"]]["needs_center"] = False
+            data["players"][data["active"]]["calibration"] = copy.deepcopy(pending)
+            self.players.commit(data)
+            return reference
+
+    def needs_center(self):
+        """Keep delivery paused until explicit calibration follows a preset change."""
+        with self.lock:
+            return bool(self.players.error or self.players.active["needs_center"])
+
+    def begin_center(self):
+        """Associate a requested calibration with the active player generation."""
+        with self.lock:
+            self.center_generation = self.players.data["generation"]
+
+    def finish_center(self, reference=None):
+        """Persist successful calibration only for its original player."""
+        with self.lock:
+            generation = self.center_generation
+            if generation is None and not self.players.active["needs_center"]:
+                generation = self.players.data["generation"]
+            self.players.centered(generation, reference)
+            self.center_generation = None
 
     def _expire(self):
         """Discard temporary state when the browser lease ends."""
@@ -367,13 +444,14 @@ class TuningManager:
 
     def command(self, data: dict) -> dict:
         """Validate ownership, stage recordings, preview changes, and atomically save."""
-        from .game_registry import atomic_write
         with self.lock:
             self._expire()
             action, session = data.get("action"), data.get("session")
             if not isinstance(session, str) or not 8 <= len(session) <= 128 or not all(c.isalnum() or c in "-_" for c in session):
                 raise ValueError("A valid tuning session is required.")
             if action == "begin":
+                if "player" in data and (data["player"] != self.players.data["active"] or data.get("generation") != self.players.data["generation"]):
+                    raise ValueError("The player changed. Reload Glove Academy before tuning.")
                 if self.session and self.session != session:
                     raise ValueError("Another Learn tab is tuning. Close it or wait for its session to expire.")
                 self.session, self.expires = session, self.clock() + 6
@@ -453,7 +531,7 @@ class TuningManager:
                 if not self.test_passed or not self.preview:
                     raise ValueError("Complete the guided try-it test before saving.")
                 merged = dict(self.saved, **validate_overrides(self.preview))
-                atomic_write(self.path, json.dumps({"version": 1, "thresholds": merged}, indent=2) + "\n")
+                self.players.save_thresholds(merged)
                 self.saved, self.preview = merged, None
                 self.wizard_step = "done"
                 self.error = None
@@ -482,7 +560,7 @@ class TuningManager:
                     raise ValueError("Adjust only the selected gesture's components.")
                 if action == "save":
                     merged = dict(self.saved, **values)
-                    atomic_write(self.path, json.dumps({"version": 1, "thresholds": merged}, indent=2) + "\n")
+                    self.players.save_thresholds(merged)
                     self.saved, self.preview = merged, None
                 else:
                     self.preview = values
@@ -492,7 +570,7 @@ class TuningManager:
                 self.revision += 1
             elif action == "reset":
                 merged = {k: v for k, v in self.saved.items() if k not in GESTURES[self.gesture]}
-                atomic_write(self.path, json.dumps({"version": 1, "thresholds": merged}, indent=2) + "\n")
+                self.players.save_thresholds(merged)
                 self.saved, self.preview, self.error = merged, None, None
                 self.revision += 1
             elif action == "discard":

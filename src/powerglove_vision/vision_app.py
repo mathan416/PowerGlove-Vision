@@ -4,8 +4,12 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
-# Change log:
 # Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Implement approved player and connectivity refinements.
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
+#   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
+#   2026-09-06 - Require fresh centering after player changes before delivery.
 #   2026-09-05 - Resumed armed controls from renewable RetroPie game leases.
 #   2026-09-05 - Measured fresh-frame publication and controller-transition latency.
 #   2026-09-05 - Reported clear proven and experimental tracker names.
@@ -112,7 +116,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Camera-only Power Glove controller")
     parser.add_argument("--receiver", required=True, help="Raspberry Pi hostname or address")
     parser.add_argument("--port", type=int, default=55355)
-    parser.add_argument("--token", required=True, help="shared receiver token")
+    tokens = parser.add_mutually_exclusive_group(required=True)
+    tokens.add_argument("--token", help="shared receiver token (prefer a private file)")
+    tokens.add_argument("--token-file", type=Path, help="private file containing the shared token")
+    tokens.add_argument("--device-config", type=Path, help="private device JSON containing the shared token")
     parser.add_argument("--profile", default="bad_street_brawler", help="startup profile; may be changed by RetroPie")
     parser.add_argument("--camera", default="auto", help="camera index, or 'auto'")
     parser.add_argument("--width", type=int, default=640)
@@ -332,6 +339,14 @@ def _base_status(
     return status
 
 
+def load_worker_token(args: argparse.Namespace) -> str:
+    """Read the pairing secret without putting it in the supervised process arguments."""
+    configured = json.loads(args.device_config.read_text()).get("token") if args.device_config else args.token
+    if configured is not None and not isinstance(configured, str):
+        raise ValueError("device token must be text")
+    return read_token(configured, args.token_file)
+
+
 def main() -> int:
     """Keep profile control online while starting vision resources only when needed."""
     args = build_parser().parse_args()
@@ -344,8 +359,8 @@ def main() -> int:
     profile_source = "startup"
     controller_enabled = args.controller_enabled
     practice_mode = False
-    token = read_token(args.token, None)
-    sender = UdpSender(args.receiver, args.port, args.token)
+    token = load_worker_token(args)
+    sender = UdpSender(args.receiver, args.port, token)
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
     shared = SharedDebugState()
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
@@ -452,6 +467,19 @@ def main() -> int:
                 elif engine is not None:
                     matrix.set_status(MatrixStatus.READY)
 
+            try:
+                restored_calibration = shared.tuning.apply_calibration_restore()
+                if restored_calibration is not None:
+                    shared.request_controller(False)
+                    retained_calibration = restored_calibration
+                    if engine is not None:
+                        engine = GestureEngine(engine.profile, config=engine.config,
+                                               calibration=restored_calibration)
+                    last_controller_signature = None
+                    calibration_save_error = None
+            except OSError as exc:
+                calibration_save_error = "Hand-setup restore is paused: " + str(exc)
+
             controller_request = shared.take_controller_request()
             if shared.tuning.active():
                 controller_request = False
@@ -468,6 +496,7 @@ def main() -> int:
                     current_game = "Manual selection"
 
             if shared.take_calibration_request() and engine is not None:
+                shared.tuning.begin_center()
                 engine.begin_calibration()
                 last_controller_signature = None
 
@@ -597,6 +626,7 @@ def main() -> int:
                 retained_calibration = engine.calibration
                 try:
                     save_calibration(calibration_path, retained_calibration)
+                    shared.tuning.finish_center(retained_calibration)
                     calibration_save_error = None
                 except OSError as exc:
                     calibration_save_error = str(exc)
@@ -609,6 +639,7 @@ def main() -> int:
             )
             receiver_available = sender.send(state) if (
                 controller_enabled and not practice_mode and not shared.tuning.active()
+                and not shared.tuning.needs_center()
                 and controller_context_active and not launch_guard_active
             ) else False
             sent_at = time.monotonic()

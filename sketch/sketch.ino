@@ -4,7 +4,11 @@
 // Author: Iain Bennett
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
+// Full history: docs/CHANGELOG.md and Git history.
 // Change log:
+//   2026-09-06 - Implement approved player and connectivity refinements.
+//   2026-09-06 - Add idle-only On, Dim, and connection-pixel attract settings.
+//   2026-09-06 - Expose the compiled matrix source fingerprint through Router Bridge.
 //   2026-09-06 - Add an idle lightning flash, clearer fingers and cuff, and a softer glow.
 //   2026-09-04 - Share the scanning letter animation between Learn and Tune.
 //   2026-09-02 - Added to PowerGlove Vision.
@@ -12,11 +16,11 @@
 //   2026-09-03 - Added the gestures-idle Power Glove attract animation.
 //   2026-09-03 - Refined the attract animation with cuff travel, spark motion, and grayscale pulsing.
 //   2026-09-03 - Added a scanning L animation for Learn mode.
-// Full history: docs/CHANGELOG.md and Git history.
 
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
 #include <zephyr/kernel.h>
+#include "firmware_version.h"
 
 // App Lab starts this sketch after the UNO Q's protected system-boot display
 // has finished. The Python vision process then selects one of these states.
@@ -35,6 +39,10 @@ enum PowerGloveStatus {
 Arduino_LED_Matrix matrix;
 volatile int requestedStatus = PG_LOADING;
 volatile int requestedProfile = 0;
+volatile int requestedAttract = 0; // 0 On, 1 Dim, 2 Off
+volatile int requestedConnections = 0;
+int drawnAttract = -1;
+int drawnConnections = -1;
 volatile uint32_t requestedPairingId = 0;
 volatile int requestedPairingPin = 0;
 int drawnStatus = -1;
@@ -290,7 +298,7 @@ void drawGlove(
 // Render one complete beat of the gestures-paused attract sequence. Motion is
 // intentionally broad: the cuff crosses seven columns, the fingers curl over
 // three poses, and the spark uses a bright core plus two-position comet trail.
-void drawIdleFrame(uint8_t frame) {
+void drawIdleFrame(uint8_t frame, uint8_t ceiling = 7) {
   uint8_t pixels[104] = {0};
 
   if (frame < 4) {
@@ -348,6 +356,9 @@ void drawIdleFrame(uint8_t frame) {
     drawGlove(pixels, idleOpenGlove, 2, 5);
   }
 
+  for (int i = 0; i < 104; ++i) {
+    pixels[i] = (pixels[i] * ceiling + 6) / 7;
+  }
   matrix.draw(pixels);
 }
 
@@ -357,6 +368,13 @@ void set_powerglove_status(int status) {
     status = PG_ERROR;
   }
   requestedStatus = status;
+}
+
+// Only idle rendering consumes these settings; active mode artwork is unchanged.
+int set_powerglove_attract(int mode, int connections) {
+  requestedAttract = mode >= 0 && mode <= 2 ? mode : 0;
+  requestedConnections = connections & 7;
+  return requestedAttract;
 }
 
 // Router Bridge endpoint: show the certificate identity and one-time PIN.
@@ -369,6 +387,11 @@ void set_powerglove_pairing(int pairingId, int pairingPin) {
 // Router Bridge endpoint: select the active gesture-profile display.
 void set_powerglove_profile(int profile) {
   requestedProfile = (profile >= 0 && profile <= 11) ? profile : 0;
+}
+
+// Report the identity compiled into the running microcontroller firmware.
+String get_powerglove_firmware() {
+  return String(POWERGLOVE_FIRMWARE_ID);
 }
 
 // Keep the display alive while Router Bridge initialization waits for Linux.
@@ -398,6 +421,8 @@ void setup() {
   Bridge.provide("set_powerglove_status", set_powerglove_status);
   Bridge.provide("set_powerglove_profile", set_powerglove_profile);
   Bridge.provide("set_powerglove_pairing", set_powerglove_pairing);
+  Bridge.provide("get_powerglove_firmware", get_powerglove_firmware);
+  Bridge.provide("set_powerglove_attract", set_powerglove_attract);
 }
 
 // Refresh animations only when their frame or requested state changes.
@@ -405,6 +430,14 @@ void refreshMatrix() {
   const int status = requestedStatus;
   const int profile = requestedProfile;
   const unsigned long now = millis();
+
+  const int attract = requestedAttract;
+  const int connections = requestedConnections;
+  if (status == PG_GESTURES_IDLE && (attract != drawnAttract || connections != drawnConnections)) {
+    drawnAttract = attract;
+    drawnConnections = connections;
+    nextFrameAt = 0;
+  }
 
   if (status != drawnStatus || profile != drawnProfile) {
     drawnStatus = status;
@@ -447,7 +480,17 @@ void refreshMatrix() {
     animationFrame = (animationFrame + 1) % 9;
     nextFrameAt = now + 650;
   } else if (status == PG_GESTURES_IDLE) {
-    drawIdleFrame(animationFrame);
+    if (attract == 2) {
+      uint8_t pixels[104] = {};
+      pixels[7 * 13] = 1; // App running.
+      pixels[7 * 13 + 2] = (connections & 1) ? 1 : 0;
+      pixels[7 * 13 + 4] = (connections & 2) ? 1 : 0;
+      pixels[7 * 13 + 6] = (connections & 4) ? 1 : 0;
+      matrix.draw(pixels);
+      nextFrameAt = now + 1000;
+      return;
+    }
+    drawIdleFrame(animationFrame, attract == 1 ? 2 : 7);
     nextFrameAt = now + idleFrameDurations[animationFrame];
     animationFrame = (animationFrame + 1) %
       (sizeof(idleFrameDurations) / sizeof(idleFrameDurations[0]));

@@ -62,6 +62,14 @@ active token belongs only in the PowerGlove Vision Controller's private `data/de
 RetroPie's `/etc/powerglove/token`. It must not be committed, placed in a shell
 argument, stored in `launcher.json`, or included in a screenshot or log.
 
+The supervised vision worker reads its token using `--device-config`, keeping
+the secret out of process arguments. Device settings are created and replaced
+atomically with mode `0600`. Legacy `--token` remains a compatibility option for
+manual commands; prefer `--token-file` or `--device-config` for the worker.
+Browser mutation routes reject cross-site origins, and connection-setting writes
+require JSON. These browser protections do not add local-user authentication or
+change the trusted-network model.
+
 The recommended setup path uses a short-lived one-time code to authenticate
 the RetroPie pairing server over pinned TLS. Password pairing uses authenticated SSH. After the initial connection
 establishes trust, subsequent connections verify the saved remote host key.
@@ -211,11 +219,33 @@ the interface; they are not saved gesture recordings.
 
 Optional hand setup measures all five fingers; gesture tuning measures selected
 components. Both use three short sets of numerical samples in memory. The
-version-1 `data/gesture-tuning.json` file stores only activation/release pairs,
-shared across profiles. Neutral calibration is separate in `data/calibration.json`.
+version-4 `data/gesture-tuning.json` file stores player names, activation/release
+pairs shared across game profiles for each player, Academy progress, and a
+required-center flag and separate saved calibration, plus a bounded pending reference during a calibration
+restore. Internal versions 1, 2, and 3 migrate with private backups. Portable hand-setup backups start at version 2; version 1 is rejected. Exports contain a name, personal and complete threshold pairs, software identity, and a neutral reference. They exclude
+camera images, landmarks, Wi-Fi credentials, pairing tokens, and lesson progress.
+Restoring calibration requires an explicit same-position confirmation and strict
+finite field validation. A persisted restore resumes after interruption with
+output gated; Start controller is still required. The active physical reference remains in `data/calibration.json`; each player retains a separate saved reference and reuse requires confirmation.
 The installer never packages a maintainer's neutral reference: camera position,
 player distance, and wrist pose make it installation-specific. Preserve both
 files during updates. Expiry or discard removes temporary preview
 state, not saved settings. Numerical validity and sample separation do not prove
 a pose was performed correctly; preview feedback and physical testing are still
 required before release.
+
+## Wi-Fi status sampler
+
+The Wi-Fi sampler runs as `arduino` and only reads host wireless carrier state.
+It publishes a small expiring record in `data/wifi-status.json`; it does not
+collect SSIDs, addresses, passwords, or scans, and cannot change network settings.
+The application retains no controller states while hostname resolution runs in
+the background. Controller version-2 messages use the signed sessions described below.
+
+## Controller packet integrity and replay boundaries
+
+Version-2 controller messages use HMAC-SHA256 with a controller-specific domain prefix, separate from profile and registry messages. The secret is never included in these datagrams. All message fields are authenticated; size limits and duplicate-key rejection bound parsing. A receiver-issued random challenge is required for input, is bound to the sender session and UDP peer, and is replaced on session activation or receiver restart. Strictly increasing sequences reject duplicates and reordering within the current session. Old handshakes cannot resurrect recorded state because a fresh challenge needs a fresh authenticated response. Pending challenges are bounded and expire; input states are never queued by the handshake.
+
+This protects message integrity and retired-session replay, not confidentiality or availability. A host holding the shared token can create valid input, and a network attacker can still drop traffic. Input fields remain readable on the LAN. The existing timeout neutralizes both gamepad and native state even under rejected traffic or repeated handshakes.
+
+The receiver rejects version 1 by default. `--allow-legacy-controller` is an explicit temporary upgrade option with weaker protections: old packets contain the secret, and receiver restarts lose their legacy replay history. The option stops accepting legacy input once signed input arrives but reopens after a process restart; remove it after migration. Update both computers together and consider re-pairing if the previous token was exposed. The new sender never silently downgrades.

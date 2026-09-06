@@ -4,11 +4,12 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Use Python 3.7-compatible mock call argument access.
 #   2026-09-05 - Covered detached registered-game lease refresh and cleanup.
 #   2026-09-04 - Covered concurrent replies, invalid traffic, capacity expiry and hook failures.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Exercise profile transport without hardware or private device settings."""
 
@@ -201,7 +202,7 @@ class VisionControlTests(unittest.TestCase):
         shared.take_calibration_request.return_value = False
         shared.update_status.side_effect = update
         args = SimpleNamespace(profile="program_h", no_matrix=True, controller_enabled=False,
-                               token="test-profile-token", receiver="", port=55355,
+                               token="test-profile-token", device_config=None, token_file=None, receiver="", port=55355,
                                profile_listen="127.0.0.1", profile_port=55356,
                                web_host="127.0.0.1", web_port=8089, config=None)
         try:

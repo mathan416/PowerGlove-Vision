@@ -1,0 +1,24 @@
+# Project: PowerGlove Vision
+# File: uno-q/powerglove-wifi-status.service
+# Purpose: Sample host Wi-Fi carrier state with no privileged network operations.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Publish independent host Wi-Fi health for the idle matrix.
+[Unit]
+Description=PowerGlove Vision Wi-Fi status
+ConditionPathIsDirectory=/home/arduino/ArduinoApps/powerglove-vision/data
+
+[Service]
+Type=oneshot
+User=arduino
+Group=arduino
+ExecStart=/usr/bin/python3 /usr/local/libexec/powerglove-wifi-status
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/arduino/ArduinoApps/powerglove-vision/data
+RestrictAddressFamilies=AF_UNIX
+TimeoutStartSec=5

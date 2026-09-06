@@ -233,7 +233,13 @@ the previous saved reference until atomic completion; and reproduces a close,
 not necessarily identical, result for the same simulated stance.
 Check insufficient samples, tracking loss, overlapping ranges, and calibration
 changes. Verify preview expiry, save/reload, selected-component reset, existing
-version-1 files, and controller suppression throughout tuning. Automatic
+internal version-1 store migration with a retained backup, isolated player settings and progress,
+stale-tab rejection after player changes or progress resets, and controller
+suppression throughout tuning. Check that player switches and hand-setting
+restores require fresh centering unless calibration reuse is explicitly confirmed;
+Start controller remains required. Verify complete and earlier version-2 backup round trips,
+portable version-1 rejection,
+invalid calibration rejection, and restart recovery between both restore writes. Automatic
 suggestions must check separation and a simultaneous full-pose match in at least
 90% of accepted samples in each phase, using candidate values and existing
 personal extension thresholds. Test each extended finger, exact threshold
@@ -265,3 +271,10 @@ repeat updates, private-settings preservation, and read-only checks. Run
 Keep development builds as prereleases. Workflow artifacts are not published
 release downloads. Physical fresh-device and upgrade tests, cold boot, pairing,
 and gameplay remain release gates; simulated filesystem tests do not replace them.
+
+## Review parking lot
+
+The [6 September Setup and code review](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
+records tested fixes, review coverage, and decisions awaiting the maintainer.
+Update that record as items are resolved. Keep measurement-dependent movement
+changes separate from routine UI and persistence fixes.

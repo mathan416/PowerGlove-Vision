@@ -4,10 +4,12 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Validate controller datagrams and publish them as a Linux virtual gamepad through uinput."""
 
@@ -16,11 +18,13 @@ from __future__ import annotations
 import argparse
 import hmac
 import socket
+import sys
 import time
 from pathlib import Path
 
 from .native_state import DEFAULT_PATH as DEFAULT_NATIVE_STATE_PATH, NativeStateWriter
 from .transport import MAX_PACKET_BYTES, decode_state
+from .controller_protocol import ReceiverSessions
 
 
 class DryRunDevice:
@@ -108,6 +112,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--native-state", type=Path, default=DEFAULT_NATIVE_STATE_PATH,
                         help="latest validated sample for the custom Nestopia core")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--allow-legacy-controller", action="store_true",
+                        help="temporary v1 upgrade compatibility; disabled after the first v2 input")
     return parser
 
 
@@ -128,6 +134,11 @@ def main() -> int:
         print(f"Native Power Glove state unavailable: {exc}", flush=True)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
+    packet_info = sys.platform.startswith("linux")
+    if packet_info:
+        # Linux in_pktinfo preserves the receiving address/interface for replies.
+        # This matters when Ethernet and Wi-Fi share a subnet behind container NAT.
+        sock.setsockopt(socket.IPPROTO_IP, 8, 1)  # IP_PKTINFO (Linux ABI)
     if args.timeout_ms <= 0:
         sock.close()
         raise ValueError("receiver timeout must be positive")
@@ -137,6 +148,9 @@ def main() -> int:
     released = True
     last_sequence = -1
     last_session: str | None = None
+    retired_sessions = set()
+    sessions = ReceiverSessions(token)
+    signed_seen = False
     try:
         while True:
             now = time.monotonic()
@@ -148,21 +162,48 @@ def main() -> int:
             remaining = timeout if released or last_valid_at is None else timeout - (now - last_valid_at)
             sock.settimeout(max(0.001, remaining))
             try:
-                payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
+                reply_info = []
+                if packet_info:
+                    payload, ancillary, _flags, _peer = sock.recvmsg(MAX_PACKET_BYTES + 1, socket.CMSG_SPACE(12))
+                    reply_info = [(level, kind, data[:12]) for level, kind, data in ancillary
+                                  if level == socket.IPPROTO_IP and kind == 8 and len(data) >= 12]
+                else:
+                    payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
                 try:
-                    state = decode_state(payload)
+                    state, reply = sessions.receive(payload, _peer)
+                    if reply is not None:
+                        try:
+                            if reply_info:
+                                sock.sendmsg([reply], reply_info, 0, _peer)
+                            else:
+                                sock.sendto(reply, _peer)
+                        except OSError:
+                            pass
+                    if state is None:
+                        continue
+                    signed_seen = True
                 except (ValueError, UnicodeError, RecursionError):
-                    continue
-                supplied_token = state.get("token")
-                if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, token):
-                    continue
-                session = state.get("session")
-                if isinstance(session, str) and session != last_session:
-                    last_session = session
-                    last_sequence = -1
+                    if not args.allow_legacy_controller or signed_seen:
+                        continue
+                    try:
+                        state = decode_state(payload)
+                    except (ValueError, UnicodeError, RecursionError):
+                        continue
+                    supplied_token = state.get("token")
+                    if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, token):
+                        continue
+                    session = state.get("session")
+                    if not isinstance(session, str) or session in retired_sessions:
+                        continue
+                    if session != last_session:
+                        if len(retired_sessions) >= 128:
+                            continue
+                        if last_session is not None:
+                            retired_sessions.add(last_session)
+                        last_session, last_sequence = session, -1
+                    if state["sequence"] <= last_sequence:
+                        continue
                 sequence = state["sequence"]
-                if last_sequence >= 0 and sequence <= last_sequence:
-                    continue
                 last_sequence = sequence
                 if device is None:
                     device = UInputDevice()
@@ -174,6 +215,8 @@ def main() -> int:
             except socket.timeout:
                 if device is not None and not released:
                     device.release()
+                    if native is not None:
+                        native.release(last_sequence + 1)
                     released = True
     except KeyboardInterrupt:
         return 0

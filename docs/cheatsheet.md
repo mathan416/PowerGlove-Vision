@@ -173,12 +173,12 @@ Complete both machine installations above, then use the one-time-code method:
 1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Its code expires after two minutes.
 2. In your browser, open `https://UNO-Q-NAME.local:8443/setup` using your PowerGlove Vision Controller's actual hostname.
 3. Enter your RetroPie hostname and the 20-character code printed by the pairing command.
-4. Select **Prepare one-time code**. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint.
+4. Select **Prepare code pairing**. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint.
 5. If they match, select the certificate confirmation checkbox, enter the six-digit PIN displayed after `PN` on the matrix, and select **Complete pairing**.
-6. On RetroPie, run `sudo systemctl status powerglove-receiver.service` and confirm that the receiver is active.
+6. If prompted, select **Save connection settings** in Setup. On RetroPie, run `sudo systemctl status powerglove-receiver.service` and confirm that the receiver is active.
 
 Password pairing is available on the same secure page when RetroPie accepts SSH
-password login. Select **Prepare password pairing**, complete the same physical
+password login. Expand **Pair using an SSH password**, select **Prepare password pairing**, complete the same physical
 certificate check, and then enter your RetroPie account password. The password
 is used for one SSH operation and is not stored.
 
@@ -574,3 +574,22 @@ with a powered hub and with a direct Mac USB connection. A disappearing website,
 matrix animation, or fixed waiting period does not confirm that power can safely
 be removed. See the [Installation Guide](INSTALL_README.md) for the recorded
 investigation and shutdown guidance.
+
+## Player centers, backups, and Wi-Fi status
+
+Each player retains a separate center. After switching in Glove Academy, set a
+fresh center or select **Reuse my saved center** and confirm unchanged camera
+and playing positions. Controller output remains paused until Start.
+
+Portable backups start at version 2. New exports include personal and complete
+sensitivity, software identity, and the player's saved calibration. Restore
+separately confirms complete sensitivity and calibration reuse. Earlier version-2
+files remain supported; version-1 exports are rejected. Internal player stores
+migrate to version 4 with a private recovery backup.
+
+Off attract mode shows four faint pixels: app, console service, authenticated
+console, and independent Wi-Fi link. Setup distinguishes disconnected Wi-Fi from
+unavailable telemetry. Normal installation/deployment installs the unprivileged
+five-second sampler; repair it with
+`sudo python3 scripts/setup-machine.py uno-q --wifi-status-only` on the host.
+The fourth pixel requires the matching matrix firmware.
