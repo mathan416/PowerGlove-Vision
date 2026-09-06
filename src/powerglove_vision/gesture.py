@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Published native fist and index-point poses for Super Glove Ball.
 #   2026-09-05 - Added motion-confirmed depth gestures and a faster deliberate Start hold.
 #   2026-09-05 - Eased Menu Guard entry without loosening general finger recognition.
 #   2026-09-05 - Eased the default thumb-only B pose without changing other fingers.
@@ -611,6 +612,14 @@ class GestureEngine:
             dpad = {name: False for name in dpad}
 
         pulse_on = int(observation.timestamp * cfg.pulse_hz * 2) % 2 == 0
+        closed_hand = all(
+            self._switches[name].active
+            for name in ("thumb", "index", "middle", "ring", "pinky")
+        )
+        index_point = (
+            observation.index_curl < cfg.pair("index")[1]
+            and all(self._switches[name].active for name in ("middle", "ring", "pinky"))
+        )
         if self.profile == "bad_street_brawler":
             buttons = {
                 "a": (middle or roll_left or roll_right) and not menu_pose,
@@ -639,6 +648,8 @@ class GestureEngine:
                 "start": start,
                 "select": select,
                 "glove_zap": False,
+                "closed_hand": closed_hand and not menu_pose,
+                "index_point": index_point and not menu_pose,
             }
         else:
             dpad, buttons = self._program_mapping(
@@ -653,6 +664,7 @@ class GestureEngine:
         if menu_guard:
             dpad = {name: False for name in dpad}
             buttons["a"] = buttons["b"] = buttons["start"] = buttons["select"] = False
+            buttons["closed_hand"] = buttons["index_point"] = False
         buttons["menu_guard"] = menu_guard
 
         fingers = {

@@ -19,7 +19,7 @@ of a modified Nestopia build remains subject to those GPL terms.
 Upstream source: <https://github.com/libretro/nestopia>
 
 PowerGlove Vision patch SHA-256:
-`6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec`
+`3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397`
 
 The ordinary PowerGlove Vision release distributes this patch and reproducible
 build recipe, not a compiled core. The RetroPie installer can download the

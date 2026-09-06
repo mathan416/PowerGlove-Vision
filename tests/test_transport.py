@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Verified native compound hand poses survive transport.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -37,11 +38,14 @@ class TransportTests(unittest.TestCase):
 
     def test_round_trip(self):
         state = ControllerState.released(7, 1.5, "bad_street_brawler", True)
+        state.buttons.update({"closed_hand": True, "index_point": True})
         decoded = decode_state(encode_state(state, "secret", "session-one"))
         self.assertEqual(decoded["sequence"], 7)
         self.assertEqual(decoded["token"], "secret")
         self.assertEqual(decoded["protocol"], "powerglove-vision/1")
         self.assertEqual(decoded["session"], "session-one")
+        self.assertTrue(decoded["buttons"]["closed_hand"])
+        self.assertTrue(decoded["buttons"]["index_point"])
 
     def test_wrong_protocol_rejected(self):
         with self.assertRaises(ValueError):

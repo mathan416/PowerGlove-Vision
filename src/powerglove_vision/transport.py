@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Carried native closed-hand and index-point recognition states.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
@@ -56,7 +57,10 @@ def decode_state(payload: bytes) -> dict:
     for name, keys, maximum in (
         ("axes", {"x", "y", "z", "roll"}, 32767),
         ("dpad", {"up", "down", "left", "right"}, None),
-        ("buttons", {"a", "b", "start", "select", "glove_zap", "menu_guard"}, None),
+        ("buttons", {
+            "a", "b", "start", "select", "glove_zap", "menu_guard",
+            "closed_hand", "index_point",
+        }, None),
         ("fingers", {"thumb", "index", "middle", "ring", "pinky"}, 3),
     ):
         values = data.get(name, {})

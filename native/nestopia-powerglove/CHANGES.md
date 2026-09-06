@@ -13,7 +13,7 @@ headers, copyright notices, Git history, or `COPYING` file.
 | Revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
 | License | GNU General Public License, version 2 or later as stated by the affected Nestopia source |
 | Patch | `native/nestopia-powerglove/nestopia-powerglove.patch` |
-| Patch SHA-256 | `6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec` |
+| Patch SHA-256 | `3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397` |
 
 At that revision, `source/core/input/NstInpPowerGlove.cpp` begins with
 Nestopia's original 2003–2008 Martin Freij copyright and GPL notice. The patch
@@ -39,7 +39,7 @@ Changes in `libretro/libretro.cpp`:
 - Registered a separately selectable `Power Glove Vision` libretro controller.
 - Connected the existing Nestopia Power Glove device and supplied calibrated
   X/Y plus confirmed Start and Select state through its callback.
-- Kept Z, wrist, gesture, finger, and unconfirmed button fields neutral.
+- Initially kept Z, wrist, gesture, finger, and unconfirmed button fields neutral.
 - Identified the core as `Nestopia PowerGlove` without changing stock Nestopia.
 - Closed the mapped state and removed the callback when a game unloads.
 
@@ -58,6 +58,20 @@ Evidence-driven corrections:
 - Corrected camera-to-Nestopia Y orientation after cabinet testing showed that
   the earlier host-side negation inverted physical up and down.
 - Kept unknown packet fields neutral and retained the explicit FCEUmm fallback.
+
+## PowerGlove Vision modifications — September 5, 2026
+
+- Added explicit closed-hand and index-point flags to the existing version-1
+  latest-sample record without changing its size or coherence guards.
+- Mapped the five-finger recognized fist to packet byte 5 value `$FF`, the
+  recognized index-point pose to `$0F`, and open or ambiguous poses to `$00`.
+- Mapped calibrated camera depth to absolute signed packet byte 3, reversing
+  the camera-facing sign to match the documented hardware convention.
+- Kept native wrist rotation and remaining unconfirmed button values neutral.
+- Built the pinned source and ran the exact ROM headlessly. Its ten-byte polls
+  repeatedly received `$00` open, `$FF` fist, `$0F` index point, and fist plus
+  forward Z (`$81`) Power Punch candidates; tracking loss and stale samples
+  still returned a fully neutral packet.
 
 ## Preservation rule
 

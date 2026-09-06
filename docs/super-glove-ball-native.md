@@ -3,8 +3,10 @@
 This document records evidence for the separately named `lr-nestopia-powerglove`
 core. It intentionally separates observations from hypotheses. Native detection,
 Start, continuous X/Y, orientation, stale-state safety, and live cabinet control
-are confirmed for the exact tested ROM. FCEUmm remains the supported explicit
-fallback using PowerGlove Vision's shared responsive D-pad and gesture recognition.
+are confirmed for the exact tested ROM. Signed Z and open/fist/index packet bytes
+are confirmed in exact-ROM headless traces and await live gameplay confirmation.
+FCEUmm remains the supported explicit fallback using PowerGlove Vision's shared
+responsive D-pad and gesture recognition.
 
 ## Evidence order
 
@@ -30,7 +32,9 @@ implementation.
 | Candidate X/Y encoding reaches Nestopia's existing Power Glove device | Confirmed for the exact ROM | Minimum, center, and maximum X/Y each produced distinct packets. Cabinet validation corrected the camera-to-Nestopia Y orientation. |
 | Detection signature, packet length, boundaries, and bit order | Confirmed | The ROM assembled inverse `$A0` as `$5F`, strobed once per byte, read ten bytes/80 bits per sample MSB first, and required the final stored byte to be `$3F`. |
 | Start encoding | Confirmed | Native byte 6 value `$82` left the title screen and began play while the controller stayed in native mode. |
-| Native packet encoding for Z, wrist rotation, finger state, and action buttons | Not yet mapped in-game; deliberately neutral | Camera recognition and FCEUmm output for depth, roll, fingers, and actions are confirmed. Vary one native packet field at a time now that detection and X/Y are repeatable. Start is the sole confirmed native button exception. |
+| Native Z encoding | Packet mapping confirmed headlessly; live gameplay pending | Calibrated camera depth is sign-reversed into the hardware convention. Neutral produced `$00`; maximum forward motion produced `$81`. Test fist plus forward motion as Power Punch on the cabinet. |
+| Native open, fist, and index-point encoding | Packet mapping confirmed headlessly; live gameplay pending | The exact ROM repeatedly received `$00` open, `$FF` fist, and `$0F` index-point samples. Shared five-finger recognition determines compound poses before transmission. Test throw, grab/catch, and Robo-Bullet behavior on the cabinet. |
+| Native wrist rotation and remaining action buttons | Not yet mapped in-game; deliberately neutral | Roll and action recognition are confirmed in the shared layer and FCEUmm output. Vary each remaining native field independently before enabling it. Start is the sole live-confirmed native button. |
 | Poll timing tolerances | Confirmed for tested sessions | Headless runs sustained ten-byte polling throughout native phases, and live cabinet sessions remained stable. Broader hardware and timing stress coverage remains useful. |
 | Headless X/Y activation and release responsiveness | Confirmed for the exact ROM | All four axes visibly diverged by frame 3; a 3.1% positive-X step also diverged by frame 3. See the [direction-response benchmark](direction-response-benchmark.md). |
 | Cabinet field mapping and stabilization | Confirmed for live tuning | Continuous X/Y maps each side of the calibrated neutral point to the corresponding usable camera boundary, retaining an 8% tracking margin. Light adaptive damping operates in camera space, reducing near-rest jitter without delaying deliberate travel. FCEUmm D-pad thresholds remain hand-relative and unchanged. |
@@ -54,9 +58,9 @@ ROM while assembling the byte:
 | 0 | Detection signature | `$A0`, assembled by the ROM as `$5F` |
 | 1 | X | `$80` minimum, `$00` center, `$7F` maximum |
 | 2 | Y | `$80` minimum, `$00` center, `$7F` maximum |
-| 3 | Z candidate | `$00`; behavior not yet implemented |
-| 4 | Roll candidate | `$00`; behavior not yet implemented |
-| 5 | Finger/gesture candidate | `$00`; behavior not yet implemented |
+| 3 | Signed Z/depth | `$00` neutral; forward camera motion maps toward `$81`; away maps positive |
+| 4 | Roll candidate | `$00`; deliberately neutral pending exact-ROM mapping |
+| 5 | Hand gesture | `$00` open, `$FF` fist, `$0F` index point |
 | 6 | Button | `$FF` neutral; `$82` Start confirmed |
 | 7–8 | Unknown | `$00`, preserved conservatively |
 | 9 | Validation terminator | `$3F` |
@@ -64,8 +68,10 @@ ROM while assembling the byte:
 The trace runner starts the exact ROM with the Power Glove attached, proves that
 native `$82` Start enters play, and holds each X/Y extreme for 120 frames. The
 captured screens place the Robo-Glove at left, center, right, bottom, center, and
-top respectively. Tracking-lost, uncalibrated, and stale phases then prove that
-the core returns X/Y center and no button instead of retaining the last sample.
+top respectively. Separate 60-frame phases then transmit open, fist, open,
+index-point, open, and fist-plus-forward-Z packets. Tracking-lost, uncalibrated,
+and stale phases prove that the core returns neutral axes, pose, and buttons
+instead of retaining the last sample.
 
 ## Latest-sample interface
 
@@ -76,8 +82,10 @@ for consumers. Format version 1 is a fixed 64-byte little-endian record containi
   - sample sequence and receiver-arrival monotonic timestamp;
   - signed normalized X, Y, Z, and roll axes;
   - detected and calibrated flags;
-  - four finger-flex levels;
-  - recognized-button mask and active-profile identifier;
+  - four compact finger-flex levels;
+  - recognized-button and compound-pose mask, including five-finger fist and
+    index-point decisions made by the shared recognizer;
+  - active-profile identifier;
   - reserved bytes that stay zero.
 
 The writer publishes an odd in-progress guard and then an even complete guard.
@@ -109,17 +117,20 @@ packet. Traces may contain gameplay timing but no camera imagery.
 
 ## Exact-ROM validation gate
 
-The exact-ROM software gate below passes for detection, Start, X/Y, safe
-neutralization, and the tested cabinet path. Repeat it before enabling the
+The exact-ROM software gate below passes for detection, Start, X/Y, Z and hand
+pose packet publication, safe neutralization, and the tested X/Y cabinet path.
+Live grab/throw, index-fire, and Power Punch behavior remains the next acceptance
+step. Repeat this gate before enabling the
 per-ROM emulator choice on another cabinet or after changing the core protocol:
 
   1. Record the ROM digest and retain the ROM outside release packages.
   2. Trace controller strobes and configuration writes from power-on through the game's detection decision.
   3. Prove the detection signature, packet boundary, bit order, and polling cadence from those traces.
-  4. Hold every field neutral, then vary X alone and Y alone through minimum, center, and maximum values.
-  5. Confirm repeatable continuous on-screen motion and out-of-range behavior without relying on visual impression alone.
-  6. Test stale samples, tracking loss, and unavailable calibration; all must immediately yield neutral native input.
-  7. Build the core on the RetroPie host under the separate name `lr-nestopia-powerglove`, verify the camera-to-receiver path, and only then create the per-ROM override.
+  4. Hold every field neutral, then vary X, Y, and Z independently through minimum, center, and maximum values.
+  5. Transmit open, fist, and index point independently, returning to open between each pose.
+  6. Confirm repeatable continuous movement plus grab/throw, Robo-Bullet, and fist-plus-forward Power Punch behavior without relying on packet logs alone.
+  7. Test stale samples, tracking loss, and unavailable calibration; all must immediately yield neutral native input.
+  8. Build the core on the RetroPie host under the separate name `lr-nestopia-powerglove`, verify the camera-to-receiver path, and only then create the per-ROM override.
 
 Keep an explicit FCEUmm per-ROM choice available. If native detection or tracking
 regresses, remove only the per-ROM override; the shared FCEUmm fallback remains
@@ -159,7 +170,7 @@ sudo python3 scripts/configure-super-glove-ball-core.py \
   --mode fceumm --apply
 ```
 
-To add those already-recognized controls to the native path, vary Z, rotation,
-one finger, and one button field at a time. Repeat the neutral baseline,
+To add the remaining already-recognized controls to the native path, vary wrist
+rotation and one button field at a time. Repeat the neutral baseline,
 single-variable trace, and observable in-game comparison. Preserve unknown bytes
 and timing behavior conservatively.

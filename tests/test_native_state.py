@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Verified native closed-hand and index-point pose flags.
 #   2026-09-04 - Added native latest-sample encoding and safety coverage.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -16,7 +17,8 @@ import unittest
 from pathlib import Path
 
 from powerglove_vision.native_state import (
-    BUTTON_MENU_GUARD, BUTTON_SELECT, PROFILE_SUPER_GLOVE_BALL, RECORD_SIZE,
+    BUTTON_CLOSED_HAND, BUTTON_INDEX_POINT, BUTTON_MENU_GUARD, BUTTON_SELECT,
+    PROFILE_SUPER_GLOVE_BALL, RECORD_SIZE,
     NativeStateWriter, decode_record, encode_record,
     monotonic_ns,
 )
@@ -29,7 +31,10 @@ class NativeStateTests(unittest.TestCase):
             "detected": True, "calibrated": True,
             "axes": {"x": -32767, "y": 123, "z": 32767, "roll": -456},
             "fingers": {"thumb": 0, "index": 1, "middle": 2, "ring": 3, "pinky": 3},
-            "buttons": {"select": True, "menu_guard": True},
+            "buttons": {
+                "select": True, "menu_guard": True,
+                "closed_hand": True, "index_point": True,
+            },
         }
 
     def test_record_is_fixed_versioned_and_complete(self):
@@ -39,7 +44,10 @@ class NativeStateTests(unittest.TestCase):
         self.assertEqual(decoded["sequence"], 42)
         self.assertEqual(decoded["axes"]["x"], -32767)
         self.assertEqual(decoded["fingers"], {"thumb": 0, "index": 1, "middle": 2, "ring": 3})
-        self.assertEqual(decoded["buttons"], BUTTON_SELECT | BUTTON_MENU_GUARD)
+        self.assertEqual(
+            decoded["buttons"],
+            BUTTON_SELECT | BUTTON_MENU_GUARD | BUTTON_CLOSED_HAND | BUTTON_INDEX_POINT,
+        )
         self.assertEqual(decoded["profile"], PROFILE_SUPER_GLOVE_BALL)
 
     def test_odd_or_mismatched_guard_is_rejected(self):

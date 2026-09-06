@@ -19,15 +19,15 @@ the model, changing game mappings, or exposing raw thresholds during normal use.
 
 The cabinet supports two Super Glove Ball paths. `lr-fceumm` is the complete,
 standard-joystick fallback and remains the safe default. The separately named
-`lr-nestopia-powerglove` core supplies native absolute X/Y coordinates; exact-ROM
-traces and deterministic headless tests confirm detection, Start, four-direction
-activation/release, small continuous movement, and safe neutralization. Shared
-camera recognition for depth, wrist roll, finger curls, and action gestures is
-also confirmed and used by FCEUmm profiles. Only their encoding into Super Glove
-Ball's native packet remains deliberately neutral until in-game trace evidence
-identifies the corresponding fields. Live cabinet sessions confirm native Start,
-corrected Y orientation, controllable full-field X/Y movement, and low-lag
-stabilization; further play testing can refine feel without changing the packet contract.
+`lr-nestopia-powerglove` core supplies native absolute X/Y and Z coordinates plus
+open-hand, closed-hand/fist, and index-point states. Exact-ROM traces and
+deterministic headless tests confirm their packet bytes alongside detection,
+Start, four-direction activation/release, small continuous movement, and safe
+neutralization. Live cabinet sessions already confirm native Start, corrected Y
+orientation, controllable full-field X/Y movement, and low-lag stabilization;
+grab/throw, index fire, and fist-plus-forward Power Punch are now connected for
+cabinet validation. Native wrist rotation and the remaining action-button codes
+stay neutral until exact-ROM testing confirms them.
 
 ## Choose a guide
 
@@ -180,10 +180,11 @@ The same responsive mapping remains the explicit FCEUmm fallback. Headless tests
 using the same exact ROM show that both paths visibly activate and release every
 direction by frame 3. Their semantics differ: FCEUmm supplies held digital
 directions, while the native core supplies an absolute target position. The
-native path has passed exact-ROM detection, Start, continuous X/Y, and safe
-neutralization tests. Depth, roll, finger, and action recognition are confirmed
-in the shared layer and FCEUmm mappings; only their still-unmapped native packet
-fields remain neutral. See the [native compatibility record](docs/super-glove-ball-native.md).
+native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
+open/fist/index packet, and safe-neutralization tests. The three native hand
+states are connected for grab/throw, index fire, and fist-plus-forward Power
+Punch cabinet validation. Wrist rotation and remaining native action-button
+codes stay neutral. See the [native compatibility record](docs/super-glove-ball-native.md).
 
 The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that the
 other listed games consume standard NES controller bits. They continue to use

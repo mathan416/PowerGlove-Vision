@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Verified native fist and index-point recognition states.
 #   2026-09-05 - Verified two-frame, motion-confirmed push and pull recognition.
 #   2026-09-05 - Verified Menu Guard easing remains isolated from general curls.
 #   2026-09-05 - Verified the eased thumb-only B pose remains distinct from Closed Hand.
@@ -121,6 +122,31 @@ class GestureTests(unittest.TestCase):
         observation = hand(1., index_curl=.4)
         engine.update(observation)
         self.assertFalse(engine.curl_feedback(observation)["index"])
+
+    def test_super_glove_ball_publishes_fist_open_and_index_point(self):
+        """Native poses use all five shared finger switches and release immediately."""
+        engine = calibrated_engine("super_glove_ball")
+        fist = engine.update(hand(
+            .10, thumb_curl=.8, index_curl=.8, middle_curl=.8,
+            ring_curl=.8, pinky_curl=.8,
+        ))
+        self.assertTrue(fist.buttons["closed_hand"])
+        self.assertFalse(fist.buttons["index_point"])
+
+        opened = engine.update(hand(.20))
+        self.assertFalse(opened.buttons["closed_hand"])
+        self.assertFalse(opened.buttons["index_point"])
+
+        pointing = engine.update(hand(
+            .30, index_curl=.1, middle_curl=.8, ring_curl=.8, pinky_curl=.8,
+        ))
+        self.assertFalse(pointing.buttons["closed_hand"])
+        self.assertTrue(pointing.buttons["index_point"])
+
+        ambiguous = engine.update(hand(
+            .40, index_curl=.40, middle_curl=.8, ring_curl=.8, pinky_curl=.8,
+        ))
+        self.assertFalse(ambiguous.buttons["index_point"])
 
     def test_comfortable_v_requires_both_curled_and_both_straight_fingers(self):
         pose = dict(index_curl=.23, middle_curl=.22, ring_curl=.50, pinky_curl=.45)

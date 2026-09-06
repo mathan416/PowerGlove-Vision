@@ -12,6 +12,12 @@ faster inference for more responsive play.
 
 ### Changed
 
+- Connected Super Glove Ball's native open hand, closed hand/fist, index-point,
+  and calibrated signed-Z packet fields. The UNO Q publishes five-finger compound
+  recognition explicitly; the custom Nestopia core emits `$00`, `$FF`, `$0F`,
+  and absolute depth for throw, grab, Robo-Bullet, and fist-plus-forward Power
+  Punch validation. Exact-ROM headless traces verify the ten-byte packet values;
+  wrist rotation and remaining native button codes stay neutral.
 - Replaced Glove Academy's threshold-first Tune panel with a Pixel Pal-guided
   personalization wizard. Families choose the problem, confirm clear framing,
   record gesture-specific steps, pass a two-use preview test, and then save only

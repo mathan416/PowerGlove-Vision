@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added open, fist, index-point, and Power Punch packet phases.
 #   2026-09-04 - Added deterministic exact-ROM native packet tracing.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -213,6 +214,13 @@ def phase_state(name: str) -> dict:
         state["axes"]["y"] = 32767
     elif name == "start":
         state["buttons"]["start"] = True
+    elif name == "fist":
+        state["buttons"]["closed_hand"] = True
+    elif name == "index_point":
+        state["buttons"]["index_point"] = True
+    elif name == "power_punch":
+        state["axes"]["z"] = 32767
+        state["buttons"]["closed_hand"] = True
     elif name == "tracking_lost":
         state["detected"] = False
     elif name == "uncalibrated":
@@ -296,6 +304,13 @@ def run(args: argparse.Namespace) -> dict:
             ("y_min", 120),
             ("y_center", 120),
             ("y_max", 120),
+            ("open_hand", 60),
+            ("fist", 60),
+            ("open_after_fist", 60),
+            ("index_point", 60),
+            ("open_after_point", 60),
+            ("power_punch", 60),
+            ("open_after_punch", 60),
             ("tracking_lost", 30),
             ("uncalibrated", 30),
             ("stale", 30),

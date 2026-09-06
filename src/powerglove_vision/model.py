@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Included neutral native hand-pose states in released samples.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -104,6 +105,9 @@ class ControllerState:
             detected=False,
             confidence=0.0,
             calibrated=calibrated,
-            buttons={"a": False, "b": False, "start": False, "select": False},
+            buttons={
+                "a": False, "b": False, "start": False, "select": False,
+                "closed_hand": False, "index_point": False,
+            },
             fingers={name: 0 for name in ("thumb", "index", "middle", "ring", "pinky")},
         )

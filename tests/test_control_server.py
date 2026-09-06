@@ -177,7 +177,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Pixel Pal&#x27;s Extra-Digit Hunt", page)
         self.assertIn(b"<details class=extra-digit-answer>", page)
         self.assertIn(b"<summary>Reveal Pixel Pal's answer</summary>", page)
-        self.assertIn(b"Pixel Pal&#x27;s answer: 7 six-digit hands.", page)
+        self.assertIn(b"Pixel Pal&#x27;s answer: 9 six-digit hands.", page)
 
         programs = help_document_page("programs")
         self.assertIsNotNone(programs)

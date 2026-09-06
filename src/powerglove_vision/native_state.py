@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added native closed-hand and index-point recognition flags.
 #   2026-09-04 - Added a guarded read-only latest-sample record for custom Nestopia.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -34,6 +35,8 @@ BUTTON_START = 1 << 2
 BUTTON_SELECT = 1 << 3
 BUTTON_GLOVE_ZAP = 1 << 4
 BUTTON_MENU_GUARD = 1 << 5
+BUTTON_CLOSED_HAND = 1 << 6
+BUTTON_INDEX_POINT = 1 << 7
 
 PROFILE_OTHER = 0
 PROFILE_SUPER_GLOVE_BALL = 1
@@ -67,7 +70,8 @@ def encode_record(state: dict, guard: int, arrived_ns: int | None = None) -> byt
         bit for name, bit in (
             ("a", BUTTON_A), ("b", BUTTON_B), ("start", BUTTON_START),
             ("select", BUTTON_SELECT), ("glove_zap", BUTTON_GLOVE_ZAP),
-            ("menu_guard", BUTTON_MENU_GUARD),
+            ("menu_guard", BUTTON_MENU_GUARD), ("closed_hand", BUTTON_CLOSED_HAND),
+            ("index_point", BUTTON_INDEX_POINT),
         ) if buttons.get(name)
     )
     profile = PROFILE_SUPER_GLOVE_BALL if state.get("profile") == "super_glove_ball" else PROFILE_OTHER

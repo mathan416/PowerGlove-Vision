@@ -137,8 +137,12 @@ complete wall of tiles, and follow the revealed arrows through the maze.
 | Do this | See it | Controller result |
 | --- | --- | --- |
 | Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | FCEUmm: held digital steering. Native core: absolute continuous X/Y. |
-| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | FCEUmm: A, move the glove into the room. Recognition is confirmed; its native Super Glove Ball packet field is not yet mapped in-game. |
-| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | FCEUmm: B, punch, grab, or launch a new ball. Recognition is confirmed; its native Super Glove Ball packet field is not yet mapped in-game. |
+| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | FCEUmm: A, move the glove into the room. |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | FCEUmm: B, punch, grab, or launch a new ball. |
+| Open hand | <img src="images/gestures/actions/show-your-hand.png" alt="Open hand" width="72"> | Native core: release or throw a held ball. |
+| Close hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="72"> | Native core: grab or catch the ball. |
+| Point index; curl the other three fingers | <img src="images/gestures/actions/keep-index-straight.png" alt="Point with the index finger while the other fingers are curled" width="72"> | Native core: fire a Robo-Bullet. |
+| Close hand and push forward | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="68"> <img src="images/gestures/actions/push-toward-camera.png" alt="Push toward the camera" width="68"> | Native core: Power Punch. |
 | Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause; native Start is confirmed. |
 | Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | FCEUmm: Select, doorway or Robo-Bullet action. Native Select remains unconfirmed. |
 
@@ -146,8 +150,10 @@ complete wall of tiles, and follow the revealed arrows through the maze.
 to take the exit. The separately named native Nestopia core has passed exact-ROM
 detection, native Start, continuous X/Y, four-direction activation/release, and
 safe-neutral tests. The same-ROM comparison confirms FCEUmm remains a pure
-standard-joypad session. Use FCEUmm for complete actions while native finger and
-remaining button fields are still being established.
+standard-joypad session. Native open/fist/index and depth packets are now
+connected; confirm grab/throw, index fire, and Power Punch during cabinet play.
+Use FCEUmm whenever you want the fully established fallback while native wrist
+rotation and remaining button codes are still being validated.
 
 **First round:**
 
@@ -506,9 +512,10 @@ accidentally open or pause a game menu.
 
 <img src="images/gestures/v2/pixel-pal.png" alt="Pixel Pal reveals the Extra-Digit Hunt answer" width="180">
 
-**Pixel Pal's answer: 7 six-digit hands.**
+**Pixel Pal's answer: 9 six-digit hands.**
 
 They appear once each in the Bad Street Brawler, Joust, Defender II, Sesame
-Street 1-2-3, and Gun Smoke play cards, once in the Glove Academy closed-hand
-table, and once in the **Start with A, D, and H** table. Every appearance counts,
-even when the same artwork returns.
+Street 1-2-3, and Gun Smoke play cards; twice in the native Super Glove Ball
+gesture table; once in the Glove Academy closed-hand table; and once in the
+**Start with A, D, and H** table. Every appearance counts, even when the same
+artwork returns.

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Required native depth, fist, and index-point packet mapping.
 #   2026-09-05 - Distinguished confirmed recognition from unmapped native fields.
 #   2026-09-04 - Required installed records to identify the exact local patch.
 #   2026-09-04 - Added isolation, protocol evidence, and distribution checks.
@@ -49,6 +50,12 @@ class NativeCoreTests(unittest.TestCase):
             "glove.distance = 0",
             "glove.wrist = 0",
             "GESTURE_OPEN",
+            "sample.z * 127 / 32767",
+            "sample.buttons & (1 << 6)",
+            "GESTURE_FIST",
+            "sample.buttons & (1 << 7)",
+            "GESTURE_FINGER",
+            "buffer[3] = static_cast<byte>(glove.distance)",
             "POWERGLOVE_TRACE",
             "PGV read bit=",
             "PGV config/write bit=",
@@ -62,13 +69,17 @@ class NativeCoreTests(unittest.TestCase):
         record = (ROOT / "docs/super-glove-ball-native.md").read_text()
         self.assertIn("NESdev material is a source of testable hypotheses", record)
         self.assertIn("Detection signature, packet length, boundaries, and bit order | Confirmed", record)
+        self.assertIn("Native Z encoding | Packet mapping confirmed headlessly", record)
         self.assertIn(
-            "Native packet encoding for Z, wrist rotation, finger state, and action buttons | "
-            "Not yet mapped in-game; deliberately neutral",
+            "Native open, fist, and index-point encoding | Packet mapping confirmed headlessly",
             record,
         )
         self.assertIn(
-            "Camera recognition and FCEUmm output for depth, roll, fingers, and actions are confirmed",
+            "Native wrist rotation and remaining action buttons | Not yet mapped in-game",
+            record,
+        )
+        self.assertIn(
+            "Shared five-finger recognition determines compound poses before transmission",
             record,
         )
         self.assertIn("explicit FCEUmm", record)
@@ -77,7 +88,8 @@ class NativeCoreTests(unittest.TestCase):
         runner = (ROOT / "scripts/run-nestopia-powerglove-trace.py").read_text()
         for evidence in (
             "rom_sha256", "trace_evidence", '"tracking_lost"',
-            '"uncalibrated"', '"stale"', "packet_values",
+            '"uncalibrated"', '"stale"', '"fist"', '"index_point"',
+            '"power_punch"', "packet_values",
         ):
             self.assertIn(evidence, runner)
 
@@ -90,11 +102,11 @@ class NativeCoreTests(unittest.TestCase):
         self.assertIn('POWERGLOVE-VISION-CHANGES.md', installer)
         self.assertIn("GNU General Public License, version 2", notice)
         self.assertIn("not a compiled core", notice)
-        self.assertIn("6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec", notice)
+        self.assertIn("3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397", notice)
         self.assertIn("Martin Freij", changes)
         self.assertIn("leaves it byte-for-byte unchanged", changes)
         self.assertIn("camera-to-Nestopia Y orientation", changes)
-        self.assertIn("6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec", changes)
+        self.assertIn("3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397", changes)
 
     def test_patch_does_not_remove_upstream_attribution(self):
         patch = (ROOT / "native/nestopia-powerglove/nestopia-powerglove.patch").read_text()

@@ -114,7 +114,7 @@ license does not replace the license of Nestopia or the resulting modified core.
 | Pinned revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
 | Upstream license | GNU General Public License, version 2 |
 | Local modification | `native/nestopia-powerglove/nestopia-powerglove.patch` |
-| Patch SHA-256 | `6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec` |
+| Patch SHA-256 | `3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397` |
 | Modified upstream files | `libretro/libretro.cpp`; `source/core/input/NstInpPowerGlove.cpp` |
 | Modification ledger | `native/nestopia-powerglove/CHANGES.md` |
 | Build recipe | `scripts/build-nestopia-powerglove.sh` |
@@ -146,7 +146,8 @@ The patch registers a separately named **Power Glove Vision** controller and
 identifies the library as **Nestopia PowerGlove**. Invalid, stale, uncalibrated,
 lost-tracking, or wrong-profile samples are neutralized. The compatibility
 record in [Super Glove Ball native compatibility](super-glove-ball-native.md)
-separates exact-ROM-confirmed behavior from fields that remain unknown.
+separates exact-ROM-confirmed X/Y/Z and hand-pose packet behavior from wrist and
+button fields that remain unmapped.
 
 The local patch changes only `libretro/libretro.cpp` and
 `source/core/input/NstInpPowerGlove.cpp`. SHA-256 values for both pristine
@@ -194,7 +195,7 @@ Before changing the Nestopia revision or native patch:
   1. Select an exact upstream commit from the official libretro Nestopia repository. Record the commit, upstream license, affected pristine-file SHA-256 values, and new patch SHA-256 in this document and `native/nestopia-powerglove/CHANGES.md`.
   2. Update the identical revision pin in `scripts/build-nestopia-powerglove.sh`, the native-core README, the modification ledger, tests, and compatibility/benchmark documents. Do not use a moving branch or tag as the build identity.
   3. Rebase `native/nestopia-powerglove/nestopia-powerglove.patch` onto a clean checkout. Preserve all upstream headers and notices. The guarded build must still reject changes to the original `NstInpPowerGlove.cpp` header.
-  4. Run the native-core, state-bridge, installer, selection, exact-ROM trace, safe-neutral, and direction-response tests. Reconfirm packet length, detection, bit order, boundaries, timing, X/Y orientation, Start behavior, tracking-loss release, and the explicit FCEUmm rollback on the cabinet.
+  4. Run the native-core, state-bridge, installer, selection, exact-ROM trace, safe-neutral, and direction-response tests. Reconfirm packet length, detection, bit order, boundaries, timing, X/Y/Z orientation, open/fist/index values, Start behavior, tracking-loss release, and the explicit FCEUmm rollback on the cabinet.
   5. Build the RetroPie installation archive and verify it contains the patch, build/install recipes, modification ledger, and third-party notices, but no ROM or compiled core. If publishing a binary separately, provide the exact complete corresponding source and GPL materials described above.
 
 When the benchmark FCEUmm pin changes, record the new official revision in the
