@@ -60,16 +60,16 @@ sockets. These functions are kept separate from camera inference.
 
 ![Nine-stage flow from a camera frame to the game response](images/architecture/input.png)
 
-  1. The camera layer opens a UVC capture source. A dedicated OpenCV capture
+1. The camera layer opens a UVC capture source. A dedicated OpenCV capture
      thread drains it continuously and publishes only the newest frame; older
      unprocessed frames are superseded rather than queued.
-  2. MediaPipe identifies the hand landmarks. The tracker produces a `HandObservation`: detection, confidence, timestamp, palm position and scale, wrist roll, and normalized finger curls.
-  3. The gesture engine compares that observation with the saved neutral calibration and effective thresholds. Directions are relative to the calibrated palm; apparent hand-size change supplies forward/backward movement.
-  4. Shared activation/release states and held menu poses feed the selected profile's mapping. The result is a `ControllerState`, including buttons, D-pad, axes, finger values, events, sequence, and tracking/calibration metadata.
-  5. The worker sends the state only if controller delivery is enabled and neither practice nor tuning is active.
-  6. The sender encodes a bounded JSON datagram with a session identifier and shared token, then sends it to RetroPie over UDP 55355.
-  7. The receiver checks protocol, token, and sequence. It creates the real virtual controller when the first accepted packet arrives.
-  8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
+2. MediaPipe identifies the hand landmarks. The tracker produces a `HandObservation`: detection, confidence, timestamp, palm position and scale, wrist roll, and normalized finger curls.
+3. The gesture engine compares that observation with the saved neutral calibration and effective thresholds. Directions are relative to the calibrated palm; apparent hand-size change supplies forward/backward movement.
+4. Shared activation/release states and held menu poses feed the selected profile's mapping. The result is a `ControllerState`, including buttons, D-pad, axes, finger values, events, sequence, and tracking/calibration metadata.
+5. The worker sends the state only if controller delivery is enabled and neither practice nor tuning is active.
+6. The sender encodes a bounded JSON datagram with a session identifier and shared token, then sends it to RetroPie over UDP 55355.
+7. The receiver checks protocol, token, and sequence. It creates the real virtual controller when the first accepted packet arrives.
+8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
 The worker also publishes diagnostic state after inference. Browser video is
 submitted at most five times per second and only while a stream consumer is

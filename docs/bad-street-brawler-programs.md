@@ -15,10 +15,10 @@ For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE
 
 ## Choose a program and try it
 
-  1. Use the selector below to choose a program for your game or experiment.
-  2. Select that profile on Dashboard, wait for tracking, and check its gestures with controller delivery stopped.
-  3. Select **Start controller** when ready to play. Use the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game objectives and first-round exercises.
-  4. If the mapping suits another game, add its exact filename to the registry using [Register games and select profiles](CONFIGURATION_REFERENCE.md#register-games-and-select-profiles).
+1. Use the selector below to choose a program for your game or experiment.
+2. Select that profile on Dashboard, wait for tracking, and check its gestures with controller delivery stopped.
+3. Select **Start controller** when ready to play. Use the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game objectives and first-round exercises.
+4. If the mapping suits another game, add its exact filename to the registry using [Register games and select profiles](CONFIGURATION_REFERENCE.md#register-games-and-select-profiles).
 
 ![Dashboard profile selector and controller diagnostics](images/debug-dashboard.png)
 
@@ -205,11 +205,11 @@ the previous game's mapping does not remain active.
 
 ## Practise safely
 
-  1. Open `http://UNO-Q-NAME.local:8088/learn`.
-  2. Keep your whole hand visible. Select **Calibrate** on first use or when your resting position produces unwanted movement, then hold still.
-  3. Move slowly until the intended gesture is recognized consistently.
-  4. Open Debug to compare hand motion with generated controller output.
-  5. Start controller delivery only when ready to play.
+1. Open `http://UNO-Q-NAME.local:8088/learn`.
+2. Keep your whole hand visible. Select **Calibrate** on first use or when your resting position produces unwanted movement, then hold still.
+3. Move slowly until the intended gesture is recognized consistently.
+4. Open Debug to compare hand motion with generated controller output.
+5. Start controller delivery only when ready to play.
 
 Glove Academy mode works without RetroPie and automatically starts the camera while
 suppressing controller output. This also works while **Gestures off** is the

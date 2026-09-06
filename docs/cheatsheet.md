@@ -52,9 +52,9 @@ All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#co
 
 ### Download and package on your computer
 
-  1. Install Arduino App Lab on your development computer. Run `command -v git python3 bash rsync zip` and install any missing tools.
-  2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `main` branch and build its UNO Q installation ZIP.
-  3. Confirm that verification reports **App Lab installation ZIP verified**.
+1. Install Arduino App Lab on your development computer. Run `command -v git python3 bash rsync zip` and install any missing tools.
+2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `main` branch and build its UNO Q installation ZIP.
+3. Confirm that verification reports **App Lab installation ZIP verified**.
 
 ```sh
 git clone --branch main https://github.com/mathan416/PowerGlove-Vision.git
@@ -65,9 +65,9 @@ python3 scripts/verify-app-lab-package.py
 
 ### Prepare the UNO Q
 
-  1. Connect the UNO Q by USB and complete its setup in App Lab. Join the same network as RetroPie and record the board's hostname.
-  2. Import `output/app-lab/PowerGlove-Vision-Uno-Q.zip` from your computer's checkout. Open **PowerGlove Vision** and select **Run** to transfer and start the app and matrix sketch.
-  3. Connect the camera through the powered USB hub. Follow the [Installation Guide](INSTALL_README.md) if you need help with the initial board setup.
+1. Connect the UNO Q by USB and complete its setup in App Lab. Join the same network as RetroPie and record the board's hostname.
+2. Import `output/app-lab/PowerGlove-Vision-Uno-Q.zip` from your computer's checkout. Open **PowerGlove Vision** and select **Run** to transfer and start the app and matrix sketch.
+3. Connect the camera through the powered USB hub. Follow the [Installation Guide](INSTALL_README.md) if you need help with the initial board setup.
 
 Open a terminal on the UNO Q, or connect from your computer:
 
@@ -167,12 +167,12 @@ limitation below.
 
 Complete both machine installations above, then use the one-time-code method:
 
-  1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Its code expires after two minutes.
-  2. In your browser, open `https://UNO-Q-NAME.local:8443/setup` using your UNO Q's actual hostname.
-  3. Enter your RetroPie hostname and the 20-character code printed by the pairing command.
-  4. Select **Prepare one-time code**. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint.
-  5. If they match, select the certificate confirmation checkbox, enter the six-digit PIN displayed after `PN` on the matrix, and select **Complete pairing**.
-  6. On RetroPie, run `sudo systemctl status powerglove-receiver.service` and confirm that the receiver is active.
+1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Its code expires after two minutes.
+2. In your browser, open `https://UNO-Q-NAME.local:8443/setup` using your UNO Q's actual hostname.
+3. Enter your RetroPie hostname and the 20-character code printed by the pairing command.
+4. Select **Prepare one-time code**. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint.
+5. If they match, select the certificate confirmation checkbox, enter the six-digit PIN displayed after `PN` on the matrix, and select **Complete pairing**.
+6. On RetroPie, run `sudo systemctl status powerglove-receiver.service` and confirm that the receiver is active.
 
 Password pairing is available on the same secure page when RetroPie accepts SSH
 password login. Select **Prepare password pairing**, complete the same physical
@@ -272,10 +272,10 @@ The app retries camera initialization automatically. Keep **Camera** set to
 
 ### Place the camera before calibrating
 
-  1. Put the camera in its normal cabinet position before calibration.
-  2. Stand or sit at your normal playing distance. Keep your comfortable center and the full area you intend to reach inside the camera view, with room at every edge.
-  3. Hold a relaxed open hand at that center and select **Calibrate**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
-  4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable UNO Q work and game stutter.
+1. Put the camera in its normal cabinet position before calibration.
+2. Stand or sit at your normal playing distance. Keep your comfortable center and the full area you intend to reach inside the camera view, with room at every edge.
+3. Hold a relaxed open hand at that center and select **Calibrate**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
+4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable UNO Q work and game stutter.
 
 Recalibrate after moving the camera, changing your playing distance, or changing
 your normal center. Returning to the same position produces a similar reference,
@@ -325,10 +325,10 @@ Use **Active profile** on Dashboard to choose the controls for your current
 session. Use **Startup profile** on Setup to choose the profile the app loads
 when it starts. Available choices are:
 
-  - Bad Street Brawler
-  - Super Glove Ball
-  - Programs A–I
-  - Gestures off
+- Bad Street Brawler
+- Super Glove Ball
+- Programs A–I
+- Gestures off
 
 ### Wait for the camera to start
 
@@ -391,8 +391,8 @@ the games use standard NES controller input through FCEUmm.
 Open RetroPie's launch menu while starting Super Glove Ball and choose the
 emulator for that ROM. RetroPie remembers the per-ROM choice.
 
-  - **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the usable camera field. Exact-ROM tests confirm controller detection, native Start, X/Y, signed Z, and open/fist/index packet values. Grab/throw, index fire, and fist-plus-forward Power Punch are connected for cabinet validation. Wrist rotation and remaining native button codes stay neutral.
-  - **`lr-fceumm`** remains the complete fallback. It stays in standard joystick mode for the whole session and uses the same responsive movement, finger gestures, and buttons as other FCEUmm games.
+- **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the usable camera field. Exact-ROM tests confirm controller detection, native Start, X/Y, signed Z, and open/fist/index packet values. Grab/throw, index fire, and fist-plus-forward Power Punch are connected for cabinet validation. Wrist rotation and remaining native button codes stay neutral.
+- **`lr-fceumm`** remains the complete fallback. It stays in standard joystick mode for the whole session and uses the same responsive movement, finger gestures, and buttons as other FCEUmm games.
 
 Choose FCEUmm again from the same launch menu whenever you want to compare the
 fallback. A failed or incomplete native setup does not remove it.
@@ -417,12 +417,12 @@ full movement region visible, and then calibrate.
 
 ### Try a profile in a game
 
-  1. Launch an unregistered NES or Famicom game. PowerGlove Vision should show **Gestures off**.
-  2. Open Dashboard and choose **A: Pinball**, **D: Challenge**, **H: General**, or another profile.
-  3. Wait for the camera view. Hold your open hand in your comfortable resting position. This is your **neutral position**: the position the app treats as the center for movement.
-  4. If a direction remains active while your hand is at rest, select **Calibrate** and hold still. Also recalibrate after moving the camera or changing your playing position.
-  5. Select **Start controller** and test movement, actions, Start, and Select in the game.
-  6. Select **Stop controller** before adjusting the camera or testing another mapping.
+1. Launch an unregistered NES or Famicom game. PowerGlove Vision should show **Gestures off**.
+2. Open Dashboard and choose **A: Pinball**, **D: Challenge**, **H: General**, or another profile.
+3. Wait for the camera view. Hold your open hand in your comfortable resting position. This is your **neutral position**: the position the app treats as the center for movement.
+4. If a direction remains active while your hand is at rest, select **Calibrate** and hold still. Also recalibrate after moving the camera or changing your playing position.
+5. Select **Start controller** and test movement, actions, Start, and Select in the game.
+6. Select **Stop controller** before adjusting the camera or testing another mapping.
 
 This Dashboard choice is temporary. It does not change the saved startup profile
 or the game's automatic profile assignment.
@@ -432,11 +432,11 @@ or the game's automatic profile assignment.
 Once a profile works well, register the game **on RetroPie**. The launch hook
 reads `/etc/powerglove/games.json` to choose the profile each time a game starts.
 
-  1. Find the game file in your RetroPie ROM folder, usually `~/RetroPie/roms/nes/`. Record its complete filename, including the extension. For example, `/home/pi/RetroPie/roms/nes/My Game (USA).zip` has the filename `My Game (USA).zip`. Use the archive filename when launching an archive, not the filename inside it.
-  2. Open **Setup → Games** on the UNO Q website and select **Download backup**.
-  3. Edit the loaded JSON in the Games section.
-  4. Add the filename and your chosen profile inside the existing `games` object. Keep all existing entries, separate entries with commas, and leave no comma after the last entry.
-  5. Select **Validate**, then **Save**. Wait for verified save confirmation and restart the game. **Restore previous save** reverses the last saved edit.
+1. Find the game file in your RetroPie ROM folder, usually `~/RetroPie/roms/nes/`. Record its complete filename, including the extension. For example, `/home/pi/RetroPie/roms/nes/My Game (USA).zip` has the filename `My Game (USA).zip`. Use the archive filename when launching an archive, not the filename inside it.
+2. Open **Setup → Games** on the UNO Q website and select **Download backup**.
+3. Edit the loaded JSON in the Games section.
+4. Add the filename and your chosen profile inside the existing `games` object. Keep all existing entries, separate entries with commas, and leave no comma after the last entry.
+5. Select **Validate**, then **Save**. Wait for verified save confirmation and restart the game. **Restore previous save** reverses the last saved edit.
 
 This example shows the required structure. Replace the example filename with
 your actual filename and merge the entry into your existing file:
@@ -470,11 +470,11 @@ the UNO Q must publish UDP `55356`, and the registry must match the exact archiv
 
 ### Tune a gesture
 
-  1. Open Learn, show your whole hand, and switch on **Tune gestures**.
-  2. Tell Pixel Pal whether this is a new hand, a hard gesture, an accidental gesture, or an off-centre play area.
-  3. Follow one prompt at a time. When tracking has been clear and steady for one second, select **I'm ready** and follow the countdown.
-  4. Try the preview twice, release it twice, and remain neutral for three seconds.
-  5. Save the personalization when the guided check passes. Manual values and selective reset are under **Advanced**.
+1. Open Learn, show your whole hand, and switch on **Tune gestures**.
+2. Tell Pixel Pal whether this is a new hand, a hard gesture, an accidental gesture, or an off-centre play area.
+3. Follow one prompt at a time. When tracking has been clear and steady for one second, select **I'm ready** and follow the countdown.
+4. Try the preview twice, release it twice, and remain neutral for three seconds.
+5. Save the personalization when the guided check passes. Manual values and selective reset are under **Advanced**.
 
 Controller delivery stays paused during tuning. Start it explicitly from Dashboard
 when ready to play. See [Tune gesture sensitivity](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity)

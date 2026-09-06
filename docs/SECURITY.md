@@ -15,17 +15,17 @@ shutdown protections and should be upgraded before troubleshooting them.
 Please do not publish credentials, pairing codes, tokens, private device
 configuration, or working exploit instructions in a public issue.
 
-  1. Open the repository's **Security** tab and look for private vulnerability reporting.
-  2. Submit a private report with the information below. Remove secrets from every attachment.
-  3. If private reporting is unavailable, open a minimal public issue asking for a private contact channel; include no exploit details or secrets.
+1. Open the repository's **Security** tab and look for private vulnerability reporting.
+2. Submit a private report with the information below. Remove secrets from every attachment.
+3. If private reporting is unavailable, open a minimal public issue asking for a private contact channel; include no exploit details or secrets.
 
 Include these details in the private report:
 
-  - the affected commit or release;
-  - the UNO Q, RetroPie, browser, and network environment involved;
-  - concise reproduction steps and the observed result;
-  - the security boundary that was crossed;
-  - logs or screenshots after removing tokens, passwords, pairing codes, local addresses, and unrelated personal information.
+- the affected commit or release;
+- the UNO Q, RetroPie, browser, and network environment involved;
+- concise reproduction steps and the observed result;
+- the security boundary that was crossed;
+- logs or screenshots after removing tokens, passwords, pairing codes, local addresses, and unrelated personal information.
 
 This project does not currently offer a bug bounty or a guaranteed response time.
 
@@ -41,12 +41,12 @@ treated as an Internet-facing service.
 
 The main protected assets are:
 
-  - the shared controller token;
-  - the UNO Q and RetroPie operating systems;
-  - the privileged `/dev/uinput` receiver;
-  - the physical pairing display and single-use PIN;
-  - the fixed-purpose UNO Q shutdown and USB-camera recovery helpers;
-  - the integrity of the App Lab installation ZIP, MediaPipe wheel, bundled or downloaded model, and Arduino dependencies.
+- the shared controller token;
+- the UNO Q and RetroPie operating systems;
+- the privileged `/dev/uinput` receiver;
+- the physical pairing display and single-use PIN;
+- the fixed-purpose UNO Q shutdown and USB-camera recovery helpers;
+- the integrity of the App Lab installation ZIP, MediaPipe wheel, bundled or downloaded model, and Arduino dependencies.
 
 The project does not attempt to protect a device after an attacker obtains root
 access, physical storage access, or control of the trusted local network and
@@ -156,12 +156,12 @@ if remote shutdown or camera recovery is not wanted.
 
 ## Dependency and release integrity
 
-  - The App Lab installation ZIP is generated and verified; it is not maintained as a changing source-controlled binary.
-  - The custom MediaPipe wheel's provenance and checksum are recorded in `THIRD_PARTY_COMPONENTS.md`.
-  - Google's Hand Landmarker model is installed from the bundled copy, with its pinned download as a fallback only when that copy is absent. Both paths must match the expected SHA-256 digest before atomic installation; the package verifier also checks the bundled model and license text.
-  - The optional Nestopia core is built from one pinned upstream commit and one checksum-recorded local patch. Its build rejects changes to Nestopia's original Power Glove license header, and installation keeps the upstream `COPYING` file and the local modification ledger beside the separately named core. Stock Nestopia and FCEUmm are not replaced.
-  - Arduino library versions are pinned in `sketch/sketch.yaml`.
-  - GitHub Actions rebuilds and inspects documentation and the App Lab installation ZIP on every pull request and push to `main` or `dev`.
+- The App Lab installation ZIP is generated and verified; it is not maintained as a changing source-controlled binary.
+- The custom MediaPipe wheel's provenance and checksum are recorded in `THIRD_PARTY_COMPONENTS.md`.
+- Google's Hand Landmarker model is installed from the bundled copy, with its pinned download as a fallback only when that copy is absent. Both paths must match the expected SHA-256 digest before atomic installation; the package verifier also checks the bundled model and license text.
+- The optional Nestopia core is built from one pinned upstream commit and one checksum-recorded local patch. Its build rejects changes to Nestopia's original Power Glove license header, and installation keeps the upstream `COPYING` file and the local modification ledger beside the separately named core. Stock Nestopia and FCEUmm are not replaced.
+- Arduino library versions are pinned in `sketch/sketch.yaml`.
+- GitHub Actions rebuilds and inspects documentation and the App Lab installation ZIP on every pull request and push to `main` or `dev`.
 
 Changing a download URL, checksum, dependency source, pairing primitive,
 network binding, file permission, or privileged service requires focused review

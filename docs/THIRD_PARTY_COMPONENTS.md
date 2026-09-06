@@ -31,10 +31,10 @@ PowerGlove Vision repackaged the upstream wheel for its headless UNO Q worker.
 The Python package code and compiled MediaPipe binaries were not modified. The changes listed below were made when repackaging the wheel, and its
 `RECORD` file was rebuilt to reflect them:
 
-  - The `jax` dependency declaration was removed.
-  - The `jaxlib` dependency declaration was removed.
-  - The `opencv-contrib-python` dependency was replaced with `opencv-contrib-python-headless==4.10.0.84`.
-  - The upstream wheel's empty `mediapipe.libs` directory was omitted.
+- The `jax` dependency declaration was removed.
+- The `jaxlib` dependency declaration was removed.
+- The `opencv-contrib-python` dependency was replaced with `opencv-contrib-python-headless==4.10.0.84`.
+- The upstream wheel's empty `mediapipe.libs` directory was omitted.
 
 These changes avoid unnecessary JAX installation and GUI OpenCV dependencies
 on the UNO Q. The repacked wheel retains MediaPipe's Apache 2.0 license at
@@ -182,21 +182,21 @@ Before publishing a wheel or model update, complete these steps. The
 [command reference](CONFIGURATION_REFERENCE.md#build-inspect-or-maintain-project-files)
 explains the build and verification scripts.
 
-  1. Record the official source URL, version, license, size, and SHA-256 here.
-  2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
-  3. If repackaging another wheel, record every difference from upstream and retain its license files.
-  4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
-  5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the UNO Q before publishing the package.
+1. Record the official source URL, version, license, size, and SHA-256 here.
+2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
+3. If repackaging another wheel, record every difference from upstream and retain its license files.
+4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
+5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the UNO Q before publishing the package.
 
 ### Modified Nestopia core
 
 Before changing the Nestopia revision or native patch:
 
-  1. Select an exact upstream commit from the official libretro Nestopia repository. Record the commit, upstream license, affected pristine-file SHA-256 values, and new patch SHA-256 in this document and `native/nestopia-powerglove/CHANGES.md`.
-  2. Update the identical revision pin in `scripts/build-nestopia-powerglove.sh`, the native-core README, the modification ledger, tests, and compatibility/benchmark documents. Do not use a moving branch or tag as the build identity.
-  3. Rebase `native/nestopia-powerglove/nestopia-powerglove.patch` onto a clean checkout. Preserve all upstream headers and notices. The guarded build must still reject changes to the original `NstInpPowerGlove.cpp` header.
-  4. Run the native-core, state-bridge, installer, selection, exact-ROM trace, safe-neutral, and direction-response tests. Reconfirm packet length, detection, bit order, boundaries, timing, X/Y/Z orientation, open/fist/index values, Start behavior, tracking-loss release, and the explicit FCEUmm rollback on the cabinet.
-  5. Build the RetroPie installation archive and verify it contains the patch, build/install recipes, modification ledger, and third-party notices, but no ROM or compiled core. If publishing a binary separately, provide the exact complete corresponding source and GPL materials described above.
+1. Select an exact upstream commit from the official libretro Nestopia repository. Record the commit, upstream license, affected pristine-file SHA-256 values, and new patch SHA-256 in this document and `native/nestopia-powerglove/CHANGES.md`.
+2. Update the identical revision pin in `scripts/build-nestopia-powerglove.sh`, the native-core README, the modification ledger, tests, and compatibility/benchmark documents. Do not use a moving branch or tag as the build identity.
+3. Rebase `native/nestopia-powerglove/nestopia-powerglove.patch` onto a clean checkout. Preserve all upstream headers and notices. The guarded build must still reject changes to the original `NstInpPowerGlove.cpp` header.
+4. Run the native-core, state-bridge, installer, selection, exact-ROM trace, safe-neutral, and direction-response tests. Reconfirm packet length, detection, bit order, boundaries, timing, X/Y/Z orientation, open/fist/index values, Start behavior, tracking-loss release, and the explicit FCEUmm rollback on the cabinet.
+5. Build the RetroPie installation archive and verify it contains the patch, build/install recipes, modification ledger, and third-party notices, but no ROM or compiled core. If publishing a binary separately, provide the exact complete corresponding source and GPL materials described above.
 
 When the benchmark FCEUmm pin changes, record the new official revision in the
 benchmark document and rerun both the native and standard-joypad lanes. Normal

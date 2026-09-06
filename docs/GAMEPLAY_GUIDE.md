@@ -14,11 +14,11 @@ Select a profile on Dashboard, or open Glove Academy for practice. If you see
 Starting straight after a reboot can take longer. Wait until the camera view
 appears and **Calibrate** becomes available before continuing.
 
-  1. Stand where the camera can see your whole hand with a little room on every side.
-  2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
-  3. Wait for tracking to settle, then select **Start controller**.
-  4. Move your whole hand away from center for directions. Return to center to stop.
-  5. Make one gesture at a time. Clean poses beat frantic motion.
+1. Stand where the camera can see your whole hand with a little room on every side.
+2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
+3. Wait for tracking to settle, then select **Start controller**.
+4. Move your whole hand away from center for directions. Return to center to stop.
+5. Make one gesture at a time. Clean poses beat frantic motion.
 
 <img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
 
@@ -119,9 +119,9 @@ once-per-round availability. If Zap does not work, check the
 
 **First round:**
 
-  1. At the practice bag, try a thumb curl, a middle-finger curl, and a wrist roll separately.
-  2. Notice which move each gesture produces in this stage.
-  3. Enter the street and use one familiar move before adding combinations.
+1. At the practice bag, try a thumb curl, a middle-finger curl, and a wrist roll separately.
+2. Notice which move each gesture produces in this stage.
+3. Enter the street and use one familiar move before adding combinations.
 
 <!-- PAGEBREAK -->
 
@@ -157,9 +157,9 @@ rotation and remaining button codes are still being validated.
 
 **First round:**
 
-  1. Move the glove across the room with small hand movements.
-  2. Try the index and thumb actions separately so you can recognize their effects.
-  3. Keep the ball in play, then aim to clear one wall.
+1. Move the glove across the room with small hand movements.
+2. Try the index and thumb actions separately so you can recognize their effects.
+3. Keep the ball in play, then aim to clear one wall.
 
 <!-- PAGEBREAK -->
 
@@ -186,9 +186,9 @@ an enemy preparing a return engagement.
 
 **First round:**
 
-  1. Curl your index finger to practise a steady flap.
-  2. Move left and right while keeping your height.
-  3. Approach one rider from above, then collect the egg.
+1. Curl your index finger to practise a steady flap.
+2. Move left and right while keeping your height.
+3. Approach one rider from above, then collect the egg.
 
 <!-- PAGEBREAK -->
 
@@ -214,9 +214,9 @@ profile expects left/right rotation rather than eight-direction movement.
 
 **First round:**
 
-  1. Select Attack Control B at the title screen.
-  2. Keep your index straight and practise small wrist rolls in both directions.
-  3. Clear one formation before trying the pull-back bomb.
+1. Select Attack Control B at the title screen.
+2. Keep your index straight and practise small wrist rolls in both directions.
+3. Clear one formation before trying the pull-back bomb.
 
 <!-- PAGEBREAK -->
 
@@ -243,9 +243,9 @@ rolls trigger the smart-bomb action, so make them deliberate.
 
 **First round:**
 
-  1. Fly a short circuit with your wrist level.
-  2. Curl your thumb to fire while moving.
-  3. Track one abductor on the scanner; save deliberate wrist rolls for smart bombs.
+1. Fly a short circuit with your wrist level.
+2. Curl your thumb to fire while moving.
+3. Track one abductor on the scanner; save deliberate wrist rolls for smart bombs.
 
 <!-- PAGEBREAK -->
 
@@ -274,9 +274,9 @@ relaxed open hand between questions so one answer does not run into the next.
 
 **First round:**
 
-  1. Count the objects before making a gesture.
-  2. Move an open hand from the resting position for Yes, or close all fingers for No.
-  3. Return to a relaxed hand at the centre before the next question.
+1. Count the objects before making a gesture.
+2. Move an open hand from the resting position for Yes, or close all fingers for No.
+3. Return to a relaxed hand at the centre before the next question.
 
 <!-- PAGEBREAK -->
 
@@ -303,9 +303,9 @@ Use index-plus-push when you need the straight-ahead shot.
 
 **First round:**
 
-  1. Try an index curl for the right shot and a forward push for the left shot.
-  2. Combine them to fire straight ahead.
-  3. Walk while firing, then look for the wanted poster.
+1. Try an index curl for the right shot and a forward push for the left shot.
+2. Combine them to fire straight ahead.
+3. Walk while firing, then look for the wanted poster.
 
 <!-- PAGEBREAK -->
 
@@ -332,9 +332,9 @@ forward push for a clean burst when the road opens.
 
 **First round:**
 
-  1. Curl your index finger to accelerate and make small wrist rolls to steer.
-  2. Lower your hand to practise braking.
-  3. Use a forward push for turbo only when the road ahead is clear.
+1. Curl your index finger to accelerate and make small wrist rolls to steer.
+2. Lower your hand to practise braking.
+3. Use a forward push for turbo only when the road ahead is clear.
 
 <!-- PAGEBREAK -->
 
@@ -359,10 +359,10 @@ changing the ROM or emulator.
 
 ### Try a combination
 
-  1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
-  2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
-  3. Use **Calibrate** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended center and distance while 24 clear observations are collected, then select **Start controller** and return to the game. The same stance should produce a closely comparable—but not numerically identical—reference.
-  4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
+1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
+2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
+3. Use **Calibrate** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended center and distance while 24 clear observations are collected, then select **Start controller** and return to the game. The same stance should produce a closely comparable—but not numerically identical—reference.
+4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
 
 The selection is temporary. Starting or ending a game sends a new command
 that changes the profile or turns gestures off.
@@ -406,14 +406,14 @@ The profile descriptions are checked against the project's implemented gesture
 engine and tests. Game objectives and original control intent were summarized
 from the following historical instruction sources:
 
-  - [Mattel Power Glove instructions and Programs A-I](https://home.hiwaay.net/~lkseitz/cvg/power_glove.shtml)
-  - [Bad Street Brawler NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/bad_street_brawler.shtml)
-  - [Super Glove Ball NES instruction manual](https://www.digitpress.com/library/manuals/nes/Super%20Glove%20Ball.pdf)
-  - [Joust NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/joust.shtml)
-  - [Gyruss NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/gyruss.shtml)
-  - [Defender II NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/defender_2.shtml)
-  - [Gun Smoke NES gameplay reference](https://strategywiki.org/wiki/Gun.Smoke_%28NES%29/Gameplay)
-  - [Knight Rider NES instruction manual](https://www.retrogames.cz/manualy/NES/Knight_Rider_-_NES_-_Manual.pdf)
+- [Mattel Power Glove instructions and Programs A-I](https://home.hiwaay.net/~lkseitz/cvg/power_glove.shtml)
+- [Bad Street Brawler NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/bad_street_brawler.shtml)
+- [Super Glove Ball NES instruction manual](https://www.digitpress.com/library/manuals/nes/Super%20Glove%20Ball.pdf)
+- [Joust NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/joust.shtml)
+- [Gyruss NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/gyruss.shtml)
+- [Defender II NES instruction transcription](https://www.world-of-nintendo.com/manuals/nes/defender_2.shtml)
+- [Gun Smoke NES gameplay reference](https://strategywiki.org/wiki/Gun.Smoke_%28NES%29/Gameplay)
+- [Knight Rider NES instruction manual](https://www.retrogames.cz/manualy/NES/Knight_Rider_-_NES_-_Manual.pdf)
 
 The gesture drawings are original PowerGlove Vision project illustrations made
 for this guide. They deliberately avoid game screenshots, box art, characters,

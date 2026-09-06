@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept wrapped and loosely spaced Markdown list items together.
 #   2026-09-05 - Promoted the project overview PDF into technical documentation.
 #   2026-09-05 - Added a collapsed Pixel Pal answer reveal to illustrated guides.
 #   2026-09-03 - Added the built-in Help library and Markdown reading view.
@@ -484,8 +485,30 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
                 item = pattern.match(lines[index])
                 if item is None:
                     break
-                items.append(f"<li>{_inline(item.group(1))}</li>")
+                parts = [item.group(1).strip()]
                 index += 1
+                while index < len(lines) and lines[index].strip():
+                    continuation = lines[index]
+                    if _BULLET.match(continuation) or _NUMBERED.match(continuation):
+                        break
+                    if (
+                        continuation.startswith(("```", ">"))
+                        or continuation.lstrip().startswith("<")
+                        or _HEADING.match(continuation)
+                        or re.match(r"^\s*([-*_])(?:\s*\1){2,}\s*$", continuation)
+                    ):
+                        break
+                    if index + 1 < len(lines) and "|" in continuation and _TABLE_DIVIDER.match(lines[index + 1]):
+                        break
+                    parts.append(continuation.strip())
+                    index += 1
+                items.append(f"<li>{_inline(' '.join(parts))}</li>")
+                if index < len(lines) and not lines[index].strip():
+                    lookahead = index + 1
+                    if lookahead < len(lines) and pattern.match(lines[lookahead]):
+                        index = lookahead
+                        continue
+                    break
             tag = "ol" if ordered else "ul"
             blocks.append(f"<{tag}>{''.join(items)}</{tag}>")
             continue

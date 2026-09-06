@@ -327,10 +327,10 @@ sudo chmod 0640 /etc/powerglove/token
 Use this fallback only when neither browser pairing method works. Both machines
 must already have the software installed.
 
-  1. In App Lab, open the active application's private `data/device.json` and locate its `token` value.
-  2. On RetroPie, run `sudo nano /etc/powerglove/token`. Replace the file contents with that same value on one line, without quotation marks. Do not enter it as a shell command.
-  3. Save with Ctrl+O, confirm the filename, and exit with Ctrl+X. Apply the ownership and permission commands above.
-  4. Run `sudo systemctl restart powerglove-receiver.service`, then test controller delivery from Dashboard. Clear the token from your clipboard and close the private file afterward.
+1. In App Lab, open the active application's private `data/device.json` and locate its `token` value.
+2. On RetroPie, run `sudo nano /etc/powerglove/token`. Replace the file contents with that same value on one line, without quotation marks. Do not enter it as a shell command.
+3. Save with Ctrl+O, confirm the filename, and exit with Ctrl+X. Apply the ownership and permission commands above.
+4. Run `sudo systemctl restart powerglove-receiver.service`, then test controller delivery from Dashboard. Clear the token from your clipboard and close the private file afterward.
 
 If you generate a new token in Setup, pair the devices again immediately.
 Do not transfer the new token through a command-line argument; process listings
@@ -383,12 +383,12 @@ assigned to another device.
 
 Games is a section of **Setup**, below pairing; it is not a separate navigation tab.
 
-  1. Open **Setup → Games** in the UNO Q website. Both machines must be online and paired. The page reads the registry used by the installed RetroPie launch hook.
-  2. Select **Download backup** to keep a copy of the last verified installed registry on your computer.
-  3. Edit the JSON, adding the exact ROM filename and a supported profile identifier inside `games`. Expand **Available profile identifiers** for the choices. Preserve your existing entries.
-  4. Select **Validate**. It checks JSON syntax, supported profiles, and duplicate filenames, including names that differ only by letter case. **Format** tidies the JSON without saving it.
-  5. Select **Save**. Wait for confirmation that RetroPie saved the file and the UNO Q read it back successfully.
-  6. Launch or restart the game and confirm its profile on Dashboard.
+1. Open **Setup → Games** in the UNO Q website. Both machines must be online and paired. The page reads the registry used by the installed RetroPie launch hook.
+2. Select **Download backup** to keep a copy of the last verified installed registry on your computer.
+3. Edit the JSON, adding the exact ROM filename and a supported profile identifier inside `games`. Expand **Available profile identifiers** for the choices. Preserve your existing entries.
+4. Select **Validate**. It checks JSON syntax, supported profiles, and duplicate filenames, including names that differ only by letter case. **Format** tidies the JSON without saving it.
+5. Select **Save**. Wait for confirmation that RetroPie saved the file and the UNO Q read it back successfully.
+6. Launch or restart the game and confirm its profile on Dashboard.
 
 Saving does not change the current game's profile. **Restore previous save** swaps
 in the last valid version. **Reload** discards your draft after confirmation. If
@@ -499,12 +499,12 @@ Use **Glove Academy → Tune gestures** to personalize recognition. You do not n
 and replace it. Personal adjustments belong in `data/gesture-tuning.json`, which
 remains untouched.
 
-  1. Choose **Set up a new hand**, **A gesture is hard to trigger**, **A gesture happens accidentally**, or **Movement feels off-center**.
-  2. Choose the gesture when asked. Off-center movement instead shows the saved center and an explicit **Set this as my center** action.
-  3. Keep the complete hand visible at 70% confidence for one second. Select **I'm ready** and wait through the two-second countdown.
-  4. Follow the three recordings. Ordinary poses and movement steps last two seconds. Glove Zap and Pull Back use a six-second middle step containing three motions and returns.
-  5. Analyze the recording and try the temporary preview twice. Return to neutral after each use and remain neutral for three seconds.
-  6. Save when the guided test passes. Only selected components are merged into the existing version-1 tuning file.
+1. Choose **Set up a new hand**, **A gesture is hard to trigger**, **A gesture happens accidentally**, or **Movement feels off-center**.
+2. Choose the gesture when asked. Off-center movement instead shows the saved center and an explicit **Set this as my center** action.
+3. Keep the complete hand visible at 70% confidence for one second. Select **I'm ready** and wait through the two-second countdown.
+4. Follow the three recordings. Ordinary poses and movement steps last two seconds. Glove Zap and Pull Back use a six-second middle step containing three motions and returns.
+5. Analyze the recording and try the temporary preview twice. Return to neutral after each use and remain neutral for three seconds.
+6. Save when the guided test passes. Only selected components are merged into the existing version-1 tuning file.
 
 ![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
 
@@ -623,11 +623,11 @@ recognition states map to controller output.
 When adjusting numeric values in Tune, change one pair at a time in steps of approximately `0.02` to `0.05`, then test
 from the same camera position. Useful adjustments include:
 
-  - Recalibrate first if directional movement requires too much travel or moves at rest.
-  - Keep `move_off` below `move_on` so a direction releases promptly near center.
-  - Raise an `_on` value when an action triggers unintentionally.
-  - Increase `pulse_hz` when a repeating action is too slow.
-  - Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
+- Recalibrate first if directional movement requires too much travel or moves at rest.
+- Keep `move_off` below `move_on` so a direction releases promptly near center.
+- Raise an `_on` value when an action triggers unintentionally.
+- Increase `pulse_hz` when a repeating action is too slow.
+- Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
 
 Saved personal tuning applies without reopening the camera and across every profile.
 The saved neutral calibration is reused; recalibrate only if your physical setup has changed or
@@ -1427,20 +1427,20 @@ application; matrix firmware changes still need **Run** in App Lab.
 
 #### Set up SSH key access once
 
-  1. On your development computer, check for an existing public key in `~/.ssh/`. Use only a file ending in `.pub`; never copy its matching private key.
-  2. If you do not have a key, run `ssh-keygen -t ed25519`. Accept the suggested location only if it does not replace an existing key, and follow the passphrase prompts.
-  3. Open your public-key file and copy its complete single line. For the default key, run `cat ~/.ssh/id_ed25519.pub`.
-  4. Connect with `ssh arduino@UNO-Q-NAME.local`. On the UNO Q, run `install -d -m 0700 ~/.ssh`, then `nano ~/.ssh/authorized_keys`.
-  5. Add the public key on a new line, preserving any existing keys. Save with Ctrl+O, confirm the name, and exit with Ctrl+X.
-  6. Run `chmod 0600 ~/.ssh/authorized_keys`, then `exit` to return to your computer. If your private key has a passphrase, make it available through your computer's SSH agent before the unattended deployment check.
-  7. Run `ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname`. Continue only when it prints the UNO Q hostname without requesting a login password.
+1. On your development computer, check for an existing public key in `~/.ssh/`. Use only a file ending in `.pub`; never copy its matching private key.
+2. If you do not have a key, run `ssh-keygen -t ed25519`. Accept the suggested location only if it does not replace an existing key, and follow the passphrase prompts.
+3. Open your public-key file and copy its complete single line. For the default key, run `cat ~/.ssh/id_ed25519.pub`.
+4. Connect with `ssh arduino@UNO-Q-NAME.local`. On the UNO Q, run `install -d -m 0700 ~/.ssh`, then `nano ~/.ssh/authorized_keys`.
+5. Add the public key on a new line, preserving any existing keys. Save with Ctrl+O, confirm the name, and exit with Ctrl+X.
+6. Run `chmod 0600 ~/.ssh/authorized_keys`, then `exit` to return to your computer. If your private key has a passphrase, make it available through your computer's SSH agent before the unattended deployment check.
+7. Run `ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname`. Continue only when it prints the UNO Q hostname without requesting a login password.
 
 #### Update the application
 
-  1. On your development computer, open your project checkout and review local changes with `git status --short`.
-  2. If you are updating from GitHub, run `git pull --ff-only`. Resolve any reported local-change or branch conflict before deploying. Keep the version compatible with the RetroPie installation.
-  3. Run the deployment command below. It preserves private `data/`, restarts the application, and checks its web pages.
-  4. Open Dashboard and Glove Academy to confirm the updated app works. If you changed the matrix sketch, also rebuild and run it through App Lab.
+1. On your development computer, open your project checkout and review local changes with `git status --short`.
+2. If you are updating from GitHub, run `git pull --ff-only`. Resolve any reported local-change or branch conflict before deploying. Keep the version compatible with the RetroPie installation.
+3. Run the deployment command below. It preserves private `data/`, restarts the application, and checks its web pages.
+4. Open Dashboard and Glove Academy to confirm the updated app works. If you changed the matrix sketch, also rebuild and run it through App Lab.
 
 ```sh
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
@@ -1493,10 +1493,10 @@ unless you intend to shut down the UNO Q.
 
 ### RetroPie updates
 
-  1. On RetroPie, back up customized files under `/etc/powerglove/`, especially `games.json` and `launcher.json`, using your normal private backup method.
-  2. Open the original source checkout, normally `~/PowerGlove-Vision`. The installed copy under `/opt/powerglove-src` is not a Git checkout.
-  3. Run the commands below. Review `git status --short` before pulling; if Git reports a conflict, resolve it before running the installer.
-  4. Resolve any **FAIL** in the installer report, then launch a registered game and check its profile and controls. The installer preserves existing settings and tokens.
+1. On RetroPie, back up customized files under `/etc/powerglove/`, especially `games.json` and `launcher.json`, using your normal private backup method.
+2. Open the original source checkout, normally `~/PowerGlove-Vision`. The installed copy under `/opt/powerglove-src` is not a Git checkout.
+3. Run the commands below. Review `git status --short` before pulling; if Git reports a conflict, resolve it before running the installer.
+4. Resolve any **FAIL** in the installer report, then launch a registered game and check its profile and controls. The installer preserves existing settings and tokens.
 
 ```sh
 cd ~/PowerGlove-Vision
@@ -1518,11 +1518,11 @@ and keep only the intended application set to start at boot.
 
 ### Matrix shows a blinking X
 
-  - Confirm that an active gesture profile is selected. **Gestures off** should display the animated glove attract sequence, never the error X.
-  - Confirm the camera is connected through the powered hub.
-  - Try another hub port or USB cable.
-  - Check whether Linux sees a USB camera; internal `qcom-venus-encoder` and `qcom-venus-decoder` nodes are codecs, not your camera.
-  - Restart the app after checking power and cabling.
+- Confirm that an active gesture profile is selected. **Gestures off** should display the animated glove attract sequence, never the error X.
+- Confirm the camera is connected through the powered hub.
+- Try another hub port or USB cable.
+- Check whether Linux sees a USB camera; internal `qcom-venus-encoder` and `qcom-venus-decoder` nodes are codecs, not your camera.
+- Restart the app after checking power and cabling.
 
 ### Camera appears only after reconnecting it
 
@@ -1541,10 +1541,10 @@ the installed software and normally start faster.
 
 ### Setup page does not open
 
-  - Ordinary settings: `http://UNO-Q-NAME.local:8088/setup`
-  - Secure pairing: `https://UNO-Q-NAME.local:8443/setup`
-  - Try the board's IP address if `.local` does not resolve.
-  - HTTPS and HTTP are not interchangeable on these ports.
+- Ordinary settings: `http://UNO-Q-NAME.local:8088/setup`
+- Secure pairing: `https://UNO-Q-NAME.local:8443/setup`
+- Try the board's IP address if `.local` does not resolve.
+- HTTPS and HTTP are not interchangeable on these ports.
 
 ### Camera is slow to start or missing after reboot
 
@@ -1567,10 +1567,10 @@ For stage timings and further checks, see
 
 ### Password pairing fails
 
-  - Prepare a new attempt and use its new matrix PIN.
-  - Confirm the RetroPie username and password can log in through SSH.
-  - The account must be allowed to run `sudo` with that password.
-  - Prefer the one-time-code method if password SSH is disabled.
+- Prepare a new attempt and use its new matrix PIN.
+- Confirm the RetroPie username and password can log in through SSH.
+- The account must be allowed to run `sudo` with that password.
+- Prefer the one-time-code method if password SSH is disabled.
 
 ### Controller does not appear on RetroPie
 
@@ -1599,10 +1599,10 @@ are additional hooks.
 
 ### Controller exists but does not move
 
-  - Select **Start controller** on Setup or Debug.
-  - Confirm a calibrated hand and controller output on Debug.
-  - Verify the receiver address and UDP 55355 connectivity.
-  - Check whether an existing cabinet input merger filters the virtual device.
+- Select **Start controller** on Setup or Debug.
+- Confirm a calibrated hand and controller output on Debug.
+- Verify the receiver address and UDP 55355 connectivity.
+- Check whether an existing cabinet input merger filters the virtual device.
 
 ### Profiles do not change
 
@@ -1613,20 +1613,20 @@ relay. Follow [Check a queued profile change](CONFIGURATION_REFERENCE.md#check-a
 for the command and recovery steps. Check the exact ROM filename, including
 its archive extension, if the selected profile is **off**.
 
-  - Test `powerglove-profile` manually.
-  - Check `uno_q` and `token_file` in `/etc/powerglove/launcher.json`.
-  - Confirm both runcommand hooks call the supplied helper scripts.
-  - Match the exact ROM basename in `/etc/powerglove/games.json`.
+- Test `powerglove-profile` manually.
+- Check `uno_q` and `token_file` in `/etc/powerglove/launcher.json`.
+- Confirm both runcommand hooks call the supplied helper scripts.
+- Match the exact ROM basename in `/etc/powerglove/games.json`.
 
 ### FAQ: What if the console name cannot be resolved?
 
-  1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Test console name**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the UNO Q app; successful lookup on your laptop alone is not sufficient.
-  2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
-  3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
-  4. On the UNO Q, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
-  5. Check that both machines are on a network that allows communication between devices. Guest Wi-Fi, client isolation, VPN routing, separate VLANs, or multicast filtering can prevent `.local` discovery. mDNS uses UDP port 5353; do not disable your firewall wholesale or expose the app to the Internet to fix discovery.
-  6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the UNO Q by name, check that reverse direction separately.
-  7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
+1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Test console name**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the UNO Q app; successful lookup on your laptop alone is not sufficient.
+2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
+3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
+4. On the UNO Q, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
+5. Check that both machines are on a network that allows communication between devices. Guest Wi-Fi, client isolation, VPN routing, separate VLANs, or multicast filtering can prevent `.local` discovery. mDNS uses UDP port 5353; do not disable your firewall wholesale or expose the app to the Internet to fix discovery.
+6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the UNO Q by name, check that reverse direction separately.
+7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
 
 After fixing the problem, reboot both machines and repeat **Test console name** before testing gameplay. The app-owned resolver has been verified across a UNO Q reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
 

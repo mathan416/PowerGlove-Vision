@@ -6,10 +6,10 @@ Linux devices, and a privileged shutdown helper.
 
 ## Before changing code
 
-  1. Start from the current `dev` branch and create a short-lived topic branch.
-  2. Read `SECURITY.md` before changing pairing, tokens, network listeners, downloads, file permissions, uinput, or shutdown behaviour.
-  3. Check `CONFIGURATION_REFERENCE.md` before changing a file format, default, installed path, port, controller mapping, or service unit.
-  4. Never commit `data/`, tokens, passwords, pairing codes, model caches and other runtime caches, or locally generated App Lab installation ZIP files.
+1. Start from the current `dev` branch and create a short-lived topic branch.
+2. Read `SECURITY.md` before changing pairing, tokens, network listeners, downloads, file permissions, uinput, or shutdown behaviour.
+3. Check `CONFIGURATION_REFERENCE.md` before changing a file format, default, installed path, port, controller mapping, or service unit.
+4. Never commit `data/`, tokens, passwords, pairing codes, model caches and other runtime caches, or locally generated App Lab installation ZIP files.
 
 Report security vulnerabilities through the private process described in
 `SECURITY.md`. Do not disclose them in an ordinary pull request or public issue.
@@ -22,11 +22,11 @@ and documentation branches from the current `dev` branch, then open pull request
 
 `main` represents released code. To prepare a release:
 
-  1. Confirm the complete quality workflow passes on `dev`.
-  2. Finalize the version and move the release notes out of `Unreleased`.
-  3. Open and review a pull request from `dev` to `main`.
-  4. Merge only the reviewed release changes, tag the release, and verify its generated App Lab package.
-  5. Merge any release-only adjustments on `main` back into `dev` immediately.
+1. Confirm the complete quality workflow passes on `dev`.
+2. Finalize the version and move the release notes out of `Unreleased`.
+3. Open and review a pull request from `dev` to `main`.
+4. Merge only the reviewed release changes, tag the release, and verify its generated App Lab package.
+5. Merge any release-only adjustments on `main` back into `dev` immediately.
 
 For an urgent released-version fix, branch from `main`, review and merge the
 fix into `main`, publish the corrective release, and then merge `main` back into
@@ -48,12 +48,12 @@ application configuration file that supports comments must begin with the
 standard project header. Preserve a shebang
 as the first line when one is required. The header must identify:
 
-  - project and repository-relative filename;
-  - concise purpose;
-  - author and copyright;
-  - `SPDX-License-Identifier: MIT`;
-  - a short dated change log;
-  - `docs/CHANGELOG.md` and Git as the complete history.
+- project and repository-relative filename;
+- concise purpose;
+- author and copyright;
+- `SPDX-License-Identifier: MIT`;
+- a short dated change log;
+- `docs/CHANGELOG.md` and Git as the complete history.
 
 Imported or modified third-party source is the exception: retain its original
 header, authorship, copyright, and license language verbatim. Do not replace or
@@ -129,12 +129,12 @@ configuration field, dependency, or troubleshooting procedure changes.
 
 ### Write for the reader's next action
 
-  1. Give each guide a clear job: the overview explains the project, installation leads to a working system, reference material defines settings and flags, and game cards help people play. Link between them instead of repeating long explanations.
-  2. Start a procedure with its goal, prerequisites, and the machine on which it runs. Use numbered steps with direct verbs, then state what success looks like and where to recover from a failure.
-  3. Explain every command's flags, required values, defaults, and effects in the command reference. Keep copyable examples free of terminal prompts and secrets.
-  4. Write complete sentences in explanatory paragraphs. Keep labels short, define unfamiliar terms, and remove filler, repeated cautions, and implementation details that do not help the reader act.
-  5. Give each game card an objective, a gesture-to-control table, and a small first-round exercise. Use light, specific encouragement; keep essential controls easy to find.
-  6. Check links, images, list numbering, and grammar. Follow each installation from an empty checkout on paper, and distinguish code review, automated checks, and actual fresh-device testing.
+1. Give each guide a clear job: the overview explains the project, installation leads to a working system, reference material defines settings and flags, and game cards help people play. Link between them instead of repeating long explanations.
+2. Start a procedure with its goal, prerequisites, and the machine on which it runs. Use numbered steps with direct verbs, then state what success looks like and where to recover from a failure.
+3. Explain every command's flags, required values, defaults, and effects in the command reference. Keep copyable examples free of terminal prompts and secrets.
+4. Write complete sentences in explanatory paragraphs. Keep labels short, define unfamiliar terms, and remove filler, repeated cautions, and implementation details that do not help the reader act.
+5. Give each game card an objective, a gesture-to-control table, and a small first-round exercise. Use light, specific encouragement; keep essential controls easy to find.
+6. Check links, images, list numbering, and grammar. Follow each installation from an empty checkout on paper, and distinguish code review, automated checks, and actual fresh-device testing.
 
 These conventions adapt [Microsoft's procedure guidance](https://learn.microsoft.com/en-us/style-guide/procedures-instructions/writing-step-by-step-instructions),
 [Diátaxis's documentation types](https://diataxis.fr/), and
@@ -204,13 +204,13 @@ releases may attach a verified ZIP for long-term distribution.
 
 ## Commits and pull requests
 
-  - Use a short imperative commit subject that describes the outcome.
-  - Explain what changed, why it was needed, and how it was verified.
-  - Keep unrelated cleanup separate from behavioural changes.
-  - Call out migration, deployment, compatibility, security, and rollback risks.
-  - Do not claim hardware verification unless the change was tested on the named device. Automated tests and simulated input should be described accurately.
-  - Wait for the GitHub Actions quality workflow to pass before merging.
-  - Target ordinary pull requests at `dev`; reserve pull requests into `main` for reviewed releases and urgent release fixes.
+- Use a short imperative commit subject that describes the outcome.
+- Explain what changed, why it was needed, and how it was verified.
+- Keep unrelated cleanup separate from behavioural changes.
+- Call out migration, deployment, compatibility, security, and rollback risks.
+- Do not claim hardware verification unless the change was tested on the named device. Automated tests and simulated input should be described accurately.
+- Wait for the GitHub Actions quality workflow to pass before merging.
+- Target ordinary pull requests at `dev`; reserve pull requests into `main` for reviewed releases and urgent release fixes.
 
 ## Gesture tuning and firmware validation
 

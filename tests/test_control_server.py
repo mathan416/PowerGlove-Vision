@@ -231,6 +231,25 @@ class ControlStateTests(unittest.TestCase):
         self.assertNotIn("<img loading=lazy", unsafe_table)
         self.assertIn("&lt;img", unsafe_table)
 
+    def test_help_renderer_keeps_wrapped_and_spaced_list_items_together(self):
+        rendered, _headings = render_markdown(
+            "- First item starts here\n"
+            "  and wraps onto another source line.\n\n"
+            "- Second item follows a blank line.\n\n"
+            "1. First numbered item\n"
+            "   also wraps.\n"
+            "2. Second numbered item"
+        )
+        self.assertIn(
+            "<ul><li>First item starts here and wraps onto another source line.</li>"
+            "<li>Second item follows a blank line.</li></ul>",
+            rendered,
+        )
+        self.assertIn(
+            "<ol><li>First numbered item also wraps.</li><li>Second numbered item</li></ol>",
+            rendered,
+        )
+
     def test_help_assets_are_limited_to_documentation_images(self):
         asset = help_asset("gestures/directional-movement.png")
         self.assertIsNotNone(asset)

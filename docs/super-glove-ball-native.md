@@ -12,11 +12,11 @@ responsive D-pad and gesture recognition.
 
 When sources disagree, use this order:
 
-  1. The exact user-supplied Super Glove Ball ROM's input routines and control flow.
-  2. Controlled emulator traces of its writes, reads, assembled bytes, and cadence.
-  3. Repeatable in-game detection, out-of-range, and movement behavior.
-  4. Nestopia's existing Power Glove implementation.
-  5. The game manual and NESdev reverse-engineering notes.
+1. The exact user-supplied Super Glove Ball ROM's input routines and control flow.
+2. Controlled emulator traces of its writes, reads, assembled bytes, and cadence.
+3. Repeatable in-game detection, out-of-range, and movement behavior.
+4. Nestopia's existing Power Glove implementation.
+5. The game manual and NESdev reverse-engineering notes.
 
 NESdev material is a source of testable hypotheses, not a specification for this
 implementation.
@@ -78,15 +78,15 @@ instead of retaining the last sample.
 The RetroPie receiver owns `/run/powerglove/native-state` and creates it read-only
 for consumers. Format version 1 is a fixed 64-byte little-endian record containing:
 
-  - magic, format version, record size, and matching begin/end coherence guards;
-  - sample sequence and receiver-arrival monotonic timestamp;
-  - signed normalized X, Y, Z, and roll axes;
-  - detected and calibrated flags;
-  - four compact finger-flex levels;
-  - recognized-button and compound-pose mask, including five-finger fist and
+- magic, format version, record size, and matching begin/end coherence guards;
+- sample sequence and receiver-arrival monotonic timestamp;
+- signed normalized X, Y, Z, and roll axes;
+- detected and calibrated flags;
+- four compact finger-flex levels;
+- recognized-button and compound-pose mask, including five-finger fist and
     index-point decisions made by the shared recognizer;
-  - active-profile identifier;
-  - reserved bytes that stay zero.
+- active-profile identifier;
+- reserved bytes that stay zero.
 
 The writer publishes an odd in-progress guard and then an even complete guard.
 The core copies one record at the beginning of its input callback and rejects it
@@ -123,14 +123,14 @@ Live grab/throw, index-fire, and Power Punch behavior remains the next acceptanc
 step. Repeat this gate before enabling the
 per-ROM emulator choice on another cabinet or after changing the core protocol:
 
-  1. Record the ROM digest and retain the ROM outside release packages.
-  2. Trace controller strobes and configuration writes from power-on through the game's detection decision.
-  3. Prove the detection signature, packet boundary, bit order, and polling cadence from those traces.
-  4. Hold every field neutral, then vary X, Y, and Z independently through minimum, center, and maximum values.
-  5. Transmit open, fist, and index point independently, returning to open between each pose.
-  6. Confirm repeatable continuous movement plus grab/throw, Robo-Bullet, and fist-plus-forward Power Punch behavior without relying on packet logs alone.
-  7. Test stale samples, tracking loss, and unavailable calibration; all must immediately yield neutral native input.
-  8. Build the core on the RetroPie host under the separate name `lr-nestopia-powerglove`, verify the camera-to-receiver path, and only then create the per-ROM override.
+1. Record the ROM digest and retain the ROM outside release packages.
+2. Trace controller strobes and configuration writes from power-on through the game's detection decision.
+3. Prove the detection signature, packet boundary, bit order, and polling cadence from those traces.
+4. Hold every field neutral, then vary X, Y, and Z independently through minimum, center, and maximum values.
+5. Transmit open, fist, and index point independently, returning to open between each pose.
+6. Confirm repeatable continuous movement plus grab/throw, Robo-Bullet, and fist-plus-forward Power Punch behavior without relying on packet logs alone.
+7. Test stale samples, tracking loss, and unavailable calibration; all must immediately yield neutral native input.
+8. Build the core on the RetroPie host under the separate name `lr-nestopia-powerglove`, verify the camera-to-receiver path, and only then create the per-ROM override.
 
 Keep an explicit FCEUmm per-ROM choice available. If native detection or tracking
 regresses, remove only the per-ROM override; the shared FCEUmm fallback remains
