@@ -4,11 +4,12 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Persist separate player sensitivity and Academy progress.
 #   2026-09-06 - Added the family-facing personalization wizard and validation gate.
 #   2026-09-04 - Added guided gesture sampling and persistent personal thresholds.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Personal threshold overlays; samples and previews never become camera recordings."""
 from __future__ import annotations
@@ -17,12 +18,12 @@ import copy
 import math
 import threading
 import time
-from dataclasses import replace
+from dataclasses import replace, asdict
 from pathlib import Path
 
 from .academy_diagnostics import AcademyDiagnostics
-from .players import PlayerSettings
-from .gesture import GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
+from .players import PlayerSettings, calibration_value
+from .gesture import load_calibration, save_calibration, GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
 
 CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
             "roll_left", "roll_right", "push", "pull")
@@ -208,6 +209,15 @@ class TuningManager:
             self._expire()
             if self.session and data.get("action") not in ("read", "progress", "export"):
                 raise ValueError("Finish tuning and switch Tune gestures off before changing players or restoring settings.")
+            if data.get("action") == "export":
+                result = self.players.command(data)
+                if self.players.data["calibration_restore"] is not None:
+                    raise ValueError("Calibration restore is still being applied. Try the backup again shortly.")
+                reference = None if self.needs_center() else load_calibration(self.path.with_name("calibration.json"))
+                backup = result["backup"]
+                backup.update(format="powerglove-hand-setup", version=2,
+                              calibration=calibration_value({"version":2,"neutral":asdict(reference)}) if reference else None)
+                return result
             result = self.players.command(data)
             if data.get("action") in ("create", "select", "delete", "restore"):
                 self.saved = copy.deepcopy(self.players.active["thresholds"])
@@ -216,6 +226,21 @@ class TuningManager:
                 self.center_generation = None
                 self.revision += 1
             return result
+
+    def apply_calibration_restore(self):
+        """Finish a durable restore before the worker can resume output; retry after crashes."""
+        from .model import Calibration
+        with self.lock:
+            pending = self.players.data["calibration_restore"]
+            if pending is None:
+                return None
+            reference = Calibration(**pending["neutral"])
+            save_calibration(self.path.with_name("calibration.json"), reference)
+            data = copy.deepcopy(self.players.data)
+            data["calibration_restore"] = None
+            data["players"][data["active"]]["needs_center"] = False
+            self.players.commit(data)
+            return reference
 
     def needs_center(self):
         """Keep delivery paused until explicit calibration follows a preset change."""

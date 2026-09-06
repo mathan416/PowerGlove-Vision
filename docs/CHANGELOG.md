@@ -9,6 +9,12 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Complete hand-setup backups with player name, saved sensitivity, and calibration;
+  restore review offers explicit same-position calibration reuse or fresh centering.
+  Old sensitivity-only backups remain supported. Restore pauses controller output,
+  preserves Academy progress, and resumes safely after an interrupted calibration
+  write. Existing player stores migrate with retained backups and unchanged progress.
+
 - Idle-only matrix attract setting in Setup: On, Dim, or Off with faint app,
   console-network, and authenticated RetroPie indicators. Saves without restarting
   vision; game modes, T, L, startup, errors, and pairing remain unchanged.
@@ -16,9 +22,9 @@ authoritative record for line-level and file-level history.
 - Controller-stored player presets with individual hand sensitivity, saved
   Academy lessons, and persistent Glove Master awards. Existing settings become
   Player 1 with a private version-1 backup retained before migration.
-- Bounded hand-setting export/restore excluding pairing credentials and neutral
-  calibration. Player switches and restores pause controls and require fresh
-  centering; stale tabs cannot overwrite another player or undo progress resets.
+- Player switches and restores pause controls; stale tabs cannot overwrite
+  another player or undo progress resets. Device credentials remain excluded
+  from portable backups.
 - Exact software commit/candidate metadata and matrix source-fingerprint readback,
   distinguishing running firmware from the expected packaged sketch. Older
   firmware is reported as unavailable instead of assumed to match.

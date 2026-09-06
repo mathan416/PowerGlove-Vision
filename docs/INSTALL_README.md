@@ -272,8 +272,10 @@ startup sequence. An animation does not prove that shutdown has finished.
 | Secure pairing | `https://UNO-Q-NAME.local:8443/setup` |
 
 In Glove Academy, choose or add a player before practicing. Progress and hand
-sensitivity persist across restarts and normal upgrades. Switching players or
-restoring a hand-settings backup requires fresh centering. The web footer reports
+sensitivity persist across restarts and normal upgrades. Switching players
+requires fresh centering. Restoring a hand-setup backup does too, unless you explicitly
+reuse its calibration with the same camera and playing positions. Backups include
+name, sensitivity adjustments, and calibration; old sensitivity-only files still work. The web footer reports
 exact software and running firmware identities; older firmware may report unavailable.
 
 Completing all sixteen lessons replaces the lesson panel with

@@ -88,7 +88,7 @@ because it is far too funny to fix.
 
 The web footer shows exact software and running matrix firmware identities.
 Glove Academy supports twelve player presets, saved lesson progress, and portable
-hand-sensitivity backups. Switching players requires fresh centering. Navigation
+complete hand-setup backups containing name, sensitivity adjustments, and calibration. Switching players requires fresh centering. Navigation
 and controls adapt to phone and tablet widths.
 
 ## Quick start

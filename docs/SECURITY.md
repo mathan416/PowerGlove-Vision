@@ -211,11 +211,16 @@ the interface; they are not saved gesture recordings.
 
 Optional hand setup measures all five fingers; gesture tuning measures selected
 components. Both use three short sets of numerical samples in memory. The
-version-2 `data/gesture-tuning.json` file stores player names, activation/release
+version-3 `data/gesture-tuning.json` file stores player names, activation/release
 pairs shared across game profiles for each player, Academy progress, and a
-required-center flag. Version-1 settings migrate with a private backup. Portable
-hand-setting exports contain only a name and threshold pairs; they exclude
-calibration, camera data, Wi-Fi credentials, and pairing tokens. Neutral calibration is separate in `data/calibration.json`.
+required-center flag, plus a bounded pending reference during a calibration
+restore. Versions 1 and 2 migrate with private backups. Complete hand-setup
+exports contain a name, threshold pairs, and a neutral reference. They exclude
+camera images, landmarks, Wi-Fi credentials, pairing tokens, and lesson progress.
+Restoring calibration requires an explicit same-position confirmation and strict
+finite field validation. A persisted restore resumes after interruption with
+output gated; Start controller is still required. Neutral calibration remains
+Controller-wide in `data/calibration.json`.
 The installer never packages a maintainer's neutral reference: camera position,
 player distance, and wrist pose make it installation-specific. Preserve both
 files during updates. Expiry or discard removes temporary preview

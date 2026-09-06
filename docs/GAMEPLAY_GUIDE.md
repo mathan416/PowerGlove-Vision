@@ -520,10 +520,14 @@ Choose a player in **Your player** before practicing. Each player's hand
 sensitivity and lesson progress are retained on the Controller across browsers
 and restarts. Add or select another player to keep family members' settings
 separate. Switching players pauses controls until you set your center again.
-Download or restore sensitivity under **Players and hand-setting backups**;
-backups never include pairing credentials or camera calibration.
+Use **Players and hand-setup backups → Back up hand setup** to save your name,
+sensitivity adjustments, and calibration. Restore opens a review: reuse the saved
+calibration only if the camera and your playing position match, or leave that
+option unchecked and set a fresh center. Controls remain paused until you start
+them. Old sensitivity-only backups still work. Backups exclude credentials and
+Academy progress.
 
-![Player selection and portable hand-setting backups](images/player-settings.png)
+![Player selection and complete hand-setup backups](images/player-settings.png)
 
 Complete all sixteen lessons to earn **Glove Master**. The award replaces the
 final lesson card; **Start again** restores the lessons and clears session progress.

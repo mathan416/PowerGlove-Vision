@@ -4,13 +4,14 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Expose bounded player operations and enforce fresh centering.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added runtime profile requests and camera-free status updates.
 #   2026-09-03 - Added expiring browser practice leases for the Learn page.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Expose live worker status, camera frames, calibration, and controller state to the supervisor."""
 
@@ -234,7 +235,8 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                     if not isinstance(data, dict):
                         raise ValueError("Expected a tuning operation")
                     result = shared.tuning.player_command(data) if self.path == "/players" else shared.tuning.command(data)
-                    if shared.tuning.active() or shared.tuning.needs_center():
+                    if (shared.tuning.active() or shared.tuning.needs_center() or
+                            (self.path == "/players" and data.get("action") in ("create", "select", "delete", "restore"))):
                         shared.request_controller(False)
                     body, code = json.dumps(result).encode(), 200
                 except (ValueError, OSError) as exc:

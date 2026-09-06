@@ -520,13 +520,13 @@ and rerun PowerGlove Vision Controller setup. On RetroPie, compare the game's ac
 exact entries. Updating the template does not overwrite an installed registry;
 add missing names while preserving your custom mappings.
 
-## Players, Academy progress, and hand-setting backups
+## Players, Academy progress, and hand-setup backups
 
 Glove Academy's **Your player** card selects the active player on this Controller,
 across browsers and game profiles. Up to twelve players with names of 1–32
 characters can be stored. **Add player** copies current sensitivity, starts fresh
 lesson progress, and selects the new player. Rename/delete controls are under
-**Players and hand-setting backups**; at least one player is retained.
+**Players and hand-setup backups**; at least one player is retained.
 
 Completed lessons, the current lesson, and Glove Master persist across refreshes
 and restarts. Skips do not count; **Start again** resets the active player's
@@ -535,27 +535,54 @@ reset or update another player. Saving errors pause lesson recognition until
 saved state is available again.
 
 Switching players, adding/deleting the active player, and restoring settings
-pause controller output. Select **Set this as my center**, wait for calibration,
+pause controller output. A complete backup can reuse calibration after explicit
+confirmation that camera and playing positions match. Otherwise, select **Set this as my center**, wait for calibration,
 then explicitly start controller output on Dashboard. Finish tuning and turn
 **Tune gestures** off before switching players or restoring settings.
 
-**Download hand settings** exports format/version, player name, and validated
-sensitivity pairs. **Restore hand settings** asks before replacing current
-sensitivity, retaining the current name and progress. Backups exclude credentials,
-addresses, images, landmarks, and neutral calibration. Unknown fields, invalid
-numbers, device configuration files, and files larger than 8 KB are rejected.
+**Back up hand setup** downloads `powerglove-hand-setup.json` with format
+`powerglove-hand-setup`, version `2`, player `name`, saved `thresholds`, and
+`calibration`. Empty thresholds mean supplied defaults. Calibration contains
+version `2` and `neutral` values: `palm_x`, `palm_y`, `palm_scale`, `roll`,
+`noise_x`, and `noise_y`. It is `null` if no valid reference exists or the active
+player still needs centering; set your center before making a complete backup.
 
-`data/gesture-tuning.json` version 2 stores `version`, `active`, `generation`, and
-`players`. Each player has `name`, `thresholds`, `progress` (`course`, `completed`,
-`lesson`), and `needs_center`. Course version 1 uses sixteen zero-based lesson
-indices. Generations reject stale writes after switches/restores/resets. The
-worker owns atomic writes under its tuning lock.
+**Restore hand setup** opens a review before any changes. Version-2 backups
+replace the active player's name and sensitivity, keeping Academy progress.
+Select **My camera position and playing position match this backup** only when
+both match; the app then restores calibration as well. Leave it unchecked to
+restore sensitivity and require a fresh center. In both cases controller output
+stays paused until you explicitly start it. Old `powerglove-hand-settings`
+version-1 backups remain readable; they restore sensitivity, keep the current
+name, and require fresh centering. Cancel closes the review without changes.
 
-Version-1 files load as **Player 1**, preserving sensitivity. Before migration,
-a private `data/gesture-tuning-v1-backup.json` is retained. Both files are written
-with mode `0600` and survive normal upgrades. Older apps cannot read version 2:
-when deliberately rolling back, stop the app and restore that version-1 backup
-privately. Never commit personal settings to Git.
+![Review before restoring a complete hand setup](images/hand-setup-restore.png)
+
+Backups exclude pairing tokens, Wi-Fi credentials, device addresses, images,
+landmarks, and Academy progress. Unknown fields, non-finite/out-of-range values,
+device configuration files, and files larger than 8 KB are rejected. Reuse is
+explicit: the API requires boolean `reuse_calibration: true` with a valid
+reference. Otherwise fresh centering is required.
+
+`data/gesture-tuning.json` version 3 stores `version`, `active`, `generation`,
+`players`, and nullable `calibration_restore`. Each player has `name`,
+`thresholds`, `progress` (`course`, `completed`, `lesson`), and `needs_center`.
+Course version 1 uses sixteen zero-based lesson indices. Generations reject
+stale writes after switches/restores/resets. Calibration remains Controller-wide
+in `data/calibration.json`, not a separate saved center for each player.
+
+A confirmed reuse atomically saves sensitivity, name, and a pending calibration
+reference while keeping output gated. The worker writes calibration, then clears
+the pending reference and centering gate. An interrupted restore resumes after
+restart; a failed write leaves output paused. Switching players cancels an
+unapplied reference. Export waits until a pending restore finishes.
+
+Versions 1 and 2 load without changing values, names, or progress. Before the
+first write, a private `data/gesture-tuning-v1-backup.json` or
+`data/gesture-tuning-v2-backup.json` is retained as appropriate. Files use mode
+`0600` and survive upgrades. Older apps cannot read version 3; when deliberately
+rolling back, stop the app and restore its previous-version backup privately.
+Never commit personal settings to Git.
 
 `POST /api/players` supports `read`, `progress`, `reset_progress`, `create`,
 `select`, `rename`, `delete`, `export`, and `restore`. Non-read requests include
@@ -563,7 +590,7 @@ privately. Never commit personal settings to Git.
 `X-PowerGlove-Action: players` and the same origin checks as tuning. Names and
 progress are available on the trusted LAN; presets are not login accounts.
 
-![Player selection and portable hand-setting backups](images/player-settings.png)
+![Player selection and portable hand-setup backups](images/player-settings.png)
 
 ## Tune gesture sensitivity
 

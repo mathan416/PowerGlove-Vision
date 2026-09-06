@@ -207,7 +207,7 @@ validate range and scope, not recorded pose quality. Live testing is still neede
 
 The candidate is temporary until the same recognition path observes two complete
 activation/release cycles and three neutral seconds. Only then can the wizard
-atomically merge selected pairs into the active player’s version-2 record. Raw controls remain
+atomically merge selected pairs into the active player’s version-3 record. Raw controls remain
 inside Advanced. Normal personalization retains no camera recording. The separate
 diagnostic path deletes its temporary AVI after producing an aggregate-only report.
 
@@ -224,7 +224,7 @@ that use that finger; it does not change the button assignments in a game profil
 | Data | Owner and lifetime | Purpose |
 | --- | --- | --- |
 | `config/profiles.json` | Shipped project source | One shared set of recognition parameters; profiles remain output mappings |
-| `data/gesture-tuning.json` | PowerGlove Vision Controller, persistent | Version-2 player presets, sensitivity, Academy progress, and required-center flag; version-1 files migrate with a backup |
+| `data/gesture-tuning.json` | PowerGlove Vision Controller, persistent | Version-3 player presets, sensitivity, Academy progress, and required-center flag; versions 1–2 migrate with a backup |
 | `data/calibration.json` | PowerGlove Vision Controller, private persistent | Neutral palm position, apparent scale, wrist angle, and positional jitter for the installed camera and player |
 | `data/device.json` | PowerGlove Vision Controller, private persistent settings | Destination, selected settings, pairing-related configuration |
 | Tuning samples, preview, leases | Worker memory only | Temporary measurement and ownership state |
@@ -299,9 +299,15 @@ release carries the patch and build recipe, not a compiled core. See the
 
 Player operations pass through the bounded same-origin `/api/players` endpoint
 into the worker. Its tuning lock owns one atomic player/settings/progress file.
-Generations reject stale writes; switching/restoring requires fresh centering
-before delivery. Progress writes occur on lesson transitions, not camera frames.
-Portable backups exclude credentials and neutral calibration.
+Generations reject stale writes; switching requires fresh centering before
+delivery. Complete hand-setup backups include saved sensitivity, name, and a
+valid neutral reference, excluding credentials and Academy progress. Restore
+requires explicit confirmation to reuse calibration. A version-3 player store
+journals that reference with the restored sensitivity; the worker writes
+`calibration.json` before clearing the pending reference and centering gate.
+Output remains paused until Start controller. The journal resumes after crashes;
+old version-1/2 stores migrate with backups and unchanged progress. Progress
+writes occur on lesson transitions, not camera frames.
 
 Build metadata records the source commit and candidate. A generated sketch
 fingerprint is compiled into firmware and read through Router Bridge in the

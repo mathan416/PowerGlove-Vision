@@ -37,7 +37,17 @@ class PlayerTests(unittest.TestCase):
         restored = TuningManager(self.path)
         self.assertEqual(restored.player_snapshot()["players"][0]["name"], "Alex")
         self.assertEqual(restored.saved, self.manager.saved)
-        self.assertEqual(json.loads(self.path.read_text())["version"], 2)
+        self.assertEqual(json.loads(self.path.read_text())["version"], 3)
+
+    def test_version_two_player_data_migrates_with_progress_and_backup(self):
+        saved={'version':2,'active':'default','generation':4,'players':{'default':{
+            'name':'Iain','thresholds':{},'progress':{'course':1,'completed':[0,1],'lesson':2},'needs_center':False}}}
+        self.path.write_text(json.dumps(saved))
+        self.manager=TuningManager(self.path)
+        self.command('rename',name='Iain B')
+        self.assertEqual(self.manager.player_snapshot()['progress']['completed'],[0,1])
+        self.assertEqual(json.loads(self.path.with_name('gesture-tuning-v2-backup.json').read_text()),saved)
+        self.assertEqual(json.loads(self.path.read_text())['version'],3)
 
     def test_players_isolate_tuning_and_progress(self):
         self.command("progress", progress={"course":1,"completed":[0,1],"lesson":2})
@@ -59,7 +69,7 @@ class PlayerTests(unittest.TestCase):
 
     def test_export_is_allowlisted_and_restore_requires_fresh_center(self):
         backup=self.command("export")["backup"]
-        self.assertEqual(set(backup),{"format","version","name","thresholds"})
+        self.assertEqual(set(backup),{"format","version","name","thresholds","calibration"})
         backup["thresholds"]={"thumb":{"on":.7,"off":.4}}
         self.command("restore",backup=backup)
         self.assertTrue(self.manager.needs_center())
@@ -67,6 +77,63 @@ class PlayerTests(unittest.TestCase):
         self.manager.begin_center()
         self.manager.finish_center()
         self.assertFalse(TuningManager(self.path).needs_center())
+
+    def test_complete_backup_roundtrip_reuses_confirmed_calibration(self):
+        from powerglove_vision.gesture import save_calibration, load_calibration
+        from powerglove_vision.model import Calibration
+        reference=Calibration(.4,.6,.2,.3,.01,.02)
+        path=self.path.with_name('calibration.json')
+        save_calibration(path,reference)
+        backup=self.command('export')['backup']
+        self.assertEqual(backup['version'],2)
+        self.assertEqual(backup['calibration']['neutral']['palm_x'],.4)
+        backup['name']='Iain'
+        self.command('restore',backup=backup,reuse_calibration=True)
+        self.assertTrue(self.manager.needs_center())
+        with self.assertRaises(ValueError):self.command('export')
+        restarted=TuningManager(self.path)
+        self.assertEqual(restarted.apply_calibration_restore(),reference)
+        self.assertFalse(restarted.needs_center())
+        self.assertEqual(load_calibration(path),reference)
+        self.assertEqual(restarted.player_snapshot()['players'][0]['name'],'Iain')
+        self.assertIsNone(restarted.apply_calibration_restore())
+
+    def test_pending_restore_survives_write_failure_and_is_cancelled_by_switch(self):
+        backup=self.command('export')['backup']
+        backup['calibration']={'version':2,'neutral':dict(palm_x=.5,palm_y=.5,palm_scale=.2,roll=0)}
+        self.command('restore',backup=backup,reuse_calibration=True)
+        with patch('powerglove_vision.tuning.save_calibration',side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):self.manager.apply_calibration_restore()
+        self.assertTrue(TuningManager(self.path).player_snapshot()['restoring_calibration'])
+        with patch('powerglove_vision.game_registry.atomic_write',side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):self.manager.apply_calibration_restore()
+        self.assertTrue(self.manager.needs_center())
+        self.command('create',name='Other')
+        self.assertIsNone(self.manager.apply_calibration_restore())
+        self.assertTrue(self.manager.needs_center())
+
+    def test_old_backups_still_restore_and_calibration_reuse_is_explicit(self):
+        old={'format':'powerglove-hand-settings','version':1,'name':'Old','thresholds':{'index':{'on':.8,'off':.4}}}
+        self.command('restore',backup=old)
+        self.assertEqual(self.manager.saved,old['thresholds'])
+        self.assertTrue(self.manager.needs_center())
+        with self.assertRaises(ValueError):self.command('restore',backup=old,reuse_calibration=True)
+        backup=self.command('export')['backup']
+        self.assertIsNone(backup['calibration'])
+        backup['calibration']={'version':2,'neutral':dict(palm_x=.5,palm_y=.5,palm_scale=.2,roll=0)}
+        self.command('restore',backup=backup)
+        self.assertIsNone(self.manager.apply_calibration_restore())
+        self.assertTrue(self.manager.needs_center())
+
+    def test_invalid_calibration_never_changes_settings(self):
+        import copy
+        backup=self.command('export')['backup']
+        reference={'version':2,'neutral':dict(palm_x=.5,palm_y=.5,palm_scale=.2,roll=0)}
+        original=self.path.read_bytes()
+        for field,value in [('palm_x',float('nan')),('palm_scale',0),('roll',99),('noise_x',True),('token','secret')]:
+            invalid=copy.deepcopy(reference);invalid['neutral'][field]=value
+            with self.assertRaises(ValueError):self.command('restore',backup=dict(backup,calibration=invalid),reuse_calibration=True)
+            self.assertEqual(self.path.read_bytes(),original)
 
     def test_calibration_for_a_previous_player_does_not_unlock_new_player(self):
         self.command("create",name="Alex")

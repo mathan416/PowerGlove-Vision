@@ -4,9 +4,10 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
-# Change log:
-#   2026-09-06 - Require fresh centering after player changes before delivery.
 # Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
+#   2026-09-06 - Require fresh centering after player changes before delivery.
 #   2026-09-05 - Resumed armed controls from renewable RetroPie game leases.
 #   2026-09-05 - Measured fresh-frame publication and controller-transition latency.
 #   2026-09-05 - Reported clear proven and experimental tracker names.
@@ -452,6 +453,19 @@ def main() -> int:
                     matrix.set_status(MatrixStatus.LOADING)
                 elif engine is not None:
                     matrix.set_status(MatrixStatus.READY)
+
+            try:
+                restored_calibration = shared.tuning.apply_calibration_restore()
+                if restored_calibration is not None:
+                    shared.request_controller(False)
+                    retained_calibration = restored_calibration
+                    if engine is not None:
+                        engine = GestureEngine(engine.profile, config=engine.config,
+                                               calibration=restored_calibration)
+                    last_controller_signature = None
+                    calibration_save_error = None
+            except OSError as exc:
+                calibration_save_error = "Hand-setup restore is paused: " + str(exc)
 
             controller_request = shared.take_controller_request()
             if shared.tuning.active():

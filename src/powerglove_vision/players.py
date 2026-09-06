@@ -4,19 +4,44 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
-# Change log:
-#   2026-09-06 - Add atomic player presets and credential-free hand backups.
 # Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
+#   2026-09-06 - Add atomic player presets and credential-free hand backups.
 
 """Owned under the tuning lock; one atomic file is authoritative for all players."""
 
 import copy
 import json
 import uuid
+import math
+from dataclasses import asdict
+
+from .model import Calibration
 
 COURSE = 1
 LESSONS = 16
 MAX_PLAYERS = 12
+
+
+def calibration_value(data):
+    """Accept only finite, bounded neutral-pose fields from a portable backup."""
+    if (not isinstance(data, dict) or set(data) != {"version", "neutral"}
+            or type(data["version"]) is not int or data["version"] not in (1, 2)):
+        raise ValueError("Invalid hand calibration format.")
+    values = data["neutral"]
+    required = {"palm_x", "palm_y", "palm_scale", "roll"}
+    if not isinstance(values, dict) or not required <= set(values) or set(values) - required - {"noise_x", "noise_y"}:
+        raise ValueError("Invalid hand calibration fields.")
+    value = Calibration(**values)
+    fields = asdict(value)
+    if any(type(v) not in (int, float) or not math.isfinite(v) for v in fields.values()):
+        raise ValueError("Calibration must contain finite numbers.")
+    if (not 0 <= value.palm_x <= 1 or not 0 <= value.palm_y <= 1
+            or not 0 < value.palm_scale <= 2 or not -math.pi <= value.roll <= math.pi
+            or not 0 <= value.noise_x <= 1 or not 0 <= value.noise_y <= 1):
+        raise ValueError("Calibration values are outside the camera range.")
+    return {"version": 2, "neutral": fields}
 
 
 def player_name(value):
@@ -51,7 +76,9 @@ class PlayerSettings:
         self.path, self.validate = path, validate
         self.error = None
         self.legacy_backup = None
-        self.data = {"version": 2, "active": "default", "generation": 0,
+        self.legacy_backup_version = 1
+        self.data = {"version": 3, "active": "default", "generation": 0,
+                     "calibration_restore": None,
                      "players": {"default": {"name": "Player 1", "thresholds": {},
                          "progress": blank_progress(), "needs_center": False}}}
         try:
@@ -66,12 +93,19 @@ class PlayerSettings:
                     self.legacy_backup = json.dumps({"version": 1, "thresholds": self.active["thresholds"]}, indent=2) + "\n"
                 else:
                     self.data = self.validate_store(saved)
+                    if saved.get("version") == 2:
+                        self.legacy_backup = json.dumps(saved, indent=2) + "\n"
+                        self.legacy_backup_version = 2
         except (OSError, ValueError, KeyError, TypeError):
             self.error = "Saved player settings could not be loaded. Restore a hand-settings backup to recover; the original file has not been changed."
 
     def validate_store(self, data):
         """Validate persisted records before exposing them to the app."""
-        if not isinstance(data, dict) or set(data) != {"version", "active", "generation", "players"} or data["version"] != 2:
+        data = copy.deepcopy(data)
+        if isinstance(data, dict) and data.get("version") == 2 and "calibration_restore" not in data:
+            data["version"] = 3
+            data["calibration_restore"] = None
+        if not isinstance(data, dict) or set(data) != {"version", "active", "generation", "players", "calibration_restore"} or type(data["version"]) is not int or data["version"] != 3:
             raise ValueError("Unsupported player settings")
         players = data["players"]
         if not isinstance(players, dict) or not 1 <= len(players) <= MAX_PLAYERS or data["active"] not in players:
@@ -86,6 +120,11 @@ class PlayerSettings:
             item["name"] = player_name(item["name"])
             item["thresholds"] = self.validate(item["thresholds"])
             item["progress"] = progress(item["progress"])
+        pending = data["calibration_restore"]
+        if pending is not None:
+            data["calibration_restore"] = calibration_value(pending)
+            if not players[data["active"]]["needs_center"]:
+                raise ValueError("A pending restore must pause controller output")
         return copy.deepcopy(data)
 
     @property
@@ -100,7 +139,7 @@ class PlayerSettings:
             raise ValueError(self.error)
         clean = self.validate_store(data)
         if self.legacy_backup is not None:
-            backup = self.path.with_name("gesture-tuning-v1-backup.json")
+            backup = self.path.with_name("gesture-tuning-v%d-backup.json" % self.legacy_backup_version)
             if not backup.exists():
                 atomic_write(backup, self.legacy_backup)
         atomic_write(self.path, json.dumps(clean, ensure_ascii=True, indent=2) + "\n")
@@ -112,7 +151,8 @@ class PlayerSettings:
         return {"active": self.data["active"], "generation": self.data["generation"],
                 "players": [{"id": key, "name": item["name"]} for key, item in self.data["players"].items()],
                 "progress": copy.deepcopy(self.active["progress"]),
-                "needs_center": self.active["needs_center"], "error": self.error}
+                "needs_center": self.active["needs_center"],
+                "restoring_calibration": self.data["calibration_restore"] is not None, "error": self.error}
 
     def save_thresholds(self, values):
         """Save tuning directly into the active player's record."""
@@ -125,6 +165,7 @@ class PlayerSettings:
         if generation == self.data["generation"] and self.active["needs_center"]:
             data = copy.deepcopy(self.data)
             data["players"][data["active"]]["needs_center"] = False
+            data["calibration_restore"] = None
             self.commit(data)
 
     def command(self, request):
@@ -141,6 +182,8 @@ class PlayerSettings:
                     "name": self.active["name"], "thresholds": copy.deepcopy(self.active["thresholds"])}}
         data = copy.deepcopy(self.data)
         item = data["players"][data["active"]]
+        if action in ("create", "select", "delete", "restore"):
+            data["calibration_restore"] = None
         if action == "progress":
             incoming = progress(request.get("progress"))
             incoming["completed"] = sorted(set(item["progress"]["completed"]) | set(incoming["completed"]))
@@ -177,12 +220,24 @@ class PlayerSettings:
             data["generation"] += 1
         elif action == "restore":
             backup = request.get("backup")
-            if (not isinstance(backup, dict) or set(backup) != {"format", "version", "name", "thresholds"}
-                    or backup["format"] != "powerglove-hand-settings" or backup["version"] != 1):
-                raise ValueError("Choose a PowerGlove hand-settings backup. Device and pairing files cannot be imported.")
-            player_name(backup["name"])
+            if not isinstance(backup, dict) or type(backup.get("version")) is not int:
+                raise ValueError("Choose a PowerGlove hand-setup backup.")
+            legacy = backup.get("format") == "powerglove-hand-settings" and backup["version"] == 1
+            complete = backup.get("format") == "powerglove-hand-setup" and backup["version"] == 2
+            keys = {"format", "version", "name", "thresholds"} | ({"calibration"} if complete else set())
+            if not (legacy or complete) or set(backup) != keys:
+                raise ValueError("Choose a supported hand-setup backup. Device and pairing files cannot be imported.")
+            name = player_name(backup["name"])
+            reference = calibration_value(backup["calibration"]) if complete and backup["calibration"] is not None else None
+            reuse = request.get("reuse_calibration", False)
+            if type(reuse) is not bool or (reuse and reference is None):
+                raise ValueError("This backup has no usable calibration to reuse.")
             item["thresholds"] = self.validate(backup["thresholds"])
+            if complete:
+                item["name"] = name
             item["needs_center"] = True
+            if reuse:
+                data["calibration_restore"] = reference
             data["generation"] += 1
         else:
             raise ValueError("Unknown player operation.")
