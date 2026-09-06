@@ -7,8 +7,16 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
-Development toward 0.3.2 focuses on lower-latency camera interpretation and
-faster inference for more responsive play.
+No unreleased changes.
+
+## [0.3.2-rc.5] - 2026-09-06
+
+Cumulative release-candidate notes since 0.3.1. This candidate adds the refined
+idle matrix animation, reproducible live latency baselines, and updated native
+gameplay validation. Visible camera-to-game latency and a reliable stationary
+jitter baseline still need a coordinated video test; this is not the final
+0.3.2 release. The project base version remains 0.3.2, with the candidate identity
+recorded by the release tag and installer manifests.
 
 ### Added
 
@@ -44,6 +52,7 @@ faster inference for more responsive play.
   appearance remains a separate check. Requires a matrix firmware update.
 - Updated native compatibility test assertions to match the already documented
   completed-game confirmation and deliberately neutral unused packet fields.
+- Corrected relay-test mock argument access for Python 3.7 compatibility.
 - Adopted **PowerGlove Vision Controller** as the user-facing name for the
   Arduino UNO Q device throughout current guides, while retaining literal
   `uno-q` commands, filenames, host placeholders, and hardware-specific notes.
