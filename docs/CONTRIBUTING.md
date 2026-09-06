@@ -4,6 +4,11 @@ Thank you for helping improve PowerGlove Vision. Keep changes focused, readable,
 and safe for a project that combines camera input, local networking, virtual
 Linux devices, and a privileged shutdown helper.
 
+User-facing documentation calls the Arduino UNO Q device the **PowerGlove
+Vision Controller**. Introduce the hardware relationship once where it helps,
+then use the product name. Preserve literal `uno-q` commands, filenames,
+packages, host placeholders, and hardware-specific compatibility statements.
+
 ## Before changing code
 
 1. Start from the current `dev` branch and create a short-lived topic branch.
@@ -90,7 +95,7 @@ scripts/check-source-docs.py
 Run these commands from the repository root on your development computer.
 The [command reference](CONFIGURATION_REFERENCE.md#command-line-reference) explains their options.
 
-Core tests must remain independent of a physical camera, UNO Q, and RetroPie:
+Core tests must remain independent of a physical camera, PowerGlove Vision Controller, and RetroPie:
 
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v
@@ -158,7 +163,7 @@ scripts/check-documentation.py --require-pdfs
 ```
 
 When the interface changes, refresh the affected screenshots in `docs/images/`.
-Capture Dashboard, Glove Academy practice, Glove Academy tuning, Setup, the Games section, and Help
+Capture Dashboard, Play, Glove Academy practice, Glove Academy tuning, Setup, the Games section, and Help
 from the running application. Blur the entire camera image before saving a
 screenshot, keeping instructions and controls readable. Check that no passwords,
 pairing codes, tokens, or identifying camera details remain. Do not commit
@@ -170,7 +175,7 @@ Inspect the affected PDF pages for clipped text, broken tables, missing images,
 and unintended page breaks before committing.
 
 The public `README.md`, guides under `docs/`, and documentation images also
-drive the Help Center hosted by the UNO Q. After a documentation change is
+drive the Help Center hosted by the PowerGlove Vision Controller. After a documentation change is
 merged or otherwise ready to deploy, synchronize and verify that copy with:
 
 ```sh
@@ -181,7 +186,7 @@ That deployment restarts the PowerGlove Vision application and checks every
 Help route, every public PDF, and representative gesture artwork. Confirm the
 affected page and its **Open PDF** link in a browser after deployment. The
 cabinet-specific `docs/cheatsheet.md` and its quick-reference PDF are
-intentionally excluded from the public UNO Q Help deployment. If the UNO Q is
+intentionally excluded from the public PowerGlove Vision Controller Help deployment. If the PowerGlove Vision Controller is
 unavailable, state clearly that device synchronization and live Help
 verification remain outstanding.
 
@@ -196,7 +201,7 @@ scripts/verify-app-lab-package.py
 
 The App Lab installation ZIP must contain public source, configuration
 examples, documentation, the allowlisted public PDF guides, and the
-required custom UNO Q MediaPipe wheel, verified Google model, Apache 2.0 license,
+required custom Linux ARM64 MediaPipe wheel used by the Controller, verified Google model, Apache 2.0 license,
 and third-party notices. It must exclude private `data/`, tests, the cabinet quick-reference PDF, caches, and Git
 history. Do not force-add the generated ZIP to Git. GitHub Actions publishes a
 short-lived verified ZIP artifact for each successful workflow run; tagged

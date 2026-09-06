@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Required the Rock Paper Scissors browser module.
 #   2026-09-05 - Required the fixed, guided, and replay vision benchmark tools.
 #   2026-09-05 - Required the guarded UNO Q USB camera recovery helper.
 #   2026-09-05 - Required the corrected closed-hand Academy illustration.
@@ -90,6 +91,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/images/gestures/actions/close-all-fingers.png",
     "PowerGlove-Vision/docs/images/web/gestures/actions/close-all-fingers.png",
     "PowerGlove-Vision/src/powerglove_vision/web_features.py",
+    "PowerGlove-Vision/src/powerglove_vision/play_game.py",
     "PowerGlove-Vision/retropie/powerglove-games.service",
     "PowerGlove-Vision/retropie/bin/powerglove-games",
     "PowerGlove-Vision/bricks/local/profile_control/brick_config.yaml",

@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Made Rock Paper Scissors and live native validation discoverable in Help.
+#   2026-09-06 - Added the local Rock Paper Scissors page to cabinet links.
 #   2026-09-05 - Described retained controller state as armed rather than started.
 #   2026-09-05 - Kept wrapped and loosely spaced Markdown list items together.
 #   2026-09-05 - Promoted the project overview PDF into technical documentation.
@@ -33,8 +35,8 @@ DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
-    {"slug": "cabinet", "title": "This cabinet", "file": None, "description": "Live UNO Q links and the active RetroPie connection, generated for this cabinet.", "group": "User manuals"},
-    {"slug": "gameplay", "title": "Game and gesture guide", "file": "GAMEPLAY_GUIDE.md", "description": "Illustrated controls and play tips for every configured game.", "group": "User manuals"},
+    {"slug": "cabinet", "title": "This cabinet", "file": None, "description": "Live PowerGlove Vision Controller links and the active RetroPie connection, generated for this cabinet.", "group": "User manuals"},
+    {"slug": "gameplay", "title": "Game and gesture guide", "file": "GAMEPLAY_GUIDE.md", "description": "Illustrated Rock Paper Scissors instructions, configured-game controls, and play tips.", "group": "User manuals"},
     {"slug": "programs", "title": "Programs A-I", "file": "bad-street-brawler-programs.md", "description": "The original Power Glove programs and their camera-based equivalents.", "group": "User manuals"},
     {"slug": "matrix", "title": "Matrix display guide", "file": "MATRIX_GUIDE.md", "description": "Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.", "group": "User manuals"},
     {"slug": "installation", "title": "Installation and setup", "file": "INSTALL_README.md", "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.", "group": "User manuals"},
@@ -42,9 +44,9 @@ HELP_GUIDES = (
     {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Technical documentation"},
     {"slug": "configuration", "title": "Configuration reference", "file": "CONFIGURATION_REFERENCE.md", "description": "Every public setting, template, generated file, and installed location.", "group": "Technical documentation"},
     {"slug": "input-audit", "title": "Power Glove game input audit", "file": "power-glove-rom-input-audit.md", "description": "ROM-level evidence separating native Power Glove input from standard controller mappings.", "group": "Technical documentation"},
-    {"slug": "native-super-glove-ball", "title": "Super Glove Ball native compatibility", "file": "super-glove-ball-native.md", "description": "Confirmed, disproven, and unknown details for the custom Nestopia path.", "group": "Technical documentation"},
+    {"slug": "native-super-glove-ball", "title": "Super Glove Ball native compatibility", "file": "super-glove-ball-native.md", "description": "Live-confirmed native game actions, packet evidence, and deliberately unused fields for the custom Nestopia path.", "group": "Technical documentation"},
     {"slug": "direction-response", "title": "Direction-response benchmark", "file": "direction-response-benchmark.md", "description": "Reproducible headless response measurements for native Nestopia and FCEUmm.", "group": "Technical documentation"},
-    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Inspect, maintain, and remove the UNO Q startup helper included by the installer.", "group": "Technical documentation"},
+    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Inspect, maintain, and remove the PowerGlove Vision Controller startup helper included by the installer.", "group": "Technical documentation"},
     {"slug": "security", "title": "Security and privacy", "file": "SECURITY.md", "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.", "group": "Technical documentation"},
     {"slug": "components", "title": "Third-party components", "file": "THIRD_PARTY_COMPONENTS.md", "description": "MediaPipe, model, license, checksum, and runtime provenance.", "group": "Technical documentation"},
     {"slug": "contributing", "title": "Contributing", "file": "CONTRIBUTING.md", "description": "Source formatting, tests, documentation, packaging, and review expectations.", "group": "Technical documentation"},
@@ -156,7 +158,7 @@ def help_index_content() -> str:
         sections.append("<section class=help-group><h2>{}</h2><div class=guide-grid>{}</div></section>".format(group, "".join(cards)))
     return (
         "<h1>Help, without leaving the glove.</h1>"
-        "<p class=lead>Read the maintained PowerGlove Vision guides directly on this UNO Q. "
+        "<p class=lead>Read the maintained PowerGlove Vision guides directly on this PowerGlove Vision Controller. "
         "Start with This cabinet for your current connections, or choose a guide below. The manuals are available offline.</p>"
         + "".join(sections)
     )
@@ -235,6 +237,7 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
         )
         for label, url in (
             ("Dashboard", http_root + "/dashboard"),
+            ("Rock Paper Scissors", http_root + "/play"),
             ("Glove Academy", http_root + "/learn"),
             ("Help center", http_root + "/help"),
             ("Connection setup", http_root + "/setup"),
@@ -255,8 +258,8 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
     )
     article = (
         "<h1>This cabinet</h1>"
-        "<p>These values are generated from the address used to open this page and the UNO Q's active public configuration. They update without editing a guide.</p>"
-        "<h2>UNO Q</h2><div class=table-scroll><table><tbody>"
+        "<p>These values are generated from the address used to open this page and the PowerGlove Vision Controller's active public configuration. They update without editing a guide.</p>"
+        "<h2>PowerGlove Vision Controller</h2><div class=table-scroll><table><tbody>"
         + row("Address used by this browser", board)
         + row("Web workshop", http_root)
         + row("Secure setup", https_root)

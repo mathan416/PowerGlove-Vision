@@ -7,10 +7,55 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
-Development toward 0.3.2 focuses on lower-latency camera interpretation and
-faster inference for more responsive play.
+No unreleased changes.
+
+## [0.3.2-rc.5] - 2026-09-06
+
+Cumulative release-candidate notes since 0.3.1. This candidate adds the refined
+idle matrix animation, reproducible live latency baselines, and updated native
+gameplay validation. Visible camera-to-game latency and a reliable stationary
+jitter baseline still need a coordinated video test; this is not the final
+0.3.2 release. The project base version remains 0.3.2, with the candidate identity
+recorded by the release tag and installer manifests.
+
+### Added
+
+- Added `scripts/measure-vision-status.py` for read-only, bounded latency baselines.
+  It ignores duplicate cached status samples, separates changing run conditions,
+  and reports observed timing distributions and optional neutral X/Y variation.
+  Reports contain aggregate measurements, with explicit limits for unmeasured
+  network, receiver, core, and display stages. Recognition and movement defaults
+  are unchanged.
+- Recorded separate live movement, requested-stationary, network round-trip,
+  and native-publication cadence observations. The movement window retained
+  detection in all 315 observed samples and measured 132.8 ms read-to-send p95;
+  physical display latency and a reliable stationary-jitter baseline remain
+  separate validation steps.
+- Added a camera-controlled Rock Paper Scissors page at `/play`. A closed hand
+  plays rock, an open palm plays paper, and the held V-sign plays scissors in a
+  first-to-three match against Pixel Pal. It reuses the local practice-camera
+  lease, pauses cabinet input while open, and provides touch and mouse controls.
+  Help now points readers to its illustrated Gameplay Guide section, while This
+  cabinet retains a direct link to the game.
+- Confirmed every implemented native Super Glove Ball action during a completed
+  live game: open-hand release/throw, fist grab/catch, index-point Robo-Bullet,
+  and fist-plus-forward Power Punch, alongside Start and continuous X/Y. Movement
+  is playable and substantially improved; residual latency remains the next
+  refinement target. Unused wrist-rotation and packet-button fields stay neutral.
 
 ### Changed
+
+- Refined the idle matrix animation with a double-flash lightning bolt, separated
+  fingers and thumb, a consistent cuff buckle, a longer fist hold, and a smaller
+  travelling spark. Grayscale shading and a gradual glow finish the four-second
+  loop. Added a preview rendered from the sketch's actual frames; physical LED
+  appearance remains a separate check. Requires a matrix firmware update.
+- Updated native compatibility test assertions to match the already documented
+  completed-game confirmation and deliberately neutral unused packet fields.
+- Corrected relay-test mock argument access for Python 3.7 compatibility.
+- Adopted **PowerGlove Vision Controller** as the user-facing name for the
+  Arduino UNO Q device throughout current guides, while retaining literal
+  `uno-q` commands, filenames, host placeholders, and hardware-specific notes.
 
 - Remembered the player's explicit Start/Stop controller choice across UNO Q
   application and system restarts. Registered RetroPie launches now maintain a

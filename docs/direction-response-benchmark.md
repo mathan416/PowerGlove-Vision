@@ -1,5 +1,8 @@
 # Direction-response benchmark
 
+The **PowerGlove Vision Controller (Arduino UNO Q)** performs the camera,
+recognition, and send stages measured in this record.
+
 This deterministic headless benchmark compares the same exact Super Glove Ball
 ROM through its native packet path and its conventional FCEUmm joystick path.
 Gun.Smoke remains available as an optional positional-FCEUmm reference. This is
@@ -69,9 +72,10 @@ display buffering, and physical display latency are intentionally outside this
 headless core benchmark.
 
 The Dashboard now reports rolling camera-read-to-send and changed-control-to-send
-p50/p95 measurements. Those cover the UNO Q software stage for both FCEUmm and
+p50/p95 measurements. Those cover the PowerGlove Vision Controller software stage for both FCEUmm and
 native X/Y. Receiver publication and the core's next-frame consumption remain
-separate stages: the coherent native record timestamps its RetroPie arrival,
+separate stages: the coherent native record timestamps publication on RetroPie
+after packet validation and virtual-gamepad writes, rather than socket arrival,
 and the headless core benchmark publishes the changed record immediately before
 an emulated frame.
 
@@ -103,7 +107,7 @@ local and releases the camera automatically. A fixed-duration subset may then
 be sampled from those confirmed steps for repeatable replay. Guided capture is
 diagnostic evidence, not training data or an automatic part of Glove Academy.
 
-### Preliminary UNO Q steady-state timing
+### Preliminary PowerGlove Vision Controller steady-state timing
 
 After deploying 0.3.2-dev on September 5, 2026, two controller-off 300-sample
 smoke-test windows exercised the current MediaPipe Hands configuration at
@@ -161,6 +165,123 @@ brightness and contrast to factory defaults helped only modestly. No camera
 control was promoted globally. Front lighting or moving the bright window out
 of the background is the safer remedy because forced exposure can add motion
 blur and reduce the stable frame rate.
+
+## Collect a live status baseline
+
+Before changing responsiveness settings, measure one stage at a time. Preserve
+the same camera position, lighting, calibration, recognition settings, and game
+state between comparisons. The read-only collector does not activate the camera
+or enable controller delivery; prepare the intended mode on Dashboard first.
+
+For a stationary open-hand window, run from the development checkout:
+
+```sh
+python3 scripts/measure-vision-status.py \
+  --status-url http://UNO-Q-NAME.local:8088/status \
+  --phase neutral --seconds 30 --output /tmp/powerglove-neutral.json
+```
+
+Repeat with `--phase movement` and a new output path while making deliberate
+short X/Y steps and returns. Use a separate run for preview-open and
+preview-closed conditions. Neither run records camera images. The neutral
+report includes observed signed-axis span and standard deviation; those combine
+physical hand movement with tracker variation and are not an isolated sensor
+noise measurement. The phase label describes the operator's test, not an
+automatically verified pose. Do not label ordinary gameplay as a neutral test.
+
+The collector counts each observed inference timestamp/capture-sequence pair
+once, rejects invalid timings, and separates changing profiles, delivery gates,
+preview-client counts, and camera/backend settings. It reports p50/p95 over
+unique observations, not averages of the worker's overlapping rolling windows.
+Detected-hand and missing-hand inference distributions remain separate, and
+each segment reports the change in the worker's skipped-capture counter.
+Public status is cached by the supervisor, so these are sampled distributions,
+not a complete frame trace. A faster polling interval cannot recover frames that
+were never exposed by that cache. A direct worker `/status` read inside its
+container avoids the supervisor cache but still samples results.
+
+Review fresh-sample counts, request errors, detection/calibration counts, and
+local send-success counts before comparing runs. `sent_sample_age_ms` contains
+only locally successful sends, whereas ordinary `sample_age_ms` also exists
+with delivery stopped. Neither proves receiver acceptance. An idle window
+produces no active samples and exits with code 2; it must not be presented as a
+zero-latency result. The report excludes addresses, tokens, images, landmarks,
+and individual coordinate records. Full options are in the
+[Configuration Reference](CONFIGURATION_REFERENCE.md#collect-a-live-status-baseline).
+
+### Keep the stage boundaries separate
+
+| Stage | Evidence to collect | What it does not establish |
+| --- | --- | --- |
+| Exposure and camera delivery | Physical visual reference plus camera/driver timestamps when available | OpenCV read-completion timestamps do not measure exposure or upstream buffering. |
+| Capture to inference | `capture_age_ms`, processed capture spacing, negotiated camera mode, and frame skips | Processed-frame spacing is not the spacing of every camera frame. |
+| Inference and recognition | `inference_ms`, inference spacing, detection continuity, and fixed-input replay | Existing inference timing includes tracking and gesture work; replay is not live capture. |
+| Local send | `send_ms`, successful-send counts, and `sent_sample_age_ms` | Successful UDP submission is not a delivery acknowledgement. |
+| Network reception | Controller-to-console round trips as a diagnostic; correlated receive timestamps for actual UDP measurements | ICMP round trips cannot be relabeled as one-way gameplay delivery time. |
+| Receiver publication | Local timestamps at receive, after validation/uinput, and after publishing the even guard | The current record timestamp starts at publication; it hides preceding receiver work. |
+| Native core consumption | Match a published sample to the core callback using the console's monotonic clock | Polling the native file from another process does not prove when the core consumed it. |
+| Game and display | Exact-ROM frame response, active RetroArch video settings, and a high-frame-rate hand/screen recording | The headless frame-3 result excludes presentation buffering and physical display response. |
+
+Use durations within one machine's clock domain. Do not subtract independent
+monotonic clocks across machines, halve an ICMP round trip into a claimed UDP
+delay, or add independently measured p95 values into an end-to-end percentile.
+Receiver publication and core-consumption timestamps need additional diagnostic
+instrumentation before those intervals can be reported as measured. Keep any
+instrumentation bounded and compare its overhead before using its results.
+
+For the visual test, frame the hand and game display in one 120/240-fps recording.
+Hold an open hand still for five seconds, then make five short horizontal steps
+with a pause after each. Count from first physical motion to first corresponding
+game motion for each step, recording the camera frame rate and uncertainty.
+Also inspect resting movement and repeats in the reverse direction. This measures
+the complete visible path; it does not by itself assign delay to one software stage.
+
+### September 6 diagnostic preflight
+
+With the cabinet newly booted, a 20-packet Controller-to-RetroPie ICMP probe
+returned all packets: minimum 0.315 ms, average 0.389 ms, maximum 0.666 ms, and
+reported deviation 0.088 ms. This short idle-network check is not a gameplay
+UDP latency measurement. The cabinet reported 1920x1080 at 60 Hz, threaded video
+enabled in the global configuration, and no reported throttling. Effective
+per-game settings and live timing must still be checked with the game running.
+No recognition, smoothing, camera, network, or video defaults were changed.
+
+The subsequent game launch confirmed `lr-nestopia-powerglove`, device `517`,
+and the native-state path. Both active append files were checked for video
+overrides; they added a 60.00 Hz refresh value and did not override threaded
+video. The user confirmed the Robo-Glove followed their hand before repeating
+the two windows below. Measurements came directly from the worker at a 50 ms
+poll interval, with the proven 640x480 MJPG backend, delivery enabled, and one
+preview client. Camera metadata reported a requested/negotiated 60 fps; this is
+not proof of a 60 fps effective capture rate.
+
+| Window | Fresh / detected observations | Detected inference p50 / p95 | Camera-read-to-send p50 / p95 |
+| --- | --- | --- | --- |
+| Requested stationary hold, 10 seconds | 91 / 78 | 91.1 / 109.9 ms | 116.6 / 205.4 ms |
+| Short movement, 30 seconds | 315 / 315 | 91.0 / 103.2 ms | 112.3 / 132.8 ms |
+
+Both windows had zero request errors and locally successful sends for every
+observed sample. The stationary attempt included 13 tracking misses, whose
+inference measured 175.7 / 204.5 ms p50/p95. Its X/Y spans were 25,080 / 17,829
+signed-axis units, so it is not an accepted stationary-jitter baseline without
+video review and a repeat. The movement window retained detection throughout.
+Superseded-capture counter deltas were 205 and 584 respectively; intentional
+frame replacement is not network packet loss.
+
+A separate 15-second read-only native-file observer saw 128 distinct guarded
+publications, including 101 detected/calibrated Super Glove Ball samples, and
+rejected two incoherent reads. For those gameplay samples, observed publication
+interval p50/p95 was 94.139 / 109.235 ms. Publication-to-observer age p50/p95 was
+1.105 / 2.154 ms. This was a different window with a 2 ms polling sleep: it does
+not measure socket arrival, publication cost, or core pickup, and it can miss
+overwritten records. It is cadence evidence only.
+
+These results identify inference and tracking recovery as substantial measured
+costs. They do not yet justify changing stabilization, camera settings, or
+threaded video. Frame-by-frame video analysis, a reliable stationary window,
+receiver timing instrumentation, and native-consumption timing remain outstanding.
+Read-to-send timing also omits the wait for the next inference opportunity when
+physical motion begins between processed frames.
 
 ## Run it again
 

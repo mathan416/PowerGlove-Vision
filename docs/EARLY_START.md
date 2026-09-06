@@ -1,6 +1,7 @@
-# Early sketch startup (UNO Q)
+# PowerGlove Vision Controller early sketch startup
 
-The UNO Q installer includes this host helper and enables it for every boot.
+The PowerGlove Vision Controller, built on an Arduino UNO Q, includes this host
+helper and enables it for every boot.
 The manual procedure below is for repair or an older installation. It leaves the Arduino sketch, hourglass frames, and
 normal App Lab services unchanged.
 
@@ -12,7 +13,7 @@ The existing sketch then supplies its own hourglass while Python starts.
 
 ## Scope and safeguards
 
-`scripts/uno-q-early-start.py` runs on the UNO Q as the Arduino user. Without
+`scripts/uno-q-early-start.py` runs on the PowerGlove Vision Controller as the Arduino user. Without
 `--release`, it only checks. It verifies the board identity, the selected startup
 app, the cached Wait for App image header, and four 64-byte samples of installed
 sketch memory against that cached image. This is a compatibility check, **not a
@@ -22,7 +23,7 @@ released sketch is left alone. Debug listeners and reset pins are not enabled.
 
 The helper uses the board's `/opt/openocd` tool and SWD pins, and writes only the
 startup release word `0xCAFFEEEE` at `0x40036400`. These are specific to the
-inspected UNO Q installation. Review them again after platform or board updates.
+inspected PowerGlove Vision Controller installation. Review them again after platform or board updates.
 Do not run this helper concurrently with uploads or other debugger tools.
 
 The user service waits at most 30 seconds for the router service to be active;

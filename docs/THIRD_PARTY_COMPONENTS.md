@@ -1,5 +1,8 @@
 # Third-party runtime components
 
+The **PowerGlove Vision Controller (Arduino UNO Q)** hosts the camera and
+recognition runtime described below.
+
 PowerGlove Vision's original source code and associated documentation are
 licensed under the repository's MIT License. That license does not replace the
 licenses or terms that apply to third-party software and model files.
@@ -7,10 +10,10 @@ licenses or terms that apply to third-party software and model files.
 ## MediaPipe 0.10.18 ARM64 wheel
 
 A wheel (`.whl`) is an installable Python package. This wheel includes
-MediaPipe's compiled Linux ARM64 code, so the UNO Q does not need to build it.
+MediaPipe's compiled Linux ARM64 code, so the PowerGlove Vision Controller does not need to build it.
 The filename's `cp312-cp312` tags identify CPython 3.12 and its binary interface;
 `manylinux2014_aarch64` and `manylinux_2_17_aarch64` identify compatible ARM64
-Linux environments. The UNO Q uses this tracked file:
+Linux environments. The PowerGlove Vision Controller uses this tracked file:
 
 ```text
 python/worker-wheels/mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
@@ -27,7 +30,7 @@ python/worker-wheels/mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylin
 
 ### Modification notice
 
-PowerGlove Vision repackaged the upstream wheel for its headless UNO Q worker.
+PowerGlove Vision repackaged the upstream wheel for its headless PowerGlove Vision Controller worker.
 The Python package code and compiled MediaPipe binaries were not modified. The changes listed below were made when repackaging the wheel, and its
 `RECORD` file was rebuilt to reflect them:
 
@@ -37,7 +40,7 @@ The Python package code and compiled MediaPipe binaries were not modified. The c
 - The upstream wheel's empty `mediapipe.libs` directory was omitted.
 
 These changes avoid unnecessary JAX installation and GUI OpenCV dependencies
-on the UNO Q. The repacked wheel retains MediaPipe's Apache 2.0 license at
+on the PowerGlove Vision Controller. The repacked wheel retains MediaPipe's Apache 2.0 license at
 `mediapipe-0.10.18.dist-info/LICENSE`. Do not substitute the upstream wheel
 without retesting dependency resolution, camera startup, and hand tracking.
 
@@ -47,7 +50,7 @@ PowerGlove Vision uses Google's float16 Hand Landmarker task bundle.
 
 | Property | Value |
 | --- | --- |
-| UNO Q runtime path | `data/models/hand_landmarker.task` |
+| PowerGlove Vision Controller runtime path | `data/models/hand_landmarker.task` |
 | Official download | <https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task> |
 | SHA-256 | `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1` |
 | Size | 7,819,105 bytes |
@@ -186,7 +189,7 @@ explains the build and verification scripts.
 2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
 3. If repackaging another wheel, record every difference from upstream and retain its license files.
 4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
-5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the UNO Q before publishing the package.
+5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the PowerGlove Vision Controller before publishing the package.
 
 ### Modified Nestopia core
 
@@ -211,7 +214,7 @@ Tune, Setup, Games, and Help. Camera imagery is blurred for privacy; gesture
 illustrations remain unchanged. These screenshots are project documentation
 assets and add no runtime dependencies.
 
-## Verified UNO Q sketch toolchain
+## Verified PowerGlove Vision Controller sketch toolchain
 
 The September 4, 2026 sketch build and firmware deployment used the pinned
 `sketch/sketch.yaml`: Arduino Zephyr platform **1.0.0**, Arduino_RouterBridge
