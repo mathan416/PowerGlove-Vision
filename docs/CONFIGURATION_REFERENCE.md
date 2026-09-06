@@ -112,7 +112,9 @@ preload is logged; a later activation retries loading and reports any error.
 
 If **Gestures off** is selected at startup, the camera stays closed until you
 select an active profile or open Glove Academy. An active startup profile requests
-capture automatically after preloading. Controller delivery still starts stopped.
+capture automatically after preloading. The player's explicit controller choice is
+restored as **armed** or **stopped**, but an armed worker does not transmit until a
+live registered game session or intentional manual Dashboard profile exists.
 
 Activation waits for any unfinished preload, verifies the saved model, opens
 and configures the camera, waits for a usable frame, and creates the tracker.
@@ -226,12 +228,21 @@ finger curls so unintended movement does not obscure the finger readings.
 See [Saved neutral-hand calibration](#saved-neutral-hand-calibration) for storage
 and recovery details.
 
-**Start controller** and **Stop controller** affect live delivery only. After
-an application or system restart, delivery remains stopped until you start it.
-When RetroPie announces a registered game, a six-second launch guard sends no
-controller packets while the runcommand screen is active. Delivery resumes
-automatically afterward if it was already started; the guard does not change the
-saved profile or turn a stopped controller on.
+**Start controller** and **Stop controller** set a persistent player choice. Start
+arms delivery; Stop remains sticky until explicitly changed. Armed is distinct from
+sending: output also requires either a live registered RetroPie game session or an
+intentional manual Dashboard profile. The RetroPie hook waits until RetroArch is
+actually running, then renews a bounded session every two seconds. The UNO Q accepts
+each renewal for six seconds and uses a short one-second initialization guard before
+the first gameplay packet. This avoids operating the runcommand menu while allowing
+an armed controller to resume automatically if the UNO Q application restarts during
+play. Game exit, RetroArch termination, an unregistered launch, or lease expiry sends
+a neutral/off request. None of these events silently changes a sticky Stop choice.
+
+The Dashboard separates **Controller delivery** from **Game session**. “Armed -
+waiting for game” means the user's Start choice is retained but no packets are being
+sent. “Registered game active” identifies a renewable launch session; “Manual
+profile” identifies an intentional Dashboard testing context.
 
 ### Active UNO Q device file
 
@@ -1062,18 +1073,24 @@ as an extra installation step.
 
 | Argument or flag | Default | Meaning |
 | --- | --- | --- |
-| `ACTION` | Required | `start` selects a registered game's profile; `end` turns gestures off. |
+| `ACTION` | Required | `start` creates a registered-game session; `end` turns gestures off. The internal `session` action is reserved for the detached heartbeat process. |
 | `SYSTEM` | Empty | Optional first metadata argument, such as `nes`. |
 | `EMULATOR` | Empty | Optional second metadata argument supplied by RetroPie; accepted for compatibility. |
 | `ROM` | Empty | Optional third metadata argument; its filename selects the profile. |
 | `COMMAND` | Empty | Optional fourth metadata argument; accepted for compatibility. Quote it as one argument. |
 | `--settings PATH` | `/etc/powerglove/launcher.json` | Reads destination, token path, registry path, and timeout settings. |
+| `--session-file PATH` | Current user's `.cache/powerglove-vision/active-game.json` | User-owned marker that lets a newer launch or the end hook invalidate an older monitor. Normally set only by the installed wrapper. |
+| `--heartbeat-seconds NUMBER` | `2.0` | Renewal interval while the registered session and RetroArch are both active. Allowed range: 0.25-5 seconds. |
+| `--lease-seconds NUMBER` | `6.0` | UNO Q validity window for each renewal. Allowed range: 2-15 seconds. |
+| `--startup-wait NUMBER` | `20.0` | Maximum wait for RetroArch to appear before abandoning the session. Allowed range: 1-60 seconds. |
 | `-h`, `--help` | — | Prints usage and exits. |
 
 `retropie/runcommand-onstart-powerglove.sh` forwards RetroPie's four positional
 arguments. `retropie/runcommand-onend-powerglove.sh` needs none. Neither wrapper
 has its own flags. The executables in `retropie/bin/` forward their arguments
-to the corresponding Python commands.
+to the corresponding Python commands. Update both the UNO Q and RetroPie from
+the same release; an older hook cannot renew a session understood by the newer
+worker, and an older worker cannot apply the new lease fields.
 
 ### Run the standalone vision tracker
 

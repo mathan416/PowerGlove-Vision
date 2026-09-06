@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Covered detached registered-game lease refresh and cleanup.
 #   2026-09-04 - Covered concurrent replies, invalid traffic, capacity expiry and hook failures.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -20,6 +21,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from powerglove_vision import retropie_hook
@@ -96,6 +98,56 @@ class RelayTests(unittest.TestCase):
 
 
 class HookTests(unittest.TestCase):
+    def test_registered_game_starts_a_detached_session(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            token = root / "token"; token.write_text("test-profile-token")
+            registry = root / "games.json"
+            registry.write_text(json.dumps({"games": {"Example.nes": "program_h"}}))
+            settings = root / "launcher.json"
+            settings.write_text(json.dumps({
+                "uno_q": "example.local", "token_file": str(token),
+                "registry": str(registry),
+            }))
+            session_file = root / "state" / "active.json"
+            output = io.StringIO()
+            with patch("sys.argv", [
+                "hook", "start", "nes", "lr-fceumm", "/roms/Example.nes", "retroarch",
+                "--settings", str(settings), "--session-file", str(session_file),
+            ]), patch.object(retropie_hook, "_start_session_process") as start, \
+                    patch.object(retropie_hook, "send_request") as send, \
+                    contextlib.redirect_stdout(output):
+                self.assertEqual(retropie_hook.main(), 0)
+            start.assert_called_once()
+            send.assert_not_called()
+            self.assertTrue(retropie_hook._session_is_current(
+                session_file, start.call_args.args[1]
+            ))
+            self.assertIn("program_h", output.getvalue())
+
+    def test_session_renews_only_while_retroarch_and_marker_are_active(self):
+        with tempfile.TemporaryDirectory() as directory:
+            session_file = Path(directory) / "active.json"
+            session_id = "c" * 32
+            retropie_hook._write_session(session_file, session_id)
+            args = SimpleNamespace(
+                session_id=session_id, session_file=session_file,
+                startup_wait=1.0, heartbeat_seconds=0.25, lease_seconds=6.0,
+                system="nes", rom="Example.nes",
+            )
+            settings = {"uno_q": "example.local", "port": 55356, "timeout": 0.1}
+            with patch.object(retropie_hook, "_retroarch_running", side_effect=[True, True, False]), \
+                    patch.object(retropie_hook, "send_request", return_value={"accepted": True}) as send, \
+                    patch.object(retropie_hook.time, "sleep"):
+                self.assertEqual(
+                    retropie_hook._run_session(args, settings, "test-profile-token", "program_h"), 0
+                )
+            self.assertEqual(send.call_count, 2)
+            self.assertEqual(send.call_args_list[0].kwargs["session_id"], session_id)
+            self.assertEqual(send.call_args_list[0].kwargs["lease_seconds"], 6.0)
+            self.assertIsNone(send.call_args_list[1].args[3])
+            self.assertFalse(session_file.exists())
+
     def test_rejection_is_not_reported_as_acknowledged(self):
         with tempfile.TemporaryDirectory() as directory:
             settings = Path(directory) / "launcher.json"

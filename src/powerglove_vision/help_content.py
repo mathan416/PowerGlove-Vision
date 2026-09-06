@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Described retained controller state as armed rather than started.
 #   2026-09-05 - Kept wrapped and loosely spaced Markdown list items together.
 #   2026-09-05 - Promoted the project overview PDF into technical documentation.
 #   2026-09-05 - Added a collapsed Pixel Pal answer reveal to illustrated guides.
@@ -220,7 +221,7 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
         str(config.get("glove_color", "none")), str(config.get("glove_color", "none"))
     )
     paired = "Configured" if config.get("paired") else "Not configured"
-    controller = "Started" if config.get("controller_enabled") else "Stopped"
+    controller = "Armed" if config.get("controller_enabled") else "Stopped"
     http_root = f"http://{board}:8088"
     https_root = f"https://{board}:8443"
 

@@ -341,12 +341,16 @@ Wait for the live camera view before calibrating.
 suppresses game input. Leaving Learn restores the selected profile.
 
 RetroPie launch hooks select the registered profile when a recognized game
-starts. If you launch an unregistered game or a game for a system other than NES or
-Famicom, the launch hook selects **Gestures off**. Ending a game also turns gestures off.
-For a registered game, a six-second launch guard pauses controller output so
+starts. A detached monitor waits until RetroArch is running, then renews a bounded
+game session every two seconds. If you launch an unregistered game or a game for a
+system other than NES or Famicom, the launch hook selects **Gestures off**. Ending a
+game, RetroArch stopping, or a session becoming stale also turns gestures off.
+For a registered game, a one-second post-RetroArch guard pauses controller output so
 hand movement cannot operate RetroPie's pre-emulator runcommand menu. Output
 resumes automatically when the guard ends, provided the controller was already
-started. The guard does not start a controller that was stopped.
+armed. An UNO Q application restart can reconnect on the next renewal while that
+game remains open. The guard and game session never start a controller that the
+player explicitly stopped.
 
 ### Shared recognition and safety gestures
 
@@ -549,8 +553,9 @@ Keep one PowerGlove Vision installation active in App Lab and set it as the
 default startup app. OpenCV and MediaPipe preload in the background while the
 website is available. **Gestures off** keeps the camera closed; select an active
 profile or open Learn to begin capture. An early request waits for preloading
-to finish. Controller transmission starts stopped, so select **Start controller**
-when ready to play.
+to finish. The last explicit Start/Stop choice is restored. An armed controller
+waits safely for a registered game or intentional manual profile; select **Start
+controller** when ready to play or **Stop controller** to keep it disarmed.
 
 With preloading complete, the first activation after a tested reboot took
 1.21 seconds; actual times vary. For a slow start, inspect the

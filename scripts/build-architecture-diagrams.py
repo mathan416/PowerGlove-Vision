@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added the armed controller and renewable game-session gates.
 #   2026-09-06 - Updated tuning flow for the family personalization wizard.
 #   2026-09-04 - Added seven source-defined architecture diagrams.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -66,16 +67,16 @@ def main():
       'Browser <-> UNO web UI; game hooks -> UNO profile relay. These are separate control paths.')
     diagram('input','02 / One hand movement becomes game input',[
       ('a',0,0,'1. Camera frame','UVC capture through OpenCV'),('b',1,0,'2. Hand observation','MediaPipe landmarks + curls'),('c',2,0,'3. Gesture engine','Calibration + effective thresholds'),
-      ('d',2,1,'4. Profile mapping','Held states, pulses and toggles'),('e',1,1,'5. Delivery gate','Enabled; no practice or tuning'),('f',0,1,'6. UDP state packet','Session + sequence + token'),
+      ('d',2,1,'4. Profile mapping','Held states, pulses and toggles'),('e',1,1,'5. Delivery gate','Armed + live game/manual context'),('f',0,1,'6. UDP state packet','Session + sequence + token'),
       ('g',0,2,'7. Receiver checks','Token, session and sequence'),('h',1,2,'8. Linux uinput','Virtual gamepad state'),('i',2,2,'9. Game response','RetroArch mapping and gameplay')],
       [('a','b'),('b','c'),('c','d'),('d','e'),('e','f'),('f','g'),('g','h'),('h','i')],
       'Status and preview branch from the worker. Browser video is not in the controller delivery path.')
     diagram('modes','03 / Camera activity and controller delivery are separate',[
       ('off',0,0,'Gestures off','Camera closed; web UI available'),('play',1,0,'Active game profile','Camera opens; output is gated'),('learn',2,0,'Academy lessons / L','General profile; output paused'),
-      ('idle',0,1,'Background preparation','Libraries can preload while off'),('gate',1,1,'Controller enabled?','Only gameplay can send states'),('tune',2,1,'Tune gestures / T','Single owner; output paused'),
+      ('idle',0,1,'Background preparation','Libraries can preload while off'),('gate',1,1,'Delivery permitted?','Armed + game/manual context'),('tune',2,1,'Tune gestures / T','Single owner; output paused'),
       ('restore',2,2,'Exit or lease expiry','Restore selected vision mode')],
       [('off','idle'),('play','gate'),('learn','tune'),('tune','restore')],
-      'Open Glove Academy from either mode. After Tune, explicitly start controller delivery from Dashboard.')
+      'Start/Stop is sticky. Game leases expire safely; Academy and Tune always pause output.')
     diagram('tuning','04 / Pixel Pal guides recognition personalization',[
       ('a',0,0,'1. Choose the problem','Setup, difficult, accidental, center'),('b',1,0,'2. Choose gesture','Only when the problem needs one'),('c',2,0,'3. Confirm readiness','Whole hand stable; press I am ready'),
       ('d',2,1,'4. Record three steps','Pose, movement, or repeated depth'),('e',1,1,'5. Analyze separation','Problem-aware safe boundaries'),('f',0,1,'6. Try temporary preview','Two uses + three neutral seconds'),
@@ -89,11 +90,11 @@ def main():
       [('base','saved'),('saved','preview'),('preview','engine'),('obs','neutral'),('neutral','recognize'),('engine','recognize')],
       'Top arrows show override priority, not file writes. Neutral calibration is a separate reference.')
     diagram('profile','06 / A game launch selects a gesture profile',[
-      ('a',0,0,'1. RetroPie launches ROM','runcommand start hook'),('b',1,0,'2. Registry lookup','Exact ROM basename -> profile'),('c',2,0,'3. Signed request','UDP 55356 to UNO Q'),
-      ('d',2,1,'4. App Lab relay','Forwards bytes; holds no token'),('e',1,1,'5. Worker validates','Accept request and apply profile'),('f',0,1,'6. New controller session','Release old state; reset sequence'),
-      ('ack',1,2,'Signed acknowledgement','Reports request outcome')],
+      ('a',0,0,'1. RetroPie launches ROM','runcommand start hook'),('b',1,0,'2. Registry lookup','Exact ROM basename -> profile'),('c',2,0,'3. Wait for RetroArch','Detached session monitor'),
+      ('d',2,1,'4. Signed renewals','Every 2 s; 6 s lease'),('e',1,1,'5. Worker validates','Apply once; refresh thereafter'),('f',0,1,'6. Delivery context','One-second guard, then play'),
+      ('ack',1,2,'Exit or stale lease','Neutral state; profile off')],
       [('a','b'),('b','c'),('c','d'),('d','e'),('e','f'),('e','ack')],
-      'Acknowledgement returns through relay to RetroPie. Academy practice/tuning can keep delivery paused.')
+      'Start/Stop is stored separately. Armed output resumes only with a live game or manual context.')
     diagram('deployment','07 / Linux application and matrix firmware update separately',[
       ('source',0,0,'Reviewed project','Python, docs, assets, sketch'),('linux',1,0,'Linux application update','Sync files; recreate containers'),('runtime',2,0,'Website and vision worker','Preserve private data/ settings'),
       ('pins',0,1,'Pinned sketch profile','Board platform + library versions'),('compile',1,1,'Compile-only validation','Builds without flashing hardware'),('flash',2,1,'App Lab Run / restart','Builds and uploads MCU firmware'),

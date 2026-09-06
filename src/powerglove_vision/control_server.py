@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Persisted the player's armed controller choice across app restarts.
 #   2026-09-05 - Displayed fresh-frame and controller-transition latency.
 #   2026-09-05 - Made every Academy lesson and completion control transition atomic.
 #   2026-09-05 - Added Pixel Pal's trophy artwork to Academy completion.
@@ -108,7 +109,7 @@ header,main{{width:min(1100px,calc(100% - 32px));margin:auto}}header{{display:fl
 main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:0 0 6px;letter-spacing:-2px}}h2{{font:800 20px system-ui;margin:0 0 14px}}p.lead{{color:var(--muted);max-width:720px;margin:0 0 18px}}.dashboard-lead{{max-width:none!important;margin-bottom:14px!important}}
 .pal-intro{{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:24px;align-items:center;margin-bottom:18px}}.pal-intro p.lead{{margin-bottom:0!important}}.pixel-pal{{display:block;width:112px;height:112px;object-fit:contain}}.pal-celebration{{width:180px;height:200px;margin:0 auto 12px}}#achievement button,#achievement .button{{display:inline-block;margin:6px 3px 0}}@media(max-width:600px){{.pal-intro{{display:block;position:relative}}.pal-intro h1{{padding-right:84px;min-height:72px;display:flex;align-items:center}}.pal-intro .pixel-pal{{position:absolute;right:0;top:0;width:72px;height:72px}}}}
 .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}}.card{{background:linear-gradient(145deg,#1b2030,#11141d);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 16px 40px #0005}}
-.status-grid{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}}.status-grid .card{{padding:12px;min-height:82px}}.status-grid .value{{font-size:17px}}
+.status-grid{{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}}.status-grid .card{{padding:12px;min-height:82px}}.status-grid .value{{font-size:17px}}
 .label{{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px}}.value{{font:800 21px system-ui;margin-top:6px;overflow-wrap:anywhere}}.good{{color:var(--green)}}.warn{{color:#ffd75e}}.bad{{color:#ff6f75}}
 .camera{{width:100%;aspect-ratio:4/3;object-fit:contain;background:#050608;border:1px solid var(--line);border-radius:14px;margin-top:14px}}
 .dashboard-workspace{{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(430px,.95fr);gap:14px;align-items:start;margin-top:14px}}.dashboard-workspace .camera{{height:min(38vh,340px);aspect-ratio:auto;margin:0}}.dashboard-controls{{margin:10px 0 0}}
@@ -152,8 +153,9 @@ DASHBOARD = _page(
  <div class=card><div class=label>System</div><div class=value id=system>Starting</div></div>
  <div class=card><label class=label for=profile-selector>Active profile</label><select class=profile-select id=profile-selector>""" + _profile_options() + """</select><div class=label id=profile-source style='margin-top:6px'>—</div></div>
  <div class=card><div class=label>Game</div><div class=value id=game>—</div></div>
+ <div class=card><div class=label>Game session</div><div class=value id=game-session>Starting</div></div>
  <div class=card><div class=label>Hand tracking</div><div class=value id=tracking>—</div><div class=meter><i id=confidence></i></div></div>
- <div class=card><div class=label>RetroPie receiver</div><div class=value id=receiver>Starting</div></div>
+ <div class=card><div class=label>Controller delivery</div><div class=value id=receiver>Starting</div></div>
 </div>
 <div class=dashboard-workspace><div><div class=camera-stage><img class=camera id=camera data-src=/stream alt='Live camera view'><div class=camera-idle id=camera-idle role=status>POWER GLOVE VISION<small>Gestures are paused. Select a profile to resume.</small></div></div>
 <div class='controls dashboard-controls'><button id=center>Calibrate</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection</a><button class=danger id=shutdown-system>Shutdown</button></div></div>
@@ -178,8 +180,9 @@ const performance=s=>{const p=s.performance||{},inference=p.inference_ms||{},age
 let seen=[],switching=false,desiredProfile=''; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
 $('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||ready?'good':'warn'));
 if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
+$('game-session').textContent=s.game_session_active?'Registered game active':(s.profile_source==='Dashboard'?'Manual profile':'No registered game');$('game-session').className='value '+(s.game_session_active?'good':'');
 $('camera').style.display=idle||starting?'none':'block';$('camera-idle').style.display=idle||starting?'flex':'none';$('camera-idle').textContent=starting?startup:'POWER GLOVE VISION — Gestures are paused. Select a profile to resume.';if(idle||starting){$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){$('camera').src=$('camera').dataset.src+'?t='+Date.now()}updateCalibration(s);
-$('receiver').textContent=!s.connection_configured?'Set up Connection':s.controller_enabled?(starting?'Waiting for vision':idle?'Ready when gestures resume':(s.receiver_available===true?'Sending controls':'Waiting for console')):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle?'good':'warn');
+$('receiver').textContent=!s.connection_configured?'Set up Connection':s.controller_enabled?(!s.controller_context_active?'Armed — waiting for game':starting?'Waiting for vision':idle?'Ready when gestures resume':(s.launch_guard_active?'Launch delay':(s.receiver_available===true?'Sending controls':'Waiting for console'))):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle||s.controller_enabled&&!s.controller_context_active?'good':'warn');
 $('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start controller'; $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false'; $('controller-toggle').disabled=!s.connection_configured; $('controller-toggle').title=s.connection_configured?'':'Configure your RetroPie destination in Connection first';
 $('tracking').textContent=starting?'Starting…':idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);$('performance').innerHTML=performance(s);
@@ -337,7 +340,10 @@ class ControlState:
         self.camera_available = False
         self.worker_running = False
         self.last_error: str | None = None
-        self._controller_enabled = False
+        self._controller_marker = config_path.with_name("controller-armed")
+        self._controller_enabled = (
+            self._controller_marker.is_file() and not self._controller_marker.is_symlink()
+        )
         self._pairing_display = pairing_display
         self._pairing_identity = ""
         self._pairing_session: dict[str, Any] | None = None
@@ -411,8 +417,35 @@ class ControlState:
             config = self.load_config()
             if not str(config.get("receiver", "")).strip() or not config.get("token"):
                 raise ValueError("Configure your RetroPie destination and pairing in Connection before starting controls.")
+        self._persist_controller_enabled(enabled)
         with self.lock:
             self._controller_enabled = enabled
+
+    def _persist_controller_enabled(self, enabled: bool) -> None:
+        """Atomically retain the explicit Start/Stop choice without storing it in settings."""
+        path = self._controller_marker
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise ValueError("Controller state path is not a regular file.")
+        if not enabled:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+            return
+        temporary = path.with_name("." + path.name + "." + secrets.token_hex(8) + ".tmp")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        descriptor = os.open(str(temporary), flags, 0o600)
+        try:
+            with os.fdopen(descriptor, "w") as marker:
+                marker.write("armed\n")
+                marker.flush()
+                os.fsync(marker.fileno())
+            os.replace(str(temporary), str(path))
+        finally:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
 
     def schedule_system_shutdown(self, delay_seconds: float = 2.0) -> None:
         """Ask the root-owned host helper to power off after the HTTP reply."""
@@ -493,6 +526,8 @@ class ControlState:
         temporary.write_text(json.dumps(saved, indent=2) + "\n")
         os.chmod(temporary, 0o600)
         os.replace(temporary, self.config_path)
+        if not receiver:
+            self._persist_controller_enabled(False)
         with self.lock:
             if not receiver:
                 self._controller_enabled = False

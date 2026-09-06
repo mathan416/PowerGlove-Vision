@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Established an intentional manual context in packet-session tests.
 #   2026-09-04 - Covered nested documentation support files in the Help audit.
 #   2026-09-04 - Cover reliability findings from the development audit.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -169,6 +170,12 @@ class AuditRegressionTests(unittest.TestCase):
                 return ('program_h','Dashboard','same profile')
             return None
         practice_stage=[0]
+        controller_stage=[0]
+        def controller_request():
+            if controller_stage[0] == 0:
+                controller_stage[0]=1
+                return True
+            return None
         def practice_request():
             if practice and sent and practice_stage[0] == 0:
                 practice_stage[0]=1
@@ -198,8 +205,9 @@ class AuditRegressionTests(unittest.TestCase):
              patch.object(v,'start_debug_server'), patch.object(v,'UnoQMatrix'), \
              patch.object(v.SharedDebugState,'take_profile_request',side_effect=request), \
              patch.object(v.SharedDebugState,'take_practice_request',side_effect=practice_request), \
+             patch.object(v.SharedDebugState,'take_controller_request',side_effect=controller_request), \
              patch.object(sys,'argv',['vision','--receiver','test','--token',TOKEN,
-                                      '--profile','program_h','--controller-enabled']):
+                                      '--profile','program_h']):
             profiles.return_value.take.return_value=None
             v.main()
         terminal=next(i for i,item in enumerate(sent) if item[1]==2147483647)
