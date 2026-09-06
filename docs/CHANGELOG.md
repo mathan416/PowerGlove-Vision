@@ -7,6 +7,12 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+Version **0.3.5** is planned for camera-to-game latency fixes. Tuning will follow measured stage timings and repeated stationary-jitter and recognition checks; these fixes are not included in rc.7.
+
+## [0.3.2-rc.7] - 2026-09-06
+
+Changes since rc.6: guided Setup pairing, networking indicators, refreshed guides and screenshots, and opt-in latency measurement tools. The project base version remains 0.3.2.
+
 ### Changed
 
 - Gave the Security network-exposure table dedicated column widths so port numbers stay intact, with less space assigned to Boundary. Refreshed every documented application screenshot from current templates using isolated sample data and an omitted-camera placeholder; added a repeatable capture script and rebuilt the affected PDF editions.

@@ -13,18 +13,18 @@ For an existing installation, this update changes controller transport on both c
 
 ## Install this release candidate
 
-To test **v0.3.2-rc.6**, close games and stop controller output, then run the matching command on each device. These explicit commands select the candidate; the normal commands later in this guide select the latest stable release.
+To test **v0.3.2-rc.7**, close games and stop controller output, then run the matching command on each device. These explicit commands select the candidate; the normal commands later in this guide select the latest stable release.
 
 On the PowerGlove Vision Controller:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.6/install-uno-q.sh && bash install-uno-q.sh --version v0.3.2-rc.6
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.7/install-uno-q.sh && bash install-uno-q.sh --version v0.3.2-rc.7
 ```
 
 On RetroPie:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.6/install-retropie.sh && bash install-retropie.sh --version v0.3.2-rc.6
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.7/install-retropie.sh && bash install-retropie.sh --version v0.3.2-rc.7
 ```
 
 Verify both report the same candidate, then follow the pairing/first-game checks below. Existing hand settings and pairing files are preserved. The Controller installer also updates the matrix firmware. Review [coordinated transport upgrades and rollback](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) before replacing an older installation. Candidate testing still needs live gameplay, stationary-jitter, and camera-to-display latency checks; see the [changelog](CHANGELOG.md).
