@@ -164,15 +164,18 @@ once-per-round availability. If Zap does not work, check the
 **Your mission:** Control the Robo-Glove, keep the energy ball in play, break a
 complete wall of tiles, and follow the revealed arrows through the maze.
 
+**Nestopia (PowerGlove)** means the custom `lr-nestopia-powerglove` core.
+Use the controls below for your selected emulator; FCEUmm is the fallback.
+
 | Do this | See it | Controller result |
 | --- | --- | --- |
-| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | FCEUmm: held digital steering. Native core: absolute continuous X/Y. |
+| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | FCEUmm: held digital steering. Nestopia (PowerGlove): absolute continuous X/Y. |
 | Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | FCEUmm: A, move the glove into the room. |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | FCEUmm: B, punch, grab, or launch a new ball. |
-| Open hand | <img src="images/gestures/actions/show-your-hand.png" alt="Open hand" width="72"> | Native core: release or throw a held ball. |
-| Close hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="72"> | Native core: grab or catch the ball. |
-| Point index; curl the other three fingers | <img src="images/gestures/actions/keep-index-straight.png" alt="Point with the index finger while the other fingers are curled" width="72"> | Native core: fire a Robo-Bullet. |
-| Close hand and push forward | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="68"> <img src="images/gestures/actions/push-toward-camera.png" alt="Push toward the camera" width="68"> | Native core: Power Punch. |
+| Open hand | <img src="images/gestures/actions/show-your-hand.png" alt="Open hand" width="72"> | Nestopia (PowerGlove): release or throw a held ball. |
+| Close hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="72"> | Nestopia (PowerGlove): grab or catch the ball. |
+| Point index; curl the other three fingers | <img src="images/gestures/actions/keep-index-straight.png" alt="Point with the index finger while the other fingers are curled" width="72"> | Nestopia (PowerGlove): fire a Robo-Bullet. |
+| Close hand and push forward | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="68"> <img src="images/gestures/actions/push-toward-camera.png" alt="Push toward the camera" width="68"> | Nestopia (PowerGlove): Power Punch. |
 | Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause; native Start is confirmed. |
 | Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | FCEUmm: Select, doorway or Robo-Bullet action. Native Select remains unconfirmed. |
 
