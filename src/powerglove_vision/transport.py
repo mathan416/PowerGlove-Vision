@@ -139,7 +139,9 @@ class UdpSender:
                     payload, source = self.socket.recvfrom(MAX_PACKET_BYTES + 1)
                 except BlockingIOError:
                     break
-                if source != peer:
+                # A multi-homed receiver may reply from its preferred interface.
+                # Its identity is the HMAC plus our fresh request/session, not IP.
+                if source[1] != peer[1]:
                     continue
                 try:
                     reply = decode_message(payload, self.token)

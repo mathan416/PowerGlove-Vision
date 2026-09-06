@@ -58,6 +58,8 @@ authoritative record for line-level and file-level history.
 
 ### Fixed
 
+- Preserve the contacted Linux address/interface for handshake replies when RetroPie has Ethernet and Wi-Fi on the same subnet; also accept a different authenticated reply address when necessary; signatures, fresh request/session identifiers, and the receiver port remain required. Verified against the cabinet's Ethernet/Wi-Fi addresses.
+
 - Setup recovers from failed loading and actions, retains unsaved connection fields
   during controller/pairing refreshes, and resets approval when the pairing host changes.
 - Concurrent device settings saves are serialized and privately atomic; first-run

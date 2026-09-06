@@ -72,6 +72,7 @@ class AuditRegressionTests(unittest.TestCase):
             except StopIteration:
                 raise KeyboardInterrupt
         sock.recvfrom.side_effect = receive
+        sock.recvmsg.side_effect = lambda size, space: (lambda pair: (pair[0], [], 0, pair[1]))(sock.recvfrom(size))
         device = Mock()
         release_times = []
         device.release.side_effect = lambda: release_times.append(now[0])

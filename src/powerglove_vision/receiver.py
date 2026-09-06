@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import hmac
 import socket
+import sys
 import time
 from pathlib import Path
 
@@ -133,6 +134,11 @@ def main() -> int:
         print(f"Native Power Glove state unavailable: {exc}", flush=True)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
+    packet_info = sys.platform.startswith("linux")
+    if packet_info:
+        # Linux in_pktinfo preserves the receiving address/interface for replies.
+        # This matters when Ethernet and Wi-Fi share a subnet behind container NAT.
+        sock.setsockopt(socket.IPPROTO_IP, 8, 1)  # IP_PKTINFO (Linux ABI)
     if args.timeout_ms <= 0:
         sock.close()
         raise ValueError("receiver timeout must be positive")
@@ -156,12 +162,21 @@ def main() -> int:
             remaining = timeout if released or last_valid_at is None else timeout - (now - last_valid_at)
             sock.settimeout(max(0.001, remaining))
             try:
-                payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
+                reply_info = []
+                if packet_info:
+                    payload, ancillary, _flags, _peer = sock.recvmsg(MAX_PACKET_BYTES + 1, socket.CMSG_SPACE(12))
+                    reply_info = [(level, kind, data[:12]) for level, kind, data in ancillary
+                                  if level == socket.IPPROTO_IP and kind == 8 and len(data) >= 12]
+                else:
+                    payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
                 try:
                     state, reply = sessions.receive(payload, _peer)
                     if reply is not None:
                         try:
-                            sock.sendto(reply, _peer)
+                            if reply_info:
+                                sock.sendmsg([reply], reply_info, 0, _peer)
+                            else:
+                                sock.sendto(reply, _peer)
                         except OSError:
                             pass
                     if state is None:

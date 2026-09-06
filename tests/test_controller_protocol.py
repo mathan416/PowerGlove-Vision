@@ -12,6 +12,11 @@
 import json
 import socket
 import select
+import sys
+import subprocess
+import tempfile
+import time
+from pathlib import Path
 import unittest
 from unittest.mock import patch, Mock
 from powerglove_vision import receiver
@@ -132,6 +137,7 @@ class SignedControllerTests(unittest.TestCase):
             newer=json.dumps(dict(protocol='powerglove-vision/1',token=TOKEN,session='legacy',sequence=2)).encode()
             sock,device,native=Mock(),Mock(),Mock()
             sock.recvfrom.side_effect=[(legacy,PEER),(state_packet(session,challenge),PEER),(newer,PEER),KeyboardInterrupt()]
+            sock.recvmsg.side_effect=lambda size,space:(lambda pair:(pair[0],[],0,pair[1]))(sock.recvfrom(size))
             args=['receiver','--token',TOKEN]+(['--allow-legacy-controller'] if allow else [])
             with patch.object(receiver,'ReceiverSessions',return_value=sessions), patch.object(receiver.socket,'socket',return_value=sock), patch.object(receiver,'UInputDevice',return_value=device), patch.object(receiver,'NativeStateWriter',return_value=native), patch('sys.argv',args):
                 self.assertEqual(receiver.main(),0)
@@ -148,9 +154,41 @@ class SignedControllerTests(unittest.TestCase):
             try:return next(packets),PEER
             except StopIteration:raise KeyboardInterrupt
         sock.recvfrom.side_effect=receive
+        sock.recvmsg.side_effect=lambda size,space:(lambda pair:(pair[0],[],0,pair[1]))(sock.recvfrom(size))
         device.release.side_effect=lambda:released.append(now[0])
         with patch.object(receiver,'ReceiverSessions',return_value=sessions), patch.object(receiver.time,'monotonic',side_effect=lambda:now[0]), patch.object(receiver.socket,'socket',return_value=sock), patch.object(receiver,'UInputDevice',return_value=device), patch.object(receiver,'NativeStateWriter',return_value=native), patch('sys.argv',['receiver','--token',TOKEN]):
             self.assertEqual(receiver.main(),0)
         self.assertEqual(device.write_state.call_count,1)
         self.assertLessEqual(released[0],.4)
         native.release.assert_any_call(2)
+
+    def test_multihomed_reply_requires_port_signature_and_fresh_request(self):
+        for mode in ('valid','wrong-port','wrong-request','wrong-key'):
+            sock=Mock()
+            with patch('powerglove_vision.transport.socket.socket',return_value=sock):
+                sender=UdpSender('192.0.2.52',55355,TOKEN)
+            self.addCleanup(sender.close)
+            sender._peer=('192.0.2.52',55355);sender.request='b'*32;sender._hello_at=float('inf')
+            reply=encode_message('challenge',TOKEN if mode!='wrong-key' else 'other-token',session=sender.session,request='c'*32 if mode=='wrong-request' else sender.request,challenge='d'*32)
+            sock.recvfrom.side_effect=[(reply,('192.0.2.51',1234 if mode=='wrong-port' else 55355)),BlockingIOError()]
+            self.assertEqual(sender.send(ControllerState.released(1,1,'off')),mode=='valid')
+
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'Linux IP_PKTINFO integration')
+    def test_linux_receiver_replies_from_the_contacted_address(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'token').write_text(TOKEN)
+            sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);sock.bind(('127.0.0.1',0))
+            port=sock.getsockname()[1];sock.close()
+            process=subprocess.Popen([sys.executable,'-m','powerglove_vision.receiver','--listen','0.0.0.0','--port',str(port),'--token-file',str(root/'token'),'--native-state',str(root/'native'),'--dry-run'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+            client=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);client.settimeout(.05)
+            try:
+                deadline=time.monotonic()+3
+                while True:
+                    client.sendto(hello('a'*32),('127.0.0.2',port))
+                    try:payload,peer=client.recvfrom(4097);break
+                    except socket.timeout:
+                        if time.monotonic()>=deadline:self.fail('No receiver reply')
+                self.assertEqual(peer,('127.0.0.2',port))
+                self.assertEqual(decode_message(payload,TOKEN)['kind'],'challenge')
+            finally:
+                client.close();process.terminate();process.communicate(timeout=3)
