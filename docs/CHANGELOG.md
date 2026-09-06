@@ -12,6 +12,13 @@ faster inference for more responsive play.
 
 ### Changed
 
+- Remembered the player's explicit Start/Stop controller choice across UNO Q
+  application and system restarts. Registered RetroPie launches now maintain a
+  renewable session only while RetroArch is running, allowing an armed controller
+  to reconnect after an application restart without emitting into EmulationStation
+  or the runcommand menu. Stop remains sticky; game exit, unknown games, and stale
+  sessions release controls. Dashboard now distinguishes armed delivery from the
+  live game session.
 - Standardized numbered and bulleted lists across the Markdown guides. Built-in
   Help now keeps wrapped and loosely spaced items together, and generated PDFs
   keep every marker beside its complete item at page boundaries.

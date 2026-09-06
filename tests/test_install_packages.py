@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Covered required renewable game-session package members.
 #   2026-09-05 - Required App Lab builds to refresh their checksum companion.
 #   2026-09-04 - Added two-machine installation regression coverage.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -65,8 +66,13 @@ class ArchiveTests(unittest.TestCase):
                          'src/powerglove_vision/tracker.py',
                          'src/powerglove_vision/tuning.py',
                          'src/powerglove_vision/vision_app.py',
+                         'src/powerglove_vision/profile_control.py',
+                         'src/powerglove_vision/retropie_hook.py',
                          'config/games.json', 'config/profiles.json',
                          'retropie/powerglove-receiver.service',
+                         'retropie/bin/powerglove-retropie-hook',
+                         'retropie/runcommand-onstart-powerglove.sh',
+                         'retropie/runcommand-onend-powerglove.sh',
                          'native/nestopia-powerglove/nestopia-powerglove.patch',
                          'native/nestopia-powerglove/README.md',
                          'native/nestopia-powerglove/CHANGES.md'):

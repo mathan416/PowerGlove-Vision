@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Covered renewable game-session validation and expiry.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -19,13 +20,16 @@ import unittest
 from pathlib import Path
 
 from powerglove_vision.profile_control import (
+    ActiveGameLease,
     load_registry,
     select_profile,
     sign_message,
     send_request,
     verify_message,
     ProfileCommandServer,
+    ProfileRequest,
 )
+from powerglove_vision.vision_app import _consume_game_lease, _controller_context_active
 
 
 class ProfileTests(unittest.TestCase):
@@ -62,6 +66,61 @@ class ProfileTests(unittest.TestCase):
             self.assertEqual(server.take().profile, "program_h")
         finally:
             server.close()
+
+    def test_renewable_game_request_carries_a_bounded_lease(self):
+        server = ProfileCommandServer("127.0.0.1", 0, "a-long-test-token")
+        try:
+            ack = send_request(
+                "127.0.0.1", server.socket.getsockname()[1],
+                "a-long-test-token", "program_h", "nes", "Example.7z", 0.2,
+                session_id="a" * 32, lease_seconds=6.0,
+            )
+            self.assertTrue(ack["accepted"])
+            request = server.take()
+            self.assertEqual(request.session_id, "a" * 32)
+            self.assertEqual(request.lease_seconds, 6.0)
+        finally:
+            server.close()
+
+    def test_game_lease_refresh_does_not_repeat_a_transition(self):
+        lease = ActiveGameLease()
+        request = ProfileRequest(
+            "one", "program_h", "nes", "Example.7z", ("127.0.0.1", 1),
+            session_id="b" * 32, lease_seconds=6.0,
+        )
+        self.assertTrue(lease.refresh(request, 10.0))
+        self.assertFalse(lease.refresh(request, 12.0))
+        self.assertFalse(lease.expire(17.9))
+        self.assertTrue(lease.expire(18.0))
+        self.assertFalse(lease.snapshot(18.0)["game_session_active"])
+
+    def test_vision_consumes_heartbeats_once_and_turns_off_after_expiry(self):
+        lease = ActiveGameLease()
+        request = ProfileRequest(
+            "one", "program_h", "nes", "Example.7z", ("127.0.0.1", 1),
+            session_id="d" * 32, lease_seconds=6.0,
+        )
+        transition, expired = _consume_game_lease(request, lease, 10.0)
+        self.assertIs(transition, request)
+        self.assertFalse(expired)
+        transition, expired = _consume_game_lease(request, lease, 12.0)
+        self.assertIsNone(transition)
+        self.assertFalse(expired)
+        transition, expired = _consume_game_lease(None, lease, 18.0)
+        self.assertIsNone(transition)
+        self.assertTrue(expired)
+
+    def test_controller_output_requires_a_game_or_manual_context(self):
+        lease = ActiveGameLease()
+        self.assertFalse(_controller_context_active(lease, "startup"))
+        self.assertFalse(_controller_context_active(lease, "RetroPie game session expired"))
+        self.assertTrue(_controller_context_active(lease, "Dashboard"))
+        self.assertTrue(_controller_context_active(lease, "RetroPie launch hook"))
+        lease.refresh(ProfileRequest(
+            "one", "program_h", "nes", "Example.7z", ("127.0.0.1", 1),
+            session_id="e" * 32, lease_seconds=6.0,
+        ), 10.0)
+        self.assertTrue(_controller_context_active(lease, "startup"))
 
     def test_shipped_registry_covers_archive_names(self):
         registry = load_registry(Path(__file__).resolve().parents[1] / "config/games.json")

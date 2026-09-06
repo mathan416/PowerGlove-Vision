@@ -16,9 +16,11 @@ appears and **Calibrate** becomes available before continuing.
 
 1. Stand where the camera can see your whole hand with a little room on every side.
 2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
-3. Wait for tracking to settle, then select **Start controller**.
-4. Move your whole hand away from center for directions. Return to center to stop.
-5. Make one gesture at a time. Clean poses beat frantic motion.
+3. Wait for tracking to settle, then select **Start controller** to arm delivery.
+4. Launch a registered game. Controls begin only after RetroArch is running and
+   its short initialization guard ends.
+5. Move your whole hand away from center for directions. Return to center to stop.
+6. Make one gesture at a time. Clean poses beat frantic motion.
 
 <img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
 
@@ -33,10 +35,15 @@ appears and **Calibrate** becomes available before continuing.
 | **BS** | <img src="images/matrix/BS.jpg" alt="BS matrix display" width="104"> | Bad Street Brawler |
 | **GB** | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> | Super Glove Ball |
 
-Confirm the profile on Dashboard and select **Start controller** when ready.
-At game launch, controls pause for six seconds so hand movement cannot operate
-RetroPie's runcommand screen. They resume automatically once the launch guard
-ends; you do not need to select **Start controller** again.
+Confirm the profile on Dashboard and select **Start controller** when ready. The
+choice stays armed across UNO Q restarts, but sends nothing while no valid game or
+manual Dashboard context exists. At a registered launch, the RetroPie hook waits for
+RetroArch, then renews a short game session while it remains running. Controls begin
+after a one-second initialization guard, avoiding the runcommand screen. They resume
+automatically after an UNO Q application restart while the same game is still live;
+you do not need to select **Start controller** again. Exiting the game, launching an
+unknown game, or losing the session releases all controls. **Stop controller** remains
+stopped until you explicitly start it again.
 
 ### The two gestures that work everywhere
 

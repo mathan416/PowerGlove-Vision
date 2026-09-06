@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+# Full history: docs/CHANGELOG.md and Git history.
+#   2026-09-05 - Verified persistent armed state and clearer delivery status.
 #   2026-09-05 - Kept mocked forwarding assertions compatible with Python 3.7.
 #   2026-09-05 - Verified atomic Academy controls and fresh-frame navigation gates.
 #   2026-09-05 - Verified the Academy completion trophy artwork.
@@ -17,7 +19,6 @@
 #   2026-09-03 - Verified Dashboard profile switching and healthy idle status.
 #   2026-09-03 - Verified Learn-page practice leases and Dashboard restoration.
 #   2026-09-03 - Verified shared profile labels and Python 3.7-compatible mocks.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior."""
 
@@ -83,6 +84,13 @@ class ControlStateTests(unittest.TestCase):
         self.assertFalse(self.state.controller_enabled())
         self.assertEqual(self.state.load_config()["token"], "private-token")
 
+    def test_explicit_controller_choice_survives_an_application_restart(self):
+        self.state.set_controller_enabled(True)
+        restarted = ControlState(self.path)
+        self.assertTrue(restarted.controller_enabled())
+        restarted.set_controller_enabled(False)
+        self.assertFalse(ControlState(self.path).controller_enabled())
+
     def tearDown(self):
         self.temporary.cleanup()
 
@@ -127,6 +135,9 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b'Frame waiting before inference p50 / p95', DASHBOARD)
         self.assertIn(b'capture_skipped_total', DASHBOARD)
         self.assertIn(b'tracker_backend_label||s.tracker_backend', DASHBOARD)
+        self.assertIn(b'Controller delivery', DASHBOARD)
+        self.assertIn(b'Game session', DASHBOARD)
+        self.assertNotIn(b'<div class=label>RetroPie receiver</div>', DASHBOARD)
 
     def test_help_index_lists_the_public_guides(self):
         page = help_index_page()
@@ -155,6 +166,10 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn("retropieconsole.local", body)
         self.assertIn("55355", body)
         self.assertNotIn("private-token", body)
+        self.assertIn("Stopped", body)
+        self.state.set_controller_enabled(True)
+        body, _ = cabinet_reference_content("10.0.2.105:8088", self.state.public_config())
+        self.assertIn("Armed", body)
 
     def test_cabinet_reference_preserves_local_names_and_rejects_bad_hosts(self):
         self.assertEqual(request_browser_address("arduiain.local:8088"), "arduiain.local")
@@ -392,7 +407,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Advanced: pair without a RetroPie password", SETUP)
         self.assertIn(b"Prepare one-time code", SETUP)
 
-    def test_controller_connection_starts_disarmed_every_launch(self):
+    def test_controller_connection_starts_disarmed_until_player_arms_it(self):
         self.assertFalse(self.state.controller_enabled())
         self.assertFalse(self.state.snapshot()["controller_enabled"])
         self.assertFalse(self.state.public_config()["controller_enabled"])
@@ -402,7 +417,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertTrue(self.state.public_config()["controller_enabled"])
 
         restarted = ControlState(self.path)
-        self.assertFalse(restarted.controller_enabled())
+        self.assertTrue(restarted.controller_enabled())
 
     def test_shutdown_controls_are_on_dashboard_and_setup(self):
         for page in (DASHBOARD, SETUP):

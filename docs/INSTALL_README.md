@@ -273,11 +273,23 @@ excluded from the public package; the live cabinet page supplies local details.
 2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
 3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
 4. On first use, or after changing your camera or playing position, select **Calibrate** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
-5. Select **Start controller** only when you are ready to play.
-6. Launch the game and confirm its profile code on the matrix.
+5. Select **Start controller** when you are ready to arm gesture control.
+6. Launch a registered game and confirm its profile code on the matrix. Delivery
+   begins only after RetroArch is running and its short initialization guard ends.
 7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
 8. Read the shutdown limitation before disconnecting power. **Shutdown** requests a graceful halt, but the tested board restarts; an offline website is not proof that it is safe to unplug.
 
-PowerGlove Vision deliberately boots with controller delivery stopped. Vision
-and the dashboard keep running so setup never generates surprise game inputs.
+PowerGlove Vision remembers the player's explicit **Start controller** or **Stop
+controller** choice across UNO Q application and system restarts. A remembered
+Start means **armed**, not unconditional output: controls are sent only during a
+live registered RetroArch session or after an intentional manual Dashboard profile
+selection. A registered game renews its session while RetroArch is running, so an
+UNO Q application restart can reconnect automatically. Game exit, an unknown game,
+or an expired session releases all controls and stops delivery without changing the
+armed preference. **Stop controller** remains sticky until explicitly started again.
+Install the same release on both devices because this behavior uses a matching UNO Q
+worker and RetroPie launch hook.
+
+Vision and the dashboard keep running while output is unarmed or waiting for a game,
+so setup never generates surprise game inputs.
 **Shutdown** is different: it halts Linux on the UNO Q. The tested board automatically restarts; remaining halted is not guaranteed.

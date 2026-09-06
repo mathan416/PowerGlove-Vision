@@ -15,8 +15,9 @@ The browser configures and explains that process; it is not required in the
 per-frame gameplay path. The UNO Q microcontroller drives the status matrix;
 Linux performs hand tracking and gesture recognition.
 
-There are three independent questions: which game profile is selected, whether
-the camera is running, and whether controller delivery is enabled. Glove Academy can
+There are four independent questions: which game profile is selected, whether
+the camera is running, whether the player has armed controller delivery, and whether
+a valid registered-game or manual context currently permits packets. Glove Academy can
 open the camera while the selected profile is **Gestures off**. Glove Academy and Tune
 both pause game input. A healthy web page does not by itself establish that the
 camera, receiver, or game is working.
@@ -66,7 +67,9 @@ sockets. These functions are kept separate from camera inference.
 2. MediaPipe identifies the hand landmarks. The tracker produces a `HandObservation`: detection, confidence, timestamp, palm position and scale, wrist roll, and normalized finger curls.
 3. The gesture engine compares that observation with the saved neutral calibration and effective thresholds. Directions are relative to the calibrated palm; apparent hand-size change supplies forward/backward movement.
 4. Shared activation/release states and held menu poses feed the selected profile's mapping. The result is a `ControllerState`, including buttons, D-pad, axes, finger values, events, sequence, and tracking/calibration metadata.
-5. The worker sends the state only if controller delivery is enabled and neither practice nor tuning is active.
+5. The worker sends the state only if controller delivery is armed, a live
+   registered-game lease or intentional manual Dashboard context exists, and neither
+   practice nor tuning is active.
 6. The sender encodes a bounded JSON datagram with a session identifier and shared token, then sends it to RetroPie over UDP 55355.
 7. The receiver checks protocol, token, and sequence. It creates the real virtual controller when the first accepted packet arrives.
 8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
@@ -102,7 +105,7 @@ empty first frame as completed initialization.
 | Mode | Vision profile and camera | Controller delivery | Matrix |
 | --- | --- | --- | --- |
 | Gestures off | Camera closed; selected profile off | No gameplay states | Power Glove attract animation |
-| Active profile | Selected game profile; camera requested | Only when explicitly enabled | Ready/tracking status and profile display |
+| Active profile | Selected game profile; camera requested | Only when armed and a game/manual context is active | Ready/tracking status and profile display |
 | Ordinary Glove Academy | General practice profile; camera requested | Paused | Scanning L |
 | Tune gestures | Practice with selected tuning scope and preview | Paused, including after a game-launch request | Scanning T |
 
@@ -232,13 +235,24 @@ are deliberately machine- and player-local.
 
 ![Profile-selection flow from RetroPie launch hook through the UNO relay and worker](images/architecture/profile.png)
 
-At game launch, the RetroPie hook looks up the exact ROM basename and sends a
-signed profile request to UNO UDP 55356. The app-owned relay forwards the bytes
-to the worker. The worker authenticates the request and handles the profile
-transition; the acknowledgement travels back through the relay. The relay has
-no shared token and cannot declare a profile applied. Game-end hooks request the
-configured end-of-game behaviour. Unsupported or unregistered games do not gain
-a mapping merely because their filenames resemble a registered title.
+At game launch, the RetroPie hook looks up the exact ROM basename. For a registered
+game it records a user-owned session marker, starts a detached monitor, and waits for
+RetroArch to exist before sending input context. The monitor sends a signed profile
+renewal every two seconds to UNO UDP 55356 while both RetroArch and the marker remain
+active. Each renewal carries a bounded six-second lease. The app-owned relay forwards
+the bytes to the worker; the worker authenticates them and treats repeated renewals
+as lease refreshes rather than profile transitions. The acknowledgement travels back
+through the relay. The relay has no shared token and cannot declare a profile applied.
+
+The first live renewal changes profile once and starts a one-second initialization
+guard. An UNO Q application restart can therefore rediscover an already-running
+registered game from the next renewal without exposing the runcommand menu to hand
+input. Game-end hooks, RetroArch termination, marker replacement, unknown games, and
+lease expiry request or produce neutral/off state. The player's armed/stopped choice
+is stored separately: Stop remains sticky, while armed alone never authorizes output.
+Manual Dashboard profile selection provides an explicit testing context without
+pretending that a registered game is running. Unsupported or unregistered games do
+not gain a mapping merely because their filenames resemble a registered title.
 
 Setup's Games editor uses a separate path: browser to UNO web API, then the paired
 UNO proxy to the RetroPie Games service on TCP 55358. Challenge/HMAC exchanges

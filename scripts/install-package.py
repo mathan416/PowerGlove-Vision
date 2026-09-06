@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Required the complete renewable game-session implementation.
 #   2026-09-04 - Added versioned two-machine installation.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -67,6 +68,7 @@ def unpack(archive, destination, machine, version):
             "src/powerglove_vision/tracker.py",
             "src/powerglove_vision/tuning.py",
             "src/powerglove_vision/vision_app.py",
+            "src/powerglove_vision/profile_control.py",
             "config/games.json",
             "config/profiles.json",
         ]
@@ -74,6 +76,10 @@ def unpack(archive, destination, machine, version):
                       "uno-q/powerglove-early-start.service", "uno-q/powerglove-system-shutdown.path"]
                      if machine == "uno-q" else [
                          "retropie/powerglove-receiver.service",
+                         "src/powerglove_vision/retropie_hook.py",
+                         "retropie/bin/powerglove-retropie-hook",
+                         "retropie/runcommand-onstart-powerglove.sh",
+                         "retropie/runcommand-onend-powerglove.sh",
                          "scripts/install-nestopia-powerglove.sh",
                          "scripts/configure-super-glove-ball-core.py",
                          "native/nestopia-powerglove/nestopia-powerglove.patch",

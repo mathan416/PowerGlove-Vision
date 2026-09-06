@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+# Full history: docs/CHANGELOG.md and Git history.
+#   2026-09-05 - Resumed armed controls from renewable RetroPie game leases.
 #   2026-09-05 - Measured fresh-frame publication and controller-transition latency.
 #   2026-09-05 - Reported clear proven and experimental tracker names.
 #   2026-09-05 - Added latest-frame capture, timing telemetry, and async previews.
@@ -17,7 +19,6 @@
 #   2026-09-03 - Published startup timing for browser elapsed-time feedback.
 #   2026-09-03 - Retain neutral calibration across worker and profile restarts.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output."""
 
@@ -40,7 +41,7 @@ from .debug_server import SharedDebugState, start_debug_server
 from .gesture import GestureConfig, GestureEngine, load_calibration, save_calibration
 from .matrix import MatrixStatus, UnoQMatrix
 from .model import ControllerState
-from .profile_control import ProfileCommandServer, read_token
+from .profile_control import ActiveGameLease, ProfileCommandServer, ProfileRequest, read_token
 from .realtime import LatestFrameCapture, LatestPreviewEncoder, RollingPerformance
 from .runtime_assets import ensure_hand_landmarker_model
 from .tracker import MediaPipeTracker, log_startup_stage
@@ -282,6 +283,25 @@ def _launch_guard_active(deadline: float, now: float | None = None) -> bool:
     return (time.monotonic() if now is None else now) < deadline
 
 
+def _consume_game_lease(
+    request: ProfileRequest | None, lease: ActiveGameLease, now: float,
+) -> tuple[ProfileRequest | None, bool]:
+    """Reduce a profile signal to a real transition and an optional lease expiry."""
+    if request is not None and request.session_id is not None:
+        if not lease.refresh(request, now):
+            request = None
+    elif request is not None:
+        lease.clear()
+    return request, lease.expire(now)
+
+
+def _controller_context_active(lease: ActiveGameLease, profile_source: str) -> bool:
+    """Allow output only for a live registered game or an intentional manual context."""
+    return lease.session_id is not None or profile_source in {
+        "Dashboard", "RetroPie launch hook",
+    }
+
+
 def _base_status(
     profile: str | None,
     game: str,
@@ -349,6 +369,7 @@ def main() -> int:
     latest_diagnostics = {}
     vision_error: str | None = None
     launch_guard_until = 0.0
+    active_game_lease = ActiveGameLease()
 
     matrix.set_status(MatrixStatus.GESTURES_IDLE if current_profile is None else MatrixStatus.LOADING)
     matrix.set_profile(current_profile)
@@ -357,15 +378,17 @@ def main() -> int:
     try:
         while True:
             old_vision_profile = _effective_profile(current_profile, practice_mode)
-            request = profile_server.take()
+            request, lease_expired = _consume_game_lease(
+                profile_server.take(), active_game_lease, time.monotonic()
+            )
             # Give the authenticated game lifecycle command priority without
             # consuming a simultaneous Dashboard request; it remains queued
             # for the following loop iteration.
-            dashboard_request = None if request is not None else shared.take_profile_request()
-            requested_profile = request.profile if request is not None else (
+            dashboard_request = None if request is not None or lease_expired else shared.take_profile_request()
+            requested_profile = None if lease_expired else request.profile if request is not None else (
                 dashboard_request[0] if dashboard_request is not None else current_profile
             )
-            profile_requested = request is not None or dashboard_request is not None
+            profile_requested = request is not None or dashboard_request is not None or lease_expired
             practice_request = shared.take_practice_request()
             transition_requested = profile_requested or practice_request is not None
             if transition_requested:
@@ -386,8 +409,17 @@ def main() -> int:
                         # the launch/configuration menu, then resume without
                         # changing the user's explicit Start/Stop choice.
                         if request.profile is not None:
-                            guard_ms = max(0, int(getattr(args, "launch_guard_ms", 6000)))
+                            # A leased request is not sent until RetroArch is
+                            # actually running, so it needs only a short input
+                            # initialization guard. Legacy one-shot hooks keep
+                            # the full pre-emulator guard.
+                            guard_ms = 1000 if request.session_id else max(
+                                0, int(getattr(args, "launch_guard_ms", 6000))
+                            )
                             launch_guard_until = time.monotonic() + guard_ms / 1000.0
+                    elif lease_expired:
+                        current_game = "No game"
+                        profile_source = "RetroPie game session expired"
                     else:
                         assert dashboard_request is not None
                         profile_source = dashboard_request[1]
@@ -430,6 +462,10 @@ def main() -> int:
                     ))
                 sender.new_session()
                 controller_enabled = controller_request
+                if controller_enabled and active_game_lease.session_id is None \
+                        and profile_source == "startup":
+                    profile_source = "Dashboard"
+                    current_game = "Manual selection"
 
             if shared.take_calibration_request() and engine is not None:
                 engine.begin_calibration()
@@ -460,6 +496,10 @@ def main() -> int:
                     vision_operation = "close"
                     capture = tracker = engine = cv2 = None
                 status = _base_status(None, current_game, profile_source, controller_enabled)
+                status.update(active_game_lease.snapshot(time.monotonic()))
+                status["controller_context_active"] = _controller_context_active(
+                    active_game_lease, profile_source
+                )
                 status["vision_state"] = "idle"
                 shared.update_status(status, clear_frame=True)
                 matrix.set_status(MatrixStatus.GESTURES_IDLE)
@@ -469,6 +509,10 @@ def main() -> int:
             if capture is None or tracker is None or cv2 is None:
                 status = _base_status(current_profile, current_game, profile_source,
                                       controller_enabled, practice_mode=practice_mode)
+                status.update(active_game_lease.snapshot(time.monotonic()))
+                status["controller_context_active"] = _controller_context_active(
+                    active_game_lease, profile_source
+                )
                 if time.monotonic() < retry_at:
                     status.update({"vision_state": "error", "vision_error": vision_error or "Camera unavailable; retrying"})
                 else:
@@ -510,6 +554,10 @@ def main() -> int:
                     status = _base_status(
                         current_profile, current_game, profile_source,
                         controller_enabled, practice_mode=practice_mode,
+                    )
+                    status.update(active_game_lease.snapshot(time.monotonic()))
+                    status["controller_context_active"] = _controller_context_active(
+                        active_game_lease, profile_source
                     )
                     status.update({"vision_state": "error", "vision_error": vision_error})
                     shared.update_status(status, clear_frame=True)
@@ -556,9 +604,12 @@ def main() -> int:
             inference_finished = time.monotonic()
             # Gameplay output takes priority over matrix RPC and browser preview work.
             launch_guard_active = _launch_guard_active(launch_guard_until)
+            controller_context_active = _controller_context_active(
+                active_game_lease, profile_source
+            )
             receiver_available = sender.send(state) if (
                 controller_enabled and not practice_mode and not shared.tuning.active()
-                and not launch_guard_active
+                and controller_context_active and not launch_guard_active
             ) else False
             sent_at = time.monotonic()
             inference_ms = (inference_finished - inference_started) * 1000
@@ -642,14 +693,20 @@ def main() -> int:
                 else (
                     "RetroPie launch guard; controller transmission is paused"
                     if controller_enabled and launch_guard_active
-                    else (sender.last_error if controller_enabled else "Controller connection stopped")
+                    else (
+                        "Armed; waiting for a registered game or manual profile"
+                        if controller_enabled and not controller_context_active
+                        else (sender.last_error if controller_enabled else "Controller connection stopped")
+                    )
                 )
             )
             status["launch_guard_active"] = launch_guard_active
             status["launch_guard_remaining_ms"] = max(
                 0, round((launch_guard_until - time.monotonic()) * 1000)
             )
+            status.update(active_game_lease.snapshot(time.monotonic()))
             status["controller_enabled"] = controller_enabled
+            status["controller_context_active"] = controller_context_active
             status["camera_available"] = True
             status["vision_state"] = "active"
             status["menu_gesture"] = engine.menu_feedback()

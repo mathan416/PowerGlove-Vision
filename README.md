@@ -17,6 +17,15 @@ practise without sending input to the cabinet. Its optional Pixel Pal-guided
 personalization wizard adjusts recognition to a player's hand without retraining
 the model, changing game mappings, or exposing raw thresholds during normal use.
 
+The Dashboard's **Start controller** choice is retained across UNO Q application
+and system restarts as an armed preference. Armed does not mean that controls are
+always being sent: a registered RetroPie launch maintains a short renewable game
+session only while RetroArch is running. Controller delivery resumes after an UNO Q
+restart when that session is still live, then returns to neutral when the game ends,
+the session becomes stale, or an unregistered game is launched. **Stop controller**
+remains sticky until the player explicitly starts it again. Manual Dashboard profile
+selection remains available for testing outside the registered-game flow.
+
 The cabinet supports two Super Glove Ball paths. `lr-fceumm` is the complete,
 standard-joystick fallback and remains the safe default. The separately named
 `lr-nestopia-powerglove` core supplies native absolute X/Y and Z coordinates plus
@@ -96,7 +105,12 @@ and low-lag adaptive coordinate stabilization. These are suitable starting
 values for every installation. A neutral calibration is different: it records
 the palm center, apparent hand size, wrist angle, and resting jitter for one
 camera and playing position, so the installer never substitutes another
-person's recorded coordinates for yours.
+person’s recorded coordinates for yours.
+
+Install the same release on the UNO Q and RetroPie. Automatic game-session resume
+depends on the current UNO Q worker and current RetroPie launch hook being present
+together; mixed old/new installations continue to fail safe but cannot provide the
+renewable session behavior.
 
 When a registered Super Glove Ball ROM is present, the RetroPie installer offers
 to build the optional native core locally from pinned GPLv2 Nestopia source. If

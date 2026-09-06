@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added renewable active-game leases for safe restart recovery.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
@@ -71,6 +72,58 @@ class ProfileRequest:
     system: str
     rom: str
     peer: tuple[str, int]
+    session_id: str | None = None
+    lease_seconds: float = 0.0
+
+
+@dataclass
+class ActiveGameLease:
+    """Track one renewable registered-game session without replaying transitions."""
+    session_id: str | None = None
+    profile: str | None = None
+    system: str = ""
+    rom: str = ""
+    expires_at: float = 0.0
+
+    def refresh(self, request: ProfileRequest, now: float) -> bool:
+        """Refresh a validated session and report whether it is a new game transition."""
+        if not request.session_id or request.profile is None or request.lease_seconds <= 0:
+            self.clear()
+            return True
+        same = (
+            self.session_id == request.session_id
+            and self.profile == request.profile
+            and self.system == request.system
+            and self.rom == request.rom
+        )
+        self.session_id = request.session_id
+        self.profile = request.profile
+        self.system = request.system
+        self.rom = request.rom
+        self.expires_at = now + request.lease_seconds
+        return not same
+
+    def expire(self, now: float) -> bool:
+        """Clear and report a lease whose RetroPie heartbeat has stopped."""
+        if self.session_id is None or now < self.expires_at:
+            return False
+        self.clear()
+        return True
+
+    def clear(self) -> None:
+        """Forget the current game session and its expiry deadline."""
+        self.session_id = None
+        self.profile = None
+        self.system = ""
+        self.rom = ""
+        self.expires_at = 0.0
+
+    def snapshot(self, now: float) -> dict[str, Any]:
+        """Return browser-safe lease state without exposing its session identifier."""
+        return {
+            "game_session_active": self.session_id is not None,
+            "game_session_remaining_ms": max(0, round((self.expires_at - now) * 1000)),
+        }
 
 
 class ProfileCommandServer:
@@ -120,6 +173,18 @@ class ProfileCommandServer:
                 profile = data.get("profile")
                 if profile is not None and profile not in SUPPORTED_PROFILES:
                     raise ValueError("unknown profile")
+                session_id = data.get("session_id")
+                lease_seconds = data.get("lease_seconds", 0.0)
+                if session_id is not None:
+                    if (not isinstance(session_id, str) or not 16 <= len(session_id) <= 64
+                            or not session_id.isascii() or not session_id.isalnum()):
+                        raise ValueError("invalid game session")
+                    if (type(lease_seconds) not in (int, float)
+                            or not 2.0 <= float(lease_seconds) <= 15.0
+                            or profile is None):
+                        raise ValueError("invalid game lease")
+                elif lease_seconds not in (0, 0.0, None):
+                    raise ValueError("lease requires a game session")
                 self._seen.add(request_id)
                 if len(self._seen) > 256:
                     self._seen.clear()
@@ -130,6 +195,8 @@ class ProfileCommandServer:
                     system=str(data.get("system", ""))[:64],
                     rom=Path(str(data.get("rom", ""))).name[:255],
                     peer=peer,
+                    session_id=session_id,
+                    lease_seconds=float(lease_seconds or 0.0),
                 )
                 self.requests.put(request)
                 # Camera/model startup may block the consumer; acknowledge queue admission.
@@ -191,17 +258,22 @@ def select_profile(registry: dict[str, str], system: str, rom: str) -> str | Non
 
 
 def send_request(host: str, port: int, token: str, profile: str | None,
-                 system: str, rom: str, timeout: float) -> dict[str, Any]:
+                 system: str, rom: str, timeout: float, *,
+                 session_id: str | None = None, lease_seconds: float = 0.0) -> dict[str, Any]:
     """Send a signed profile request with bounded retries and require a valid acknowledgement."""
     request_id = uuid.uuid4().hex
-    message = sign_message({
+    message = {
         "protocol": PROTOCOL,
         "kind": "set_profile",
         "request_id": request_id,
         "profile": profile,
         "system": system,
         "rom": Path(rom).name,
-    }, token)
+    }
+    if session_id is not None:
+        message["session_id"] = session_id
+        message["lease_seconds"] = lease_seconds
+    message = sign_message(message, token)
     payload = json.dumps(message, separators=(",", ":")).encode()
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.settimeout(timeout)
