@@ -30,7 +30,7 @@ A typical startup with **Gestures off** selected is:
 
 1. The board shows its Arduino boot logo and system heart animation.
 2. The hourglass appears while PowerGlove Vision starts.
-3. Once startup finishes, the glove animation appears when gestures are off.
+3. Once startup finishes, gestures-off mode shows the selected attract animation or connection pixels.
 
 | Arduino boot logo | System heart | PowerGlove Vision hourglass |
 | --- | --- | --- |
@@ -43,6 +43,33 @@ or playing.
 
 The hourglass means startup is in progress. If it stays on the display, open
 Dashboard and check the startup or error message.
+
+## Attract brightness and connection pixels
+
+In **Setup → Matrix attract mode**, select **On**, **Dim**, or **Off** and choose
+**Save attract mode**. The preference survives upgrades and restarts. On is the
+default and preserves all eight brightness levels; Dim retains the animation
+with lit pixels mapped to levels 1–2. Off suppresses the animation.
+
+Off keeps three faint pixels along the bottom-left edge, with a dark pixel
+between each indicator. From left to right: the app is running; a TCP connection
+to the configured RetroPie Games service succeeds; and that service answers an
+authenticated request using the paired token. These are reachability and pairing
+indicators, not proof that a running game consumed controller input. An unlit
+network pixel can also mean the console or Games service is off; it does not
+independently diagnose Wi-Fi. Without a configured console only the app pixel lights.
+
+![Attract-mode controls in Setup](images/matrix/attract-settings.png)
+
+Connection checks run in the background while Off is selected and the display
+is idle, approximately every ten seconds. Results expire after thirty seconds.
+They never send gameplay input. This uses the existing RetroPie Games service
+on TCP port `55358`; no RetroPie update is required.
+
+The setting affects only the gestures-off attract display. Game/profile artwork,
+T, L, startup, errors, pairing, and application shutdown retain their normal
+brightness and behavior. Saving does not restart the tracker. Install updated
+matrix firmware before using these controls; the footer identifies older firmware.
 
 ## The idle glove show
 

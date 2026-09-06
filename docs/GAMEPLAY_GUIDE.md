@@ -10,6 +10,10 @@ they produce, and how to try them with other games in your library.
 Find your game below, check its profile, and try the first-round exercise.
 If the system is not installed yet, start with the [Installation Guide](INSTALL_README.md).
 
+Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
+or turn it Off except for faint connection pixels. This does not change game
+displays, T, L, or gesture recognition. The setting saves without a tracker restart.
+
 ## Play Rock Paper Scissors locally
 
 Open **Play** at `http://UNO-Q-NAME.local:8088/play` for a first-to-three match

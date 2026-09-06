@@ -4,7 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Add a persistent idle attract setting without restarting vision.
 #   2026-09-06 - Add player controls, exact version details, and responsive layouts.
 #   2026-09-06 - Replace the completed lesson panel with the Glove Master award.
 #   2026-09-06 - Added the camera-controlled Rock Paper Scissors page.
@@ -17,7 +19,6 @@
 #   2026-09-05 - Displayed plain-language tracker backend names.
 #   2026-09-05 - Made Academy lesson navigation atomic against recognition polls.
 #   2026-09-05 - Added live capture and inference performance diagnostics.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, local play, setup, pairing, and controller controls."""
 
@@ -289,6 +290,7 @@ PLAY = _page(
 SETUP = _page(
     "Setup",
     """<h1>Let's get connected.</h1><p class=lead>Tell PowerGlove Vision where your RetroPie console lives. Settings are saved on this UNO Q and the private pairing token is never shown.</p>
+<section class=card><h2>Matrix attract mode</h2><form id=attract-form><label>Idle display<select id=matrix-attract><option value=on>On — full animation</option><option value=dim>Dim — gentle animation</option><option value=off>Off — connection pixels only</option></select></label><button type=submit>Save attract mode</button></form><p>Only changes the idle glove show. Game displays, T, L, startup, errors, and pairing stay unchanged. In Off mode, three faint bottom-left pixels show app running, network reachability to the console, and an authenticated RetroPie connection.</p><p id=attract-notice role=status></p></section>
 <section class=card><form id=form><div class=formgrid>
 <label>RetroPie console name<input id=receiver name=receiver placeholder=RETROPIE-NAME.local></label>
 <label>Controller port<input id=port name=port type=number min=1 max=65535 required></label>
@@ -306,9 +308,10 @@ SETUP = _page(
 <label class=check><input id=verified type=checkbox disabled> I compared the browser certificate fingerprint with the matrix ID</label>
 <div class=controls><button type=button id=pair-ssh>Prepare password pairing</button></div><div class=notice id=pair-notice></div>
 <details class=advanced><summary>Advanced: pair without a RetroPie password</summary><p>Run <code>sudo /opt/powerglove/bin/powerglove-pair</code> on RetroPie, then enter its temporary code here. Use this when SSH password login is disabled.</p><div class=formgrid><label>RetroPie one-time code<input id=pair-code placeholder=ABCDE-FGHIJ-23456-7ABCD autocomplete=one-time-code></label></div><div class=controls><button class=secondary type=button id=pair-code-button>Prepare one-time code</button></div></details></section>""",
-    r"""const $=id=>document.getElementById(id),secure=location.protocol==='https:';let prepared='';async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('pair-host').value=$('pair-host').value||c.receiver;$('paired').textContent=c.connection_configured?'Private token configured — confirm pairing on RetroPie':'Set up Connection: enter your RetroPie hostname and pair. Glove Academy works without pairing.'; $('controller-toggle').disabled=!c.connection_configured;$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
+    r"""const $=id=>document.getElementById(id),secure=location.protocol==='https:';let prepared='';async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('matrix-attract').value=c.matrix_attract||'on';$('pair-host').value=$('pair-host').value||c.receiver;$('paired').textContent=c.connection_configured?'Private token configured — confirm pairing on RetroPie':'Set up Connection: enter your RetroPie hostname and pair. Glove Academy works without pairing.'; $('controller-toggle').disabled=!c.connection_configured;$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
 $('secure-note').innerHTML=secure?'Pairing requires physical confirmation on the UNO Q. For password pairing, compare the matrix ID with the beginning of the certificate SHA-256 fingerprint shown by your browser before entering the password.':`Pairing is disabled over HTTP. Open <a href="https://${location.hostname}:8443/setup">the secure setup page</a>.`;
 for(const id of ['pair-host','pair-user','pair-code','pair-ssh','pair-code-button'])$(id).disabled=!secure;for(const id of ['pair-password','device-code'])$(id).disabled=true;
+$('attract-form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const r=await fetch('/api/attract',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'attract'},body:JSON.stringify({mode:$('matrix-attract').value})});const s=await r.json();if(!r.ok)throw Error(s.error||'Could not save.');$('attract-notice').textContent='Saved. Applies when the matrix is idle; the tracker keeps running.'}catch(e){$('attract-notice').textContent=e.message}finally{b.disabled=false}};
 $('form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;$('notice').textContent='Saving…';const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),rotate_token:$('rotate_token').checked};const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const x=await r.json();$('notice').textContent=r.ok?'Saved. The tracker is restarting with the new settings.':x.error||'Could not save.';$('rotate_token').checked=false;b.disabled=false;load()};
 $('test').onclick=async()=>{$('notice').textContent='Testing name…';const r=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver:$('receiver').value.trim()})});const x=await r.json();$('notice').textContent=x.ok?`Found ${x.receiver} at ${x.address}. UDP controller delivery can now be attempted.`:x.error};
 $('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;const r=await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});const x=await r.json();$('notice').textContent=r.ok?(enabled?'Controller started.':'Controller stopped and controls released.'):(x.error||'Could not change controller state.');b.disabled=false;load()};
@@ -513,10 +516,22 @@ class ControlState:
             "profile": config.get("profile", "bad_street_brawler"),
             "glove_color": config.get("glove_color", "none"),
             "camera": str(config.get("camera", "auto")),
+            "matrix_attract": config.get("matrix_attract", "on"),
             "paired": bool(config.get("receiver") and config.get("token")),
             "connection_configured": bool(str(config.get("receiver", "")).strip() and config.get("token")),
             "controller_enabled": self.controller_enabled(),
         }
+
+    def save_attract(self, incoming):
+        """Persist an idle display preference without restarting or arming the worker."""
+        from .game_registry import atomic_write
+        mode = incoming.get("mode")
+        if mode not in ("on", "dim", "off"):
+            raise ValueError("Choose On, Dim, or Off for attract mode.")
+        current = self.load_config()
+        current["matrix_attract"] = mode
+        atomic_write(self.config_path, json.dumps(current, indent=2) + "\n")
+        return {"mode": mode}
 
     def save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
         """Validate and persist browser-submitted non-secret device settings."""
@@ -542,7 +557,7 @@ class ControlState:
         token = secrets.token_urlsafe(24) if incoming.get("rotate_token") else current.get("token")
         if not token:
             token = secrets.token_urlsafe(24)
-        saved = {"receiver": receiver, "port": port, "token": token, "profile": profile, "glove_color": glove_color, "camera": camera}
+        saved = {"receiver": receiver, "port": port, "token": token, "profile": profile, "glove_color": glove_color, "camera": camera, "matrix_attract": current.get("matrix_attract", "on")}
         temporary = self.config_path.with_suffix(".tmp")
         temporary.write_text(json.dumps(saved, indent=2) + "\n")
         os.chmod(temporary, 0o600)
@@ -696,7 +711,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             path = self.path.split("?", 1)[0]
             try:
-                if path in ("/api/games", "/api/tuning", "/api/players"):
+                if path in ("/api/games", "/api/tuning", "/api/players", "/api/attract"):
                     expected = path.rsplit("/", 1)[-1]
                     origin = self.headers.get("Origin")
                     if (self.headers.get("X-PowerGlove-Action") != expected
@@ -704,7 +719,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                             or (origin and origin not in ("http://" + self.headers.get("Host", ""), "https://" + self.headers.get("Host", "")))):
                         raise ForbiddenActionError("Open this control from the UNO website.")
                     incoming = self.json_body(require_json=True)
-                    if path == "/api/games":
+                    if path == "/api/attract":
+                        result = state.save_attract(incoming)
+                    elif path == "/api/games":
                         action = incoming.get("action")
                         if action in ("validate", "format"):
                             data = validate_document(incoming.get("document"))

@@ -442,3 +442,12 @@ using the loader release flag, after checking the selected app and sketch
 samples. It never resets, halts, or flashes the sketch. This brings the existing
 hourglass forward while App Lab continues starting. Failure falls back to normal
 App Lab startup; the cold-boot trial was confirmed on the physical board.
+
+### Idle display preferences
+
+The supervisor passes the persisted `matrix_attract` setting to the sketch through
+`set_powerglove_attract(mode, connections)`. Only `PG_GESTURES_IDLE` consumes it;
+there is no global brightness change. In Off mode a bounded background probe
+checks TCP reachability and authenticates the existing RetroPie Games service.
+The supervisor publishes cached indicator bits; capture, recognition, transport,
+T/L displays, and game-state paths are unchanged.

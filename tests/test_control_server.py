@@ -141,6 +141,21 @@ class ControlStateTests(unittest.TestCase):
         self.assertNotIn("token", public)
         self.assertTrue(public["paired"])
 
+    def test_attract_persists_without_restarting_or_changing_controls(self):
+        self.state.set_controller_enabled(True)
+        original = json.loads(self.path.read_text())
+        self.assertEqual(self.state.public_config()['matrix_attract'],'on')
+        for mode in ('off','dim','on'):
+            self.state.save_attract({'mode':mode})
+            self.assertEqual(json.loads(self.path.read_text()),dict(original,matrix_attract=mode))
+            self.assertEqual(self.state.revision,0)
+            self.assertTrue(self.state.controller_enabled())
+        with self.assertRaises(ValueError):
+            self.state.save_attract({'mode':'brightest'})
+        self.state.save_attract({'mode':'dim'})
+        self.state.save_config(original)
+        self.assertEqual(self.state.public_config()['matrix_attract'],'dim')
+
     def test_save_preserves_token_and_updates_connection(self):
         self.state.save_config({
             "receiver": "arcade.local", "port": 55357,

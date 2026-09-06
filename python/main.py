@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Add a persistent idle attract setting without restarting vision.
 #   2026-09-06 - Publish the running matrix firmware identity outside the worker.
 #   2026-09-05 - Request one guarded host USB reset after a sustained camera outage.
 #   2026-09-05 - Selected the deployed legacy-lite tracker explicitly.
@@ -51,6 +52,7 @@ def load_device_config() -> dict:
         "profile": "bad_street_brawler",
         "glove_color": "none",
         "camera": "auto",
+        "matrix_attract": "on",
     }
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(settings, indent=2) + "\n")
@@ -147,7 +149,9 @@ def main() -> int:
                         None if status.get("practice_mode") or active_profile == "off"
                         else active_profile
                     )
-                    matrix.set_status(status_from_worker(status))
+                    display_status = status_from_worker(status)
+                    matrix.set_attract(control.load_config(), idle=display_status == MatrixStatus.GESTURES_IDLE)
+                    matrix.set_status(display_status)
                 except (OSError, ValueError, TimeoutError):
                     pass
                 time.sleep(0.25)

@@ -9,6 +9,10 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Idle-only matrix attract setting in Setup: On, Dim, or Off with faint app,
+  console-network, and authenticated RetroPie indicators. Saves without restarting
+  vision; game modes, T, L, startup, errors, and pairing remain unchanged.
+
 - Controller-stored player presets with individual hand sensitivity, saved
   Academy lessons, and persistent Glove Master awards. Existing settings become
   Player 1 with a private version-1 backup retained before migration.

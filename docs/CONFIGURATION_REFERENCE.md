@@ -266,9 +266,21 @@ A typical device configuration file contains the following fields:
   "token": "private-random-value-created-by-the-application",
   "profile": "bad_street_brawler",
   "glove_color": "none",
-  "camera": "auto"
+  "camera": "auto",
+  "matrix_attract": "on"
 }
 ```
+
+`matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
+or `off` (three faint app/network/paired-console indicators). Change it using
+**Setup → Matrix attract mode**. This writes the private device configuration
+without restarting vision or changing controller state. Existing files that omit
+it retain the original animation. The separate guarded `POST /api/attract`
+accepts `{"mode":"on"}`, `dim`, or `off`, with JSON content type and the
+same-origin `X-PowerGlove-Action: attract` header. Connection indicators use the
+existing authenticated Games service in a background thread; see the
+[Matrix guide](MATRIX_GUIDE.md#attract-brightness-and-connection-pixels) for their
+meaning and refresh interval. Updated matrix firmware is required.
 
 Use the Setup page for routine changes. If you must edit the JSON directly,
 stop the application first, keep the token unchanged, validate the file, and

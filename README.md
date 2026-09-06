@@ -43,6 +43,10 @@ noticeable latency to refine. Native wrist rotation and the remaining unused
 packet button fields stay neutral until exact-ROM testing gives them a purpose;
 they are not missing from the game actions confirmed in the completed session.
 
+Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
+or turn it Off except for faint connection pixels. This does not change game
+displays, T, L, or gesture recognition. The setting saves without a tracker restart.
+
 ## Choose a guide
 
 ### User manuals

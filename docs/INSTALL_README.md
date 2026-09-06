@@ -5,6 +5,10 @@ Install PowerGlove Vision with one script on the **PowerGlove Vision Controller
 The scripts prepare the software and startup helpers; you finish by pairing the
 devices, positioning the camera, and testing a game.
 
+Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
+or turn it Off except for faint connection pixels. This does not change game
+displays, T, L, or gesture recognition. The setting saves without a tracker restart.
+
 ## 1. Prepare your devices
 
 You need a provisioned PowerGlove Vision Controller, a working RetroPie system, a UVC USB camera,
