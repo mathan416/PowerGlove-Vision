@@ -137,7 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--tracker-backend", choices=("legacy", "tasks-video"), default="legacy",
-        help=("MediaPipe Hands (proven; legacy) or MediaPipe Tasks Video "
+        help=("MediaPipe Hands (legacy) or MediaPipe Tasks Video "
               "(experimental; tasks-video)"),
     )
     parser.add_argument(

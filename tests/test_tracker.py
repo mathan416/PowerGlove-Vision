@@ -36,7 +36,7 @@ def pose_points(closed):
 class TrackerGeometryTests(unittest.TestCase):
     def test_backend_identifiers_have_clear_display_names(self):
         self.assertEqual(TRACKER_BACKEND_LABELS, {
-            "legacy": "MediaPipe Hands (proven)",
+            "legacy": "MediaPipe Hands",
             "tasks-video": "MediaPipe Tasks Video (experimental)",
         })
 

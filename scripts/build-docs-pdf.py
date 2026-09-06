@@ -236,6 +236,10 @@ def parse_table(
         widths = [3.7 * inch, 1.85 * inch, 1.05 * inch]
     elif rows[0] == ["Program", "See it", "Try it with", "Know before playing"]:
         widths = [1.05 * inch, 2.05 * inch, 1.75 * inch, 1.75 * inch]
+    if rows[0] == ["Game", "ROM SHA-256", "Input finding", "Shared profile"]:
+        widths = [1.2 * inch, 1.5 * inch, 2.7 * inch, 1.2 * inch]
+    if rows[0] == ["Lane", "Core", "Exact game image"]:
+        widths = [1.2 * inch, 2.3 * inch, 3.1 * inch]
     table = Table(formatted, colWidths=widths, repeatRows=1, hAlign="LEFT")
     alignment = [
         ("VALIGN", (column, row_number), (column, row_number), "MIDDLE")
@@ -652,7 +656,13 @@ def main():
           "Direction-response Benchmark",
           "Matched-state native Nestopia and FCEUmm response measurements.",
           "Benchmark report")
-    print(f"Built 15 PDF guides on {date.today().isoformat()}")
+    build(docs / "BUILD_YOUR_OWN.md", OUTPUT / "PowerGlove-Vision-Build-Your-Own.pdf",
+          "Build your own: parts, cost, and difficulty", "Parts, planning costs, tested hardware, and a staged first build.", "Community guide")
+    build(docs / "NATIVE_EMULATION_EXPLAINED.md", OUTPUT / "PowerGlove-Vision-Native-Emulation.pdf",
+          "How native Power Glove emulation works", "Follow hand recognition through joystick and native game input.", "Community guide")
+    build(docs / "TROUBLESHOOTING.md", OUTPUT / "PowerGlove-Vision-Troubleshooting.pdf",
+          "Troubleshooting by symptom", "Find the first failing stage, from the camera to the displayed game.", "Community guide")
+    print(f"Built 18 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

@@ -217,7 +217,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"/help/gameplay", page)
         self.assertIn(b"/help/installation", page)
         self.assertIn(b"/help/cabinet", page)
-        self.assertIn(b"This cabinet", page)
+        self.assertIn(b"This console", page)
         self.assertIn(b"Rock Paper Scissors instructions", page)
         self.assertIn(b"Live-confirmed native game actions", page)
         self.assertNotIn(b"cheatsheet", page.lower())
@@ -234,7 +234,7 @@ class ControlStateTests(unittest.TestCase):
 
     def test_cabinet_reference_uses_request_address_and_public_config(self):
         body, title = cabinet_reference_content("10.0.2.105:8088", self.state.public_config())
-        self.assertEqual(title, "This cabinet")
+        self.assertEqual(title, "This console")
         self.assertIn("http://10.0.2.105:8088/help", body)
         self.assertIn("http://10.0.2.105:8088/play", body)
         self.assertIn("https://10.0.2.105:8443/setup", body)
@@ -267,7 +267,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Pixel Pal&#x27;s Extra-Digit Hunt", page)
         self.assertIn(b"<details class=extra-digit-answer>", page)
         self.assertIn(b"<summary>Reveal Pixel Pal's answer</summary>", page)
-        self.assertIn(b"Pixel Pal&#x27;s answer: 9 six-digit hands.", page)
+        self.assertIn(b"Pixel Pal&#x27;s answer: 11 six-digit hands.", page)
 
         programs = help_document_page("programs")
         self.assertIsNotNone(programs)
@@ -374,8 +374,18 @@ class ControlStateTests(unittest.TestCase):
         try:
             port = servers.servers[0].server_address[1]
             for path, expected_type in (
+                ("/favicon.ico", "image/vnd.microsoft.icon"),
+                ("/assets/favicon-32.png", "image/png"),
+                ("/assets/powerglove-vision-icon.png", "image/png"),
+                ("/assets/apple-touch-icon.png", "image/png"),
                 ("/play", "text/html"),
                 ("/help", "text/html"),
+                ("/help/build-your-own", "text/html"),
+                ("/help/native-emulation", "text/html"),
+                ("/help/troubleshooting", "text/html"),
+                ("/help-pdf/build-your-own.pdf", "application/pdf"),
+                ("/help-pdf/native-emulation.pdf", "application/pdf"),
+                ("/help-pdf/troubleshooting.pdf", "application/pdf"),
                 ("/help/cabinet", "text/html"),
                 ("/help/gameplay", "text/html"),
                 ("/help/gameplay.md", "text/markdown"),
@@ -388,6 +398,23 @@ class ControlStateTests(unittest.TestCase):
                 response.read()
                 self.assertEqual(response.status, 200, path)
                 self.assertTrue(response.getheader("Content-Type").startswith(expected_type), path)
+                connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_setup_direct_url_and_old_bookmarks_keep_shared_icon(self):
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            for path in ("/setup", "/setup?ui=2", "/setup?icon-check=1"):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                connection.request("GET", path)
+                response = connection.getresponse()
+                body = response.read()
+                self.assertEqual(response.status, 200)
+                self.assertIsNone(response.getheader("Location"))
+                self.assertIn(b"/favicon.ico?v=", body)
+                self.assertNotIn(b"/setup?ui=", body)
                 connection.close()
         finally:
             servers.shutdown()
@@ -476,12 +503,12 @@ class ControlStateTests(unittest.TestCase):
 
     def test_password_pairing_requires_certificate_comparison(self):
         self.assertIn(b"browser certificate fingerprint", SETUP)
-        self.assertIn(b"pair-password').disabled=true", SETUP)
+        self.assertIn(b"type=password autocomplete=off disabled", SETUP)
         self.assertIn(b"verified').checked", SETUP)
 
     def test_pairing_methods_are_explicit(self):
-        self.assertIn(b"Pair using an SSH password", SETUP)
-        self.assertIn(b"Prepare code pairing", SETUP)
+        self.assertIn(b"SSH password", SETUP)
+        self.assertIn(b"One-time code (recommended)", SETUP)
 
     def test_controller_connection_starts_disarmed_until_player_arms_it(self):
         self.assertFalse(self.state.controller_enabled())
@@ -495,8 +522,11 @@ class ControlStateTests(unittest.TestCase):
         restarted = ControlState(self.path)
         self.assertTrue(restarted.controller_enabled())
 
-    def test_shutdown_controls_are_on_dashboard_and_setup(self):
-        for page in (DASHBOARD, SETUP):
+    def test_shutdown_controls_are_only_on_dashboard(self):
+        self.assertNotIn(b"id=shutdown-system", SETUP)
+        self.assertNotIn(b"/api/system/shutdown", SETUP)
+        self.assertNotIn(b"id=controller-toggle", SETUP)
+        for page in (DASHBOARD,):
             self.assertIn(b"id=shutdown-system", page)
             self.assertIn(b"/api/system/shutdown", page)
             self.assertIn(b"restart automatically", page.lower())
@@ -573,7 +603,7 @@ class ControlStateTests(unittest.TestCase):
             b"program_h": b"H: General",
             b"program_i": b"I: Knight Rider",
         }
-        for page in (DASHBOARD, SETUP):
+        for page in (DASHBOARD,):
             for profile, label in expected.items():
                 self.assertIn(b"value=" + profile + b">" + label, page)
             self.assertNotIn(b">Program A<", page)
@@ -775,6 +805,28 @@ class ControlStateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "expired"):
             state.authorize_pairing("retropieconsole.local", "code", displayed[0][1])
 
+    def test_connection_status_has_unknown_fallback_and_uses_shared_probe(self):
+        state = ControlState(self.path)
+        health = state.connection_status()
+        self.assertTrue(health['app'])
+        self.assertIsNone(health['console_authenticated'])
+        state.connection_probe = mock.Mock(return_value={'app': True, 'console_service': True})
+        self.assertTrue(state.connection_status()['console_service'])
+        self.assertTrue(state.connection_probe.call_args[1]['refresh'])
+
+    def test_both_pairing_methods_require_their_own_controller_pin(self):
+        displayed = []
+        state = ControlState(self.path, pairing_display=lambda identity, pin: displayed.append(pin))
+        state.configure_pairing_identity('0123456789abcdef')
+        for method in ('code', 'ssh'):
+            with self.assertRaises(ValueError):
+                state.authorize_pairing('retropie.local', method, '000000')
+            state.begin_pairing('retropie.local', method)
+            pin = displayed[-1]
+            with self.assertRaises(ValueError):
+                state.authorize_pairing('retropie.local', 'ssh' if method == 'code' else 'code', pin)
+            state.authorize_pairing('retropie.local', method, pin)
+
     def test_https_pairing_route_requires_matrix_pin_before_token_export(self):
         displayed = []
         servers, _state = start_control_server(
@@ -820,6 +872,44 @@ class ControlStateTests(unittest.TestCase):
                     "retropie.local", 55357, "ABCDE-FGHIJ-23456-7ABCD", "private-token"
                 )
                 connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_pairing_display_released_after_transport_success_or_failure(self):
+        displayed = []
+        finished = mock.Mock()
+        servers, state = start_control_server(
+            self.path, "127.0.0.1", 0, 0,
+            pairing_display=lambda identity, pin: displayed.append(pin),
+            pairing_finished=finished,
+        )
+        try:
+            port = servers.servers[1].server_address[1]
+            for method in ('code', 'ssh'):
+                for failed in (False, True):
+                    with self.subTest(method=method, failed=failed):
+                        state.begin_pairing('retropie.local', method)
+                        finished.reset_mock()
+                        def transport(*args):
+                            finished.assert_not_called()
+                            if failed:
+                                raise OSError('test connection failure')
+                        target = 'pair_with_code' if method == 'code' else 'pair_over_ssh'
+                        with mock.patch('powerglove_vision.control_server.' + target, side_effect=transport):
+                            connection = http.client.HTTPSConnection('127.0.0.1', port, context=ssl._create_unverified_context())
+                            connection.request('POST', '/api/pair/' + method, json.dumps({
+                                'host':'retropie.local', 'device_code':displayed[-1],
+                                'code':'ABCDE-FGHIJ-23456-7ABCD', 'username':'pi', 'password':'test-only',
+                            }), {'Content-Type':'application/json'})
+                            response = connection.getresponse()
+                            response.read()
+                            self.assertEqual(response.status, 503 if failed else 200)
+                            finished.assert_called_once_with()
+                            connection.close()
+            state.begin_pairing('retropie.local', 'code')
+            finished.reset_mock()
+            state.finish_pairing_display()
+            finished.assert_not_called()  # An older request cannot clear a newer PIN.
         finally:
             servers.shutdown()
 

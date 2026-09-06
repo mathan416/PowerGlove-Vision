@@ -8,3 +8,11 @@ Individual gestures are at most 320 pixels on their longest side; multi-gesture
 sheets are at most 960 pixels. Aspect ratio and transparency are retained.
 HTML display dimensions stay unchanged. PDF generation continues to use the
 full-resolution originals, which must remain in place.
+
+## Website branding icons
+
+The website icons are separate assets under `assets/`, outside this generated
+gesture-thumbnail directory. `powerglove-vision-icon.png` (192 pixels),
+`favicon-32.png` (32 pixels), and `apple-touch-icon.png` (180 pixels) use the
+logo's hand-and-target emblem. The shared page shell uses `favicon.ico` (16, 32, and 48 pixels) for browser tabs and the Apple touch icon for saved shortcuts; the PNG variants remain available. The application payload includes these icon assets. Setup uses the same shell at `/setup`, without a page-revision query parameter. Keep the original full logo unchanged.
+See [illustration and icon provenance](../../THIRD_PARTY_COMPONENTS.md#documentation-and-website-assets).

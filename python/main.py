@@ -93,13 +93,16 @@ def main() -> int:
     matrix.set_status(MatrixStatus.LOADING)
     from powerglove_vision.control_server import start_control_server
     from powerglove_vision.camera import CameraRecoveryRequester
-    control_server, control = start_control_server(CONFIG_PATH, pairing_display=matrix.show_pairing)
+    control_server, control = start_control_server(
+        CONFIG_PATH, pairing_display=matrix.show_pairing, pairing_finished=matrix.finish_pairing
+    )
     camera_recovery = CameraRecoveryRequester(
         APP_ROOT / "data" / ".camera-recovery-enabled",
         APP_ROOT / "data" / "camera-recovery-request",
     )
     matrix.set_profile(str(settings.get("profile", "bad_street_brawler")))
 
+    control.connection_probe = matrix.connection_status
     environment = dict(os.environ)
     # App Lab uses a bootstrap virtual environment. The vision worker manages
     # its own Python runtime with uv, so inheriting this emits a false warning.

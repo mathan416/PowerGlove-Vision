@@ -80,28 +80,23 @@ notices, and checksum together in backups. Store a copy of the recovery archive
 on another drive or in your regular off-machine backup; copies on the same Mac
 do not protect against loss of that Mac.
 
-## Documentation illustration provenance
+## Verified PowerGlove Vision Controller sketch toolchain
 
-The gesture sheets under `docs/images/gestures/` were generated on September 3,
-2026 with OpenAI's image-generation tool from project-authored prompts, then
-selected and arranged for the PowerGlove Vision gameplay guide. They are
-documentation assets, not runtime dependencies. No game screenshots, scans,
-box art, characters, publisher logos, or other source images were supplied to
-the generator.
+The September 4, 2026 sketch build and firmware deployment used these pins from
+`sketch/sketch.yaml`:
 
-The individual gestures and original Pixel Pal mascot under
-`docs/images/gestures/v2/` were generated on September 4, 2026 with the same
-built-in tool, using the project's generated contact sheet as a style reference.
-Their prompts are preserved in `docs/images/gestures/v2/prompts.json`. The
-earlier illustrations remain available in their original locations.
+- Arduino Zephyr platform **1.0.0**
+- Arduino_RouterBridge **0.4.3**
+- Arduino_RPClite **0.3.0**
+- ArxContainer **0.7.0**
+- ArxTypeTraits **0.3.2**
+- DebugLog **0.8.4**
+- MsgPack **0.4.2**
 
-The index-curl illustration was subsequently redrawn using a user-supplied
-hand photograph as its pose reference. Only the illustrated glove is included;
-the reference photograph is not distributed with the project.
-
-The repository applies its MIT License to these curated project assets to the
-extent the project owner has rights in them. Game names and other third-party
-marks remain the property of their respective owners.
+The build resolved Arduino_LED_Matrix **0.1.3** from that platform. Preserve the
+dependency pins when synchronizing with App Lab; its shortened generated
+configuration is not a replacement for the project's complete configuration.
+Revalidate compilation and device operation before changing a pin.
 
 ## Modified Nestopia libretro core
 
@@ -177,6 +172,8 @@ The deterministic direction benchmark separately builds stock FCEUmm revision
 That pin makes the benchmark reproducible; it does not replace the user's
 RetroPie core, install FCEUmm, or make the benchmark binary a release artifact.
 
+<!-- PAGEBREAK -->
+
 ## Updating runtime components
 
 ### MediaPipe wheel or Hand Landmarker model
@@ -206,6 +203,36 @@ benchmark document and rerun both the native and standard-joypad lanes. Normal
 RetroPie FCEUmm and RetroArch upgrades remain the responsibility of RetroPie;
 retest controller selection and fallback gameplay before claiming compatibility.
 
+<!-- PAGEBREAK -->
+
+## Documentation and website assets
+
+The following assets support the guides and browser interface. Their origins
+are recorded separately from the software, model, and firmware dependencies above.
+
+### Documentation illustration provenance
+
+The gesture sheets under `docs/images/gestures/` were generated on September 3,
+2026 with OpenAI's image-generation tool from project-authored prompts, then
+selected and arranged for the PowerGlove Vision gameplay guide. They are
+documentation assets, not runtime dependencies. No game screenshots, scans,
+box art, characters, publisher logos, or other source images were supplied to
+the generator.
+
+The individual gestures and original Pixel Pal mascot under
+`docs/images/gestures/v2/` were generated on September 4, 2026 with the same
+built-in tool, using the project's generated contact sheet as a style reference.
+Their prompts are preserved in `docs/images/gestures/v2/prompts.json`. The
+earlier illustrations remain available in their original locations.
+
+The index-curl illustration was subsequently redrawn using a user-supplied
+hand photograph as its pose reference. Only the illustrated glove is included;
+the reference photograph is not distributed with the project.
+
+The repository applies its MIT License to these curated project assets to the
+extent the project owner has rights in them. Game names and other third-party
+marks remain the property of their respective owners.
+
 ### Application screenshots
 
 The interface screenshots in `docs/images/` were refreshed from the running
@@ -215,15 +242,19 @@ illustrations remain unchanged. These screenshots are project documentation
 assets and add no runtime dependencies. Setup, its attract-mode panel, and the player/backup panels were
 refreshed on September 6, 2026 using the current page in an isolated browser
 with simulated device data and placeholder hostnames; these captures do not
-claim live pairing or hardware verification.
+claim live pairing or hardware verification. The guided-pairing screenshots are
+produced by `tests/browser_setup_pairing.py --screenshots`, using simulated
+credentials, a placeholder hostname, and an isolated browser.
 
-## Verified PowerGlove Vision Controller sketch toolchain
+### Website icon
 
-The September 4, 2026 sketch build and firmware deployment used the pinned
-`sketch/sketch.yaml`: Arduino Zephyr platform **1.0.0**, Arduino_RouterBridge
-**0.4.3**, Arduino_RPClite **0.3.0**, ArxContainer **0.7.0**, ArxTypeTraits
-**0.3.2**, DebugLog **0.8.4**, and MsgPack **0.4.2**. The build resolved
-Arduino_LED_Matrix **0.1.3** from that platform. Preserve the dependency pins when
-synchronizing with App Lab; its shortened generated configuration is not a
-replacement for the project's complete configuration. Revalidate compilation
-and device operation before changing a pin.
+The website icon in `assets/powerglove-vision-icon.png` was derived from the
+project's `assets/powerglove-vision-logo.png` on September 6, 2026 using OpenAI's
+image-generation tool. It isolates the hand-and-target emblem without the
+wordmark. Browser-tab and Apple touch icon variants were resized from that
+square artwork. `assets/favicon.ico` contains 16, 32, and 48 pixel variants and
+is the single browser-tab icon declared by the shared page template. The Apple
+touch icon is separate. Setup and Help use the same root-relative icon URL;
+there is no Setup-specific asset directory. A stable `ui` query revision on
+Setup refreshes Safari’s page-specific missing-icon cache. Existing `/setup`
+bookmarks redirect to that revision; no browser history or website data is cleared. The original logo remains unchanged.

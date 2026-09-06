@@ -46,7 +46,7 @@ const lessons=[
  {title:'Roll wrist left',image:'wrist-roll-left.png',instant:true,cue:'Keep your hand centered and roll your wrist to the left.',ok:s=>s.recognition?.roll_left,result:'LEFT ROLL recognized.'},
  {title:'Roll wrist right',image:'wrist-roll-right.png',instant:true,cue:'Return to neutral, then roll your wrist to the right.',ok:s=>s.recognition?.roll_right,result:'RIGHT ROLL recognized.'},
  {title:'Close your hand',image:'close-all-fingers.png',cue:'Curl your thumb and all four fingers into a comfortable closed hand.',ok:s=>s.recognition?.closed_hand,result:'CLOSED HAND recognized.'},
- {title:'Menu guard — thumb and ring',image:'menu-guard.png',cue:'Curl only your thumb and ring finger. Keep index, middle, and pinky extended. This suppresses movement and A/B in every game mapping.',ok:s=>s.recognition?.menu_guard,result:'MENU GUARD recognized.'}
+ {title:'Menu guard — thumb and ring',image:'menu-guard.png',cue:'Curl only your thumb and ring finger. Keep index, middle, and pinky extended. This suppresses D-pad and buttons. Native Super Glove Ball positioning stays active; use Stop controller to reposition.',ok:s=>s.recognition?.menu_guard,result:'MENU GUARD recognized.'}
 ];
 let playerReady=false;
 let index=0,completed=new Set(),holdStarted=0,lastSequence=-1,latestSequence=-1,sequenceFloor=-1,advancing=false,practiceActive=false,advanceTimer=null,trainingComplete=false,lessonRevision=0,cameraRetryAt=0;

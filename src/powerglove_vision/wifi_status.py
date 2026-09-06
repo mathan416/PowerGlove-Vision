@@ -17,7 +17,7 @@ from pathlib import Path
 STATUS_PATH = Path(__file__).resolve().parents[2] / 'data/wifi-status.json'
 
 
-def read_wifi_status(path=STATUS_PATH):
+def _read_status(path, field):
     """Read at most 1 KiB and accept only telemetry sampled within fifteen seconds."""
     try:
         with path.open() as stream:
@@ -27,7 +27,20 @@ def read_wifi_status(path=STATUS_PATH):
         stamp = value.get('observed_at')
         if type(stamp) not in (int,float) or not math.isfinite(stamp) or not 0 <= time.time()-stamp <= 15:
             return 'unavailable'
-        state = value.get('state')
+        state = value.get(field)
+        if field == 'networking' and field not in value:
+            # Old samplers can confirm Wi-Fi, but cannot rule out Ethernet.
+            return 'connected' if value.get('state') == 'connected' else 'unavailable'
         return state if state in ('connected','disconnected','unavailable') else 'unavailable'
     except (OSError,ValueError,TypeError,RecursionError):
         return 'unavailable'
+
+
+def read_wifi_status(path=STATUS_PATH):
+    """Read the backward-compatible wireless-only field."""
+    return _read_status(path, 'state')
+
+
+def read_network_status(path=STATUS_PATH):
+    """Read aggregate physical Wi-Fi/Ethernet health; stale data is unknown."""
+    return _read_status(path, 'networking')

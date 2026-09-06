@@ -36,6 +36,7 @@ import ssl
 import subprocess
 import threading
 import time
+import urllib.parse
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -106,7 +107,8 @@ def cabinet_reference_page(host_header: str, state: "ControlState") -> bytes:
 
 class ControlState:
     """Synchronize persistent settings, supervisor health, worker status, and pairing authorization."""
-    def __init__(self, config_path: Path, pairing_display: Callable[[str, str], None] | None = None) -> None:
+    def __init__(self, config_path: Path, pairing_display: Callable[[str, str], None] | None = None,
+                 pairing_finished: Callable[[], None] | None = None) -> None:
         self.config_path = config_path
         self.lock = threading.Lock()
         self.config_lock = threading.RLock()
@@ -124,6 +126,7 @@ class ControlState:
             self._controller_marker.is_file() and not self._controller_marker.is_symlink()
         )
         self._pairing_display = pairing_display
+        self._pairing_finished = pairing_finished
         self._pairing_identity = ""
         self._pairing_session: dict[str, Any] | None = None
         self._pairing_locked_until = 0.0
@@ -131,6 +134,7 @@ class ControlState:
         self.started_at = time.time()
         self.build_identity = current_identity()
         self.firmware_identity = None
+        self.connection_probe = None
 
     def configure_pairing_identity(self, identity: str) -> None:
         """Publish the current certificate identity used for physical verification."""
@@ -186,6 +190,12 @@ class ControlState:
                     self._pairing_locked_until = session["expires"]
                 raise ValueError("UNO Q approval PIN was rejected")
             self._pairing_session = None
+
+    def finish_pairing_display(self) -> None:
+        """Release the consumed PIN display without interrupting a newer confirmation."""
+        with self.lock:
+            if self._pairing_session is None and self._pairing_finished is not None:
+                self._pairing_finished()
 
     def controller_enabled(self) -> bool:
         """Return the operator-selected controller transmission state."""
@@ -419,6 +429,15 @@ class ControlState:
         status.setdefault("configured_profile", config["profile"])
         return status
 
+    def connection_status(self):
+        """Return the same cached checks used by the four idle matrix pixels."""
+        if self.connection_probe is not None:
+            return self.connection_probe(self.load_config(), refresh=True)
+        from .wifi_status import read_wifi_status, read_network_status
+        return {"app": True, "console_configured": bool(self.public_config().get("receiver")),
+                "console_service": None, "console_authenticated": None,
+                "wifi": read_wifi_status(), "networking": read_network_status(), "checked_seconds_ago": None}
+
     def update_firmware(self, identity):
         """Publish only the identity read from the running sketch."""
         with self.lock:
@@ -520,6 +539,16 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 else:
                     body, content_type = asset
                     _send(self, 200, body, content_type)
+            elif path == "/favicon.ico":
+                try:
+                    _send(self, 200, (LOGO_PATH.parent / "favicon.ico").read_bytes(), "image/vnd.microsoft.icon")
+                except OSError:
+                    self.send_error(404)
+            elif path in ("/assets/powerglove-vision-icon.png", "/assets/favicon-32.png", "/assets/apple-touch-icon.png"):
+                try:
+                    _send(self, 200, (LOGO_PATH.parent / path.rsplit("/", 1)[1]).read_bytes(), "image/png")
+                except OSError:
+                    self.send_error(404)
             elif path == "/assets/powerglove-vision-logo.png":
                 try:
                     _send(self, 200, LOGO_PATH.read_bytes(), "image/png")
@@ -527,6 +556,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     self.send_error(404)
             elif path == "/status":
                 _send(self, 200, json.dumps(state.snapshot()).encode(), "application/json")
+            elif path == "/api/connection-status":
+                _send(self, 200, json.dumps(state.connection_status()).encode(), "application/json")
             elif path == "/api/config":
                 _send(self, 200, json.dumps(state.public_config()).encode(), "application/json")
             elif path == "/stream":
@@ -656,10 +687,13 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     incoming = self.json_body(require_json=True)
                     host = str(incoming.get("host", "")).strip()
                     state.authorize_pairing(host, "code", str(incoming.get("device_code", "")))
-                    pair_with_code(
-                        host, PAIRING_PORT,
-                        str(incoming.get("code", "")), str(state.load_config()["token"]),
-                    )
+                    try:
+                        pair_with_code(
+                            host, PAIRING_PORT,
+                            str(incoming.get("code", "")), str(state.load_config()["token"]),
+                        )
+                    finally:
+                        state.finish_pairing_display()
                     _send(self, 200, b'{"paired":true}', "application/json")
                 elif path == "/api/pair/ssh":
                     self.require_secure_pairing()
@@ -677,6 +711,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     finally:
                         password = ""
                         incoming["password"] = ""
+                        state.finish_pairing_display()
                     _send(self, 200, b'{"paired":true}', "application/json")
                 elif path == "/api/pair/begin":
                     self.require_secure_pairing()
@@ -742,9 +777,10 @@ def start_control_server(
     port: int = 8088,
     https_port: int = HTTPS_PORT,
     pairing_display: Callable[[str, str], None] | None = None,
+    pairing_finished: Callable[[], None] | None = None,
 ) -> tuple[ControlServerGroup, ControlState]:
     """Start public diagnostics and protected setup servers and return their shared state."""
-    state = ControlState(config_path, pairing_display)
+    state = ControlState(config_path, pairing_display, pairing_finished)
     server = ThreadingHTTPServer((host, port), make_handler(state))
     threading.Thread(target=server.serve_forever, name="control-web", daemon=True).start()
     servers = [server]

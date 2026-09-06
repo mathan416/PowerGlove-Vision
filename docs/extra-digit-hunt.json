@@ -3,11 +3,11 @@
   "rule": "Count every hand showing five fingers plus a thumb once per appearance, including repeated artwork.",
   "guides": {
     "GAMEPLAY_GUIDE.md": {
-      "answer": 9,
+      "answer": 11,
       "images": {
         "images/gestures/actions/finger-curl.png": {
           "hands_per_appearance": 1,
-          "occurrences": 4
+          "occurrences": 6
         },
         "images/gestures/actions/close-all-fingers.png": {
           "hands_per_appearance": 1,
@@ -25,9 +25,11 @@
         "Super Glove Ball grab",
         "Super Glove Ball Power Punch",
         "Sesame Street 1-2-3",
-        "Glove Academy closed-hand lesson",
+        "Gesture reference closed hand",
         "Gun Smoke",
-        "Start with A, D, and H"
+        "Start with A, D, and H",
+        "Gesture reference middle curl",
+        "Gesture reference ring curl"
       ]
     },
     "bad-street-brawler-programs.md": {

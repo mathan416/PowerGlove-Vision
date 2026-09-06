@@ -123,17 +123,9 @@ class UnoQMatrix:
         if mode not in ("on", "dim", "off"):
             mode = "on"
         now = time.monotonic()
-        key = (settings.get("receiver", ""), settings.get("token", ""))
-        with self._probe_lock:
-            if key != self._probe_key:
-                self._probe_key, self._probe_result, self._probe_at = key, 0, -60.0
-            if idle and mode == "off" and not self._probe_running and now - self._probe_at >= 10:
-                self._probe_running = True
-                threading.Thread(target=self._probe_console, args=(key,), daemon=True,
-                                 name="matrix-connections").start()
-            connections = self._probe_result if now - self._probe_at < 30 else 0
-        from .wifi_status import read_wifi_status
-        if read_wifi_status() == "connected":
+        health = self.connection_status(settings, refresh=idle and mode == "off")
+        connections = (1 if health["console_service"] else 0) | (2 if health["console_authenticated"] else 0)
+        if health["networking"] == "connected":
             connections |= 4
         value = (("on", "dim", "off").index(mode), connections)
         if value == self._attract_sent or now < self._attract_retry or not self.available:
@@ -144,6 +136,31 @@ class UnoQMatrix:
         except Exception:
             # An older sketch keeps its existing animation until upgraded.
             self._attract_retry = now + 30
+
+    def connection_status(self, settings, refresh=False):
+        """Share cached matrix checks with Setup; network work stays in one background thread."""
+        now = time.monotonic()
+        key = (settings.get("receiver", ""), settings.get("token", ""))
+        with self._probe_lock:
+            if key != self._probe_key:
+                self._probe_key, self._probe_result, self._probe_at = key, 0, -60.0
+            if refresh and not self._probe_running and now - self._probe_at >= 10:
+                self._probe_running = True
+                threading.Thread(target=self._probe_console, args=(key,), daemon=True,
+                                 name="matrix-connections").start()
+            age = now - self._probe_at
+            known = bool(key[0]) and 0 <= age < 30
+            result = {
+                "app": True,
+                "console_configured": bool(key[0]),
+                "console_service": bool(self._probe_result & 1) if known else None,
+                "console_authenticated": bool(self._probe_result & 2) if known else None,
+                "checked_seconds_ago": round(age, 1) if known else None,
+            }
+        from .wifi_status import read_wifi_status, read_network_status
+        result["wifi"] = read_wifi_status()
+        result["networking"] = read_network_status()
+        return result
 
     def _probe_console(self, key):
         """Distinguish TCP reachability from an authenticated console response."""
@@ -187,6 +204,10 @@ class UnoQMatrix:
             self._status_retry_at = time.monotonic() + 1.0
             self.last_error = str(exc)
             return False
+
+    def finish_pairing(self) -> None:
+        """Let the next supervisor update restore the current normal display."""
+        self.pairing_until = 0.0
 
     def show_pairing(self, certificate_id: str, pin: str, seconds: int = 120) -> bool:
         """Show a certificate prefix and one-time approval PIN on the physical matrix."""

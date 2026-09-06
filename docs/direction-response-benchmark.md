@@ -5,7 +5,7 @@ recognition, and send stages measured in this record.
 
 This deterministic headless benchmark compares the same exact Super Glove Ball
 ROM through its native packet path and its conventional FCEUmm joystick path.
-Gun.Smoke remains available as an optional positional-FCEUmm reference. This is
+Gun Smoke remains available as an optional positional-FCEUmm reference. This is
 a software validation tool, not a substitute for camera, display, or physical
 cabinet testing.
 
@@ -15,10 +15,10 @@ cabinet testing.
 | --- | --- | --- |
 | Native coordinates | `Nestopia PowerGlove` built from pinned Nestopia revision `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` plus the repository patch | `Super Glove Ball (USA)`, SHA-256 `ad60ef1b62cd1b3bc02a9320376067347a8ab2ebbe46e1616693d8379c9d9a7b` |
 | Standard joystick | Stock `FCEUmm` revision `236ccdfc911e84c60fea6b9d0699c2d440a8de14` | The same exact `Super Glove Ball (USA)` image |
-| Optional standard-D-pad reference | The same stock `FCEUmm` revision | `Gun.Smoke (USA)`, SHA-256 `4ad9629a2bacc158a7f50975869c7dfe533567ae399a5bdc5df2240286df259f` |
+| Optional standard-D-pad reference | The same stock `FCEUmm` revision | `Gun Smoke (USA)`, SHA-256 `4ad9629a2bacc158a7f50975869c7dfe533567ae399a5bdc5df2240286df259f` |
 
 ROMs stay outside the project and every result is tied to its digest.
-Gun.Smoke uses the positional Program G mapping, making it a useful second
+Gun Smoke uses the positional Program G mapping, making it a useful second
 FCEUmm exercise of the shared camera-direction recognition when supplied.
 
 ## Method
@@ -50,7 +50,7 @@ Three complete executions produced byte-identical reports.
 | --- | --- | --- | --- | --- |
 | Super Glove Ball / `lr-nestopia-powerglove` | Left, right, up, down | Frame 3, about 50.0 ms at 60 Hz | Frame 3, about 50.0 ms at 60 Hz | Native state published before frame; per-frame packet consumption established by the trace runner |
 | The same Super Glove Ball ROM / stock FCEUmm | Left, right, up, down | Frame 3, about 50.0 ms at 60 Hz | Frame 3, about 50.0 ms at 60 Hz | Standard joypad callback polled on frame 1; no native packet input |
-| Gun.Smoke / stock FCEUmm reference | Left, right, up, down | Frame 2, about 33.3 ms at 60 Hz | Frame 2, about 33.3 ms at 60 Hz | Standard joypad callback polled on frame 1 |
+| Gun Smoke / stock FCEUmm reference | Left, right, up, down | Frame 2, about 33.3 ms at 60 Hz | Frame 2, about 33.3 ms at 60 Hz | Standard joypad callback polled on frame 1 |
 
 The native positive-X sweep also diverged on frame 3 at every tested magnitude:
 `1024`, `2048`, `4096`, `8192`, `16384`, and `32767`. The smallest step is
@@ -148,7 +148,7 @@ inference time and exceeded the gameplay latency target decisively. The
 512×384 resize did not improve p95 by the required 15%; it increased neutral
 false activations and weakened roll recognition. Thread count did not change
 recognition, and no alternative produced a consistent qualifying latency gain.
-The deployed choice therefore remains **MediaPipe Hands (proven)** at 640×480
+The deployed choice therefore remains **MediaPipe Hands** at 640×480
 with four inference threads. Preview encoding at that size measured about 9.6 ms
 p95 and did not materially increase inference p95.
 
@@ -305,7 +305,7 @@ python3 scripts/benchmark-direction-response.py \
 
 On macOS, use the emitted `.dylib` paths instead of `.so`. Build products,
 scratch state, reports, and ROMs are not release-package content. The runner's
-`--fceumm-rom` option adds the optional Gun.Smoke reference lane.
+`--fceumm-rom` option adds the optional Gun Smoke reference lane.
 
 ## Hostname refresh follow-up — 6 September 2026
 

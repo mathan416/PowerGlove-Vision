@@ -233,7 +233,7 @@ def coordinate_filter_results() -> dict:
 
 
 def prepare_fceumm_gun_smoke(session: Session) -> bytes:
-    """Advance Gun.Smoke from boot into active play using conventional Start."""
+    """Advance Gun Smoke from boot into active play using conventional Start."""
     for _ in range(120):
         session.run()
     for _ in range(3):
@@ -383,7 +383,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--fceumm-core", type=Path, required=True)
     result.add_argument(
         "--fceumm-rom", type=Path,
-        help="Optional positional FCEUmm reference ROM (Gun.Smoke in the recorded report)",
+        help="Optional positional FCEUmm reference ROM (Gun Smoke in the recorded report)",
     )
     result.add_argument("--scratch", type=Path, required=True)
     result.add_argument("--frames", type=int, default=12)

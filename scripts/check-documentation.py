@@ -50,6 +50,10 @@ CONFIGURATION_FILES = (
     ".github/workflows/quality.yml",
 )
 PDF_EDITIONS = {
+    "docs/BUILD_YOUR_OWN.md": "PowerGlove-Vision-Build-Your-Own.pdf",
+    "docs/NATIVE_EMULATION_EXPLAINED.md": "PowerGlove-Vision-Native-Emulation.pdf",
+    "docs/TROUBLESHOOTING.md": "PowerGlove-Vision-Troubleshooting.pdf",
+
     "docs/MATRIX_GUIDE.md": "PowerGlove-Vision-Matrix-Guide.pdf",
     "docs/ARCHITECTURE.md": "PowerGlove-Vision-Architecture.pdf",
     "README.md": "PowerGlove-Vision-Overview.pdf",
@@ -135,9 +139,9 @@ def check_extra_digit_hunt(errors: list[str]) -> None:
 
 
 def tracked_markdown() -> list[Path]:
-    """Return Markdown files tracked by Git in stable path order."""
+    """Return tracked and new nonignored Markdown files in stable path order."""
     output = subprocess.check_output(
-        ["git", "ls-files", "-z", "*.md"], cwd=ROOT
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "*.md"], cwd=ROOT
     ).decode().split("\0")
     return sorted(Path(name) for name in output if name)
 
@@ -257,7 +261,7 @@ def main() -> int:
 
     missing_sources = sorted(set(PDF_EDITIONS) - {str(path) for path in markdown})
     for name in missing_sources:
-        errors.append(f"PDF source is not tracked Markdown: {name}")
+        errors.append(f"PDF source is not available Markdown: {name}")
     if args.require_pdfs:
         check_pdfs(errors)
 

@@ -45,3 +45,9 @@ callback timestamps and writes them only on normal game unload. The resulting
 Nestopia-derived binary remains subject to Nestopia's GPL distribution terms.
 See the [session procedure](../../docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
 for environment variables, overhead comparison, and restoring the normal core.
+
+## Documented packet behavior
+
+The [native compatibility guide](../../docs/super-glove-ball-native.md#confirmed-exact-rom-packet) records the confirmed ten-byte Super Glove Ball sample. Bytes 7–8 remain at Nestopia's fixed `$00` initialization. Their gameplay role is not established; working traces and completed live play do not prove the ROM ignores them. No confirmed game action requires different values.
+
+User-facing guides call this core **Nestopia (PowerGlove)**. Technical identifiers such as `lr-nestopia-powerglove` and the library identity `Nestopia PowerGlove` remain unchanged.

@@ -144,3 +144,25 @@ Local synthetic and regression checks validate the tools; physical recording,
 actual-device overhead comparison, and accepted stationary baselines remain
 pending. The maintainer chose to prepare tools now and record later. No device
 deployment, core selection, or responsiveness tuning is part of this preparation.
+
+## Documentation review follow-up — local draft
+
+The subsequent user review clarified Academy learning versus tuning, per-player
+backup storage and restore selection, both pairing PIN flows, the four Setup
+status checks, and native packet bytes 7–8. Guides now use Gun Smoke as display
+text, retain exact ROM filenames, wrap long audit identifiers, and group asset
+provenance separately from runtime dependencies. The shared website has the
+hand-and-target icon and a top-of-Setup status panel.
+
+These edits are local and uncommitted at the user's request. They have not been
+deployed; earlier release/deployment evidence above does not validate this draft.
+Physical latency and stationary-jitter measurements remain pending.
+
+
+### Pairing completion and Setup URL follow-up
+
+- Released the matrix PIN display after an authorized code or SSH pairing request finishes, including transport failures. The supervisor restores the current status and respects the idle attract setting. A newer confirmation is not cleared by an earlier request.
+- Removed the temporary Setup URL revision redirect and navigation rewriting. `/setup` is served directly with the shared favicon; older query-string bookmarks remain readable.
+- Refreshed guided pairing screenshots, including progress and completion, and the affected Help and PDF instructions. Regression coverage includes both transport outcomes, normal matrix status restoration, and direct/legacy Setup URLs.
+
+Live follow-up: the user confirmed successful pairing and, after the subsequent deployment, confirmed the matrix/Setup cleanup worked. Automated validation ran 375 unit tests with one skipped, plus Chrome and WebKit pairing checks. All 317 deployed application files matched the repository at that deployment. Physical latency and stationary-jitter recording remain deferred.

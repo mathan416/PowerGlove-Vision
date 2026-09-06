@@ -15,8 +15,10 @@ gamepad named **PowerGlove Vision**.
 
 The project includes eleven profiles: nine reusable Programs A–I and dedicated
 controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
-profile automatically when you launch a registered game. Glove Academy mode lets you
-practise without sending input to the cabinet. Its optional Pixel Pal-guided
+profile automatically when you launch a registered game. Glove Academy teaches
+hand movements and gestures through sixteen guided lessons, with camera feedback,
+saved progress for each player, and a **Glove Master** award for completing them all.
+Learning mode lets you practise without sending input to the cabinet. Its optional Pixel Pal-guided
 personalization wizard adjusts recognition to a player's hand without retraining
 the model, changing game mappings, or exposing raw thresholds during normal use.
 The local Play page adds a camera-controlled Rock Paper Scissors match against
@@ -47,17 +49,24 @@ they are not missing from the game actions confirmed in the completed session.
 
 Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
 or turn it Off except for faint connection pixels. This does not change game
-displays, T, L, or gesture recognition. The setting saves without a tracker restart. Off mode has separate app, console-service, authenticated-console, and Wi-Fi pixels; Setup distinguishes unavailable Wi-Fi status from disconnection. The fourth pixel needs the updated firmware.
+displays, T, L, or gesture recognition. The setting saves without a tracker restart. Off mode has separate app, console-service, authenticated-console, and Networking pixels; the fourth reports a physical Wi-Fi or Ethernet link, including USB dock Ethernet. Setup distinguishes unavailable telemetry from disconnection. Updating the host sampler enables Ethernet detection without a new matrix firmware format.
 
-Setup now groups connection and startup settings, secure pairing, matrix attract
-mode, and controller/power actions. **Check console address** tests name resolution;
-use a running game to verify delivery. Failed requests can be retried, and
-controller actions preserve unsaved connection edits. Pending Start/Stop requests
-are reported while the tracker reconnects.
+Setup starts with four labelled status markers matching the Off-mode pixels: Controller app, console service, authenticated response, and Networking. Green means confirmed, red means disconnected or not confirmed, and grey means unknown. Tracking, controller output, and the saved console appear alongside them. Both pairing methods require the approval PIN displayed on the Controller matrix.
+
+Setup places **Matrix attract mode** below Controller status, followed by
+**Connection and startup**, guided pairing, and Games. Select **Save settings**
+before pairing; the three steps use the saved console address: choose a method,
+confirm the Controller certificate and matrix PIN, then enter the RetroPie code
+or SSH credentials. Both methods remain available. After selecting **Pair with RetroPie**,
+a visible **Pairing in progress** panel leads to **Pairing complete** or an actionable error. Expiry and submitted failures
+require fresh confirmation. Controller Start/Stop and shutdown are on Dashboard.
+**Check console address** tests name resolution; use a running game to verify delivery.
+
+When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
 
 The [development review and parking lot](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
 records completed fixes and decisions for a later session, including
-latency measurements still awaiting live play. Player calibration, complete backups, background hostname refresh, independent Wi-Fi indication, signed controller sessions, and web-module cleanup are implemented. Controller transport now requires matching version-2 software on both computers; follow the [coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
+latency measurements still awaiting live play. Player calibration, complete backups, background hostname refresh, independent Networking indication, signed controller sessions, and web-module cleanup are implemented. Controller transport now requires matching version-2 software on both computers; follow the [coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
 
 ## Choose a guide
 
@@ -246,12 +255,15 @@ disabled during normal play; physical measurements remain pending.
 
 ## Use the web interface
 
+The Controller website uses the logo’s hand-and-target emblem for browser tabs
+and saved home-screen shortcuts.
+
 | Page | What it does |
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
 | Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
 | Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Hand-setting backups are available. |
-| Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
+| Help, `/help` | Opens the local manuals and PDFs; **This console** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
 With **Gestures off** selected, the camera stays closed. Choose an active profile,
@@ -294,8 +306,27 @@ excluded for privacy.
 
 ![Glove Academy with Pixel Pal guiding the personalization choices](docs/images/tune-page.png)
 
-In **Glove Academy**, switch on **Tune gestures** to adjust sensitivity. The Controller shows
-a scanning **T** during tuning and a matching scanning **L** during ordinary practice. Both modes pause game input.
+**Learn and practise:** open **Glove Academy** and choose your player to work
+through sixteen lessons, from showing and centering your hand to movement and
+gesture control. Follow the illustrated instructions and camera feedback, practise
+one movement at a time, and return later to your saved progress. Complete every
+lesson to earn **Glove Master**. Lessons teach the gestures independently of the
+selected game mapping; use the [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) to see
+what those gestures do in each game. The Controller displays a scanning **L**
+during learning mode, with cabinet input paused.
+
+Choose each player in turn and select **Back up hand setup** to download a
+separate `powerglove-hand-setup.json`. The file is saved by your browser on the
+computer, phone, or tablet you are using, usually in **Downloads** or the folder
+you choose. Rename each copy with the player name and date, for example
+`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+the player you want to update, choose **Restore hand setup**, and pick that
+player's saved file from your device. Review it before confirming; restore
+updates the selected player, rather than adding a new one.
+
+**Personalize recognition:** switch on **Tune gestures** when recognition needs
+adjustment for your hand. This optional mode displays a scanning **T** and also
+pauses cabinet input.
 
 Pixel Pal first asks what feels wrong, then presents one instruction at a time.
 Recording starts only after the whole hand has been tracked clearly and steadily;
@@ -311,6 +342,14 @@ downloadable aggregate report contains no pictures or per-frame hand data.
 
 Scroll down **Setup** to **Games** to map exact ROM filenames to profiles.
 Saving affects the next game launch, not the game already running.
+
+New builders can start with [Build your own: parts, cost, and difficulty](docs/BUILD_YOUR_OWN.md).
+For the game-input background, read [How native Power Glove emulation works](docs/NATIVE_EMULATION_EXPLAINED.md).
+When something fails, use [Troubleshooting by symptom](docs/TROUBLESHOOTING.md).
+All three are available in Controller Help and as printable PDFs. Help orders
+user manuals from console details through game controls, programs, matrix
+displays, building, installation, and troubleshooting. Technical documentation starts with the
+project overview and architecture before configuration and detailed evidence.
 
 ## Maintain or extend the project
 

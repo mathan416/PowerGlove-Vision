@@ -1,0 +1,150 @@
+# Troubleshooting by symptom
+
+Start at the first stage that fails: camera, recognition, Controller delivery,
+RetroPie reception, emulator selection, then the displayed game. Keep a normal
+gamepad available. Change one setting at a time so you know what fixed the issue.
+
+The **PowerGlove Vision Controller (Arduino UNO Q)** hosts Setup, Glove Academy,
+and Help. Use **Help → This console** for addresses specific to your installation.
+The examples below use placeholders, not addresses that every build shares.
+
+## The website will not open
+
+1. Check power and give the Controller time to finish starting.
+2. Put your browser device on the same reachable LAN. Check the router's client list for the Controller's current IP address.
+3. Try `http://CONTROLLER-IP:8088/setup`. Secure pairing uses `https://CONTROLLER-IP:8443/setup`.
+4. If the IP works but `.local` does not, investigate hostname resolution and guest-network/client isolation. With Wi-Fi and USB Ethernet connected, the Controller can have more than one address.
+
+Use the plain `/setup` address; no `?ui=2` suffix is needed. Old query-string bookmarks still open Setup.
+
+Do not change pairing keys to fix an unreachable website. If SSH works, use the
+[configuration troubleshooting reference](CONFIGURATION_REFERENCE.md#setup-page-does-not-open)
+for application checks. The documented hardware may restart after Shutdown;
+a disappearing page alone does not prove that power has been removed.
+
+## Networking is red or grey
+
+The fourth Setup marker and fourth Off-mode pixel represent a physical **Wi-Fi
+or Ethernet link**, including supported Ethernet adapters in USB docks.
+
+| Marker | Meaning | Next check |
+| --- | --- | --- |
+| Green | At least one detected physical Wi-Fi/Ethernet link is up | Check console-service and authenticated-response markers next |
+| Red | Detected relevant links report disconnected | Check wireless association, Ethernet cable, dock power, and upstream data connection |
+| Grey | The host report is missing, stale, incomplete, or has no recognized interface | Check that the Controller host sampler was installed/upgraded; do not assume the cable is disconnected |
+
+Docker bridges and loopback do not make this marker green. A green link does
+not prove an IP address, Internet access, console reachability, or game delivery.
+Older Wi-Fi-only telemetry can confirm a connected wireless link but cannot
+rule out Ethernet when Wi-Fi is down. Use the current Controller installer or
+upgrade helper to update the host sampler.
+
+## The camera view is missing
+
+**Gestures off** normally closes the camera. Open **Play** or **Glove Academy**
+and wait for **Starting camera and gesture tracking** to finish. First startup
+can take longer than switching between active profiles.
+
+If no camera appears, check the powered USB hub, cable, and camera connection.
+On the Controller host, `lsusb` should show the camera. If it is absent there,
+the problem is below hand recognition. The documented helper attempts one
+controlled recovery for the enrolled camera; repeated setting changes will not
+repair a disconnected USB device. See [Camera selection](CONFIGURATION_REFERENCE.md#camera-selection).
+
+## The camera works but the hand is not recognized
+
+Keep one whole hand in frame with its palm facing the camera. Light the hand
+from the camera side and avoid a bright window behind it. Try a bare hand
+before changing glove settings; the glove-colour option is only a diagnostic
+label. Use the first Glove Academy lesson to verify basic detection.
+
+If detection repeatedly disappears, fix visibility before tuning gesture
+thresholds. Tracking losses and ordinary stationary jitter are different
+problems and should be reported separately.
+
+## The hand is detected but the game does not move
+
+1. Close local Play and Glove Academy; they pause cabinet input. Finish tuning, then explicitly start controller delivery if required.
+2. Check the selected player and any request to set a fresh centre. Select **Set this as my center**, or explicitly reuse a saved centre only if camera and playing position match.
+3. Select **Start controller**. Armed means delivery is permitted when a valid game session or intentional manual profile is active; it does not mean packets are always being sent.
+4. Check Setup's console-service and authenticated-response markers. A reachable service with unconfirmed authentication suggests pairing needs attention. Neither marker proves emulator input consumption.
+5. Confirm that the game has actually started in RetroArch. The exact ROM filename must be registered; `.nes`, `.zip`, and `.7z` are separate entries.
+6. Check the emulator and controller selection. For native Super Glove Ball, choose Nestopia (PowerGlove); for its joystick fallback choose FCEUmm.
+
+A filename such as `Gun.Smoke (USA).7z` must keep its punctuation in the registry
+even though the displayed game name is **Gun Smoke**. See
+[Register games](CONFIGURATION_REFERENCE.md#register-games-and-select-profiles)
+and the [Gameplay Guide](GAMEPLAY_GUIDE.md).
+
+## Pairing asks for more than one code
+
+Both pairing methods need the six-digit approval PIN displayed on the Controller
+matrix and the certificate-ID comparison. **Code pairing** additionally uses the
+one-time code generated on RetroPie. **Password pairing** additionally uses the
+RetroPie SSH username and password. The two codes are not interchangeable.
+
+If confirmation expires, select **Start a new confirmation**. The saved console
+and method stay fixed during the two-minute window; change them after it ends.
+A failed submitted request also requires fresh confirmation. Save console edits
+with **Save settings** before pairing.
+When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority. A completed attempt should not leave the old PIN scrolling for the rest of its two-minute window.
+
+Use the [pairing walkthrough](INSTALL_README.md#4-pair-the-devices); never paste
+pairing tokens, passwords, or live approval PINs into a public support report.
+
+## Movement drifts or feels reversed
+
+Check the selected game profile and centre before changing sensitivity. Hold a
+relaxed hand at the intended playing position and choose **Set this as my center**.
+Support your forearm where practical. Re-centre after moving the camera.
+
+A profile such as Program D intentionally reverses controls. Native Super Glove
+Ball and joystick-style mappings behave differently, so verify the selected core.
+If ordinary movement is correct but a gesture is unreliable, use **Glove Academy
+→ Tune gestures** and describe that symptom to Pixel Pal.
+
+## Start triggers accidentally, or a gesture stays active
+
+Practise the V sign and its release in Glove Academy. Keep your fingers clearly
+away from a menu pose while performing another action. Use **A gesture happens
+accidentally** in Tune gestures if recognition needs personalization.
+
+Menu Guard suppresses D-pad and button output; native continuous positioning
+still follows the hand. Select **Stop controller** for a dependable pause while
+repositioning. Do not use extra smoothing to hide a recognition problem.
+
+## Controls feel delayed
+
+Close optional camera previews during gameplay. Keep lighting and camera setup
+stable, then compare deliberate movements and supported stationary holds. Avoid
+changing several camera, core, and display settings at once.
+
+Software status can locate processing delays but cannot measure the complete
+hand-to-screen delay. Native Super Glove Ball latency remains an active issue;
+follow the [measurement plan](direction-response-benchmark.md) before drawing
+conclusions from screenshots or timestamps on different computers.
+
+## My player or backup looks wrong
+
+Check **Your player** first: player selection applies across browsers. Progress
+and settings live on the Controller, not in browser storage. Each downloaded
+backup contains only the selected player's hand setup and excludes Academy
+progress. Your browser usually puts it in Downloads as
+`powerglove-hand-setup.json`; keep a separate named copy for each player.
+
+Restore updates the selected player after review. An empty personal-threshold
+object can simply mean defaults are in use; version-2 backups also carry the
+effective sensitivity. See [backup locations and restore choices](CONFIGURATION_REFERENCE.md#where-player-settings-and-backup-files-live).
+
+## What to include when asking for help
+
+Record the exact software commit and matrix firmware from the page footer,
+Controller board variant, camera/dock models, connection type, selected player
+and profile, core, game filename, and steps that reproduce the symptom. Say
+whether it occurs in Academy, local Rock Paper Scissors, or only in a cabinet
+game. Include the four status results and any tracking losses.
+
+Share a short relevant error excerpt or aggregate diagnostic report. Exclude
+credentials and private video. Raw latency recordings should remain temporary
+and local unless you explicitly choose to share them. See
+[Contributing](CONTRIBUTING.md) for the project's testing and reporting workflow.

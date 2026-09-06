@@ -7,7 +7,31 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Changed
+
+- Pairing now releases the physical approval-PIN display after the submitted request succeeds or fails, allowing the normal matrix display to resume without waiting for the authorization timer. Idle animation still respects On, Dim, or Off. Setup now serves directly at `/setup`; removed the page-revision redirect and link rewriting while retaining the shared favicon and compatibility with old bookmarks. Refreshed Setup screenshots and maintained guides.
+
+- Fixed a Safari/WebKit pairing click failure caused by replacing button text during the half-second refresh. Pairing now brings a dedicated progress panel, completion, and errors into view; missing credentials receive explicit guidance, and live announcements are no longer inside a busy region. Verified delayed mouse clicks and progress feedback in WebKit and Chrome.
+
+- Replaced Setup pairing with three inline steps using the saved console: method selection, physical Controller confirmation, and RetroPie credentials. Retained one-time-code and SSH-password methods, added expiry/retry guidance and secret clearing, renamed the connection button to Save settings, and removed duplicate Controller/power actions from Setup. Pairing APIs and server security checks are unchanged.
+
+- Ordered Help user manuals as This console, Game and gesture guide, Programs A-I, Matrix display guide, Build your own, Installation and setup, and Troubleshooting by symptom. Kept the native-emulation introduction beside the Super Glove Ball compatibility record in Technical documentation. Unified browser-tab icon selection around one versioned multi-size ICO shared by Setup and every other page. The temporary Setup page-revision workaround has since been removed; the plain Setup URL is used throughout.
+
+- Shifted the idle glove’s bottom two wrist rows one pixel right, including the cuff entrance and wrist spark. Refreshed the simulated animation and manual illustrations; this change requires a matrix firmware update. Added versioned website icon URLs to refresh cached icons, including Setup.
+
+- Renamed the fourth connection marker to Networking and extended its host check to physical Wi-Fi or Ethernet, including USB dock Ethernet. Virtual interfaces are excluded; legacy telemetry remains readable. This follow-up requires a Controller app and sampler update, not a new four-pixel firmware or RetroPie deployment.
+
+- Reorganized Gameplay, Configuration, and component documentation; made Academy learning and per-player backup file locations explicit across guides and READMEs. Clarified both pairing PIN flows, native packet bytes 7–8, and Menu Guard's native-position limitation. Standardized Gun Smoke display text while retaining exact filenames, added wrapping for audit/benchmark tables, and refreshed Help assets and PDFs. The documentation-review batch was deployed as an uncommitted development build; the subsequent Networking and community-guide additions were also deployed without a commit or release.
+
+- Simplified the tracker display name to **MediaPipe Hands** in the interface, diagnostics, command help, and documentation. The `legacy` identifier and tracking behavior are unchanged.
+
 ### Added
+
+- Community guides for building the hardware, understanding native Power Glove emulation, and troubleshooting by symptom, available in Help and PDF editions.
+
+- Hand-and-target website icons for browser tabs and saved home-screen shortcuts, included in Controller installations and upgrades.
+
+- Setup now starts with four labelled status markers matching the Off-mode pixels, plus tracking, controller output, and saved console details. Shared background checks distinguish failed checks from unavailable results and keep physical network-link health independent of RetroPie connectivity. Pairing wording makes the Controller matrix PIN requirement explicit for both methods.
 
 - Native Super Glove Ball test tools for three stationary holds and ten movements per direction, with sampled tracking losses, gaps, and neutral button counts.
 - Opt-in, bounded Controller/receiver timing traces and a separately built diagnostic native core. Normal transport, native-state format, and responsiveness settings are unchanged. No diagnostic deployment is performed automatically.
@@ -162,7 +186,7 @@ recorded by the release tag and installer manifests.
   continuously into a newest-frame slot, background JPEG work can drop stale
   previews, and live diagnostics report frame freshness, inference cadence,
   skipped captures, and preview cost.
-- Named the tracker choices **MediaPipe Hands (proven)** and **MediaPipe Tasks
+- Named the tracker choices **MediaPipe Hands** and **MediaPipe Tasks
   Video (experimental)** in Dashboard and documentation while retaining the
   stable `legacy` and `tasks-video` command identifiers.
 - Replaced Glove Academy's mislabeled single-finger curl in the **Close your
@@ -216,7 +240,7 @@ the completed illustrated documentation set.
   mappings through FCEUmm.
 - Added a reproducible matched-savestate direction benchmark. Native Super
   Glove Ball visibly activates and releases every axis by frame 3, including a
-  3.1% X step; FCEUmm Gun.Smoke polls input on frame 1 and visibly activates
+  3.1% X step; FCEUmm Gun Smoke polls input on frame 1 and visibly activates
   and releases every direction by frame 2.
 - Compared the exact Super Glove Ball ROM in both cores, confirmed that FCEUmm
   remains standard-joypad-only, and corrected native Y wrapping so its packet

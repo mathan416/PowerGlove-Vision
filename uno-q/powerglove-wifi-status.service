@@ -8,7 +8,7 @@
 # Change log:
 #   2026-09-06 - Publish independent host Wi-Fi health for the idle matrix.
 [Unit]
-Description=PowerGlove Vision Wi-Fi status
+Description=PowerGlove Vision network link status
 ConditionPathIsDirectory=/home/arduino/ArduinoApps/powerglove-vision/data
 
 [Service]

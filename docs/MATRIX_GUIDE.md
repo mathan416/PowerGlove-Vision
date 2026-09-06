@@ -20,7 +20,7 @@ what to do next.
 | A large scanning **T** | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Gesture tuning is active, including hand setup. | Follow the recording, preview, and save instructions in Glove Academy. Controller output is paused. |
 | A steady **A-I**, **BS**, or **GB** | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | A game profile is selected, but a calibrated hand is not currently being reported as tracked. | Show your hand and check tracking/calibration on Dashboard. |
 | **A-I**, **BS**, or **GB** gently changing brightness | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | The app reports a detected, calibrated hand for that profile. | Check Dashboard's controller status before playing. This pulse alone does not mean controls are enabled. |
-| **ID**, characters, **PN**, and digits repeating | — | Secure pairing is showing the device identity and temporary PIN. | Follow the Connection page; read each group in order. |
+| **ID**, characters, **PN**, and digits repeating | — | Secure pairing is showing the device identity and temporary PIN. | Follow the Setup page; read each group in order. |
 | A flashing **X** | <img src="images/matrix/X.jpg" alt="X matrix display" width="104"> | The app has requested an error display. | Read Dashboard's error message before deciding whether to reconnect the camera or restart. |
 | A blank matrix | <img src="images/matrix/Blank.jpg" alt="Blank matrix display" width="104"> | The display has been turned off, the app is stopping, or the board is still starting. It may also have lost power. | Use the browser and board power indicators to distinguish these cases. Blank does not prove shutdown is complete. |
 
@@ -52,17 +52,23 @@ default and preserves all eight brightness levels; Dim retains the animation
 with lit pixels mapped to levels 1–2. Off suppresses the animation.
 
 Off keeps four faint pixels along the bottom-left edge, with a dark pixel
-between each indicator. From left to right: the app is running; a TCP connection
-to the configured RetroPie Games service succeeds; and that service answers an
-authenticated request using the paired token; and the Controller’s own Wi-Fi link is connected. The fourth pixel is independent of RetroPie and requires the updated matrix firmware and host sampler. A dark Wi-Fi pixel means disconnected or unavailable; Setup distinguishes these states. These are reachability and pairing
-indicators, not proof that a running game consumed controller input. An unlit
-network pixel can also mean the console or Games service is off; it does not
-independently diagnose Wi-Fi; use the fourth pixel and Setup’s Wi-Fi status. Without a configured console, only the app and independently connected Wi-Fi pixels can light.
+between each indicator. From left to right: app running; console Games service
+reachable; authenticated console response; and **Networking**, meaning a physical
+Wi-Fi or Ethernet link is up. Ethernet through a USB dock counts when Linux
+recognizes it as a physical Ethernet interface. Docker bridges and loopback do not.
+
+A dark fourth pixel can mean disconnected or unavailable telemetry; Setup uses
+red and grey to distinguish them. A green link does not prove an IP address,
+Internet access, or game delivery. Update the host sampler for Ethernet support;
+its script, service, and `wifi-status.json` filenames are retained for upgrades.
+The existing four-pixel firmware needs no new format or flash for this change.
 
 ![Attract-mode controls in Setup](images/matrix/attract-settings.png)
 
+Setup repeats these four checks in a labelled **Controller status** panel at the top of the page, alongside tracking, controller output, and the saved console. Green means confirmed, red means disconnected or not confirmed, and grey means unknown. The physical pixels remain faint and monochrome.
+
 Connection checks run in the background while Off is selected and the display
-is idle, approximately every ten seconds. Results expire after thirty seconds.
+is idle, or while a visible Setup page requests status, at most once every ten seconds. Results expire after thirty seconds.
 They never send gameplay input. This uses the existing RetroPie Games service
 on TCP port `55358`; no RetroPie update is required.
 
@@ -80,7 +86,8 @@ cuff slides in from the right and the hand rises above it, curls into a fist,
 and reopens. A small spark climbs toward the fingertips, then the glove gently
 brightens and settles. Separated fingers and a distinct thumb keep the silhouette
 readable; a dim palm, highlighted edges, and a wrist buckle use the matrix's
-eight brightness levels (0 is off, 1–7 are lit).
+eight brightness levels (0 is off, 1–7 are lit). The bottom two wrist rows sit one
+pixel farther right, with the cuff entrance and wrist spark aligned to match.
 
 The illustration above simulates the LED levels; actual brightness and glow
 depend on the physical display. Open Glove Academy to practice, or choose a game
@@ -134,6 +141,8 @@ profile on Dashboard.
 
 ## Pairing: ID and PN
 
+When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
+
 During secure pairing, the small display presents the information in pieces:
 
 1. **ID** announces the device certificate identity.
@@ -145,7 +154,7 @@ During secure pairing, the small display presents the information in pieces:
 Read each pair from left to right and join the groups in the order shown. Do not
 mistake **PN** for a game program or use the certificate identity as the PIN.
 
-Follow the Connection page to compare the identifier and enter the PIN. Pairing
+Follow the Setup page to compare the identifier and enter the PIN. Pairing
 information temporarily replaces the usual display. If it expires before you
 finish, prepare a new pairing attempt. Check the page for confirmation that
 pairing succeeded.

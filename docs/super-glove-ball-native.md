@@ -65,8 +65,15 @@ ROM while assembling the byte:
 | 4 | Roll candidate | `$00`; deliberately neutral pending exact-ROM mapping |
 | 5 | Hand gesture | `$00` open, `$FF` fist, `$0F` index point |
 | 6 | Button | `$FF` neutral; `$82` Start confirmed |
-| 7–8 | Unknown | `$00`, preserved conservatively |
+| 7–8 | No gameplay role established | Both remain `$00`, matching Nestopia’s fixed initialization |
 | 9 | Validation terminator | `$3F` |
+
+Nestopia initializes bytes 7–8 to `$00` and never updates them from controller
+input; our patch retains this behavior. Traces and completed live play confirm
+working input at these values, not that the ROM ignores them. No confirmed game
+action requires different values. Establishing a purpose would need focused
+ROM-use analysis or a repeatable one-byte-at-a-time gameplay test; these are not
+known missing controls.
 
 The trace runner starts the exact ROM with the Power Glove attached, proves that
 native `$82` Start enters play, and holds each X/Y extreme for 120 frames. The
@@ -176,8 +183,3 @@ sudo python3 scripts/configure-super-glove-ball-core.py \
   --rom "/home/pi/RetroPie/roms/nes/Super Glove Ball (USA).7z" \
   --mode fceumm --apply
 ```
-
-To add the remaining already-recognized controls to the native path, vary wrist
-rotation and one button field at a time. Repeat the neutral baseline,
-single-variable trace, and observable in-game comparison. Preserve unknown bytes
-and timing behavior conservatively.

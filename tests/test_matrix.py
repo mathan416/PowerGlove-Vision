@@ -35,6 +35,40 @@ class MatrixTests(unittest.TestCase):
         self.assertEqual(calls[-1], ('set_powerglove_attract',1,0))
         self.assertEqual(matrix.last_status, MatrixStatus.TUNING)
 
+    def test_setup_health_is_cached_shared_and_expires(self):
+        matrix = UnoQMatrix(call=lambda *args: None)
+        settings = {'receiver': 'cabinet.local', 'token': 'private-token'}
+        with patch('powerglove_vision.matrix.time.monotonic', return_value=100), \
+             patch('powerglove_vision.wifi_status.read_network_status', return_value='connected'), \
+             patch('powerglove_vision.matrix.threading.Thread') as thread:
+            initial = matrix.connection_status(settings, refresh=True)
+            self.assertIsNone(initial['console_service'])
+            self.assertEqual(initial['networking'], 'connected')
+            matrix.connection_status(settings, refresh=True)
+            thread.return_value.start.assert_called_once()
+            matrix._probe_result, matrix._probe_at = 3, 95
+            ready = matrix.connection_status(settings)
+            self.assertTrue(ready['console_authenticated'])
+            self.assertEqual(ready['checked_seconds_ago'], 5)
+            self.assertNotIn('private-token', str(ready))
+            matrix._probe_at = 69
+            self.assertIsNone(matrix.connection_status(settings)['console_authenticated'])
+            matrix._probe_at = 95
+            changed = matrix.connection_status(dict(settings, receiver='other.local'))
+            self.assertIsNone(changed['console_authenticated'])
+
+    def test_failed_authentication_is_distinct_from_unreachable_and_wifi(self):
+        matrix = UnoQMatrix(call=lambda *args: None)
+        settings = {'receiver': 'cabinet.local', 'token': 'private-token'}
+        matrix._probe_key = ('cabinet.local', 'private-token')
+        matrix._probe_result, matrix._probe_at = 1, 100
+        with patch('powerglove_vision.matrix.time.monotonic', return_value=101), \
+             patch('powerglove_vision.wifi_status.read_network_status', return_value='disconnected'):
+            health = matrix.connection_status(settings)
+            self.assertTrue(health['console_service'])
+            self.assertFalse(health['console_authenticated'])
+            self.assertEqual(health['networking'], 'disconnected')
+
     def test_connection_pixels_require_reachable_and_authenticated_console(self):
         matrix = UnoQMatrix(call=lambda *args: None)
         key = ('cabinet.local','private-token')
@@ -158,6 +192,18 @@ class MatrixTests(unittest.TestCase):
         self.assertEqual(matrix.last_status, MatrixStatus.PAIRING)
         matrix.set_status(MatrixStatus.ERROR)
         self.assertEqual(len(calls), 1)
+
+    def test_finished_pairing_restores_normal_status_before_timeout(self):
+        calls = []
+        matrix = UnoQMatrix(call=lambda *args: calls.append(args))
+        matrix.show_pairing("1A2B3C4", "001234")
+        matrix.set_status(MatrixStatus.GESTURES_IDLE)
+        self.assertEqual(len(calls), 1)
+        matrix.finish_pairing()
+        matrix.set_status(MatrixStatus.GESTURES_IDLE)
+        self.assertEqual(calls[-1], ("set_powerglove_status", int(MatrixStatus.GESTURES_IDLE)))
+        matrix.set_status(MatrixStatus.TRACKING)
+        self.assertEqual(matrix.last_status, MatrixStatus.TRACKING)
 
 
 if __name__ == "__main__":

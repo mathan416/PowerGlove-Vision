@@ -35,22 +35,25 @@ DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
-    {"slug": "cabinet", "title": "This cabinet", "file": None, "description": "Live PowerGlove Vision Controller links and the active RetroPie connection, generated for this cabinet.", "group": "User manuals"},
-    {"slug": "gameplay", "title": "Game and gesture guide", "file": "GAMEPLAY_GUIDE.md", "description": "Illustrated Rock Paper Scissors instructions, configured-game controls, and play tips.", "group": "User manuals"},
-    {"slug": "programs", "title": "Programs A-I", "file": "bad-street-brawler-programs.md", "description": "The original Power Glove programs and their camera-based equivalents.", "group": "User manuals"},
-    {"slug": "matrix", "title": "Matrix display guide", "file": "MATRIX_GUIDE.md", "description": "Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.", "group": "User manuals"},
-    {"slug": "installation", "title": "Installation and setup", "file": "INSTALL_README.md", "description": "Installation, secure pairing, the Play Checklist, updates, and troubleshooting.", "group": "User manuals"},
-    {"slug": "overview", "title": "Project overview", "file": None, "description": "The complete project at a glance: architecture, controls, security, deployment, and current status.", "group": "Technical documentation", "href": "/help-pdf/overview.pdf"},
-    {"slug": "architecture", "title": "Architecture and flows", "file": "ARCHITECTURE.md", "description": "System boundaries, recognition, tuning, game input, and deployment diagrams.", "group": "Technical documentation"},
-    {"slug": "configuration", "title": "Configuration reference", "file": "CONFIGURATION_REFERENCE.md", "description": "Every public setting, template, generated file, and installed location.", "group": "Technical documentation"},
-    {"slug": "input-audit", "title": "Power Glove game input audit", "file": "power-glove-rom-input-audit.md", "description": "ROM-level evidence separating native Power Glove input from standard controller mappings.", "group": "Technical documentation"},
-    {"slug": "native-super-glove-ball", "title": "Super Glove Ball native compatibility", "file": "super-glove-ball-native.md", "description": "Live-confirmed native game actions, packet evidence, and deliberately unused fields for the custom Nestopia path.", "group": "Technical documentation"},
-    {"slug": "direction-response", "title": "Direction-response benchmark", "file": "direction-response-benchmark.md", "description": "Native latency and stationary-jitter test steps, optional software traces, video evidence, and headless core measurements.", "group": "Technical documentation"},
-    {"slug": "early-start", "title": "Early sketch startup", "file": "EARLY_START.md", "description": "Inspect, maintain, and remove the PowerGlove Vision Controller startup helper included by the installer.", "group": "Technical documentation"},
-    {"slug": "security", "title": "Security and privacy", "file": "SECURITY.md", "description": "Pairing boundaries, safe network use, shutdown permissions, and reporting.", "group": "Technical documentation"},
-    {"slug": "components", "title": "Third-party components", "file": "THIRD_PARTY_COMPONENTS.md", "description": "MediaPipe, model, license, checksum, and runtime provenance.", "group": "Technical documentation"},
-    {"slug": "contributing", "title": "Contributing", "file": "CONTRIBUTING.md", "description": "Source formatting, tests, documentation, packaging, and review expectations.", "group": "Technical documentation"},
-    {"slug": "changelog", "title": "Changelog", "file": "CHANGELOG.md", "description": "User-visible additions, fixes, security changes, and documentation updates.", "group": "Technical documentation"},
+    {'slug': 'cabinet', 'title': 'This console', 'file': None, 'description': 'Live PowerGlove Vision Controller links and the active RetroPie connection, generated for this cabinet.', 'group': 'User manuals'},
+    {'slug': 'gameplay', 'title': 'Game and gesture guide', 'file': 'GAMEPLAY_GUIDE.md', 'description': 'Illustrated Rock Paper Scissors instructions, configured-game controls, and play tips.', 'group': 'User manuals'},
+    {'slug': 'programs', 'title': 'Programs A-I', 'file': 'bad-street-brawler-programs.md', 'description': 'The original Power Glove programs and their camera-based equivalents.', 'group': 'User manuals'},
+    {'slug': 'matrix', 'title': 'Matrix display guide', 'file': 'MATRIX_GUIDE.md', 'description': 'Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.', 'group': 'User manuals'},
+    {'slug': 'build-your-own', 'title': 'Build your own: parts, cost, and difficulty', 'file': 'BUILD_YOUR_OWN.md', 'description': 'Parts, planning costs, tested hardware, and a staged first build.', 'group': 'User manuals'},
+    {'slug': 'installation', 'title': 'Installation and setup', 'file': 'INSTALL_README.md', 'description': 'Installation, secure pairing, the Play Checklist, updates, and troubleshooting.', 'group': 'User manuals'},
+    {'slug': 'troubleshooting', 'title': 'Troubleshooting by symptom', 'file': 'TROUBLESHOOTING.md', 'description': 'Find the first failing stage, from the camera to the displayed game.', 'group': 'User manuals'},
+    {'slug': 'overview', 'title': 'Project overview', 'file': None, 'description': 'The complete project at a glance: architecture, controls, security, deployment, and current status.', 'group': 'Technical documentation', 'href': '/help-pdf/overview.pdf'},
+    {'slug': 'architecture', 'title': 'Architecture and flows', 'file': 'ARCHITECTURE.md', 'description': 'System boundaries, recognition, tuning, game input, and deployment diagrams.', 'group': 'Technical documentation'},
+    {'slug': 'native-emulation', 'title': 'How native Power Glove emulation works', 'file': 'NATIVE_EMULATION_EXPLAINED.md', 'description': 'Follow hand recognition through joystick and native game input.', 'group': 'Technical documentation'},
+    {'slug': 'native-super-glove-ball', 'title': 'Super Glove Ball native compatibility', 'file': 'super-glove-ball-native.md', 'description': 'Live-confirmed native game actions, packet evidence, and deliberately unused fields for the custom Nestopia path.', 'group': 'Technical documentation'},
+    {'slug': 'configuration', 'title': 'Configuration reference', 'file': 'CONFIGURATION_REFERENCE.md', 'description': 'Every public setting, template, generated file, and installed location.', 'group': 'Technical documentation'},
+    {'slug': 'input-audit', 'title': 'Power Glove game input audit', 'file': 'power-glove-rom-input-audit.md', 'description': 'ROM-level evidence separating native Power Glove input from standard controller mappings.', 'group': 'Technical documentation'},
+    {'slug': 'direction-response', 'title': 'Direction-response benchmark', 'file': 'direction-response-benchmark.md', 'description': 'Native latency and stationary-jitter test steps, optional software traces, video evidence, and headless core measurements.', 'group': 'Technical documentation'},
+    {'slug': 'early-start', 'title': 'Early sketch startup', 'file': 'EARLY_START.md', 'description': 'Inspect, maintain, and remove the PowerGlove Vision Controller startup helper included by the installer.', 'group': 'Technical documentation'},
+    {'slug': 'security', 'title': 'Security and privacy', 'file': 'SECURITY.md', 'description': 'Pairing boundaries, safe network use, shutdown permissions, and reporting.', 'group': 'Technical documentation'},
+    {'slug': 'components', 'title': 'Third-party components', 'file': 'THIRD_PARTY_COMPONENTS.md', 'description': 'MediaPipe, model, license, checksum, and runtime provenance.', 'group': 'Technical documentation'},
+    {'slug': 'contributing', 'title': 'Contributing', 'file': 'CONTRIBUTING.md', 'description': 'Source formatting, tests, documentation, packaging, and review expectations.', 'group': 'Technical documentation'},
+    {'slug': 'changelog', 'title': 'Changelog', 'file': 'CHANGELOG.md', 'description': 'User-visible additions, fixes, security changes, and documentation updates.', 'group': 'Technical documentation'},
 )
 GUIDES_BY_SLUG = {str(guide["slug"]): guide for guide in HELP_GUIDES}
 LEGACY_SLUGS = {"field-guide": "installation"}
@@ -60,6 +63,10 @@ SLUG_BY_FILE = {
     if guide["file"] is not None
 }
 HELP_PDFS = {
+    "build-your-own": "PowerGlove-Vision-Build-Your-Own.pdf",
+    "native-emulation": "PowerGlove-Vision-Native-Emulation.pdf",
+    "troubleshooting": "PowerGlove-Vision-Troubleshooting.pdf",
+
     "matrix": "PowerGlove-Vision-Matrix-Guide.pdf",
     "architecture": "PowerGlove-Vision-Architecture.pdf",
     "input-audit": "PowerGlove-Vision-Input-Audit.pdf",
@@ -159,7 +166,7 @@ def help_index_content() -> str:
     return (
         "<h1>Help, without leaving the glove.</h1>"
         "<p class=lead>Read the maintained PowerGlove Vision guides directly on this PowerGlove Vision Controller. "
-        "Start with This cabinet for your current connections, or choose a guide below. The manuals are available offline.</p>"
+        "Start with This console for your current connections, or choose a guide below. The manuals are available offline.</p>"
         + "".join(sections)
     )
 
@@ -257,7 +264,7 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
         )
     )
     article = (
-        "<h1>This cabinet</h1>"
+        "<h1>This console</h1>"
         "<p>These values are generated from the address used to open this page and the PowerGlove Vision Controller's active public configuration. They update without editing a guide.</p>"
         "<h2>PowerGlove Vision Controller</h2><div class=table-scroll><table><tbody>"
         + row("Address used by this browser", board)
@@ -272,7 +279,7 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
         + "</tbody></table></div>"
         "<blockquote><strong>Private by design</strong> The shared token and passwords are never returned to Help. If you open this page with an IP address, its links use that IP; if you open it with a <code>.local</code> name, the links keep that name.</blockquote>"
     )
-    return _reading_shell("cabinet", article, "", ""), "This cabinet"
+    return _reading_shell("cabinet", article, "", ""), "This console"
 
 
 def _reading_shell(slug: str, rendered: str, contents: str, toolbar_extra: str) -> str:
@@ -459,6 +466,10 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
             table_class = (
                 " class=program-starters"
                 if headers == ["Program", "See it", "Try it with", "Know before playing"]
+                else " class=rom-input-audit"
+                if headers == ["Game", "ROM SHA-256", "Input finding", "Shared profile"]
+                else " class=reproducible-inputs"
+                if headers == ["Lane", "Core", "Exact game image"]
                 else ""
             )
             head = "".join(

@@ -9,8 +9,8 @@ worked and how PowerGlove Vision recreates their controls with a camera.
 
 <img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
 
-**Pixel Pal says:** Pick one program, practise one gesture, then try a round.
-For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE.md#your-gesture-reference).
+**Pixel Pal says:** Learn one gesture in Glove Academy, pick a program, then try a round.
+For a picture of each basic gesture, see [Gesture reference](GAMEPLAY_GUIDE.md#your-gesture-reference).
 
 > **Pixel Pal's Extra-Digit Hunt:** Some glove illustrations have five fingers
 > plus a thumb. Count every six-digit hand once per appearance, including
@@ -26,8 +26,10 @@ For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE
 ![Dashboard profile selector and controller diagnostics](images/debug-dashboard.png)
 
 To change sensitivity without changing a program's button assignments, open
-**Glove Academy → Tune gestures**. The threshold table is beneath the camera and the
-matrix shows a scanning **T**, matching ordinary Glove Academy’s scanning **L**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
+**Glove Academy → Tune gestures**. Pixel Pal guides the adjustment; numerical
+thresholds are under **Advanced**. The matrix shows **T** during tuning and **L**
+during the sixteen learning lessons. Each player keeps saved progress toward
+**Glove Master**. See the illustrated [tuning walkthrough](CONFIGURATION_REFERENCE.md#tune-gesture-sensitivity).
 
 ## Where the programs came from
 
@@ -209,9 +211,9 @@ the previous game's mapping does not remain active.
 ## Practise safely
 
 1. Open `http://UNO-Q-NAME.local:8088/learn`.
-2. Keep your whole hand visible. Select **Calibrate** on first use or when your resting position produces unwanted movement, then hold still.
+2. Keep your whole hand visible. Select **Set this as my center** on first use or when your resting position produces unwanted movement, then hold still.
 3. Move slowly until the intended gesture is recognized consistently.
-4. Open Debug to compare hand motion with generated controller output.
+4. Open Dashboard to compare hand motion with generated controller output.
 5. Start controller delivery only when ready to play.
 
 Glove Academy mode works without RetroPie and automatically starts the camera while

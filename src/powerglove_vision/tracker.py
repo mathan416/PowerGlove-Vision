@@ -28,7 +28,7 @@ from .model import HandObservation
 
 
 TRACKER_BACKEND_LABELS = {
-    "legacy": "MediaPipe Hands (proven)",
+    "legacy": "MediaPipe Hands",
     "tasks-video": "MediaPipe Tasks Video (experimental)",
 }
 

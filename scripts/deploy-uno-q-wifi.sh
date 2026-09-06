@@ -128,7 +128,7 @@ ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
 echo "Waiting for the dashboard..."
 ready=false
 for _ in {1..60}; do
-  if curl --fail --silent --show-error --max-time 2 \
+  if curl --location --max-redirs 3 --fail --silent --show-error --max-time 2 \
       "http://${UNO_HEALTH_AUTHORITY}:8088/status" >/dev/null 2>&1; then
     ready=true
     break
@@ -141,42 +141,42 @@ if [[ "${ready}" != true ]]; then
   exit 1
 fi
 
-curl --fail --silent --show-error --max-time 5 \
+curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/dashboard" >/dev/null
-PLAY_HTML="$(curl --fail --silent --show-error --max-time 5 \
+PLAY_HTML="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/play")"
 if [[ "${PLAY_HTML}" != *"Rock Paper Scissors"* || "${PLAY_HTML}" != *"data-src=/stream"* ]]; then
   echo "error: deployed Play page is incomplete" >&2
   exit 1
 fi
-curl --fail --silent --show-error --max-time 5 \
+curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/learn" >/dev/null
-curl --fail --silent --show-error --max-time 5 \
+curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help" >/dev/null
-for HELP_SLUG in cabinet installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
-  curl --fail --silent --show-error --max-time 5 \
+for HELP_SLUG in build-your-own native-emulation troubleshooting cabinet installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
+  curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help/${HELP_SLUG}" >/dev/null
 done
-for PDF_SLUG in overview installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
-  curl --fail --silent --show-error --max-time 15 \
+for PDF_SLUG in build-your-own native-emulation troubleshooting overview installation gameplay programs configuration security components contributing changelog input-audit native-super-glove-ball direction-response; do
+  curl --location --max-redirs 3 --fail --silent --show-error --max-time 15 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help-pdf/${PDF_SLUG}.pdf" >/dev/null
 done
-if curl --fail --silent --show-error --max-time 5 \
+if curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help-pdf/quick-reference.pdf" >/dev/null 2>&1; then
   echo "error: cabinet-specific quick-reference PDF was exposed" >&2
   exit 1
 fi
-curl --fail --silent --show-error --max-time 5 \
+curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/actions/v-sign.png" >/dev/null
-GAMEPLAY_MARKDOWN="$(curl --fail --silent --show-error --max-time 5 \
+GAMEPLAY_MARKDOWN="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/gameplay.md")"
 if [[ "${GAMEPLAY_MARKDOWN}" != *"Take PowerGlove Vision off-script"* ]]; then
   echo "error: deployed gameplay Help is not the current edition" >&2
   exit 1
 fi
-GAMEPLAY_HTML="$(curl --fail --silent --show-error --max-time 5 \
+GAMEPLAY_HTML="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/gameplay")"
-PROGRAMS_HTML="$(curl --fail --silent --show-error --max-time 5 \
+PROGRAMS_HTML="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/programs")"
 for EXPECTED_IMAGE in v2/v-sign.png v2/thumbs-up.png v2/curl-index.png v2/wrist-roll-left.png v2/push-toward-camera.png v2/pixel-pal-web.png actions/finger-curl.png actions/close-all-fingers.png actions/wrist-roll.png; do
   if [[ "${GAMEPLAY_HTML}" != *"/help-assets/gestures/${EXPECTED_IMAGE}"* ]]; then
@@ -188,18 +188,18 @@ if [[ "${GAMEPLAY_HTML}" != *"<img loading=lazy"* || "${PROGRAMS_HTML}" != *"<im
   echo "error: Help table illustrations were not rendered" >&2
   exit 1
 fi
-curl --insecure --fail --silent --show-error --max-time 5 \
+curl --insecure --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "https://${UNO_HEALTH_AUTHORITY}:8443/setup" >/dev/null
 
 for PAL_PAGE in dashboard play learn setup help; do
-  PAL_HTML="$(curl --fail --silent --show-error --max-time 5 \
+  PAL_HTML="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/${PAL_PAGE}")"
   if [[ "${PAL_HTML}" != *"/help-assets/gestures/v2/pixel-pal-web.png"* ]]; then
     echo "error: ${PAL_PAGE} is missing Pixel Pal" >&2
     exit 1
   fi
 done
-curl --fail --silent --show-error --max-time 10 \
+curl --location --max-redirs 3 --fail --silent --show-error --max-time 10 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/v2/pixel-pal-web.png" >/dev/null
 
 echo "Deployment complete."

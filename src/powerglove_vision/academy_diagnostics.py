@@ -138,7 +138,7 @@ class AcademyDiagnostics:
             "version": 1,
             "local_only": True,
             "raw_video_deleted": True,
-            "backend": "MediaPipe Hands (proven)",
+            "backend": "MediaPipe Hands",
             "summary": cue_results,
         }
         self._delete_video()

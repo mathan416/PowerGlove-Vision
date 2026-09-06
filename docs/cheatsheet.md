@@ -44,7 +44,7 @@ Open these pages on a computer or phone connected to the same trusted network.
 | Project repository | [PowerGlove Vision on GitHub](https://github.com/mathan416/PowerGlove-Vision) |
 
 The links above contain example hostnames. Replace them in the browser's address
-bar. The live **Help > This cabinet** page builds links using the PowerGlove Vision Controller address
+bar. The live **Help > This console** page builds links using the PowerGlove Vision Controller address
 you used to open it.
 
 ## Install and deploy over Wi-Fi
@@ -170,17 +170,19 @@ limitation below.
 
 Complete both machine installations above, then use the one-time-code method:
 
-1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Its code expires after two minutes.
-2. In your browser, open `https://UNO-Q-NAME.local:8443/setup` using your PowerGlove Vision Controller's actual hostname.
-3. Enter your RetroPie hostname and the 20-character code printed by the pairing command.
-4. Select **Prepare code pairing**. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint.
-5. If they match, select the certificate confirmation checkbox, enter the six-digit PIN displayed after `PN` on the matrix, and select **Complete pairing**.
-6. If prompted, select **Save connection settings** in Setup. On RetroPie, run `sudo systemctl status powerglove-receiver.service` and confirm that the receiver is active.
+1. Open `https://UNO-Q-NAME.local:8443/setup`. Enter the console address in **Connection and startup** and select **Save settings**.
+2. In **Pair with RetroPie**, choose **One-time code (recommended)** and select **Continue**. Pairing uses the saved console address.
+3. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint. If they match, check the confirmation box, enter the six-digit **Controller approval PIN**, and select **Continue**.
+4. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character **RetroPie one-time code**, then select **Pair with RetroPie**. This is not the Controller PIN.
+5. Wait for **Pairing complete**. Check `sudo systemctl status powerglove-receiver.service` on RetroPie; open Dashboard for controller Start/Stop and shutdown.
 
-Password pairing is available on the same secure page when RetroPie accepts SSH
-password login. Expand **Pair using an SSH password**, select **Prepare password pairing**, complete the same physical
-certificate check, and then enter your RetroPie account password. The password
-is used for one SSH operation and is not stored.
+For SSH, choose **SSH password** in the first step, complete the same Controller
+confirmation, then enter the RetroPie username and password in the final step.
+RetroPie must accept SSH password login and allow that account to run `sudo`.
+The Controller does not save the password. Confirmation expires after two
+minutes; use **Start a new confirmation** after expiry or a submitted failure.
+Console and method changes are locked during the active window. Pairing alone
+does not arm output or verify game delivery.
 
 ## Quick health checks
 
@@ -277,7 +279,7 @@ The app retries camera initialization automatically. Keep **Camera** set to
 
 1. Put the camera in its normal cabinet position before calibration.
 2. Stand or sit at your normal playing distance. Keep your comfortable center and the full area you intend to reach inside the camera view, with room at every edge.
-3. Hold a relaxed open hand at that center and select **Calibrate**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
+3. Hold a relaxed open hand at that center and select **Set this as my center**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
 4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable PowerGlove Vision Controller work and game stutter.
 
 Recalibrate after moving the camera, changing your playing distance, or changing
@@ -298,6 +300,18 @@ These screenshots were refreshed on September 4, 2026.
 
 ![Glove Academy practice lesson with its live camera area excluded for privacy](images/learn-page.png)
 
+Glove Academy teaches sixteen lessons with camera feedback and saved progress
+for each player. Complete every lesson to earn **Glove Master**. Learning shows
+**L** on the matrix; optional personalization shows **T**. Both pause cabinet input.
+
+Use **Players and hand-setup backups** to export the selected player. Your browser
+saves `powerglove-hand-setup.json` on the computer, phone, or tablet you are using,
+usually in Downloads. Export each player separately and rename copies with their
+name and date. Restore selects a file from that device and updates the selected
+player after review. Downloads exclude Academy progress; all players' live
+settings and progress remain on the Controller in `data/gesture-tuning.json`.
+See [backup file locations](CONFIGURATION_REFERENCE.md#where-player-settings-and-backup-files-live).
+
 ### Tune gestures
 
 ![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
@@ -310,7 +324,9 @@ under **Advanced**.
 
 ![Setup page for connection settings and pairing](images/setup-page.png)
 
-The Setup screenshot shows the HTTP page. Open secure Setup on port 8443 to pair.
+When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
+
+Setup begins with four status markers in Off-mode pixel order: app, console service, authenticated response, and Networking. Green means confirmed, red disconnected or not confirmed, and grey unknown. Networking reflects physical Wi-Fi or Ethernet connectivity, independently of RetroPie. These checks do not prove game delivery. Open secure Setup on port 8443 to pair; both pairing methods require the Controller matrix PIN and certificate-ID comparison.
 
 ### Games within Setup
 
@@ -335,13 +351,13 @@ when it starts. Available choices are:
 
 ### Wait for the camera to start
 
-When you select an active profile or open Learn, the app may display
+When you select an active profile or open Glove Academy, the app may display
 **Starting camera and gesture tracking** while it opens the camera and loads
 the tracker. The elapsed time shows how long initialization has been running.
 Wait for the live camera view before calibrating.
 
-**Gestures off** closes the camera. Learn temporarily opens it for practice and
-suppresses game input. Leaving Learn restores the selected profile.
+**Gestures off** closes the camera. Glove Academy temporarily opens it for practice and
+suppresses game input. Leaving Glove Academy restores the selected profile.
 
 RetroPie launch hooks select the registered profile when a recognized game
 starts. A detached monitor waits until RetroArch is running, then renews a bounded
@@ -362,7 +378,7 @@ player explicitly stopped.
 | Hold a clear V sign steadily for 0.50 seconds | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="128"> | Sends one short Start pulse. Keep a clearly non-V pose visible for 0.30 seconds before Start can trigger again. This prevents an accidental pause while moving or firing. |
 | Briefly show a thumbs-up with the other fingers closed | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="128"> | Sends Select. |
 | Close your hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="128"> | Produces the shared closed-hand recognition state; a game profile decides whether it has controller output. |
-| Curl the thumb and ring finger together | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="128"> | Menu guard suppresses movement, A, B, Start, and Select while you reposition your hand. Output returns immediately when the pose ends. |
+| Curl the thumb and ring finger together | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="128"> | Menu guard suppresses D-pad, A, B, Start, and Select. Native Super Glove Ball continuous positioning remains active; use Stop controller to reposition without sending controls. |
 
 Start and Select poses suppress A/B while they form. Keep your hand near its
 calibrated center because some profiles can still produce auxiliary output from
@@ -427,7 +443,7 @@ full movement region visible, and then calibrate.
 1. Launch an unregistered NES or Famicom game. PowerGlove Vision should show **Gestures off**.
 2. Open Dashboard and choose **A: Pinball**, **D: Challenge**, **H: General**, or another profile.
 3. Wait for the camera view. Hold your open hand in your comfortable resting position. This is your **neutral position**: the position the app treats as the center for movement.
-4. If a direction remains active while your hand is at rest, select **Calibrate** and hold still. Also recalibrate after moving the camera or changing your playing position.
+4. If a direction remains active while your hand is at rest, select **Set this as my center** and hold still. Also recalibrate after moving the camera or changing your playing position.
 5. Select **Start controller** and test movement, actions, Start, and Select in the game.
 6. Select **Stop controller** before adjusting the camera or testing another mapping.
 
@@ -593,3 +609,5 @@ unavailable telemetry. Normal installation/deployment installs the unprivileged
 five-second sampler; repair it with
 `sudo python3 scripts/setup-machine.py uno-q --wifi-status-only` on the host.
 The fourth pixel requires the matching matrix firmware.
+
+For a guided symptom check, see [Troubleshooting by symptom](TROUBLESHOOTING.md).

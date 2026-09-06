@@ -126,16 +126,23 @@ empty first frame as completed initialization.
 | --- | --- | --- | --- |
 | Gestures off | Camera closed; selected profile off | No gameplay states | Power Glove attract animation |
 | Active profile | Selected game profile; camera requested | Only when armed and a game/manual context is active | Ready/tracking status and profile display |
-| Ordinary Glove Academy | General practice profile; camera requested | Paused | Scanning L |
+| Glove Academy learning | General practice profile; camera requested | Paused | Scanning L |
 | Tune gestures | Practice with selected tuning scope and preview | Paused, including after a game-launch request | Scanning T |
 
 Glove Academy preserves the selected game profile while using a mapping-independent
 practice profile for its sixteen lessons, including **Glove Zap**, **Pull Back**,
-both wrist rolls, close hand, and menu guard.
+both wrist rolls, close hand, and menu guard. Progress is saved for each player;
+completing all sixteen lessons earns the Glove Master award.
 Browser leases support multiple Glove Academy tabs; the last lease ending restores the
 selected vision mode. Leases expire after six seconds without refresh. Dashboard
-also clears abandoned practice sessions. Ordinary Glove Academy restores its prior
+also clears abandoned practice sessions. Glove Academy learning restores its prior
 controller intent; Tune requires an explicit start from Dashboard when finished.
+
+The browser downloads a backup for only the selected player, usually to its
+Downloads folder. Restore reads that chosen file and updates the selected
+player after review. The Controller keeps all players in one
+`data/gesture-tuning.json` store; portable downloads are separate copies and
+exclude lesson progress. See [backup locations](CONFIGURATION_REFERENCE.md#where-player-settings-and-backup-files-live).
 
 Tune has a single owning session. Exiting or losing that session discards its
 recordings and preview, but saved values remain. A game launch can change the
@@ -308,6 +315,13 @@ release carries the patch and build recipe, not a compiled core. See the
 
 ## Interfaces and recovery
 
+Setup's four status markers share the matrix's cached app, console-service,
+authenticated-response, and independent Networking checks. The read-only
+`/api/connection-status` endpoint requests bounded background refreshes; no
+network probe runs on the capture or controller-send path. Unknown or expired
+results are shown in grey. Reachability and authentication do not establish
+emulator consumption. See [Setup status](CONFIGURATION_REFERENCE.md#independent-networking-status).
+
 Player operations pass through the bounded same-origin `/api/players` endpoint
 into the worker. Its tuning lock owns one atomic player/settings/progress file.
 Generations reject stale writes. Each player retains a saved calibration;
@@ -324,7 +338,7 @@ and unchanged progress. Progress writes occur on lesson transitions, not frames.
 Hostname resolution for controller sends runs in one background thread with a
 single cached address. No controller states are retained by that thread. Missing
 or expired addresses cause the current send to be skipped; later calls use their
-own newest state. Host Wi-Fi health is sampled independently by an unprivileged
+own newest state. Host physical Wi-Fi/Ethernet link health is sampled independently by an unprivileged
 systemd timer, which publishes a small expiring JSON record for the supervisor
 and fourth Off-mode matrix pixel. Console reachability remains a separate probe.
 
@@ -387,10 +401,16 @@ registration has not changed.
 
 The Arduino sketch currently depends on the Arduino Zephyr platform **1.0.0**
 for `arduino:zephyr:unoq`. Zephyr is the current platform dependency, rather than
-the name of the PowerGlove component. The build configuration also pins
-Arduino_RouterBridge **0.4.3**, Arduino_RPClite **0.3.0**, ArxContainer **0.7.0**,
-ArxTypeTraits **0.3.2**, DebugLog **0.8.4**, and MsgPack **0.4.2**. The verified
-platform supplies Arduino_LED_Matrix **0.1.3**. Retain the complete project
+the name of the PowerGlove component. The build configuration also pins:
+
+- Arduino_RouterBridge **0.4.3**
+- Arduino_RPClite **0.3.0**
+- ArxContainer **0.7.0**
+- ArxTypeTraits **0.3.2**
+- DebugLog **0.8.4**
+- MsgPack **0.4.2**
+
+The verified platform supplies Arduino_LED_Matrix **0.1.3**. Retain the complete project
 `sketch/sketch.yaml` when synchronizing with App Lab.
 
 Installing that platform makes build tools available. Compile-only validation
@@ -483,3 +503,5 @@ The nonblocking sender emits a signed hello with random session and request iden
 At most eight pending handshakes are retained, for three seconds each. No input state is retained while negotiating. Hellos repeat every 250 milliseconds before the first challenge, then once per second to recover a receiver restart. The sender reads at most eight replies per update without blocking and sends only that update's state. Periodic handshake traffic does not reset the receiver's input-release deadline. Both native-state publication and uinput remain behind the same accepted-state check; the core and recognition paths are unchanged.
 
 Dashboard and Academy now import their maintained pages from separate modules. Games and personalization have their own modules, and `web_features.py` preserves the existing import surface without obsolete UI definitions. The extracted Dashboard, Academy, Play, and Setup pages are byte-for-byte identical to the previous output.
+
+For a guided symptom check, see [Troubleshooting by symptom](TROUBLESHOOTING.md).

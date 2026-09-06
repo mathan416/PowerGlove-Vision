@@ -66,7 +66,7 @@ class WebFeatureTests(unittest.TestCase):
 
     def test_tuning_panel_is_beside_camera_and_practice_is_preserved(self):
         self.assertIn(b'id=game-json',SETUP)
-        self.assertGreater(SETUP.index(b'id=games-section'),SETUP.index(b'id=pairing-fields'))
+        self.assertGreater(SETUP.index(b'id=games-section'),SETUP.index(b'id=pairing-section'))
         self.assertNotIn(b'<a href=/games>',SETUP)
         self.assertLess(LEARN.index(b'id=learn-camera'),LEARN.index(b'id=tune-thresholds'))
         self.assertIn(b'id=practice-lessons',LEARN)

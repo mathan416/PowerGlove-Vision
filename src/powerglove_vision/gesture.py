@@ -768,7 +768,7 @@ class GestureEngine:
             a = moving and not closed
             b = closed
         elif profile == "program_g":
-            # Gun.Smoke: position moves and index/push fire. Shared menu guard
+            # Gun Smoke: position moves and index/push fire. Shared menu guard
             # suppression is applied after every profile mapping.
             if (roll_left or roll_right):
                 dpad["left"] = roll_left

@@ -97,17 +97,17 @@ const char* const errorFrame[8] = {
 // saturating the palm into an unreadable rectangle.
 const char* const idleOpenGlove[8] = {
   "......#.#....", "....#.#.#.#..", "....#.#.#.#..", ".#..#######..",
-  ".##.######...", "..########...", "...####......", "...####......",
+  ".##.######...", "..########...", "....####.....", "....####.....",
 };
 
 const char* const idleCurlGlove[8] = {
   ".............", ".............", "....#.#.#.#..", ".#..#######..",
-  ".##.######...", "..########...", "...####......", "...####......",
+  ".##.######...", "..########...", "....####.....", "....####.....",
 };
 
 const char* const idleFistGlove[8] = {
   ".............", ".............", "...#######...", "..########...",
-  ".#########...", "..########...", "...####......", "...####......",
+  ".#########...", "..########...", "....####.....", "....####.....",
 };
 
 // A full-height zigzag silhouette stays readable during the short double flash.
@@ -287,12 +287,12 @@ void drawGlove(
     }
   }
   // A dim wrist band and two bright buckle pixels anchor every hand pose.
-  for (int x = 3; x <= 6; ++x) {
+  for (int x = 4; x <= 7; ++x) {
     pixels[6 * 13 + x] = bodyBrightness;
     pixels[7 * 13 + x] = edgeBrightness;
   }
-  pixels[6 * 13 + 4] = edgeBrightness;
   pixels[6 * 13 + 5] = edgeBrightness;
+  pixels[6 * 13 + 6] = edgeBrightness;
 }
 
 // Render one complete beat of the gestures-paused attract sequence. Motion is
@@ -311,7 +311,7 @@ void drawIdleFrame(uint8_t frame, uint8_t ceiling = 7) {
       }
     }
   } else if (frame < 8) {
-    const int cuffX[] = {10, 8, 5, 3};
+    const int cuffX[] = {11, 9, 6, 4};
     const int left = cuffX[frame - 4];
     for (int y = 6; y < 8; ++y) {
       for (int x = left; x < left + 4; ++x) {
@@ -326,7 +326,7 @@ void drawIdleFrame(uint8_t frame, uint8_t ceiling = 7) {
   } else if (frame == 12) {
     drawGlove(pixels, idleFistGlove, 2, 6);
   } else if (frame >= 15 && frame < 23) {
-    const int sparkX[] = {3, 4, 5, 5, 6, 7, 8, 10};
+    const int sparkX[] = {4, 5, 5, 5, 6, 7, 8, 10};
     const int sparkY[] = {7, 6, 5, 4, 3, 2, 1, 0};
     const int sparkIndex = frame - 15;
     drawGlove(pixels, idleOpenGlove, 1, 3);

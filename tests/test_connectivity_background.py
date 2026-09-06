@@ -21,7 +21,7 @@ from powerglove_vision.resolver import BackgroundAddress
 from powerglove_vision.transport import UdpSender,decode_state
 from powerglove_vision.controller_protocol import decode_message
 from powerglove_vision.model import ControllerState
-from powerglove_vision.wifi_status import read_wifi_status
+from powerglove_vision.wifi_status import read_wifi_status, read_network_status
 from powerglove_vision.matrix import UnoQMatrix
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -83,6 +83,32 @@ class BackgroundTests(unittest.TestCase):
 
 
 class WifiTests(unittest.TestCase):
+    def test_network_includes_usb_ethernet_but_not_virtual_interfaces(self):
+        read=runpy.run_path(str(ROOT/'uno-q/powerglove-wifi-status.py'))['link_state']
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for name in ('lo','docker0','veth123'):
+                dev=root/name;dev.mkdir();(dev/'type').write_text('1');(dev/'carrier').write_text('1')
+            self.assertEqual(read(root),'unavailable')
+            eth=root/'enx123';eth.mkdir();(eth/'device').mkdir();(eth/'type').write_text('1');(eth/'carrier').write_text('1')
+            self.assertEqual(read(root),'connected')
+            wifi=root/'wlan0';wifi.mkdir();(wifi/'wireless').mkdir();(wifi/'carrier').write_text('0')
+            self.assertEqual(read(root),'connected')
+            (eth/'carrier').write_text('0');self.assertEqual(read(root),'disconnected')
+            (eth/'carrier').unlink();self.assertEqual(read(root),'unavailable')
+            (wifi/'carrier').write_text('1');self.assertEqual(read(root),'connected')
+
+    def test_network_reader_handles_old_and_fresh_reports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'status.json'
+            with patch('powerglove_vision.wifi_status.time.time',return_value=100):
+                for value,expected in [({'state':'connected'},'connected'),({'state':'disconnected'},'unavailable'),({'state':'disconnected','networking':'connected'},'connected'),({'networking':'disconnected'},'disconnected'),({'networking':'invalid'},'unavailable')]:
+                    path.write_text(json.dumps(dict(version=1,observed_at=100,**value)))
+                    self.assertEqual(read_network_status(path),expected)
+                for stamp in (84,101):
+                    path.write_text(json.dumps(dict(version=1,observed_at=stamp,networking='connected')))
+                    self.assertEqual(read_network_status(path),'unavailable')
+
     def test_host_reads_only_wireless_carrier(self):
         read=runpy.run_path(str(ROOT/'uno-q/powerglove-wifi-status.py'))['wifi_state']
         with tempfile.TemporaryDirectory() as tmp:
@@ -104,11 +130,11 @@ class WifiTests(unittest.TestCase):
                 with patch('powerglove_vision.wifi_status.time.time',return_value=100):
                     self.assertEqual(read_wifi_status(path),expected)
 
-    def test_wifi_pixel_does_not_depend_on_console(self):
+    def test_network_pixel_does_not_depend_on_console(self):
         calls=[];matrix=UnoQMatrix(call=lambda *args:calls.append(args))
-        with patch('powerglove_vision.wifi_status.read_wifi_status',return_value='connected'):
+        with patch('powerglove_vision.wifi_status.read_network_status',return_value='connected'):
             matrix.set_attract({'matrix_attract':'off'},idle=False)
         self.assertEqual(calls[-1],('set_powerglove_attract',2,4))
-        with patch('powerglove_vision.wifi_status.read_wifi_status',return_value='disconnected'):
+        with patch('powerglove_vision.wifi_status.read_network_status',return_value='disconnected'):
             matrix.set_attract({'matrix_attract':'off'},idle=False)
         self.assertEqual(calls[-1],('set_powerglove_attract',2,0))

@@ -35,6 +35,10 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ARCHIVE = ROOT / "output" / "app-lab" / "PowerGlove-Vision-Uno-Q.zip"
 PACKAGE_ROOT = PurePosixPath("PowerGlove-Vision")
 PUBLIC_PDF_NAMES = {
+    "PowerGlove-Vision-Build-Your-Own.pdf",
+    "PowerGlove-Vision-Native-Emulation.pdf",
+    "PowerGlove-Vision-Troubleshooting.pdf",
+
     "PowerGlove-Vision-Matrix-Guide.pdf",
     "PowerGlove-Vision-Architecture.pdf",
     "Bad-Street-Brawler-Power-Glove-Programs.pdf",
@@ -52,6 +56,10 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/docs/BUILD_YOUR_OWN.md",
+    "PowerGlove-Vision/docs/NATIVE_EMULATION_EXPLAINED.md",
+    "PowerGlove-Vision/docs/TROUBLESHOOTING.md",
+
     "PowerGlove-Vision/src/powerglove_vision/diagnostic_trace.py",
     "PowerGlove-Vision/scripts/run-native-latency-session.py",
     "PowerGlove-Vision/scripts/analyze-latency-trace.py",

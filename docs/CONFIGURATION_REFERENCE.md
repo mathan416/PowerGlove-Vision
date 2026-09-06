@@ -94,10 +94,23 @@ from camera frames and controller packets, which remain newest-state-only.
 | Camera | `auto` | Prefer `auto`. Use a number from `0` through `99` only when automatic selection chooses the wrong capture device. |
 | Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
 
-Selecting **Save connection settings** validates the fields, writes them atomically with private
+Selecting **Save settings** validates the fields, writes them atomically with private
 permissions, and restarts the vision worker using the saved calibration.
 Recalibrate only if you have moved the camera, changed your playing position,
 or notice unwanted movement while your hand is at rest.
+
+Setup pairing uses the saved console address, with one active step at a time:
+choose a method, confirm the Controller certificate and matrix approval PIN,
+then provide the RetroPie one-time code or SSH credentials. Unsaved settings
+block pairing. The existing two-minute authorization window and server attempt
+limits remain authoritative; changing the console or method is disabled during
+the active window. Expiry clears secrets and offers fresh confirmation. A failed
+submitted request also requires confirmation again. Password entry is disabled
+until the certificate comparison and six-digit PIN step is complete. Ordinary
+HTTP shows only a link to secure Setup. Start/Stop and shutdown remain on Dashboard.
+See the [pairing walkthrough](INSTALL_README.md#4-pair-the-devices).
+
+When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
 
 The Dashboard profile selector changes only the current active profile. It does
 not rewrite `device.json` or change the Setup page's startup profile. RetroPie
@@ -108,7 +121,7 @@ may replace a Dashboard selection when a game starts or ends.
 Camera capture uses the complete 640×480 field of view at 60 fps. A dedicated
 capture thread continuously drains the camera and retains only its newest frame,
 so inference skips superseded images instead of building an input queue. The
-deployed worker explicitly selects **MediaPipe Hands (proven)**, whose stable
+deployed worker explicitly selects **MediaPipe Hands**, whose stable
 command identifier is `legacy`, and lets each of its two inference stages use up to four CPU threads
 (`--inference-threads 4`). Thread-count benchmarking remains part of the 0.3.2
 performance work; more threads are not assumed to be faster on every device.
@@ -138,7 +151,7 @@ Activation waits for any unfinished preload, verifies the saved model, opens
 and configures the camera, waits for a usable frame, and creates the tracker.
 Dashboard, Play, and Glove Academy show **Starting camera and gesture tracking** until vision
 is active. The elapsed time covers startup work, not only the physical camera.
-**Calibrate** stays disabled until initialization finishes.
+**Set this as my center** stays disabled until initialization finishes.
 
 Switching between active profiles reuses the camera and tracker. **Gestures off**
 releases both, while imported libraries remain in memory. An application restart,
@@ -185,8 +198,9 @@ cable, and camera connection.
 
 ### Glove Academy, calibration, and live readings
 
-Glove Academy is the renamed Learn section. Existing `/learn` bookmarks still
-work. The matrix continues to show **L** for lessons and **T** for tuning.
+Open **Glove Academy** at `/learn` to practise gestures, calibrate your resting
+position, or personalize recognition. The matrix shows **L** for lessons and
+**T** for tuning.
 
 Glove Academy starts the camera even when **Gestures off** is selected and uses a
 mapping-independent practice profile. It pauses controller delivery and restores the selected profile
@@ -195,18 +209,19 @@ last tab closes or its lease expires. A six-second lease timeout handles an
 unexpected browser close. Loading Dashboard also clears a stale session;
 reload Glove Academy if you want to begin practice again.
 
-The sixteen lessons include A (index curl), B (thumb curl), Glove Zap (forward
-push), Pull Back, Start, Select, roll left, roll right, close hand, and menu guard.
-Menu guard requires curled thumb/ring with index, middle, and pinky extended and
-suppresses movement, A, B, Start, and Select. Completing every lesson earns Glove Master; skipped
-lessons must be revisited. The award replaces the completed lesson in the same
-card. **Start again** clears session progress and restores the lesson panel. The practice
-indicators do not change a game's gesture mapping.
+The sixteen lessons cover hand visibility and neutral position, movement,
+finger curls, Start and Select, forward and backward gestures, wrist roll,
+closed hand, and Menu Guard. Choose your player before practising; lesson
+progress is saved for that player across restarts. Complete every lesson to earn
+**Glove Master**; skipped lessons must be revisited. The award replaces the
+completed lesson in the same card. **Start again** clears the selected player's
+lesson progress and award, while retaining their hand settings and calibration.
 
-| Recognition pose | See it | Required hand shape |
-| --- | --- | --- |
-| Closed hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="128"> | Thumb and every finger curled into a comfortable fist. |
-| Menu guard | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="128"> | Thumb and ring curled; index, middle, and pinky extended. |
+For hand shapes and illustrations, use the [Gameplay Guide's gesture reference](GAMEPLAY_GUIDE.md#your-gesture-reference).
+Its game cards explain what each gesture does in a selected profile. Academy
+practice indicators do not change those mappings.
+
+#### Recognition readings and calibration controls
 
 | Reading or control | Meaning |
 | --- | --- |
@@ -214,8 +229,16 @@ indicators do not change a game's gesture mapping.
 | V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold steadily for 0.50 seconds to send Start. A non-V pose must then remain visible for 0.30 seconds before Start can rearm. |
 | Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for 0.15 seconds to send Select. |
 | Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward or backward movement relative to the calibrated hand size. |
-| Calibrate | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
-| `tracker_backend` | Stable command identifier: `legacy` means **MediaPipe Hands (proven)**; `tasks-video` means **MediaPipe Tasks Video (experimental)**. |
+| Set this as my center | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
+
+#### Tracking and timing diagnostics
+
+These fields describe recognition and the local processing path. They do not
+measure the complete delay from physical hand movement to the displayed game.
+
+| Diagnostic field | Meaning |
+| --- | --- |
+| `tracker_backend` | Stable command identifier: `legacy` means **MediaPipe Hands**; `tasks-video` means **MediaPipe Tasks Video (experimental)**. |
 | `capture_age_ms` | Time from completion of the newest camera read to the beginning of inference. This is a freshness diagnostic, not the camera exposure timestamp. |
 | `capture_interval_ms`, `capture_skipped_total` | Spacing between processed camera frames and the cumulative number intentionally superseded by newer frames. |
 | `inference_ms`, `inference_interval_ms`, and `inference_hz` | Per-frame tracking calculation, spacing between recognition passes, and its reciprocal rate. |
@@ -224,6 +247,8 @@ indicators do not change a game's gesture mapping.
 | `performance` | Rolling latest, p50, p95, and maximum values over the most recent 300 valid samples for capture age, processed-frame spacing, inference, inference spacing, send time, complete sample age, and changed-control age. |
 | `preview_encode_ms`, `preview_dropped` | Background JPEG cost and previews discarded to protect controller responsiveness. |
 | `send_ms` | Local controller-state send time. None of these readings alone measures the full delay from physical motion to the displayed game frame. |
+
+#### How recognition and calibration behave
 
 Finger recognition uses the strongest joint bend, including the base knuckle;
 a middle-knuckle bend alone can qualify. Thumb recognition uses the stronger
@@ -239,13 +264,20 @@ they remain recognized until movement falls below their respective release thres
 still satisfies its lesson after the short controller pulse ends. The browser
 preview is capped at 5 fps; status updates follow each tracking calculation.
 
+Menu Guard requires curled thumb and ring finger with index, middle, and pinky
+extended. It suppresses D-pad movement, A, B, Start, and Select, but does not freeze
+native Super Glove Ball's continuous hand position. Use **Stop controller** when
+you need to reposition without sending controls.
+
 The app reuses its saved resting reference across Glove Academy, gameplay, profile
 changes, and restarts. It calibrates automatically only when that reference is
-missing or invalid. Use **Calibrate** after moving the camera or changing your
+missing or invalid. Use **Set this as my center** after moving the camera or changing your
 playing position. Keep your palm near the resting position when practising
 finger curls so unintended movement does not obscure the finger readings.
 See [Saved neutral-hand calibration](#saved-neutral-hand-calibration) for storage
 and recovery details.
+
+#### Controller delivery and game sessions
 
 **Start controller** and **Stop controller** set a persistent player choice. Start
 arms delivery; Stop remains sticky until explicitly changed. Armed is distinct from
@@ -286,7 +318,7 @@ A typical device configuration file contains the following fields:
 ```
 
 `matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
-or `off` (four faint app/console/paired-console/Wi-Fi indicators). Change it using
+or `off` (four faint app/console/paired-console/Networking indicators). Change it using
 **Setup → Matrix attract mode**. This writes the private device configuration
 without restarting vision or changing controller state. Existing files that omit
 it retain the original animation. The separate guarded `POST /api/attract`
@@ -556,6 +588,31 @@ no saved center. Reuse applies through the same durable restore path as a backup
 output stays paused until you explicitly start it. Finish tuning and turn
 **Tune gestures** off before changing players or restoring settings.
 
+### Where player settings and backup files live
+
+All players are saved automatically on the PowerGlove Vision Controller in
+`/home/arduino/ArduinoApps/powerglove-vision/data/gesture-tuning.json`. This single
+store holds each player's sensitivity, calibration, and Academy progress; there
+is no separate automatic file for each player. The active working calibration
+is also mirrored in `data/calibration.json` in the same application directory.
+Use Glove Academy to manage these settings.
+
+Choose each player in turn and select **Back up hand setup** to download a
+separate `powerglove-hand-setup.json`. The file is saved by your browser on the
+computer, phone, or tablet you are using, usually in **Downloads** or the folder
+you choose. Rename each copy with the player name and date, for example
+`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+the player you want to update, choose **Restore hand setup**, and pick that
+player's saved file from your device. Review it before confirming; restore
+updates the selected player, rather than adding a new one.
+
+The downloaded file is a portable copy, separate from the Controller's live
+player store. Exporting does not create a second backup file on RetroPie or the
+Controller. The browser controls the download folder and may add a number to
+repeated filenames. Keep a clearly named copy for every player you want to recover.
+
+### Backup contents and restore choices
+
 **Back up hand setup** downloads `powerglove-hand-setup.json` with format
 `powerglove-hand-setup` and version `2`. Fields are `name`, personal `thresholds`,
 `calibration`, `effective_thresholds`, and `source` (`version`, `commit`). Empty
@@ -682,7 +739,7 @@ changes the resting reference separately and invalidates any current recordings.
 
 The Advanced diagnostic is separate from personalization. Eight user-paced cues
 exercise neutral, directions, A/B, menu poses, rolls, depth motion, Menu Guard,
-and tracking recovery using the deployed **MediaPipe Hands (proven)** backend.
+and tracking recovery using the deployed **MediaPipe Hands** backend.
 The PowerGlove Vision Controller records a temporary local AVI only while a cue is active. Completion
 produces an aggregate JSON report containing detection continuity, confidence,
 latency, hand brightness, and recognized state names. It contains no frames or
@@ -781,7 +838,7 @@ The sender never queues input during negotiation. It retries hello after 250 mil
 
 For a staged upgrade only, the new receiver has `--allow-legacy-controller`. An administrator can temporarily add it to the receiver invocation while the older Controller is being replaced. It is off by default, still exposes the shared token in legacy traffic, and closes for the rest of that receiver process after the first valid version-2 state. Remove the flag after upgrading; a receiver restart would otherwise reopen legacy admission. This compatibility mode does not provide version-2 replay protection. Re-pair after migration if a token may have been observed in old traffic: signing cannot revoke a previously exposed key.
 
-Existing pairing credentials and native emulator files need no format migration. Installation packages include the new protocol and web modules; neither a firmware flash nor a core rebuild is required by this transport change. The separately added fourth Wi-Fi pixel still requires its matching matrix firmware.
+Existing pairing credentials and native emulator files need no format migration. Installation packages include the new protocol and web modules; neither a firmware flash nor a core rebuild is required by this transport change. The four-pixel Off display requires its matching matrix firmware. Once installed, extending the fourth pixel to Ethernet requires only the updated Controller app and host sampler.
 
 ## RetroPie receiver and virtual controller
 
@@ -1016,7 +1073,7 @@ not automatically migrate active configuration.
 | `retropie/retroarch/PowerGlove Vision.cfg` | RetroArch autoconfig directory | RetroArch input system |
 | `retropie/powerglove-receiver.service` | `/etc/systemd/system/` | Privileged virtual-controller receiver |
 | `retropie/powerglove-games.service` | `/etc/systemd/system/` | Paired Games editor service on RetroPie |
-| `data/gesture-tuning.json` (runtime only) | PowerGlove Vision Controller application `data/gesture-tuning.json` | Global personal threshold overlays |
+| `data/gesture-tuning.json` (runtime only) | PowerGlove Vision Controller application `data/gesture-tuning.json` | Player sensitivity, per-player calibration, and Academy progress |
 | `retropie/powerglove-receiver.timer` | `/etc/systemd/system/` | Delayed boot activation |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/` | Fixed shutdown request watcher |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/` | Fixed clean-shutdown action |
@@ -1062,26 +1119,42 @@ expire after five seconds, so DHCP changes do not require editing an address. Or
 use the system resolver. Generic container `getent` is not the app's mDNS test;
 use Connection's hostname test or the setup command's check mode.
 
-## Independent Wi-Fi status
+## Independent Networking status
 
-The host runs `powerglove-wifi-status.timer` every five seconds. Its oneshot
-`powerglove-wifi-status.service` runs as `arduino`, invokes
-`/usr/local/libexec/powerglove-wifi-status`, and reads wireless carrier state
-under `/sys/class/net`. It cannot configure Wi-Fi and records no SSID, address,
-or password. The fixed output `data/wifi-status.json` contains version `1`,
-`state` (`connected`, `disconnected`, or `unavailable`), and `observed_at`.
-The application treats records older than fifteen seconds, future timestamps,
-missing files, and malformed records as unavailable. Ethernet connectivity alone
-does not light the Wi-Fi pixel. This file is disposable telemetry, not a setting.
+The fourth Setup marker and Off-mode pixel report the Controller's physical
+Wi-Fi or Ethernet link, including Ethernet through a USB dock. The host sampler
+reads carrier state under `/sys/class/net`; physical Ethernet must have a device
+entry and Ethernet type. It ignores loopback, Docker bridges, and virtual veth
+interfaces. Any connected relevant interface makes the result connected. All
+observed relevant links down means disconnected; missing or unreadable evidence
+means unavailable unless another relevant link is confirmed up.
 
-Normal Controller installation and `scripts/deploy-uno-q-wifi.sh` install or
-upgrade the sampler with managed-file backups. Repair it alone with
-`sudo python3 scripts/setup-machine.py uno-q --wifi-status-only` on the host.
-Setup shows its status; Off attract mode adds Wi-Fi as the fourth bottom-left
-pixel after app, console-service reachability, and authenticated-console response.
-The new pixel requires the matching matrix firmware. Active game modes, T, L,
-pairing, and startup artwork are unchanged. A dark Wi-Fi pixel can mean disconnected
-or unavailable; Setup distinguishes those states.
+This is link health, not an IP-address, Internet, routing, or game-delivery test.
+The other three markers show app, console-service, and authenticated-response
+status. Green means confirmed, red disconnected/not confirmed, grey unknown.
+Tracking, controller output, and saved console appear below the markers.
+
+The existing `powerglove-wifi-status.timer` runs every five seconds and invokes
+`powerglove-wifi-status.service`. The unprivileged helper publishes
+`data/wifi-status.json` with version 1, `observed_at`, wireless-only `state`, and
+aggregate `networking`. These literal filenames and the old wireless field are
+retained for upgrade compatibility. No credentials, interface names, SSIDs, or
+addresses are recorded. Reports expire after fifteen seconds; malformed,
+missing, or future-dated data is unavailable. An older report without
+`networking` can confirm connected Wi-Fi, but disconnected Wi-Fi cannot rule out
+Ethernet and therefore yields unknown aggregate status.
+
+The read-only `/api/connection-status` endpoint shares the matrix cache. Visible
+Setup pages poll without overlap every five seconds with a 3.5-second request
+timeout. Console checks run in one background thread at most every ten seconds
+and expire after thirty; changes to destination or token invalidate them.
+Setup can request checks in any attract mode; idle Off also refreshes them.
+
+Normal installation and `scripts/deploy-uno-q-wifi.sh` update the sampler.
+Repair it separately with `sudo python3 scripts/setup-machine.py uno-q --wifi-status-only`.
+The existing four-pixel firmware and RetroPie need no update for Ethernet
+indication; a Controller application and host-sampler upgrade is required.
+Game/profile artwork, T/L, startup, and pairing displays remain unchanged.
 
 ## Known limitation: PowerGlove Vision Controller restarts after Shutdown
 
@@ -1094,7 +1167,7 @@ See the installation guide for the investigation status and Arduino guidance.
 
 ## Saved neutral-hand calibration
 
-The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, wrist angle, and normal X/Y positional jitter; it is not a personally trained gesture model. The jitter estimate can raise the shared movement thresholds above their baseline, but never makes them more sensitive. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Calibrate** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating or standing position.
+The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, wrist angle, and normal X/Y positional jitter; it is not a personally trained gesture model. The jitter estimate can raise the shared movement thresholds above their baseline, but never makes them more sensitive. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Set this as my center** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating or standing position.
 
 On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Calibration requires 24 complete observations at 70% hand confidence or better. It averages palm center and apparent size, uses a circular mean for wrist angle, and records the 95th-percentile X/Y deviation as normal jitter. Hold a relaxed open hand still at the intended neutral point and distance. Repeating from the same physical setup should produce a close reference, not identical floating-point values, because camera landmarks vary from frame to frame.
 
@@ -1279,7 +1352,7 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--fps NUMBER` | `60` | Requested capture rate; not a guarantee of tracking or game frame rate. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
 | `--inference-threads NUMBER` | `4` | CPU threads requested for each legacy MediaPipe inference calculator. Benchmark before changing. |
-| `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands (proven)**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
+| `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
 | `--preview-fps NUMBER` | `5` | Maximum rate at which optional browser preview jobs are submitted. |
 | `--glove-color VALUE` | `none` | `none`, `white`, or `black`; an informational label, not a different recognition model. |
 | `--no-mirror` | Off | Disables horizontal image mirroring. |
@@ -1352,7 +1425,7 @@ they may still perform their normal work.
 | `scripts/install-nestopia-powerglove.sh` | Optional build-directory positional argument | Run with `sudo` on RetroPie after exact-ROM validation. Builds and installs only `lr-nestopia-powerglove`, plus its upstream GPLv2 license and distribution note; stock Nestopia remains untouched. The normal RetroPie installer offers this step when a registered Super Glove Ball ROM is found. |
 | `scripts/configure-super-glove-ball-core.py` | `--rom PATH --mode MODE [--apply]`, where MODE is `native` or `fceumm` | Previews or atomically selects the custom core for one Super Glove Ball ROM. `--mode fceumm` is the explicit rollback. |
 | `scripts/run-nestopia-powerglove-trace.py` | Core, exact ROM, trace/state/scratch paths | Runs controlled native phases, records the ROM digest and packet evidence, and can save temporary validation frames. |
-| `scripts/benchmark-direction-response.py` | Paths to both cores and the exact Super Glove Ball ROM, scratch path, optional FCEUmm reference ROM, frame count, and JSON output | Runs matched-savestate activation and release comparisons for the same ROM in native and FCEUmm modes. The optional reference lane uses Gun.Smoke. ROMs and scratch output remain outside the project. |
+| `scripts/benchmark-direction-response.py` | Paths to both cores and the exact Super Glove Ball ROM, scratch path, optional FCEUmm reference ROM, frame count, and JSON output | Runs matched-savestate activation and release comparisons for the same ROM in native and FCEUmm modes. The optional reference lane uses Gun Smoke. ROMs and scratch output remain outside the project. |
 | `scripts/record-vision-benchmark.py` | Optional camera, output, size, and frame-rate flags | Records a fixed 30-second, local-only cue sequence for near/far recognition, X/Y travel, jitter, depth, and recovery comparisons. It is never run by installation or used for training. |
 | `scripts/guided-vision-benchmark.py` | Optional camera, output, bind address, port, size, and frame-rate flags | Serves a temporary live-preview page for user-paced, per-step benchmark recording. Each selected step has a two-second countdown; pauses between steps are not recorded. The camera is released when capture completes. Output stays local and is not training data. |
 | `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, and optional Tasks model path | Replays the same full frames through MediaPipe Hands at 1, 2, and 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, and preview cost. |

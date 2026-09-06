@@ -10,10 +10,6 @@ they produce, and how to try them with other games in your library.
 Find your game below, check its profile, and try the first-round exercise.
 If the system is not installed yet, start with the [Installation Guide](INSTALL_README.md).
 
-Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
-or turn it Off except for faint connection pixels. This does not change game
-displays, T, L, or gesture recognition. The setting saves without a tracker restart.
-
 ## Play Rock Paper Scissors locally
 
 Open **Play** at `http://UNO-Q-NAME.local:8088/play` for a first-to-three match
@@ -32,18 +28,28 @@ match. Mouse and touch buttons remain available if the camera is unavailable.
 
 ## Get ready to play
 
-Select a profile on Dashboard, or open Glove Academy for practice. If you see
-**Starting camera and gesture tracking**, wait for the camera view to appear.
-Starting straight after a reboot can take longer. Wait until the camera view
-appears and **Calibrate** becomes available before continuing.
+Choose your player in **Your player** so practice and sensitivity changes belong
+to you. Select a profile on Dashboard and wait for the camera view. Starting
+straight after a reboot can take longer.
 
-1. Stand where the camera can see your whole hand with a little room on every side.
-2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
-3. Wait for tracking to settle, then select **Start controller** to arm delivery. If the tracker is reconnecting, the request is shown as pending and retried. A later **Stop controller** replaces the pending Start request.
-4. Launch a registered game. Controls begin only after RetroArch is running and
-   its short initialization guard ends.
-5. Move your whole hand away from center for directions. Return to center to stop.
-6. Make one gesture at a time. Clean poses beat frantic motion.
+1. Stand where the camera can see your whole hand, with room to move on every side.
+2. Face a relaxed open palm toward the camera. On first use, or after moving the camera or changing your playing position, select **Set this as my center** and hold still until it finishes. Otherwise use your saved resting position.
+3. Select **Start controller** when ready. If the tracker is reconnecting, Start remains pending until it can be delivered; **Stop controller** cancels that request.
+4. Launch a registered game and allow its short startup pause to finish. Check the selected profile on Dashboard against the play card below; the card also shows its matrix display.
+5. Try one gesture at a time. Return to your resting position between attempts. In standard movement profiles this stops directional input; Nestopia (PowerGlove) follows your hand's position continuously.
+
+**Start controller** stays armed across Controller restarts, but sends controls
+only while a registered game or a manually selected Dashboard profile is active.
+Exiting the game or losing its session releases controls. **Stop controller**
+keeps delivery stopped until you explicitly start it again. Use it before
+repositioning yourself or the camera.
+
+### Read the camera view
+
+The overlay labels the detected hand **Right** or **Left** and shows the tracker's
+confidence. Dashboard's D-pad, button, and axis readings show the controls your
+hand produces. Keep your whole hand visible and use small, comfortable movements.
+If your resting hand causes unwanted movement, recalibrate in that position.
 
 <img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
 
@@ -51,81 +57,91 @@ appears and **Calibrate** becomes available before continuing.
 > plus a thumb. Count every six-digit hand once per appearance, including
 > repeated artwork. Pixel Pal reveals the answer at the back of this guide.
 
-### Check the selected game
+## Practise with Glove Academy
 
-| Matrix code | See it | Selected game |
-| --- | --- | --- |
-| **BS** | <img src="images/matrix/BS.jpg" alt="BS matrix display" width="104"> | Bad Street Brawler |
-| **GB** | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> | Super Glove Ball |
+Open **Glove Academy** from the main navigation to practise with Pixel Pal.
+Cabinet controller output pauses while you learn. The sixteen lessons cover
+showing your hand, finding your resting position, four movement directions,
+index and thumb curls, Start and Select poses, forward and backward movement,
+wrist rolls, a closed hand, and Menu guard.
 
-Confirm the profile on Dashboard and select **Start controller** when ready. The
-choice stays armed across PowerGlove Vision Controller restarts, but sends nothing while no valid game or
-manual Dashboard context exists. At a registered launch, the RetroPie hook waits for
-RetroArch, then renews a short game session while it remains running. Controls begin
-after a one-second initialization guard, avoiding the runcommand screen. They resume
-automatically after a PowerGlove Vision Controller application restart while the same game is still live;
-you do not need to select **Start controller** again. Exiting the game, launching an
-unknown game, or losing the session releases all controls. **Stop controller** remains
-stopped until you explicitly start it again.
+Complete all sixteen lessons to earn **Glove Master**. The award replaces the
+lesson card. Progress is saved for the selected player across browsers and
+restarts; **Start again** clears that player's saved lesson progress and returns
+to the lessons. It does not clear their hand settings.
 
-### The two gestures that work everywhere
-
-| Gesture | See it | Result |
-| --- | --- | --- |
-| Hold a V sign steadily | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause after half a second |
-| Briefly show a thumbs-up with the other fingers closed | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
-
-The menu poses suppress A/B attacks while they form. Some profiles can still
-produce directional or auxiliary output from wrist, depth, or finger gestures;
-keep your hand near its calibrated resting position while using menu poses. If a game
-needs Select and a direction at exactly the same time, use the physical
-controller for that combination. Recalibrate if your resting hand position produces unwanted movement.
-
-Gameplay evaluates directions, finger curls, wrist rolls, and Closed Hand on
-every fresh inference result. Glove Zap and Pull Back add a short motion check:
-two consecutive observations beyond the shared threshold plus at least 0.10
-normalized palm-scale travel in the correct direction within 250 ms. Once
-confirmed, their existing release hysteresis and each Program's held, pulsed,
-turbo, or toggle mapping remain unchanged.
-
-The small pictures in each game card are pose reminders. Paired arrows show the
-available movement or wrist-roll directions; paired pictures show a combined
-gesture.
-
-**Comfort tip:** If the character moves while your hand is resting, recalibrate
-in that position. Keep movements small enough to repeat comfortably.
+Glove Academy practises recognition, not each game's button assignments.
+Use the gesture reference next, then your game's play card. For a difficult
+pose, see [Make the controls fit your hand](#make-the-controls-fit-your-hand).
 
 <!-- PAGEBREAK -->
 
 ## Your gesture reference
 
-Practice one movement at a time. Your selected profile decides what each
-gesture does in the game; the play cards below show the mapping.
+Practice one movement at a time in **Glove Academy**. Your selected profile
+decides what each gesture does in a game; the play cards below show the mapping.
+This reference also includes game-specific finger poses and combinations beyond
+the sixteen Academy lessons. The glove is an illustration: the Controller
+tracks your bare hand.
+
+### Resting position and movement
 
 | Gesture | See it | Try it |
 | --- | --- | --- |
-| Move left | <img src="images/gestures/v2/move-left.png" alt="Move left" width="96"> | Slide your whole hand left. |
-| Move right | <img src="images/gestures/v2/move-right.png" alt="Move right" width="96"> | Slide your whole hand right. |
-| Move up | <img src="images/gestures/v2/move-up.png" alt="Move up" width="96"> | Raise your whole hand. |
-| Move down | <img src="images/gestures/v2/move-down.png" alt="Move down" width="96"> | Lower your whole hand. |
-| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl index finger" width="96"> | Bend your index finger toward your palm. |
-| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl thumb" width="96"> | Fold your thumb across your palm. |
-| V sign | <img src="images/gestures/v2/v-sign.png" alt="V sign" width="96"> | Briefly show the pose to Start or pause. |
-| Thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up" width="96"> | Close the other fingers and briefly show the pose for Select. |
-| Roll wrist left | <img src="images/gestures/v2/wrist-roll-left.png" alt="Roll wrist left" width="96"> | Tilt your hand left at the wrist. |
-| Roll wrist right | <img src="images/gestures/v2/wrist-roll-right.png" alt="Roll wrist right" width="96"> | Tilt your hand right at the wrist. |
-| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push toward camera" width="96"> | Move your hand closer to the camera. |
-| Pull away from camera | <img src="images/gestures/v2/pull-away-from-camera.png" alt="Pull away from camera" width="96"> | Move your hand farther from the camera. |
+| Show an open hand | <img src="images/gestures/v2/show-your-hand.png" alt="Open palm facing the camera" width="88"> | Open your fingers comfortably and keep your whole palm visible. |
+| Find your resting position | <img src="images/gestures/v2/find-neutral.png" alt="Relaxed hand at the movement centre" width="88"> | Hold a relaxed open hand at your saved centre and distance. |
+| Move left | <img src="images/gestures/v2/move-left.png" alt="Move left" width="88"> | Slide your whole hand left. |
+| Move right | <img src="images/gestures/v2/move-right.png" alt="Move right" width="88"> | Slide your whole hand right. |
+| Move up | <img src="images/gestures/v2/move-up.png" alt="Move up" width="88"> | Raise your whole hand. |
+| Move down | <img src="images/gestures/v2/move-down.png" alt="Move down" width="88"> | Lower your whole hand. |
 
-The glove is an illustration: PowerGlove Vision tracks your bare hand.
+### Wrist and depth movements
+
+| Gesture | See it | Try it |
+| --- | --- | --- |
+| Roll wrist left | <img src="images/gestures/v2/wrist-roll-left.png" alt="Roll wrist left" width="88"> | Tilt your hand left at the wrist. |
+| Roll wrist right | <img src="images/gestures/v2/wrist-roll-right.png" alt="Roll wrist right" width="88"> | Tilt your hand right at the wrist. |
+| Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push toward camera" width="88"> | Push deliberately, then return. Holding your hand nearby does not trigger a new Glove Zap. |
+| Pull away from camera | <img src="images/gestures/v2/pull-away-from-camera.png" alt="Pull away from camera" width="88"> | Pull away deliberately, then return. Holding your hand far away does not trigger a new Pull Back. |
+
+<!-- PAGEBREAK -->
+
+### Finger and hand poses
+
+| Gesture | See it | Try it |
+| --- | --- | --- |
+| Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl index finger" width="88"> | Bend your index finger toward your palm. |
+| Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl thumb" width="88"> | Fold your thumb across your palm. |
+| Curl middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove illustrating a finger curl" width="88"> | Bend your middle finger toward your palm; used in Bad Street Brawler and Joust. |
+| Curl ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove illustrating a finger curl" width="88"> | Bend your ring finger toward your palm; used in Defender II. |
+| Close your hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="88"> | Curl your thumb and all four fingers into a comfortable fist. |
+| Keep index straight | <img src="images/gestures/actions/keep-index-straight.png" alt="Extended index finger" width="88"> | Keep your index finger extended for Gyruss fire. |
+| Point index | <img src="images/gestures/actions/keep-index-straight.png" alt="Index-point pose" width="88"> | Extend index and curl middle, ring, and pinky for the native Super Glove Ball Robo-Bullet. |
+
+### Menu poses
+
+| Gesture | See it | Try it |
+| --- | --- | --- |
+| V sign | <img src="images/gestures/v2/v-sign.png" alt="V sign with index and middle extended" width="88"> | Extend index and middle, curl ring and pinky, and hold steadily for about half a second for Start or pause. |
+| Thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with four fingers closed" width="88"> | Extend your thumb, close all four fingers, and hold until Select is recognized. |
+| Menu guard | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="88"> | Curl thumb and ring only; keep index, middle, and pinky extended. |
+
+Start and Select send controller inputs; their effect depends on the game.
+The V sign and thumbs-up suppress A/B actions while forming, but some profiles
+can still produce movement. Keep your hand near its resting position. Use a
+physical controller if a game requires Select and a direction together.
+
+Menu guard suppresses D-pad, A/B, Start, and Select, and cancels a pending Start
+press. It does **not** freeze native continuous hand positioning. For a dependable
+pause in all controller delivery while you reposition, use **Stop controller**.
 
 <!-- PAGEBREAK -->
 
 ## Bad Street Brawler
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `bad_street_brawler` | **BS** | <img src="images/matrix/BS.jpg" alt="BS matrix display" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `bad_street_brawler` | <img src="images/matrix/BS.jpg" alt="BS matrix display" width="104"> |
 
 **Your mission:** Guide Duke Davis through each stage, discover that stage's
 three fighting moves at the practice bag, and clear the street before time or
@@ -157,52 +173,47 @@ once-per-round availability. If Zap does not work, check the
 
 ## Super Glove Ball
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `super_glove_ball` | **GB** | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `super_glove_ball` | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> |
 
 **Your mission:** Control the Robo-Glove, keep the energy ball in play, break a
 complete wall of tiles, and follow the revealed arrows through the maze.
 
 **Nestopia (PowerGlove)** means the custom `lr-nestopia-powerglove` core.
 Use the controls below for your selected emulator; FCEUmm is the fallback.
+The V sign sends Start in both modes.
 
 | Do this | See it | Controller result |
 | --- | --- | --- |
-| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | FCEUmm: held digital steering. Nestopia (PowerGlove): absolute continuous X/Y. |
+| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | FCEUmm: held digital steering. Nestopia (PowerGlove): continuous hand positioning. |
 | Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | FCEUmm: A, move the glove into the room. |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | FCEUmm: B, punch, grab, or launch a new ball. |
 | Open hand | <img src="images/gestures/actions/show-your-hand.png" alt="Open hand" width="72"> | Nestopia (PowerGlove): release or throw a held ball. |
 | Close hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="72"> | Nestopia (PowerGlove): grab or catch the ball. |
-| Point index; curl the other three fingers | <img src="images/gestures/actions/keep-index-straight.png" alt="Point with the index finger while the other fingers are curled" width="72"> | Nestopia (PowerGlove): fire a Robo-Bullet. |
+| Point index; curl middle, ring, and pinky | <img src="images/gestures/actions/keep-index-straight.png" alt="Point with the index finger while the other fingers are curled" width="72"> | Nestopia (PowerGlove): fire a Robo-Bullet. |
 | Close hand and push forward | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="68"> <img src="images/gestures/actions/push-toward-camera.png" alt="Push toward the camera" width="68"> | Nestopia (PowerGlove): Power Punch. |
-| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause; native Start is confirmed. |
-| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | FCEUmm: Select, doorway or Robo-Bullet action. Native Select remains unconfirmed. |
 
-**Play smart:** Pick one wall and finish it. When its arrow appears, use Select
-to take the exit. The separately named native Nestopia core has passed exact-ROM
-detection, native Start, continuous X/Y, four-direction activation/release, and
-safe-neutral tests. The same-ROM comparison confirms FCEUmm remains a pure
-standard-joypad session. A completed live game confirmed native grab/throw,
-index fire, and fist-plus-forward Power Punch. Continuous movement is playable
-and substantially improved, although some latency remains to tune. Use FCEUmm
-whenever you want the established joystick fallback. Native wrist rotation and
-remaining unused packet fields stay neutral; they are not missing from the
-Super Glove Ball actions confirmed in live play.
+**Play smart:** Pick one wall and finish it, then follow the revealed arrow.
+With FCEUmm, use Select to take the exit. Do not rely on Select in
+Nestopia (PowerGlove); that action remains unconfirmed. Continuous native
+movement is playable, although noticeable latency remains. The
+[native compatibility record](super-glove-ball-native.md) contains the test
+evidence and current limitations.
 
 **First round:**
 
-1. Move the glove across the room with small hand movements.
-2. Try the index and thumb actions separately so you can recognize their effects.
-3. Keep the ball in play, then aim to clear one wall.
+1. Move the Robo-Glove across the room with small hand movements.
+2. With **Nestopia (PowerGlove)**, practise closing to grab and opening to release. Try index-point fire and a fist-plus-forward Power Punch separately.
+3. With **FCEUmm**, try the index-curl A action and thumb-curl B action separately.
 
 <!-- PAGEBREAK -->
 
 ## Joust
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `program_b` | **B** | <img src="images/matrix/programs/B.png" alt="B matrix display illustration" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `program_b` | <img src="images/matrix/programs/B.png" alt="B matrix display illustration" width="104"> |
 
 **Your mission:** Ride the ostrich, strike enemy riders from above, collect
 their eggs before they hatch, and stay clear of the lava.
@@ -212,7 +223,6 @@ their eggs before they hatch, and stay clear of the lava.
 | Move hand left / right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Steer left / right |
 | Curl index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Pulsed A: steady flap |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | B: faster flap |
-| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
 | Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select game mode |
 
 **Play smart:** Height wins jousts. Use the faster thumb flap to climb, then the
@@ -229,9 +239,9 @@ an enemy preparing a return engagement.
 
 ## Gyruss
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `program_c` | **C** | <img src="images/matrix/programs/C.png" alt="C matrix display illustration" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `program_c` | <img src="images/matrix/programs/C.png" alt="C matrix display illustration" width="104"> |
 
 **Your mission:** Circle the tunnel, destroy incoming formations, survive the
 warp zones, and fight from planet to planet toward the Sun.
@@ -241,7 +251,6 @@ warp zones, and fight from planet to planet toward the Sun.
 | Roll wrist left / right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Orbit counter-clockwise / clockwise |
 | Keep index finger straight | <img src="images/gestures/actions/keep-index-straight.png" alt="Keep the index finger straight" width="72"> | Continuous A fire |
 | Pull hand away from camera | <img src="images/gestures/v2/pull-away-from-camera.png" alt="Pull the hand away from the camera" width="72"> | B bomb |
-| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
 | Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select control mode |
 
 **Before launching:** Choose **Attack Control B** at the title screen. This
@@ -257,9 +266,9 @@ profile expects left/right rotation rather than eight-direction movement.
 
 ## Defender II
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `program_e` | **E** | <img src="images/matrix/programs/E.png" alt="E matrix display illustration" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `program_e` | <img src="images/matrix/programs/E.png" alt="E matrix display illustration" width="104"> |
 
 **Your mission:** Patrol the planet, destroy alien raiders, and rescue the
 humanoids before abductors carry them away and turn them into mutants.
@@ -270,7 +279,6 @@ humanoids before abductors carry them away and turn them into mutants.
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | A: fire |
 | Roll wrist either way | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist in either direction" width="96"> | B: smart bomb |
 | Curl ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Rapid left/right evasive thrash |
-| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
 
 **Play smart:** Watch the scanner as much as the ship. Intercept abductors early;
 if one lifts a humanoid, shoot the alien and catch the falling person. Wrist
@@ -286,12 +294,11 @@ rolls trigger the smart-bomb action, so make them deliberate.
 
 ## Sesame Street 1-2-3
 
-The same game may appear in your library as **Sesame Street 123**. The registry
-includes both filename spellings, with `.nes`, `.zip`, and `.7z` extensions.
+The same game may appear in your library as **Sesame Street 123**.
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `program_f` | **F** | <img src="images/matrix/programs/F.png" alt="F matrix display illustration" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `program_f` | <img src="images/matrix/programs/F.png" alt="F matrix display illustration" width="104"> |
 
 **Your mission:** Play the counting activities by giving the game a simple,
 physical Yes or No answer.
@@ -300,8 +307,6 @@ physical Yes or No answer.
 | --- | --- | --- |
 | Move an open hand in any direction | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move an open hand in any direction" width="96"> | A: Yes |
 | Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing all fingers" width="72"> | B: No |
-| Hold V sign | <img src="images/gestures/v2/v-sign.png" alt="Hold a V sign" width="72"> | Start / pause |
-| Hold thumbs-up | <img src="images/gestures/v2/thumbs-up.png" alt="Hold a thumbs-up" width="72"> | Select |
 
 **Play smart:** Directional output is intentionally disabled in this profile.
 Make the open-hand answer broad and obvious; make the fist complete. Return to a
@@ -317,9 +322,9 @@ relaxed open hand between questions so one answer does not run into the next.
 
 ## Gun Smoke
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `program_g` | **G** | <img src="images/matrix/programs/G.png" alt="G matrix display illustration" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `program_g` | <img src="images/matrix/programs/G.png" alt="G matrix display illustration" width="104"> |
 
 **Your mission:** Walk the scrolling frontier, defeat the bandits, find or buy
 each wanted poster, and collect the bounty by beating the stage boss.
@@ -330,7 +335,7 @@ each wanted poster, and collect the bounty by beating the stage boss.
 | Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | A: shoot diagonally right |
 | Push toward camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | B: shoot diagonally left |
 | Curl index while pushing | <img src="images/gestures/actions/index-push-combination.png" alt="One six-digit glove curling a finger beside a glove pushing toward the camera" width="96"> | A+B: shoot straight ahead |
-| Curl thumb and ring finger | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="96"> | Suppress all ordinary controller output |
+| Curl thumb and ring finger | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="96"> | Suppress D-pad, A/B, Start, and Select |
 
 **Play smart:** A stage keeps looping until you obtain its wanted poster. Keep
 your palm level while walking; wrist roll can add a left/right movement command.
@@ -346,9 +351,9 @@ Use index-plus-push when you need the straight-ahead shot.
 
 ## Knight Rider
 
-| Profile | Matrix code | See it |
-| --- | --- | --- |
-| `program_i` | **I** | <img src="images/matrix/programs/I.png" alt="I matrix display illustration" width="104"> |
+| Profile | See it |
+| --- | --- |
+| `program_i` | <img src="images/matrix/programs/I.png" alt="I matrix display illustration" width="104"> |
 
 **Your mission:** Drive KITT from city to city, avoid roadside hazards, destroy
 the criminals ahead, and reach each destination before the timer expires.
@@ -370,6 +375,83 @@ forward push for a clean burst when the road opens.
 1. Curl your index finger to accelerate and make small wrist rolls to steer.
 2. Lower your hand to practise braking.
 3. Use a forward push for turbo only when the road ahead is clear.
+
+<!-- PAGEBREAK -->
+
+## Make the controls fit your hand
+
+### Choose a player and save your setup
+
+Choose a player in **Your player** before practising or tuning. Each player keeps
+separate sensitivity, lesson progress, and a saved centre. Switching pauses
+controls until you set a fresh centre, or choose **Reuse my saved center** and
+confirm that the camera and playing positions are unchanged.
+
+Use **Players and hand-setup backups → Back up hand setup** to save the player's
+name, personal and complete sensitivity, software identity, and calibration.
+During restore, choose whether to keep the complete saved sensitivity, including
+the defaults used when the backup was made, or just personal adjustments. Reuse
+calibration only with the same camera and playing position; otherwise set a fresh
+centre. Backups do not include credentials or Academy progress. Version-2 backups
+are supported; older version-1 sensitivity-only files are rejected.
+
+Choose each player in turn and select **Back up hand setup** to download a
+separate `powerglove-hand-setup.json`. The file is saved by your browser on the
+computer, phone, or tablet you are using, usually in **Downloads** or the folder
+you choose. Rename each copy with the player name and date, for example
+`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+the player you want to update, choose **Restore hand setup**, and pick that
+player's saved file from your device. Review it before confirming; restore
+updates the selected player, rather than adding a new one.
+
+![Player selection and complete hand-setup backups](images/player-settings.png)
+
+### Tune a difficult gesture
+
+Tuning is optional. In **Glove Academy**, switch on **Tune gestures**. Pixel Pal
+helps with a new hand setup, a difficult or accidental gesture, or movement that
+feels off-centre. This adjusts recognition thresholds, not a personal camera
+model. It does not change the game's button assignments.
+
+1. Choose what you want to improve and follow the framing advice.
+2. When your whole hand is tracked clearly, select **I'm ready**.
+3. Follow the countdown and prompts. Finger poses use open hand, performed pose, then open hand again. Movement uses your starting position, the motion, then a return. Forward and backward movements are repeated three times.
+4. Test the result with two clean activations and releases, then hold neutral for three seconds. Save when the check passes, or retry the indicated pose.
+
+![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
+
+Cabinet output stays paused during practice and tuning. The live camera area is
+excluded from these screenshots for privacy. Tune one difficult gesture without
+repeating the whole hand setup. Pixel Pal may suggest better framing or lighting;
+it does not change camera exposure automatically.
+
+Leave **Advanced thresholds and diagnostics** closed unless you need numerical
+controls or a diagnostic run. The [Configuration Reference](CONFIGURATION_REFERENCE.md)
+explains the threshold checks and targeted restore options.
+
+### Check the result in a game
+
+Return to Dashboard, select **Start controller**, and try the same gesture in a
+short game session. Check that it activates reliably and releases when you return
+to rest. If another gesture activates accidentally, stop delivery and revisit
+that pose in Glove Academy. Saved sensitivity is shared across your selected
+player's games; each game profile still decides the resulting actions.
+
+## Understand the matrix display
+
+The matrix shows the active game or practice mode. Each play card includes its
+game display; the images below identify Academy and tuning.
+
+| Mode | See it | Controller output |
+| --- | --- | --- |
+| Glove Academy lessons | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Paused while you practise |
+| Tune gestures | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Paused while you record or preview thresholds |
+
+For the idle display, choose **Setup → Matrix attract mode**: **On**, **Dim**, or
+**Off** with faint connection pixels. This affects only the idle animation, not
+game displays, Academy, tuning, or gesture recognition. The setting saves without
+restarting tracking. See the [Matrix display guide](MATRIX_GUIDE.md) for connection
+pixels, startup animations, and the full display reference.
 
 <!-- PAGEBREAK -->
 
@@ -396,7 +478,7 @@ changing the ROM or emulator.
 
 1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
 2. Open the PowerGlove Vision Controller **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
-3. Use **Calibrate** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended center and distance while 24 clear observations are collected, then select **Start controller** and return to the game. The same stance should produce a closely comparable—but not numerically identical—reference.
+3. Use **Set this as my center** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended centre and distance until calibration finishes, then select **Start controller** and return to the game.
 4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
 
 The selection is temporary. Starting or ending a game sends a new command
@@ -404,22 +486,13 @@ that changes the profile or turns gestures off.
 
 ### Keep a discovery
 
-Add the game's exact ROM basename, including `.nes`, `.zip`, or `.7z`, to the
-`games` object in `/etc/powerglove/games.json` on RetroPie. Keep the existing
-entries and assign the profile that worked:
+Open **Setup → Games** and map the game's exact ROM filename to the profile
+that worked. Include its `.nes`, `.zip`, or `.7z` extension, validate, and save.
+Restart the game to use the new mapping. Automatic selection is currently limited
+to NES and Famicom; other systems turn gesture control off until their mappings
+and launch behaviour are validated.
 
-```json
-{
-  "games": {
-    "YOUR EXACT GAME FILENAME.nes": "program_h"
-  }
-}
-```
-
-Restart the game after saving. The launch hook will then select that profile
-automatically and the PowerGlove Vision Controller matrix will show its letter. Automatic selection is
-currently limited to NES and Famicom; other systems deliberately turn gesture
-control off until their mappings and launch behaviour are validated.
+![Games mappings in the lower section of Setup](images/games-section.png)
 
 Do not stop at A, D, and H. Try B when rhythmic button pulses suit the action,
 C when wrist rotation can replace horizontal movement, F for simple Yes/No
@@ -434,6 +507,8 @@ For every Program A–I gesture, see the illustrated
 [Programs A–I manual](bad-street-brawler-programs.md). For registry validation
 and manual profile commands, see the
 [Configuration Reference](CONFIGURATION_REFERENCE.md).
+
+<!-- PAGEBREAK -->
 
 ## Sources, artwork, and fair play
 
@@ -458,115 +533,17 @@ PowerGlove Vision is an independent MIT-licensed hobbyist project by Iain
 Bennett. Nintendo, NES, Power Glove, and all game titles and marks belong to
 their respective owners. No ROM images or original game artwork are distributed.
 
-
-### Reading the camera overlay
-
-The camera overlay labels the detected hand as **Right** or **Left**. The
-number beside the label indicates how confident the tracker is in that
-identification. To see the controls produced by your gestures, check the
-D-pad, button, and axis readings on Dashboard.
-
-Glove Academy uses the same saved resting-position reference as gameplay. It helps
-you practise gestures but does not train or save a personal recognition model.
-
-## Make the controls fit your hand
-
-Tuning is optional. Open **Glove Academy**, switch on **Tune gestures**, and let
-Pixel Pal ask what feels wrong: a new hand, a difficult gesture, an accidental
-gesture, or movement that feels off-center. This personalizes numerical gesture
-boundaries; it does not retrain MediaPipe or save ordinary camera images.
-
-The wizard shows one instruction at a time. When your complete hand has been
-tracked clearly for a moment, select **I'm ready** and follow the countdown.
-Finger and menu poses use open hand, performed pose, then open hand again.
-Directions and rolls use starting position, movement, then return. Glove Zap and
-Pull Back use three short motions and returns so a stationary near or far hand
-cannot masquerade as movement.
-
-After analysis, use the gesture twice and return to neutral. Saving becomes
-available after two clean activations/releases and three neutral seconds without
-a false activation. Your game button assignments, pulses, turbo, and held
-behavior remain unchanged. Only the selected shared recognition components are
-saved.
-
-![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
-
-The normal wizard hides numerical values. Open **Advanced thresholds and
-diagnostics** only when you need expert controls or a temporary diagnostic run.
-The matrix shows a scanning **T** during tuning, matching Glove Academy’s scanning **L**,
-and controller delivery stays paused.
-The live camera area is excluded from this screenshot for privacy.
-
-| Mode | See it | Controller output |
-| --- | --- | --- |
-| Glove Academy lessons | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Paused while you practice |
-| Tune gestures | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Paused while you record or preview thresholds |
-
-See the [Matrix display guide](MATRIX_GUIDE.md) for all startup and profile displays.
-
-For a different automatic profile, open **Setup → Games**, edit the exact ROM filename's
-mapping, validate, and save. Restart the game to use the new mapping. The
-[configuration reference](CONFIGURATION_REFERENCE.md) explains both workflows.
-
-![Games mappings in the lower section of Setup](images/games-section.png)
-
-### Check the result in a game
-
-Ordinary Glove Academy includes sixteen lessons. Alongside **Glove Zap** and
-**Pull Back**, it teaches roll left, roll right, close hand, and **Menu guard**.
-Menu guard means curling the thumb and ring finger while the other three fingers
-remain extended; it suppresses controls while you reposition. Saved tuning values
-drive gameplay recognition globally, while each game profile only decides button
-assignments, pulses, and toggles.
-
-Choose a player in **Your player** before practicing. Each player's hand
-sensitivity and lesson progress are retained on the Controller across browsers
-and restarts. Add or select another player to keep family members' settings
-separate. Each player keeps a saved center. Switching pauses controls until you set a fresh center or choose **Reuse my saved center** and confirm unchanged camera and playing positions.
-Use **Players and hand-setup backups → Back up hand setup** to save your name,
-personal and complete sensitivity, software identity, and calibration. Restore opens a review: reuse the saved
-calibration only if the camera and your playing position match, or leave that
-option unchecked and set a fresh center. Controls remain paused until you start
-them. Restore can explicitly retain the complete saved sensitivity, including the defaults used when the backup was made. Version-2 backups are supported; version-1 sensitivity-only files are rejected. Backups exclude credentials and
-Academy progress.
-
-![Player selection and complete hand-setup backups](images/player-settings.png)
-
-Complete all sixteen lessons to earn **Glove Master**. The award replaces the
-final lesson card; **Start again** restores the lessons and clears session progress.
-
-| Academy gesture | See it | What recognition expects |
-| --- | --- | --- |
-| Close your hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="128"> | Curl the thumb and every finger into a comfortable closed hand. |
-| Menu guard | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="128"> | Curl only thumb and ring; keep index, middle, and pinky extended. |
-
-Tune one difficult gesture without repeating hand setup. Pixel Pal reports
-framing and advisory lighting problems in plain language. It never changes the
-camera exposure automatically. Advanced restore resets only the selected
-components, or all five fingers for hand setup. Start controller delivery from
-Dashboard when ready.
-
-Automatic tuning requires at least 90% of clear samples to match the complete
-pose and identifies any finger that needs a retry. V-sign requires straight
-index/middle and curled ring/pinky fingers; thumbs-up requires a straight thumb
-and four curled fingers. No strong finger can compensate for a failed finger.
-
-Menu guard has priority over the V-sign and cancels a pending Start press. Its
-pinky must be clearly extended, while the V-sign's pinky must be clearly curled;
-the space between those thresholds deliberately recognizes neither pose. Menu
-guard also suppresses Start and Select while active, so repositioning cannot
-accidentally open or pause a game menu.
-
 <!-- PAGEBREAK -->
 
 ## Pixel Pal's Extra-Digit Hunt answer
 
 <img src="images/gestures/v2/pixel-pal.png" alt="Pixel Pal reveals the Extra-Digit Hunt answer" width="180">
 
-**Pixel Pal's answer: 9 six-digit hands.**
+**Pixel Pal's answer: 11 six-digit hands.**
 
 They appear once each in the Bad Street Brawler, Joust, Defender II, Sesame
 Street 1-2-3, and Gun Smoke play cards; twice in the native Super Glove Ball
-gesture table; once in the Glove Academy closed-hand table; and once in the
+gesture table; three times in the gesture reference (middle curl, ring curl,
+and closed hand); and once in the
 **Start with A, D, and H** table. Every appearance counts, even when the same
 artwork returns.

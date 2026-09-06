@@ -195,7 +195,7 @@ class AuditRegressionTests(unittest.TestCase):
                                    ok=True,frame=Mock())
         capture.latest_after.side_effect=latest_after
         tracker=Mock(); tracker.process.side_effect=frame; tracker.backend='legacy'
-        tracker.backend_label='MediaPipe Hands (proven)'
+        tracker.backend_label='MediaPipe Hands'
         cv=Mock(); cv.imencode.return_value=(False,None)
         v=vision_app
         with patch.object(v,'_background_call',side_effect=background), \

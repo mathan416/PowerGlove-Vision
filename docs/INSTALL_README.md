@@ -121,32 +121,56 @@ Pairing and live gameplay checks will still be listed as actions.
 
 ## 4. Pair the devices
 
+The **Controller status** panel at the top of Setup shows the four Off-mode checks in pixel order: app, console service, authenticated response, and Networking. Green means confirmed, red means disconnected or not confirmed, and grey means unknown. Networking reflects a physical Wi-Fi or Ethernet link, including USB dock Ethernet; it is independent of the console checks. These checks do not prove that the game received input.
+
+Both pairing methods below require the six-digit approval PIN shown on the Controller matrix and the certificate-ID comparison. The RetroPie one-time code or SSH password is an additional credential.
+
 Pairing gives both devices the same private token. Use the recommended
 one-time-code method after both installers finish.
 
-1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair`. Leave the command running; it prints a 20-character code that expires after two minutes.
-2. In your computer's browser, open `https://UNO-Q-NAME.local:8443/setup`. This is the secure Setup page; ordinary HTTP Setup cannot accept pairing credentials.
-3. Enter your RetroPie hostname and its one-time code, then select **Prepare code pairing**.
-4. Read the identifier after `ID` on the Controller's matrix. Compare it with the beginning of the browser certificate's SHA-256 fingerprint. The locally generated certificate may cause a browser warning; verify the fingerprint before continuing.
-5. If the identifiers match, select the confirmation checkbox, enter the six-digit PIN shown after `PN` on the matrix, and select **Complete pairing**.
-6. If Setup asks you to save the console destination, select **Save connection settings** above. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
+1. Open `https://UNO-Q-NAME.local:8443/setup`. Under **Connection and startup**, enter your console address and select **Save settings**. Pairing uses this saved address; unsaved edits must be saved first.
+2. Under **Pair with RetroPie**, choose **One-time code (recommended)** and select **Continue**. Use **Change** beside the saved console to edit its address before starting.
+3. In **Confirm your Controller**, compare the `ID` on the physical matrix with the beginning of the browser certificate's SHA-256 fingerprint. Expand **How to compare the certificate** for guidance. If they differ, stop pairing.
+4. If they match, check the confirmation box, enter the six-digit **Controller approval PIN** shown after `PN` on the matrix, and select **Continue**.
+5. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character code in **RetroPie one-time code**, then select **Pair with RetroPie**. This code is separate from the Controller approval PIN.
+6. Selecting **Pair with RetroPie** brings **Pairing in progress** into view while the request runs, followed by **Pairing complete** or an error with retry instructions. On success, the receiver was restarted; you can open Dashboard when ready. On RetroPie, `sudo systemctl status powerglove-receiver.service` should report active. Pairing does not arm controller output or prove that a game received input.
 
-If the code expires, restart the RetroPie command and prepare a new attempt.
-Never paste the private token into a document, screenshot, or support request.
+![Guided pairing starts with the saved console and a choice of one-time code or SSH password.](images/setup-pairing-method.png)
+
+![Controller confirmation with certificate comparison, matrix approval PIN, and remaining time.](images/setup-pairing-confirm.png)
+
+![Pairing in progress while the request waits for RetroPie.](images/setup-pairing-progress.png)
+
+![Pairing complete, with the next step on Dashboard.](images/setup-pairing-complete.png)
+
+The Controller confirmation window lasts two minutes. The console address and
+pairing method stay fixed during that window. If it expires, the PIN and password
+are cleared; select **Start a new confirmation**. You can change methods after
+the window ends. A submitted failure also requires fresh confirmation before
+retrying. Existing server PIN attempt limits still apply. If the window expires
+while you obtain a RetroPie code, repeat confirmation and obtain a new code if
+needed; neither credential has an unlimited lifetime.
+
+<!-- PAGEBREAK -->
 
 ### Alternative: pair with your RetroPie password
 
 Use this route only if RetroPie accepts SSH password login and your account
 can run `sudo` with that password.
 
-1. Open secure Setup, expand **Pair using an SSH password**, and enter the RetroPie hostname and username.
-2. Select **Prepare password pairing** and compare the matrix `ID` with the browser certificate fingerprint.
-3. If they match, select the confirmation checkbox, enter the matrix PIN and your RetroPie password, and complete pairing.
-4. Confirm that the receiver service is active on RetroPie.
+1. Save the console address in **Connection and startup**.
+2. In **Choose a pairing method**, select **SSH password**, then **Continue**.
+3. Complete the same certificate comparison and Controller approval PIN step.
+4. In **Pair with RetroPie**, enter your RetroPie username and password, then select **Pair with RetroPie**.
+5. **Pairing in progress** stays visible while the request runs; SSH pairing can take a few minutes. Wait for **Pairing complete**, then check the receiver service or open Dashboard. Errors are brought into view with retry instructions.
 
-The password is used for one SSH operation and is not stored. If neither
-pairing route works, follow the [token-management reference](CONFIGURATION_REFERENCE.md#pairing-and-token-management).
+The password field is unavailable until certificate confirmation is complete.
+The password is used for pairing and is not saved by the Controller. Returning
+to **Review Controller confirmation**, a failure, expiry, or leaving the page
+clears it. If neither route works, use the
+[token-management reference](CONFIGURATION_REFERENCE.md#pairing-and-token-management).
 
+When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
 
 ### Connection settings and recovery
 
@@ -154,18 +178,19 @@ pairing route works, follow the [token-management reference](CONFIGURATION_REFER
 Port, camera, and pairing-key replacement are under **Advanced connection settings**.
 **Check console address** only checks name resolution. If loading fails, use
 **Reload saved settings**; if a save fails, correct or retry it without losing
-fields. Start/Stop may show a pending request while tracking reconnects.
+fields. Controller Start/Stop and shutdown are on **Dashboard**; Setup keeps
+the read-only tracking and output status indicators.
 
 Connection saves restart tracking. The separate **Save attract mode** action
 changes only the idle matrix display. Hand setup, players, and backups are in
 **Glove Academy**. Existing private settings and calibration remain preserved
-through the normal installation/upgrade process; the independent Wi-Fi pixel needs the updated matrix firmware. Normal installation
+through the normal installation/upgrade process; the four-pixel display needs its matching matrix firmware. Extending the fourth pixel to Ethernet only needs the updated Controller app and host sampler. Normal installation
 and Wi-Fi deployment also install its unprivileged host status sampler. The receiver timeout correction takes effect after updating
 RetroPie as well as the Controller application.
 
 ## 5. Calibrate and test a game
 
-1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Calibrate** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
+1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Set this as my center** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
 2. Select **Start controller**. This allows controller packets to reach RetroPie and creates the virtual input device.
 3. On RetroPie, run `grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices`. Look for the device name **PowerGlove Vision**. If it is missing, check pairing and the receiver service before changing emulator settings.
 4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **PowerGlove Vision**. Menu labels can vary with the RetroArch version.
@@ -313,12 +338,21 @@ reuse its calibration with the same camera and playing positions. Backups includ
 name, personal and effective sensitivity, source software identity, and calibration. Version-2 is the first supported portable format; version-1 sensitivity-only files are rejected. The web footer reports
 exact software and running firmware identities; older firmware may report unavailable.
 
+Choose each player in turn and select **Back up hand setup** to download a
+separate `powerglove-hand-setup.json`. The file is saved by your browser on the
+computer, phone, or tablet you are using, usually in **Downloads** or the folder
+you choose. Rename each copy with the player name and date, for example
+`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+the player you want to update, choose **Restore hand setup**, and pick that
+player's saved file from your device. Review it before confirming; restore
+updates the selected player, rather than adding a new one.
+
 Completing all sixteen lessons replaces the lesson panel with
 the **Glove Master** award. **Start again** restores the lessons.
 
 ![Setup connection settings and pairing; use HTTPS to enable pairing](images/setup-page.png)
 
-Help serves the public manuals, illustrations, and PDFs locally. **This cabinet**
+Help serves the public manuals, illustrations, and PDFs locally. **This console**
 shows addresses derived from your current browser connection and public device
 settings. It never displays the token. The standalone Quick Reference is
 excluded from the public package; the live cabinet page supplies local details.
@@ -329,7 +363,7 @@ excluded from the public package; the live cabinet page supplies local details.
 1. Power the RetroPie and PowerGlove Vision Controller; leave the camera connected to the powered hub.
 2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
 3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
-4. On first use, or after changing your camera or playing position, select **Calibrate** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
+4. On first use, or after changing your camera or playing position, select **Set this as my center** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
 5. Select **Start controller** when you are ready to arm gesture control.
 6. Launch a registered game and confirm its profile code on the matrix. Delivery
    begins only after RetroArch is running and its short initialization guard ends.
@@ -359,3 +393,5 @@ explains temporary process environments, same-architecture diagnostic builds,
 private local evidence, and restoration of the normal launch configuration.
 Video analysis dependencies belong in a temporary Mac environment. Capture the
 physical hand and cabinet screen together; deployment alone is not a latency test.
+
+For a guided symptom check, see [Troubleshooting by symptom](TROUBLESHOOTING.md).
