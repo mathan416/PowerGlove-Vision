@@ -1,10 +1,13 @@
 # Setup and code review — 6 September 2026
 
-Reviewed from `dev` at `e4a18f9668ddbcdd28f49b8f0e18edccceaad601`.
-This is a development review, not a release approval. Physical latency testing
-remains deferred to the next cabinet session.
+Initial review baseline: `dev` at `e4a18f9668ddbcdd28f49b8f0e18edccceaad601`.
+Updated after the approved follow-ups, deployment of runtime commit `a7131f8`,
+and publication of `v0.3.2-rc.6`. The implementation decisions below are complete;
+physical latency testing remains deferred to the next cabinet session.
 
 ## Coverage and completed fixes
+
+Initial fixes: [4315a29](https://github.com/mathan416/PowerGlove-Vision/commit/4315a29).
 
 The review followed Setup through its HTTP routes, device settings, supervisor
 and worker controls, then examined player/backup persistence, capture and sender
@@ -41,41 +44,93 @@ attract saves, HTTP pairing restrictions, and 320/390/768-pixel layouts.
 Documentation screenshots use simulated device data. Physical gameplay, hardware
 shutdown, and live password pairing were not exercised for this review.
 
-## Parking lot for Iain
+## Completed parking-lot decisions
 
-The original review is above. The following approvals were received afterward;
-implementation status is recorded below. Physical latency testing remains deferred.
+All six implementation proposals were approved, implemented, and deployed. This
+records their current behavior rather than the limitations that prompted them.
 
-| Item | Evidence and decision to make | Suggested next step |
+| Item | Implemented outcome | Evidence |
 | --- | --- | --- |
-| Native Super Glove Ball latency | Continuous X/Y is playable, but visible delay remains. Current status timing does not measure the entire capture-to-display path. | Record synchronized hand and screen movement; separate capture, inference, send, receive, publication, core consumption, and display. Establish stationary jitter before tuning. |
-| Calibration per player | Player sensitivity and Academy progress are individual; `data/calibration.json` remains a shared physical reference. Switching players requires fresh centering. | **Approved and implemented:** separate saved centers; fresh centering remains the default, with explicit same-position reuse. |
-| Backups across future defaults | Version-2 hand backups contain personal threshold overrides; an empty `thresholds` object means use installed defaults. Future default changes can therefore alter the effective setup after restore. | **Approved and implemented:** effective thresholds and software identity with restore review. Version 2 is the first supported portable format; version 1 is rejected. Internal store migrations retain recovery backups. |
-| Hostname refresh during movement | `UdpSender.send` resolves its destination through the cached resolver. A cache miss can perform synchronous resolution on the send path. | **Approved and implemented:** isolated lookup sample measured 2.35 ms median / 107.54 ms maximum; refresh now runs in the background with no state queue. Physical movement comparison remains pending. |
-| Controller transport evolution | Controller packets use the existing shared-token protocol and per-session sequencing. Profile commands use signed messages. Stronger controller authentication and retired-session handling would require coordinated updates. | **Approved and implemented:** signed version-2 sessions with receiver-issued challenges, explicit temporary compatibility, replay/restart tests, and coordinated upgrade/rollback instructions. |
-| Independent Wi-Fi indication | Off-mode pixels report app health and the paired console's Games-service reachability/authentication. They do not independently report Wi-Fi association. | **Approved and implemented:** read-only host Wi-Fi sampler, explicit Setup status, and a fourth Off-mode pixel. Console pixels retain their meanings. |
-| Remaining web-module cleanup | Setup is now isolated in `setup_web.py`; Dashboard/Academy routes and older embedded UI definitions remain large. | **Approved and implemented:** shared shell, Dashboard, Academy, Games, and tuning modules; obsolete tuning definitions removed. Rendered pages remain byte-for-byte identical. |
+| Calibration per player | Each player has a separate saved calibration. `data/calibration.json` remains the active physical reference. Fresh centering is the default when switching; same-position reuse is explicit. New players copy sensitivity, not another player's center. | [d7a264c](https://github.com/mathan416/PowerGlove-Vision/commit/d7a264c) |
+| Backups across future defaults | Complete version-2 hand-setup backups include personal overrides, effective thresholds for all 13 channels, software identity, and player calibration. Restore offers saved sensitivity or personal overrides, explicitly confirms calibration reuse, and preserves Academy progress. Portable version 1 is rejected; internal store migrations retain private recovery backups. | [d7a264c](https://github.com/mathan416/PowerGlove-Vision/commit/d7a264c) |
+| Hostname refresh during movement | DNS/mDNS refresh runs in a background thread. Sending uses the current address without a lookup or retained controller-state queue; unavailable addresses cause the current state to be skipped. | [d7a264c](https://github.com/mathan416/PowerGlove-Vision/commit/d7a264c), [measurement report](../direction-response-benchmark.md) |
+| Controller transport evolution | Version-2 controller messages use HMAC-SHA256 without transmitting the shared secret. Receiver-issued challenges and increasing sequences reject stale/replayed input across sessions and restarts. Both devices require coordinated upgrades; legacy reception is an explicit temporary migration option. | [4f6600c](https://github.com/mathan416/PowerGlove-Vision/commit/4f6600c), [upgrade procedure](../CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) |
+| Independent Wi-Fi indication | A read-only host sampler reports wireless carrier status in Setup and a fourth Off-mode pixel. Existing app and console pixels retain their meanings. Installation/upgrade includes the sampler; game modes, T and L are unchanged. | [d7a264c](https://github.com/mathan416/PowerGlove-Vision/commit/d7a264c) |
+| Remaining web-module cleanup | Shared shell, Dashboard, Academy, Games, and tuning code have separate modules. Obsolete tuning definitions were removed and a small compatibility re-export remains. Compared Dashboard, Academy, Play, and Setup output was byte-for-byte identical before and after extraction. | [d7fc083](https://github.com/mathan416/PowerGlove-Vision/commit/d7fc083) |
 
-Keep this list current when a decision is made: record the outcome and link the
-implementing commit or measurement report. Do not silently turn parked items
-into release requirements.
+The signed transport preserves newest-state-only delivery and the 250 ms release
+deadline for both native state and the virtual gamepad. Handshakes and rejected
+traffic cannot postpone neutralization. The native-state record format is
+unchanged, so this update does not require rebuilding `lr-nestopia-powerglove`.
 
-## Approved follow-up work
+Deployment exposed a cabinet with both Ethernet and Wi-Fi: replies could leave
+through a different local address and be discarded before reaching the Controller
+container. [a7131f8](https://github.com/mathan416/PowerGlove-Vision/commit/a7131f8)
+uses Linux `IP_PKTINFO` to reply from the contacted receiver address/interface.
+A Linux regression test verifies the reply source address. Alternate-source
+replies are accepted by the sender only with valid authentication, current
+request/session correlation, and the configured receiver port.
 
-**Controller transport evolution:** Controller packets currently carry the shared
-secret and a session/sequence number. A future protocol could authenticate each
-message with a signature derived from the secret, without sending the secret
-inside the message, and reject packets from retired sessions. This would improve
-authentication and handling of delayed old input. It would require coordinated
-updates, compatibility/rollback design, and timing measurements on both computers.
-This is now implemented without movement smoothing or queued input. See the Configuration Reference for the handshake and upgrade procedure.
+## Validation and deployment evidence
 
-**Remaining web-module cleanup:** Extract Dashboard and Glove Academy markup and
-scripts from the large combined files, then remove unused older definitions.
-This would improve maintainability and make future changes easier to review,
-without adding a visible feature. It can be scheduled in small steps with browser
-regression checks. The bounded extraction described above is now implemented; HTTP routes and application behavior are preserved.
+- All 355 tests passed on Python 3.7 and Python 3.12. Source, documentation, and
+  package checks passed. Affected maintained guides and READMEs were updated;
+  affected PDFs were rebuilt and visually inspected.
+- Browser checks covered player/backup behavior and Setup failure recovery,
+  retry, draft preservation, and 320/390/768-pixel layouts. Live mobile Help and
+  a complete version-2 backup were also checked.
+- Both devices were deployed at runtime commit `a7131f8`. The PowerGlove Vision
+  Controller reported matching running/expected firmware fingerprint
+  `6eb0cb837581589fdf1051a12f066fd558799549951ab8dd0cb45d5bda39f91b`.
+  Installation manifests passed; the RetroPie receiver and Games services were
+  active with legacy controller reception disabled.
+- Private recovery backups were retained. Controller hand settings, calibration,
+  armed state, and pairing token were preserved; the current attract preference
+  was retained. RetroPie configuration checksums were unchanged.
+- An isolated receiver test accepted 18 states across two sessions, dropped the
+  initial handshake frame in each, and rejected a retired-session packet. It used
+  a separate native-state file and no virtual gamepad. Production handshake-only
+  probes authenticated through both cabinet interfaces with the expected reply
+  source; they did not inject gameplay input.
+- Before background refresh, 12 isolated cold hostname lookups on the Controller
+  measured 2.35 ms median and 107.54 ms maximum. This is lookup timing, not measured
+  camera-to-display improvement.
+- With 2,000 measured iterations per path, signed transport added 0.1104 ms median
+  encoding time on the Controller and 0.3398 ms median validation time on RetroPie
+  compared with the previous protocol. These isolated measurements exclude
+  network, handshake, state publication, core consumption, and display. See the
+  [benchmark report](../direction-response-benchmark.md) for methodology and tails.
 
-## Release-candidate preparation
+## Release-candidate publication
 
-The maintainer authorized merging to main and publishing v0.3.2-rc.6 after deployment of `a7131f8`. All 355 tests passed on both supported Python versions. The installed sender/receiver passed an isolated two-session network test, including dropped handshake frames and retired-session rejection. Production handshakes worked through both cabinet interfaces; the Controller reported matching firmware. Mobile Help and complete version-2 backup checks passed. Physical gameplay, synchronized latency/jitter measurement, and fresh-device installation validation remain pending, as recorded in the changelog.
+The maintainer authorized the main merge and next release candidate.
+[PR #9](https://github.com/mathan416/PowerGlove-Vision/pull/9) merged at
+`57ee3ceace8d53ad017df4606ac16ec56259a7ab`; `dev` was synchronized afterward.
+[v0.3.2-rc.6](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.6)
+was published as a prerelease at that commit. The latest stable release remains
+`v0.3.1` at publication time.
+
+The [release workflow](https://github.com/mathan416/PowerGlove-Vision/actions/runs/34038712545)
+and quality checks passed. Downloaded installer scripts and both device packages
+matched the published checksums. ZIP integrity, candidate/commit identities,
+firmware fingerprint, private-data/ROM exclusions, and the Controller App Lab
+package check passed.
+
+The deployed runtime remains `a7131f8`: subsequent candidate preparation changed
+documentation and release metadata, and did not trigger another deployment.
+Publication is not evidence of a fresh installation or a new live gameplay test.
+See the [changelog](../CHANGELOG.md) for the candidate's changes and limitations.
+
+## Remaining parking lot and validation
+
+| Item | Current evidence | Next step |
+| --- | --- | --- |
+| Native Super Glove Ball latency and stationary jitter | Earlier native gameplay confirmed playable continuous X/Y, with visible delay. Neither the lookup sample nor transport microbenchmark measures the full path. | Record synchronized hand and screen movement; measure capture, inference, send, network reception, state publication, core consumption, and display separately. Establish stationary jitter before tuning. Preserve newest-frame/state-only processing and avoid unnecessary smoothing. |
+| Live gameplay on rc.6 | Installed transport and firmware checks passed. The previously completed native game predates these changes. | Repeat gameplay with the candidate, checking movement and the confirmed native actions. |
+| Fresh-device installation | Upgrade deployments and published-package checks passed. | Exercise both published installers on fresh devices. |
+| Remaining physical checks | Hardware shutdown and live password pairing were not exercised in this review. Firmware identity does not establish visual matrix behavior. | Check these hardware interactions and the Wi-Fi indicator visually during an available device session. |
+
+These are outstanding measurements and validation, not unapproved implementation
+proposals or newly imposed release gates. Unused native packet fields, including
+wrist rotation, remain deliberately neutral; they are not missing confirmed
+Super Glove Ball functionality.
