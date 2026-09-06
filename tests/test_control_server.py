@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 # Full history: docs/CHANGELOG.md and Git history.
+#   2026-09-06 - Verified Help discovery for Rock Paper Scissors and native validation.
 #   2026-09-05 - Verified persistent armed state and clearer delivery status.
 #   2026-09-05 - Kept mocked forwarding assertions compatible with Python 3.7.
 #   2026-09-05 - Verified atomic Academy controls and fresh-frame navigation gates.
@@ -160,6 +161,8 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"/help/installation", page)
         self.assertIn(b"/help/cabinet", page)
         self.assertIn(b"This cabinet", page)
+        self.assertIn(b"Rock Paper Scissors instructions", page)
+        self.assertIn(b"Live-confirmed native game actions", page)
         self.assertNotIn(b"cheatsheet", page.lower())
         self.assertIn(b"/help-pdf/overview.pdf", page)
         technical = page.index(b"Technical documentation")

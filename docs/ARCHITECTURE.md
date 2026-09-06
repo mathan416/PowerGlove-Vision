@@ -272,13 +272,16 @@ or smoothing. Invalid, stale, uncalibrated, lost, or wrong-profile samples leave
 the emulated glove neutral.
 
 Exact-ROM traces now confirm the ten-byte packet boundary, MSB-first reads,
-native Start, continuous X/Y, signed Z, and open/fist/index packet response. A matched same-ROM test confirms
+native Start, continuous X/Y, signed Z, and open/fist/index packet response. Live
+full-game play confirms the resulting grab/throw, index-fire, and
+fist-plus-forward Power Punch actions. A matched same-ROM test confirms
 that FCEUmm requests only ordinary joypad input while both cores visibly respond
 to all four directions by frame 3. Stale, uncalibrated, lost, and
 wrong-profile samples produce a neutral packet. The shared layer publishes its
 five-finger closed-hand and index-point decisions explicitly so the core does
 not reconstruct compound poses from partial finger data. Native wrist rotation
-and remaining action-button fields stay evidence-gated. Stock Nestopia remains untouched; the custom core
+and remaining unused packet fields stay evidence-gated. They are outside the
+Super Glove Ball actions confirmed in live play. Stock Nestopia remains untouched; the custom core
 is enabled only through a Super Glove Ball per-ROM emulator choice after it is
 built locally from pinned GPLv2 source and verified on the cabinet. The ordinary
 release carries the patch and build recipe, not a compiled core. See the

@@ -176,10 +176,12 @@ complete wall of tiles, and follow the revealed arrows through the maze.
 to take the exit. The separately named native Nestopia core has passed exact-ROM
 detection, native Start, continuous X/Y, four-direction activation/release, and
 safe-neutral tests. The same-ROM comparison confirms FCEUmm remains a pure
-standard-joypad session. Native open/fist/index and depth packets are now
-connected; confirm grab/throw, index fire, and Power Punch during cabinet play.
-Use FCEUmm whenever you want the fully established fallback while native wrist
-rotation and remaining button codes are still being validated.
+standard-joypad session. A completed live game confirmed native grab/throw,
+index fire, and fist-plus-forward Power Punch. Continuous movement is playable
+and substantially improved, although some latency remains to tune. Use FCEUmm
+whenever you want the established joystick fallback. Native wrist rotation and
+remaining unused packet fields stay neutral; they are not missing from the
+Super Glove Ball actions confirmed in live play.
 
 **First round:**
 

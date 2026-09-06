@@ -16,6 +16,13 @@ faster inference for more responsive play.
   plays rock, an open palm plays paper, and the held V-sign plays scissors in a
   first-to-three match against Pixel Pal. It reuses the local practice-camera
   lease, pauses cabinet input while open, and provides touch and mouse controls.
+  Help now points readers to its illustrated Gameplay Guide section, while This
+  cabinet retains a direct link to the game.
+- Confirmed every implemented native Super Glove Ball action during a completed
+  live game: open-hand release/throw, fist grab/catch, index-point Robo-Bullet,
+  and fist-plus-forward Power Punch, alongside Start and continuous X/Y. Movement
+  is playable and substantially improved; residual latency remains the next
+  refinement target. Unused wrist-rotation and packet-button fields stay neutral.
 
 ### Changed
 
