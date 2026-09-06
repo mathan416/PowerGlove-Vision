@@ -54,8 +54,8 @@ controller actions preserve unsaved connection edits. Pending Start/Stop request
 are reported while the tracker reconnects.
 
 The [development review and parking lot](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
-records completed fixes and decisions for a later session, including latency,
-transport authentication and further web-module cleanup. Approved player calibration, backup compatibility, background hostname refresh, and independent Wi-Fi indication are implemented.
+records completed fixes and decisions for a later session, including
+latency measurements still awaiting live play. Player calibration, complete backups, background hostname refresh, independent Wi-Fi indication, signed controller sessions, and web-module cleanup are implemented. Controller transport now requires matching version-2 software on both computers; follow the [coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
 
 ## Choose a guide
 

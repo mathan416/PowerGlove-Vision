@@ -78,7 +78,7 @@ class AuditRegressionTests(unittest.TestCase):
         with patch.object(receiver.socket,'socket',return_value=sock), \
              patch.object(receiver.time,'monotonic',side_effect=lambda:now[0]), \
              patch.object(receiver,'UInputDevice',return_value=device), \
-             patch.object(sys,'argv',['receiver','--token',TOKEN]):
+             patch.object(sys,'argv',['receiver','--token',TOKEN,'--allow-legacy-controller']):
             receiver.main()
         self.assertEqual(device.write_state.call_count,1)
         self.assertLessEqual(release_times[0], .4)

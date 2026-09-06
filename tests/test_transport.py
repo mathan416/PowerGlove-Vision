@@ -55,6 +55,7 @@ class TransportTests(unittest.TestCase):
     @patch("powerglove_vision.transport.socket.socket")
     def test_temporary_name_failure_does_not_stop_sender(self, socket_factory):
         udp_socket = Mock()
+        udp_socket.recvfrom.side_effect = BlockingIOError
         udp_socket.sendto.side_effect = gaierror(-2, "Name or service not known")
         socket_factory.return_value = udp_socket
         sender = UdpSender("192.0.2.1", 55355, "secret")
@@ -70,6 +71,10 @@ class TransportTests(unittest.TestCase):
     def test_successful_send_reports_receiver_available(self, socket_factory):
         sender = UdpSender("192.0.2.1", 55355, "secret")
         self.addCleanup(sender.close)
+        socket_factory.return_value.recvfrom.side_effect = BlockingIOError
+        sender._peer = ("192.0.2.1",55355)
+        sender.challenge = "a" * 32
+        sender._hello_at = float("inf")
         state = ControllerState.released(1, 1.0, "bad_street_brawler", True)
 
         self.assertTrue(sender.send(state))

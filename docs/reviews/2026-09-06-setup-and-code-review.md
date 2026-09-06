@@ -52,15 +52,15 @@ implementation status is recorded below. Physical latency testing remains deferr
 | Calibration per player | Player sensitivity and Academy progress are individual; `data/calibration.json` remains a shared physical reference. Switching players requires fresh centering. | **Approved and implemented:** separate saved centers; fresh centering remains the default, with explicit same-position reuse. |
 | Backups across future defaults | Version-2 hand backups contain personal threshold overrides; an empty `thresholds` object means use installed defaults. Future default changes can therefore alter the effective setup after restore. | **Approved and implemented:** effective thresholds and software identity with restore review. Version 2 is the first supported portable format; version 1 is rejected. Internal store migrations retain recovery backups. |
 | Hostname refresh during movement | `UdpSender.send` resolves its destination through the cached resolver. A cache miss can perform synchronous resolution on the send path. | **Approved and implemented:** isolated lookup sample measured 2.35 ms median / 107.54 ms maximum; refresh now runs in the background with no state queue. Physical movement comparison remains pending. |
-| Controller transport evolution | Controller packets use the existing shared-token protocol and per-session sequencing. Profile commands use signed messages. Stronger controller authentication and retired-session handling would require coordinated updates. | Decide whether to schedule a versioned protocol migration with compatibility and rollback tests. See the existing trusted-LAN security model. |
+| Controller transport evolution | Controller packets use the existing shared-token protocol and per-session sequencing. Profile commands use signed messages. Stronger controller authentication and retired-session handling would require coordinated updates. | **Approved and implemented:** signed version-2 sessions with receiver-issued challenges, explicit temporary compatibility, replay/restart tests, and coordinated upgrade/rollback instructions. |
 | Independent Wi-Fi indication | Off-mode pixels report app health and the paired console's Games-service reachability/authentication. They do not independently report Wi-Fi association. | **Approved and implemented:** read-only host Wi-Fi sampler, explicit Setup status, and a fourth Off-mode pixel. Console pixels retain their meanings. |
-| Remaining web-module cleanup | Setup is now isolated in `setup_web.py`; Dashboard/Academy routes and older embedded UI definitions remain large. | Schedule small module extractions with browser regression checks if further UI work makes them useful. Avoid mixing a broad rewrite with latency tuning. |
+| Remaining web-module cleanup | Setup is now isolated in `setup_web.py`; Dashboard/Academy routes and older embedded UI definitions remain large. | **Approved and implemented:** shared shell, Dashboard, Academy, Games, and tuning modules; obsolete tuning definitions removed. Rendered pages remain byte-for-byte identical. |
 
 Keep this list current when a decision is made: record the outcome and link the
 implementing commit or measurement report. Do not silently turn parked items
 into release requirements.
 
-## Explanations awaiting a decision
+## Approved follow-up work
 
 **Controller transport evolution:** Controller packets currently carry the shared
 secret and a session/sequence number. A future protocol could authenticate each
@@ -68,10 +68,10 @@ message with a signature derived from the secret, without sending the secret
 inside the message, and reject packets from retired sessions. This would improve
 authentication and handling of delayed old input. It would require coordinated
 updates, compatibility/rollback design, and timing measurements on both computers.
-It is not a movement-smoothing change and has not been implemented.
+This is now implemented without movement smoothing or queued input. See the Configuration Reference for the handshake and upgrade procedure.
 
 **Remaining web-module cleanup:** Extract Dashboard and Glove Academy markup and
 scripts from the large combined files, then remove unused older definitions.
 This would improve maintainability and make future changes easier to review,
 without adding a visible feature. It can be scheduled in small steps with browser
-regression checks. No broad web refactor has been approved or implemented here.
+regression checks. The bounded extraction described above is now implemented; HTTP routes and application behavior are preserved.

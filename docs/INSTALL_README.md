@@ -9,6 +9,8 @@ Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
 or turn it Off except for faint connection pixels. This does not change game
 displays, T, L, or gesture recognition. The setting saves without a tracker restart.
 
+For an existing installation, this update changes controller transport on both computers. Stop controller output, update both to matching software, then start and test input. Mixed old/new versions do not deliver input with the default settings. See [signed controller transport and upgrades](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) for staged upgrades and rollback.
+
 ## 1. Prepare your devices
 
 You need a provisioned PowerGlove Vision Controller, a working RetroPie system, a UVC USB camera,

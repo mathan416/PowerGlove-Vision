@@ -764,6 +764,25 @@ The saved neutral calibration is reused; recalibrate only if your physical setup
 your resting hand position produces unwanted movement. Gesture-to-button assignments are implemented by each profile in
 the application; threshold changes adjust sensitivity but do not remap buttons.
 
+## Signed controller transport and upgrades
+
+Controller traffic uses `powerglove-vision/2` on UDP `55355`. Domain-separated HMAC-SHA256 covers each entire canonical JSON message, including its kind, session, request/challenge, and input fields. The shared token stays in the existing private configuration files. Messages are authenticated, not encrypted; the trusted-LAN requirements still apply.
+
+A signed hello obtains a receiver-issued challenge before input can be accepted. Session identifiers, request identifiers, and challenges are random 128-bit hex values. The first valid state activates the challenge and retires all earlier challenges; each later state needs an increasing sequence. Receiver restarts require a fresh challenge and do not depend on synchronized clocks. Pending handshakes are limited to eight and expire after three seconds. Datagrams remain bounded to 4096 bytes; duplicate JSON fields, malformed controls, wrong signatures, and retired or replayed input are rejected before uinput/native-state publication.
+
+The sender never queues input during negotiation. It retries hello after 250 milliseconds until established, then every second so a restarted receiver can issue a fresh challenge. Replies return from UDP `55355` to the sender's ephemeral UDP socket. The sender processes at most eight replies per update without waiting. A successful UDP send is not an acknowledgement of emulator consumption. Handshake/rejected traffic cannot postpone the 250-millisecond release deadline.
+
+### Upgrade both computers together
+
+1. Select **Stop controller** and back up both installations and private settings.
+2. Update RetroPie and the PowerGlove Vision Controller from the same development commit or compatible release. The default new receiver rejects old input, and the new sender does not downgrade to version 1; mixed versions will pause controller delivery.
+3. Restart both applications, confirm matching software identities, then select **Start controller**. Verify neutral/release behavior and actual game input. Profile changes also establish a fresh controller session.
+4. If you must roll back, stop controls and restore both matching application versions. Preserve device settings, calibration/player files, and the paired token; do not restore a mismatched sender/receiver combination.
+
+For a staged upgrade only, the new receiver has `--allow-legacy-controller`. An administrator can temporarily add it to the receiver invocation while the older Controller is being replaced. It is off by default, still exposes the shared token in legacy traffic, and closes for the rest of that receiver process after the first valid version-2 state. Remove the flag after upgrading; a receiver restart would otherwise reopen legacy admission. This compatibility mode does not provide version-2 replay protection. Re-pair after migration if a token may have been observed in old traffic: signing cannot revoke a previously exposed key.
+
+Existing pairing credentials and native emulator files need no format migration. Installation packages include the new protocol and web modules; neither a firmware flash nor a core rebuild is required by this transport change. The separately added fourth Wi-Fi pixel still requires its matching matrix firmware.
+
 ## RetroPie receiver and virtual controller
 
 The receiver verifies authenticated UDP packets and creates a Linux `uinput`
@@ -1137,6 +1156,7 @@ history.
 | `--port NUMBER` | `55355` | UDP port for controller packets; must match PowerGlove Vision Controller settings. |
 | `--token VALUE` | None | Supplies the shared token directly. Use only as an advanced alternative; the value can appear in process arguments. |
 | `--token-file PATH` | None | Reads the shared token from a protected file. Supply exactly one of this flag and `--token`. The token must contain at least 16 characters. |
+| `--allow-legacy-controller` | Off | Temporary version-1 receiver compatibility during a staged upgrade; closes after the first signed state until process restart. Remove after upgrading. |
 | `--timeout-ms NUMBER` | `250` | Socket receive timeout in milliseconds; a timeout releases held controls. Use a positive value. |
 | `--native-state PATH` | `/run/powerglove/native-state` | Versioned latest-sample record for the optional custom Nestopia research core. Failure to create it does not disable FCEUmm/uinput. |
 | `--dry-run` | Off | Prints received controls instead of creating a virtual input device. |

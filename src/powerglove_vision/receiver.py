@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -22,6 +23,7 @@ from pathlib import Path
 
 from .native_state import DEFAULT_PATH as DEFAULT_NATIVE_STATE_PATH, NativeStateWriter
 from .transport import MAX_PACKET_BYTES, decode_state
+from .controller_protocol import ReceiverSessions
 
 
 class DryRunDevice:
@@ -109,6 +111,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--native-state", type=Path, default=DEFAULT_NATIVE_STATE_PATH,
                         help="latest validated sample for the custom Nestopia core")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--allow-legacy-controller", action="store_true",
+                        help="temporary v1 upgrade compatibility; disabled after the first v2 input")
     return parser
 
 
@@ -138,6 +142,9 @@ def main() -> int:
     released = True
     last_sequence = -1
     last_session: str | None = None
+    retired_sessions = set()
+    sessions = ReceiverSessions(token)
+    signed_seen = False
     try:
         while True:
             now = time.monotonic()
@@ -151,19 +158,37 @@ def main() -> int:
             try:
                 payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
                 try:
-                    state = decode_state(payload)
+                    state, reply = sessions.receive(payload, _peer)
+                    if reply is not None:
+                        try:
+                            sock.sendto(reply, _peer)
+                        except OSError:
+                            pass
+                    if state is None:
+                        continue
+                    signed_seen = True
                 except (ValueError, UnicodeError, RecursionError):
-                    continue
-                supplied_token = state.get("token")
-                if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, token):
-                    continue
-                session = state.get("session")
-                if isinstance(session, str) and session != last_session:
-                    last_session = session
-                    last_sequence = -1
+                    if not args.allow_legacy_controller or signed_seen:
+                        continue
+                    try:
+                        state = decode_state(payload)
+                    except (ValueError, UnicodeError, RecursionError):
+                        continue
+                    supplied_token = state.get("token")
+                    if not isinstance(supplied_token, str) or not hmac.compare_digest(supplied_token, token):
+                        continue
+                    session = state.get("session")
+                    if not isinstance(session, str) or session in retired_sessions:
+                        continue
+                    if session != last_session:
+                        if len(retired_sessions) >= 128:
+                            continue
+                        if last_session is not None:
+                            retired_sessions.add(last_session)
+                        last_session, last_sequence = session, -1
+                    if state["sequence"] <= last_sequence:
+                        continue
                 sequence = state["sequence"]
-                if last_sequence >= 0 and sequence <= last_sequence:
-                    continue
                 last_sequence = sequence
                 if device is None:
                     device = UInputDevice()

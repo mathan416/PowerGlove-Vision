@@ -9,6 +9,8 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Version-2 HMAC controller messages with receiver-issued challenges, restart/retired-session replay rejection, and bounded nonblocking handshakes. Existing native and gamepad mappings are unchanged; upgrade both computers together.
+
 - Per-player saved calibration with explicit same-position reuse after switching;
   internal stores migrate to version 4 with private recovery backups.
 - Version-2 hand backups now include all effective sensitivity pairs and software
@@ -44,6 +46,9 @@ authoritative record for line-level and file-level history.
   Academy/Play camera panels, verified at widths down to 320 pixels.
 
 ### Changed
+
+- Extracted Dashboard, Academy, shared page rendering, Games, and personalization into maintained web modules; removed obsolete tuning UI without changing rendered pages.
+- Receiver defaults to signed controller input; an explicit temporary `--allow-legacy-controller` upgrade option closes after the first signed state.
 
 - Reorganized Setup with clearer connection, pairing, attract, and power sections;
   one-time-code pairing is prominent and SSH password pairing remains available.

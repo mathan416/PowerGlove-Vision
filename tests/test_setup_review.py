@@ -169,7 +169,7 @@ class SetupReviewTests(unittest.TestCase):
             if calls[0] == 2:raise socket.timeout()
             return after_timeout(size)
         sock.recvfrom.side_effect = receive
-        with patch.object(receiver.socket,'socket',return_value=sock), patch.object(receiver,'UInputDevice',return_value=device), patch.object(receiver,'NativeStateWriter',return_value=native), patch('sys.argv',['receiver','--token',TOKEN]):
+        with patch.object(receiver.socket,'socket',return_value=sock), patch.object(receiver,'UInputDevice',return_value=device), patch.object(receiver,'NativeStateWriter',return_value=native), patch('sys.argv',['receiver','--token',TOKEN,'--allow-legacy-controller']):
             self.assertEqual(receiver.main(),0)
 
     def test_profile_listener_survives_nested_json(self):

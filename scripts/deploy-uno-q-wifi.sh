@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Avoid reinstalling an identical enabled Wi-Fi sampler during updates.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Verified the Rock Paper Scissors page during deployment.
 #   2026-09-05 - Verified the corrected closed-hand Academy artwork.
@@ -118,7 +119,7 @@ ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
 
 echo "Updating the independent Wi-Fi status sampler..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "sudo python3 '${REMOTE_APP_DIR}/scripts/setup-machine.py' uno-q --wifi-status-only"
+  "if cmp -s '${REMOTE_APP_DIR}/uno-q/powerglove-wifi-status.py' /usr/local/libexec/powerglove-wifi-status && cmp -s '${REMOTE_APP_DIR}/uno-q/powerglove-wifi-status.service' /etc/systemd/system/powerglove-wifi-status.service && cmp -s '${REMOTE_APP_DIR}/uno-q/powerglove-wifi-status.timer' /etc/systemd/system/powerglove-wifi-status.timer && systemctl is-enabled --quiet powerglove-wifi-status.timer && systemctl is-active --quiet powerglove-wifi-status.timer; then echo 'Wi-Fi status sampler is current'; else sudo python3 '${REMOTE_APP_DIR}/scripts/setup-machine.py' uno-q --wifi-status-only; fi"
 
 echo "Restarting the UNO Q application..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \

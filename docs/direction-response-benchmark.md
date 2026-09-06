@@ -321,3 +321,16 @@ attempting 100 states, then verify that only the next new state is sent after
 resolution completes. Capture, inference, movement thresholds, smoothing, native
 state publication, and core consumption are unchanged. The stationary-hand and
 synchronized physical display comparison remain pending.
+
+## Signed transport processing - 6 September 2026
+
+An isolated comparison ran on the actual Controller app container and RetroPie with dummy input and no network transmission or gamepad publication. Each column uses 2,000 samples after 100 warm-up iterations. It compares the prior v1 codec/token check against the new v2 signing/challenge validation code loaded in memory; this is not a deployed camera-to-display test.
+
+| Stage and machine | Protocol | Median ms | p95 ms | Maximum ms |
+| --- | --- | --- | --- | --- |
+| Packet creation, Controller | v1 | 0.1550 | 0.2142 | 0.4525 |
+| Packet creation, Controller | v2 | 0.2654 | 0.3364 | 2.4920 |
+| Validation, RetroPie | v1 | 0.1090 | 0.1473 | 0.3143 |
+| Validation, RetroPie | v2 | 0.4488 | 0.5640 | 0.7606 |
+
+The representative released-state packet grew from 505 to 606 bytes, using a dummy 32-character token. Signed packet size no longer depends on token length. Median processing additions were 0.1104 ms for Controller packet creation and 0.3398 ms for RetroPie validation. These microbenchmarks do not include scheduling, network transit, initial handshake, uinput/native publication, core consumption, display latency, or stationary jitter. No movement smoothing or recognition settings changed. The synchronized physical movement baseline remains pending.

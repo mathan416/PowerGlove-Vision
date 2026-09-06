@@ -82,8 +82,8 @@ sockets. These functions are kept separate from camera inference.
 5. The worker sends the state only if controller delivery is armed, a live
    registered-game lease or intentional manual Dashboard context exists, and neither
    practice nor tuning is active.
-6. The sender encodes a bounded JSON datagram with a session identifier and shared token, then sends it to RetroPie over UDP 55355.
-7. The receiver checks protocol, token, and sequence. It creates the real virtual controller when the first accepted packet arrives.
+6. The sender establishes a receiver-issued challenge, then sends bounded HMAC-SHA256 controller datagrams over UDP 55355. Packets contain session and sequence identifiers, never the shared token.
+7. The receiver checks the message HMAC, live challenge, peer, and increasing sequence. It creates the real virtual controller when the first accepted packet arrives.
 8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
 The worker also publishes diagnostic state after inference. Browser video is
@@ -338,7 +338,7 @@ unavailable; this introduces no firmware RPC in the vision worker's frame path.
 | HTTP 8088 | Browser to PowerGlove Vision Controller | Pages, live status/video, ordinary settings and commands |
 | HTTPS 8443 | Browser to PowerGlove Vision Controller | Secure Setup and pairing workflow |
 | HTTP 8089, loopback | Supervisor/web proxy to worker | Internal status, frame and control requests |
-| UDP 55355 | PowerGlove Vision Controller to RetroPie | Controller states, shared token, session and sequence |
+| UDP 55355 | PowerGlove Vision Controller to RetroPie | Signed controller states, session, challenge, and sequence; handshake replies return to the sender socket |
 | UDP 55356 | RetroPie to UNO relay to worker | Signed profile requests and acknowledgements |
 | `/run/powerglove/native-state` | Authenticated RetroPie receiver to custom core | Read-only, guarded latest sample for experimental native input |
 | TCP 55357 | Pairing participants | Temporary one-time-code pairing service |
@@ -346,9 +346,7 @@ unavailable; this introduces no firmware RPC in the vision worker's frame path.
 | Private Unix sockets | App resolver to host Avahi | Local hostname resolution |
 | Router Bridge RPC | Linux supervisor to microcontroller | Matrix status/profile/pairing commands |
 
-The LAN is a trust boundary. Controller JSON includes a shared token and is not
-encrypted or protected by the profile protocol's message HMAC. Do not describe
-all links as equivalent secure channels. Pairing and registry exchange have their
+The LAN remains a trust boundary. Controller version 2 uses its own domain-separated HMAC-SHA256 and receiver-issued challenges. It does not encrypt input. Legacy version-1 input is disabled by default and never emitted by the new sender. Do not describe all links as equivalent secure channels. Pairing and registry exchange have their
 own protections; browser mutations use the existing request-header and Origin
 checks. See the [Security policy](SECURITY.md) for the full trust model.
 
@@ -421,9 +419,10 @@ it does not claim every path has been independently security-audited.
 | Observation/state data objects | `src/powerglove_vision/model.py` |
 | Calibration, thresholds, held gestures, mappings | `src/powerglove_vision/gesture.py` |
 | Recording, suggestions, previews, persistence | `src/powerglove_vision/tuning.py` |
-| Browser pages and public request handling | `src/powerglove_vision/control_server.py` |
+| Public HTTP routing and worker proxy | `src/powerglove_vision/control_server.py` |
+| Shared page shell and maintained browser modules | `web_common.py`, `dashboard_web.py`, `academy_web.py`, `games_web.py`, `tuning_web.py`, `setup_web.py`, `player_web.py` |
 | Worker requests, status, practice leases | `src/powerglove_vision/debug_server.py` |
-| Controller packets and virtual gamepad | `src/powerglove_vision/transport.py`, `receiver.py` |
+| Controller packets and virtual gamepad | `src/powerglove_vision/transport.py`, `controller_protocol.py`, `receiver.py` |
 | Profile requests, launch hooks, UDP relay | `src/powerglove_vision/profile_control.py`, `retropie_hook.py`, `scripts/profile-relay.py` |
 | Paired Games editing | `src/powerglove_vision/game_registry.py` |
 | Pairing and hostname resolution | `src/powerglove_vision/pairing.py`, `python/ssh_pair.py`, `src/powerglove_vision/resolver.py` |
@@ -476,3 +475,11 @@ there is no global brightness change. In Off mode a bounded background probe
 checks TCP reachability and authenticates the existing RetroPie Games service.
 The supervisor publishes cached indicator bits; capture, recognition, transport,
 T/L displays, and game-state paths are unchanged.
+
+## Signed controller session lifecycle
+
+The nonblocking sender emits a signed hello with random session and request identifiers. RetroPie replies with a fresh random 128-bit challenge; only a reply matching the sender's current request and destination is accepted. A valid state activates that challenge. Activation invalidates every older active and pending challenge; subsequent states require increasing sequence numbers. A replayed hello can obtain a new challenge but cannot supply an authenticated state for it. Receiver restarts discard all challenges, so recorded traffic from a previous process cannot activate input.
+
+At most eight pending handshakes are retained, for three seconds each. No input state is retained while negotiating. Hellos repeat every 250 milliseconds before the first challenge, then once per second to recover a receiver restart. The sender reads at most eight replies per update without blocking and sends only that update's state. Periodic handshake traffic does not reset the receiver's input-release deadline. Both native-state publication and uinput remain behind the same accepted-state check; the core and recognition paths are unchanged.
+
+Dashboard and Academy now import their maintained pages from separate modules. Games and personalization have their own modules, and `web_features.py` preserves the existing import surface without obsolete UI definitions. The extracted Dashboard, Academy, Play, and Setup pages are byte-for-byte identical to the previous output.

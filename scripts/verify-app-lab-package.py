@@ -52,6 +52,13 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/src/powerglove_vision/controller_protocol.py",
+    "PowerGlove-Vision/src/powerglove_vision/web_common.py",
+    "PowerGlove-Vision/src/powerglove_vision/dashboard_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/academy_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/games_web.py",
+    "PowerGlove-Vision/src/powerglove_vision/tuning_web.py",
+
     "PowerGlove-Vision/scripts/install-uno-q.sh",
     "PowerGlove-Vision/scripts/install-retropie.sh",
     "PowerGlove-Vision/scripts/install-package.py",

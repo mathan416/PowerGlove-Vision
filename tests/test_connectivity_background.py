@@ -19,6 +19,7 @@ from pathlib import Path
 from unittest.mock import Mock,patch
 from powerglove_vision.resolver import BackgroundAddress
 from powerglove_vision.transport import UdpSender,decode_state
+from powerglove_vision.controller_protocol import decode_message
 from powerglove_vision.model import ControllerState
 from powerglove_vision.wifi_status import read_wifi_status
 from powerglove_vision.matrix import UnoQMatrix
@@ -43,9 +44,13 @@ class BackgroundTests(unittest.TestCase):
                 release.set()
                 deadline=time.monotonic()+1
                 while sender.address.current()[0] is None and time.monotonic()<deadline:time.sleep(.005)
+                factory.return_value.recvfrom.side_effect = BlockingIOError
+                sender._peer = ('192.0.2.4',55355)
+                sender.challenge = 'a'*32
+                sender._hello_at = float('inf')
                 self.assertTrue(sender.send(ControllerState.released(100,1,'off',True)))
                 sent=factory.return_value.sendto.call_args[0]
-                self.assertEqual(decode_state(sent[0])['sequence'],100)
+                self.assertEqual(decode_message(sent[0],'test-token')['state']['sequence'],100)
                 self.assertEqual(sent[1],('192.0.2.4',55355))
                 self.assertEqual(factory.return_value.sendto.call_count,1)
             finally:release.set();sender.close()

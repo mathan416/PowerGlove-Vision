@@ -67,8 +67,8 @@ def main():
       'Browser <-> UNO web UI; game hooks -> UNO profile relay. These are separate control paths.')
     diagram('input','02 / One hand movement becomes game input',[
       ('a',0,0,'1. Camera frame','UVC capture through OpenCV'),('b',1,0,'2. Hand observation','MediaPipe landmarks + curls'),('c',2,0,'3. Gesture engine','Calibration + effective thresholds'),
-      ('d',2,1,'4. Profile mapping','Held states, pulses and toggles'),('e',1,1,'5. Delivery gate','Armed + live game/manual context'),('f',0,1,'6. UDP state packet','Session + sequence + token'),
-      ('g',0,2,'7. Receiver checks','Token, session and sequence'),('h',1,2,'8. Linux uinput','Virtual gamepad state'),('i',2,2,'9. Game response','RetroArch mapping and gameplay')],
+      ('d',2,1,'4. Profile mapping','Held states, pulses and toggles'),('e',1,1,'5. Delivery gate','Armed + live game/manual context'),('f',0,1,'6. UDP state packet','Signed session + sequence'),
+      ('g',0,2,'7. Receiver checks','HMAC, challenge and sequence'),('h',1,2,'8. Linux uinput','Virtual gamepad state'),('i',2,2,'9. Game response','RetroArch mapping and gameplay')],
       [('a','b'),('b','c'),('c','d'),('d','e'),('e','f'),('f','g'),('g','h'),('h','i')],
       'Status and preview branch from the worker. Browser video is not in the controller delivery path.')
     diagram('modes','03 / Camera activity and controller delivery are separate',[
