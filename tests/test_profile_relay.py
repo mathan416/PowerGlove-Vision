@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Use Python 3.7-compatible mock call argument access.
 #   2026-09-05 - Covered detached registered-game lease refresh and cleanup.
 #   2026-09-04 - Covered concurrent replies, invalid traffic, capacity expiry and hook failures.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -121,7 +122,7 @@ class HookTests(unittest.TestCase):
             start.assert_called_once()
             send.assert_not_called()
             self.assertTrue(retropie_hook._session_is_current(
-                session_file, start.call_args.args[1]
+                session_file, start.call_args[0][1]
             ))
             self.assertIn("program_h", output.getvalue())
 
@@ -143,9 +144,9 @@ class HookTests(unittest.TestCase):
                     retropie_hook._run_session(args, settings, "test-profile-token", "program_h"), 0
                 )
             self.assertEqual(send.call_count, 2)
-            self.assertEqual(send.call_args_list[0].kwargs["session_id"], session_id)
-            self.assertEqual(send.call_args_list[0].kwargs["lease_seconds"], 6.0)
-            self.assertIsNone(send.call_args_list[1].args[3])
+            self.assertEqual(send.call_args_list[0][1]["session_id"], session_id)
+            self.assertEqual(send.call_args_list[0][1]["lease_seconds"], 6.0)
+            self.assertIsNone(send.call_args_list[1][0][3])
             self.assertFalse(session_file.exists())
 
     def test_rejection_is_not_reported_as_acknowledged(self):
