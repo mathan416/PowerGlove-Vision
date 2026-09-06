@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Require fresh centering after player changes before delivery.
 #   2026-09-05 - Resumed armed controls from renewable RetroPie game leases.
@@ -114,7 +115,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Camera-only Power Glove controller")
     parser.add_argument("--receiver", required=True, help="Raspberry Pi hostname or address")
     parser.add_argument("--port", type=int, default=55355)
-    parser.add_argument("--token", required=True, help="shared receiver token")
+    tokens = parser.add_mutually_exclusive_group(required=True)
+    tokens.add_argument("--token", help="shared receiver token (prefer a private file)")
+    tokens.add_argument("--token-file", type=Path, help="private file containing the shared token")
+    tokens.add_argument("--device-config", type=Path, help="private device JSON containing the shared token")
     parser.add_argument("--profile", default="bad_street_brawler", help="startup profile; may be changed by RetroPie")
     parser.add_argument("--camera", default="auto", help="camera index, or 'auto'")
     parser.add_argument("--width", type=int, default=640)
@@ -334,6 +338,14 @@ def _base_status(
     return status
 
 
+def load_worker_token(args: argparse.Namespace) -> str:
+    """Read the pairing secret without putting it in the supervised process arguments."""
+    configured = json.loads(args.device_config.read_text()).get("token") if args.device_config else args.token
+    if configured is not None and not isinstance(configured, str):
+        raise ValueError("device token must be text")
+    return read_token(configured, args.token_file)
+
+
 def main() -> int:
     """Keep profile control online while starting vision resources only when needed."""
     args = build_parser().parse_args()
@@ -346,8 +358,8 @@ def main() -> int:
     profile_source = "startup"
     controller_enabled = args.controller_enabled
     practice_mode = False
-    token = read_token(args.token, None)
-    sender = UdpSender(args.receiver, args.port, args.token)
+    token = load_worker_token(args)
+    sender = UdpSender(args.receiver, args.port, token)
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
     shared = SharedDebugState()
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))

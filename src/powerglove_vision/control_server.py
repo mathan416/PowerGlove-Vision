@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Add a persistent idle attract setting without restarting vision.
 #   2026-09-06 - Add player controls, exact version details, and responsive layouts.
 #   2026-09-06 - Replace the completed lesson panel with the Glove Master award.
@@ -42,6 +43,7 @@ from typing import Any, Callable
 from .game_registry import registry_request, validate_document, MAX_REQUEST
 from .play_game import PLAY_CONTENT, PLAY_SCRIPT, PLAY_STYLE
 from .player_web import PLAYER_CONTENT, PLAYER_SCRIPT
+from .setup_web import SETUP_CONTENT, SETUP_SCRIPT
 from .web_features import GAMES_CONTENT, GAMES_SCRIPT, TUNE_CONTENT, TUNE_SCRIPT, TUNE_THRESHOLDS
 from . import __version__
 from .versioning import current_identity
@@ -189,7 +191,7 @@ $('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision
 if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
 $('game-session').textContent=s.game_session_active?'Registered game active':(s.profile_source==='Dashboard'?'Manual profile':'No registered game');$('game-session').className='value '+(s.game_session_active?'good':'');
 $('camera').style.display=idle||starting?'none':'block';$('camera-idle').style.display=idle||starting?'flex':'none';$('camera-idle').textContent=starting?startup:'POWER GLOVE VISION — Gestures are paused. Select a profile to resume.';if(idle||starting){$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){$('camera').src=$('camera').dataset.src+'?t='+Date.now()}updateCalibration(s);
-$('receiver').textContent=!s.connection_configured?'Set up Connection':s.controller_enabled?(!s.controller_context_active?'Armed — waiting for game':starting?'Waiting for vision':idle?'Ready when gestures resume':(s.launch_guard_active?'Launch delay':(s.receiver_available===true?'Sending controls':'Waiting for console'))):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle||s.controller_enabled&&!s.controller_context_active?'good':'warn');
+$('receiver').textContent=!s.connection_configured?'Set up Connection':s.controller_request_pending?'Waiting for tracker':s.controller_enabled?(!s.controller_context_active?'Armed — waiting for game':starting?'Waiting for vision':idle?'Ready when gestures resume':(s.launch_guard_active?'Launch delay':(s.receiver_available===true?'Sending controls':'Waiting for console'))):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle||s.controller_enabled&&!s.controller_context_active?'good':'warn');
 $('controller-toggle').textContent=s.controller_enabled?'Stop controller':'Start controller'; $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false'; $('controller-toggle').disabled=!s.connection_configured; $('controller-toggle').title=s.connection_configured?'':'Configure your RetroPie destination in Connection first';
 $('tracking').textContent=starting?'Starting…':idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
 bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);$('performance').innerHTML=performance(s);
@@ -198,7 +200,7 @@ for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString
 fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false,reset:true})}).finally(update);setInterval(update,250);
 $('center').onclick=calibrate;
 $('profile-selector').onchange=async()=>{const p=$('profile-selector'),notice=$('dashboard-notice');desiredProfile=p.value;switching=true;p.disabled=true;notice.textContent='Switching profile…';try{const r=await fetch('/api/profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({profile:desiredProfile})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Could not change profile.');notice.textContent=desiredProfile==='off'?'Gestures paused. Camera capture is stopping.':'Profile selected.';}catch(e){switching=false;p.disabled=false;notice.textContent=e.message;update()}};
-$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});b.disabled=false;update();};
+$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;try{const r=await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})}),x=await r.json();if(!r.ok)throw Error(x.error||'Could not change controller state.');$('dashboard-notice').textContent=x.pending?'Request saved. Waiting for the tracker; the Controller will retry.':enabled?'Controller armed.':'Stop request delivered to tracking.';}catch(e){$('dashboard-notice').textContent=e.message;}finally{b.disabled=false;update();}};
 $('shutdown-system').onclick=()=>shutdownSystem($('shutdown-system'));
 async function shutdownSystem(button){if(!confirm('Request a system halt? Controller input will stop. Some UNO Q boards restart automatically after shutdown. A disconnected website does not confirm it is safe to remove power.'))return;button.disabled=true;button.textContent='Shutting down…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('system').textContent='Shutting down safely';$('system').className='value warn';}catch(e){button.disabled=false;button.textContent='Shutdown';alert(e.message);}}""",
 )
@@ -287,43 +289,7 @@ PLAY = _page(
 )
 
 
-SETUP = _page(
-    "Setup",
-    """<h1>Let's get connected.</h1><p class=lead>Tell PowerGlove Vision where your RetroPie console lives. Settings are saved on this UNO Q and the private pairing token is never shown.</p>
-<section class=card><h2>Matrix attract mode</h2><form id=attract-form><label>Idle display<select id=matrix-attract><option value=on>On — full animation</option><option value=dim>Dim — gentle animation</option><option value=off>Off — connection pixels only</option></select></label><button type=submit>Save attract mode</button></form><p>Only changes the idle glove show. Game displays, T, L, startup, errors, and pairing stay unchanged. In Off mode, three faint bottom-left pixels show app running, network reachability to the console, and an authenticated RetroPie connection.</p><p id=attract-notice role=status></p></section>
-<section class=card><form id=form><div class=formgrid>
-<label>RetroPie console name<input id=receiver name=receiver placeholder=RETROPIE-NAME.local></label>
-<label>Controller port<input id=port name=port type=number min=1 max=65535 required></label>
-<label>Startup profile<select id=profile name=profile>""" + _profile_options() + """</select></label>
-<label>Tracking aid<select id=glove_color name=glove_color><option value=none>Bare hand</option><option value=white>White glove</option><option value=black>Black glove</option></select></label>
-<label>Camera<input id=camera name=camera placeholder=auto></label></div>
-<label class=check><input id=rotate_token type=checkbox> Generate a new private pairing token</label>
-<div class=controls><button type=submit>Save & restart tracker</button><button class=secondary type=button id=test>Test console name</button><button type=button id=controller-toggle>Start controller</button><button class=danger type=button id=shutdown-system>Shutdown</button></div><div class=notice id=notice></div></form></section>
-<div class=grid style='margin-top:14px'><div class=card><div class=label>Pairing</div><div class=value id=paired>Checking…</div><p>Your matching token remains in <code>data/device.json</code> and must also be installed at <code>/etc/powerglove/token</code> on RetroPie.</p></div><div class=card><div class=label>Address</div><div class=value><code>/setup</code></div><p>Bookmark this page at your UNO Q's <code>.local:8088</code> address.</p></div></div>
-<section class=card style='margin-top:14px'><h2>Pair with RetroPie</h2><p id=secure-note></p><div id=pairing-fields class=formgrid>
-<label>RetroPie address<input id=pair-host placeholder=RETROPIE-NAME.local autocomplete=off></label>
-<label>RetroPie username<input id=pair-user value=pi autocomplete=username></label>
-<label>RetroPie password<input id=pair-password type=password autocomplete=current-password></label>
-<label>UNO Q approval PIN<input id=device-code inputmode=numeric maxlength=6 placeholder='Shown on the LED matrix' autocomplete=one-time-code></label></div>
-<label class=check><input id=verified type=checkbox disabled> I compared the browser certificate fingerprint with the matrix ID</label>
-<div class=controls><button type=button id=pair-ssh>Prepare password pairing</button></div><div class=notice id=pair-notice></div>
-<details class=advanced><summary>Advanced: pair without a RetroPie password</summary><p>Run <code>sudo /opt/powerglove/bin/powerglove-pair</code> on RetroPie, then enter its temporary code here. Use this when SSH password login is disabled.</p><div class=formgrid><label>RetroPie one-time code<input id=pair-code placeholder=ABCDE-FGHIJ-23456-7ABCD autocomplete=one-time-code></label></div><div class=controls><button class=secondary type=button id=pair-code-button>Prepare one-time code</button></div></details></section>""",
-    r"""const $=id=>document.getElementById(id),secure=location.protocol==='https:';let prepared='';async function load(){const c=await(await fetch('/api/config')).json();for(const k of ['receiver','port','profile','glove_color','camera'])$(k).value=c[k];$('matrix-attract').value=c.matrix_attract||'on';$('pair-host').value=$('pair-host').value||c.receiver;$('paired').textContent=c.connection_configured?'Private token configured — confirm pairing on RetroPie':'Set up Connection: enter your RetroPie hostname and pair. Glove Academy works without pairing.'; $('controller-toggle').disabled=!c.connection_configured;$('controller-toggle').textContent=c.controller_enabled?'Stop controller':'Start controller';$('controller-toggle').className=c.controller_enabled?'danger':'';$('controller-toggle').dataset.enabled=c.controller_enabled?'true':'false'}load();
-$('secure-note').innerHTML=secure?'Pairing requires physical confirmation on the UNO Q. For password pairing, compare the matrix ID with the beginning of the certificate SHA-256 fingerprint shown by your browser before entering the password.':`Pairing is disabled over HTTP. Open <a href="https://${location.hostname}:8443/setup">the secure setup page</a>.`;
-for(const id of ['pair-host','pair-user','pair-code','pair-ssh','pair-code-button'])$(id).disabled=!secure;for(const id of ['pair-password','device-code'])$(id).disabled=true;
-$('attract-form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{const r=await fetch('/api/attract',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'attract'},body:JSON.stringify({mode:$('matrix-attract').value})});const s=await r.json();if(!r.ok)throw Error(s.error||'Could not save.');$('attract-notice').textContent='Saved. Applies when the matrix is idle; the tracker keeps running.'}catch(e){$('attract-notice').textContent=e.message}finally{b.disabled=false}};
-$('form').onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;$('notice').textContent='Saving…';const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),rotate_token:$('rotate_token').checked};const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const x=await r.json();$('notice').textContent=r.ok?'Saved. The tracker is restarting with the new settings.':x.error||'Could not save.';$('rotate_token').checked=false;b.disabled=false;load()};
-$('test').onclick=async()=>{$('notice').textContent='Testing name…';const r=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receiver:$('receiver').value.trim()})});const x=await r.json();$('notice').textContent=x.ok?`Found ${x.receiver} at ${x.address}. UDP controller delivery can now be attempted.`:x.error};
-$('controller-toggle').onclick=async()=>{const b=$('controller-toggle'),enabled=b.dataset.enabled!=='true';b.disabled=true;const r=await fetch('/api/controller',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled})});const x=await r.json();$('notice').textContent=r.ok?(enabled?'Controller started.':'Controller stopped and controls released.'):(x.error||'Could not change controller state.');b.disabled=false;load()};
-$('shutdown-system').onclick=async()=>{const b=$('shutdown-system');if(!confirm('Request a system halt? Controller input will stop. Some UNO Q boards restart automatically after shutdown. A disconnected website does not confirm it is safe to remove power.'))return;b.disabled=true;b.textContent='Shutting down…';$('notice').textContent='Requesting a safe system shutdown…';try{const r=await fetch('/api/system/shutdown',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'shutdown'},body:JSON.stringify({confirm:'SHUTDOWN'})}),x=await r.json();if(!r.ok)throw new Error(x.error||'Shutdown request failed.');$('notice').textContent='System halt requested. The UNO Q may restart automatically; loss of this page does not confirm it is safe to remove power.';}catch(e){b.disabled=false;b.textContent='Shutdown';$('notice').textContent=e.message;}};
-async function prepare(method,button){button.disabled=true;$('pair-notice').textContent='Showing verification on the UNO Q…';try{const r=await fetch('/api/pair/begin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host:$('pair-host').value.trim(),method})}),x=await r.json();if(!r.ok){$('pair-notice').textContent=x.error||'Could not begin pairing.';return}prepared=method;$('device-code').disabled=false;$('verified').disabled=false;$('pair-notice').textContent=`Matrix: ID ${x.certificate_id}, then PIN. Verify the browser certificate SHA-256 begins ${x.certificate_id}; check the confirmation, enter the PIN, and select Complete pairing.`;button.textContent='Complete pairing';}finally{button.disabled=false;}}
-function resetPairing(){prepared='';$('verified').checked=false;$('verified').disabled=true;$('pair-password').disabled=true;$('device-code').disabled=true;$('pair-ssh').textContent='Prepare password pairing';$('pair-code-button').textContent='Prepare one-time code';}
-$('verified').onchange=()=>{$('pair-password').disabled=!(prepared==='ssh'&&$('verified').checked);if($('verified').checked)$('device-code').focus();};
-async function pair(method,path,payload,button){if(prepared!==method){await prepare(method,button);return}if(!$('verified').checked){$('pair-notice').textContent='Compare the browser certificate fingerprint with the matrix ID first.';return}button.disabled=true;$('pair-notice').textContent='Pairing…';payload.device_code=$('device-code').value;try{const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),x=await r.json();$('pair-notice').textContent=r.ok?'Paired. RetroPie receiver restarted with the new private token.':x.error||'Pairing failed.';resetPairing();}finally{$('pair-password').value='';$('device-code').value='';button.disabled=false;}}
-$('pair-ssh').onclick=()=>pair('ssh','/api/pair/ssh',{host:$('pair-host').value.trim(),username:$('pair-user').value.trim(),password:$('pair-password').value},$('pair-ssh'));
-$('pair-code-button').onclick=()=>pair('code','/api/pair/code',{host:$('pair-host').value.trim(),code:$('pair-code').value.trim()},$('pair-code-button'));""",
-)
-
+SETUP = _page("Setup", SETUP_CONTENT.replace("{{PROFILE_OPTIONS}}", _profile_options()), SETUP_SCRIPT)
 
 SETUP = SETUP.replace(b'</main>', GAMES_CONTENT.encode() + b'</main>', 1)
 SETUP = SETUP.replace(b'</body>', b'<script>' + GAMES_SCRIPT.encode() + b'</script></body>', 1)
@@ -354,6 +320,11 @@ class ControlState:
     def __init__(self, config_path: Path, pairing_display: Callable[[str, str], None] | None = None) -> None:
         self.config_path = config_path
         self.lock = threading.Lock()
+        self.config_lock = threading.RLock()
+        self._controller_flush_lock = threading.Lock()
+        self._controller_pending = None
+        self._controller_revision = 0
+        self._controller_retry_at = 0.0
         self.revision = 0
         self.worker_status: dict[str, Any] = {}
         self.camera_available = False
@@ -433,6 +404,11 @@ class ControlState:
             return self._controller_enabled
 
     def set_controller_enabled(self, enabled: bool) -> None:
+        """Serialize persisted controller intent with device configuration writes."""
+        with self.config_lock:
+            self._set_controller_enabled(enabled)
+
+    def _set_controller_enabled(self, enabled: bool) -> None:
         """Queue a controller start or stop request for the vision worker."""
         if enabled:
             with self.lock:
@@ -444,6 +420,55 @@ class ControlState:
         self._persist_controller_enabled(enabled)
         with self.lock:
             self._controller_enabled = enabled
+            self._controller_revision += 1
+            self._controller_pending = (self._controller_revision, enabled)
+            self._controller_retry_at = 0.0
+
+    def flush_controller_request(self) -> bool:
+        """Serialize delivery attempts while retaining any newer intent."""
+        if not self._controller_flush_lock.acquire(blocking=False):
+            return False
+        try:
+            return self._flush_controller_request()
+        finally:
+            self._controller_flush_lock.release()
+
+    def _flush_controller_request(self) -> bool:
+        """Retry only the newest explicit Start/Stop intent until the worker acknowledges it."""
+        with self.lock:
+            pending = self._controller_pending
+            if pending is None:
+                return True
+            if time.monotonic() < self._controller_retry_at:
+                return False
+            self._controller_retry_at = time.monotonic() + 1.0
+        _, enabled = pending
+        request = urllib.request.Request(
+            WORKER_URL + "/controller", method="POST",
+            data=json.dumps({"enabled": enabled}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=1) as response:
+                result = json.load(response)
+            if not isinstance(result, dict) or result.get("controller_enabled") is not enabled:
+                return False
+        except urllib.error.HTTPError as exc:
+            if exc.code >= 500:
+                return False
+            with self.config_lock:
+                with self.lock:
+                    current = self._controller_pending == pending
+                if enabled and current:
+                    self.set_controller_enabled(False)
+            raise ValueError("The worker rejected the controller request. Check centering and try again.") from exc
+        except (OSError, ValueError, RecursionError):
+            return False
+        with self.lock:
+            if self._controller_pending == pending:
+                self._controller_pending = None
+                return True
+        return False
 
     def _persist_controller_enabled(self, enabled: bool) -> None:
         """Atomically retain the explicit Start/Stop choice without storing it in settings."""
@@ -523,6 +548,11 @@ class ControlState:
         }
 
     def save_attract(self, incoming):
+        """Serialize preference updates with connection saves."""
+        with self.config_lock:
+            return self._save_attract(incoming)
+
+    def _save_attract(self, incoming):
         """Persist an idle display preference without restarting or arming the worker."""
         from .game_registry import atomic_write
         mode = incoming.get("mode")
@@ -534,12 +564,20 @@ class ControlState:
         return {"mode": mode}
 
     def save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
+        """Serialize full configuration writes with display preference changes."""
+        with self.config_lock:
+            return self._save_config(incoming)
+
+    def _save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
         """Validate and persist browser-submitted non-secret device settings."""
         receiver = str(incoming.get("receiver", "")).strip()
         if len(receiver) > 253 or any(ch.isspace() for ch in receiver):
             raise ValueError("Enter a valid console hostname or IP address.")
         try:
-            port = int(incoming.get("port", 55355))
+            raw_port = incoming.get("port", 55355)
+            if isinstance(raw_port, bool) or isinstance(raw_port, float):
+                raise ValueError("Controller port must be a whole number.")
+            port = int(raw_port)
         except (TypeError, ValueError) as exc:
             raise ValueError("Controller port must be a number.") from exc
         if not 1 <= port <= 65535:
@@ -558,15 +596,11 @@ class ControlState:
         if not token:
             token = secrets.token_urlsafe(24)
         saved = {"receiver": receiver, "port": port, "token": token, "profile": profile, "glove_color": glove_color, "camera": camera, "matrix_attract": current.get("matrix_attract", "on")}
-        temporary = self.config_path.with_suffix(".tmp")
-        temporary.write_text(json.dumps(saved, indent=2) + "\n")
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, self.config_path)
-        if not receiver:
-            self._persist_controller_enabled(False)
+        from .game_registry import atomic_write
+        atomic_write(self.config_path, json.dumps(saved, indent=2) + "\n")
+        if not receiver or incoming.get("rotate_token"):
+            self.set_controller_enabled(False)
         with self.lock:
-            if not receiver:
-                self._controller_enabled = False
             self.revision += 1
         return self.public_config()
 
@@ -579,6 +613,7 @@ class ControlState:
                 "worker_running": self.worker_running,
                 "last_error": self.last_error,
                 "controller_enabled": self._controller_enabled,
+                "controller_request_pending": self._controller_pending is not None,
                 "uptime_seconds": round(time.time() - self.started_at),
                 "app_started_at": self.started_at,
                 "version": __version__,
@@ -711,6 +746,10 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             path = self.path.split("?", 1)[0]
             try:
+                origin = self.headers.get("Origin")
+                if (self.headers.get("Sec-Fetch-Site", "").lower() == "cross-site" or
+                        (origin and origin not in ("http://"+self.headers.get("Host", ""), "https://"+self.headers.get("Host", "")))):
+                    raise ForbiddenActionError("Open this control from the Controller website.")
                 if path in ("/api/games", "/api/tuning", "/api/players", "/api/attract"):
                     expected = path.rsplit("/", 1)[-1]
                     origin = self.headers.get("Origin")
@@ -746,7 +785,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                             state.set_controller_enabled(False)
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/config":
-                    result = state.save_config(self.json_body())
+                    result = state.save_config(self.json_body(require_json=True))
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/test-connection":
                     receiver = str(self.json_body().get("receiver", "")).strip()
@@ -759,21 +798,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     if not isinstance(enabled, bool):
                         raise ValueError("enabled must be true or false")
                     state.set_controller_enabled(enabled)
-                    request = urllib.request.Request(
-                        WORKER_URL + "/controller",
-                        method="POST",
-                        data=json.dumps({"enabled": enabled}).encode(),
-                        headers={"Content-Type": "application/json"},
-                    )
-                    try:
-                        with urllib.request.urlopen(request, timeout=1):
-                            pass
-                    except urllib.error.HTTPError as exc:
-                        state.set_controller_enabled(False)
-                        raise ValueError(json.loads(exc.read()).get("error", "Controller request rejected.")) from None
-                    except (OSError, urllib.error.URLError):
-                        pass
-                    _send(self, 200, json.dumps({"controller_enabled": enabled}).encode(), "application/json")
+                    delivered = state.flush_controller_request()
+                    _send(self, 200 if delivered else 202, json.dumps({
+                        "controller_enabled": enabled, "pending": not delivered}).encode(), "application/json")
                 elif path == "/api/profile":
                     profile = str(self.json_body(require_json=True).get("profile", ""))
                     if profile not in PROFILES:
@@ -867,14 +894,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                         str(incoming.get("host", "")).strip(), str(incoming.get("method", ""))
                     )
                     _send(self, 200, json.dumps(result).encode(), "application/json")
-                elif path == "/calibrate":
-                    request = urllib.request.Request(WORKER_URL + "/calibrate", method="POST", data=b"")
-                    with urllib.request.urlopen(request, timeout=1):
-                        pass
-                    _send(self, 204, b"", "text/plain")
                 else:
                     self.send_error(404)
-            except (ValueError, json.JSONDecodeError) as exc:
+            except (ValueError, json.JSONDecodeError, RecursionError) as exc:
                 _send(self, 400, json.dumps({"error": str(exc)}).encode(), "application/json")
             except ForbiddenActionError as exc:
                 _send(self, 403, json.dumps({"error": str(exc)}).encode(), "application/json")

@@ -52,6 +52,17 @@ with the packaged MediaPipe wheel. It polls worker status, updates the matrix,
 and retries a worker that stops. The worker's internal HTTP interface is on
 loopback port 8089; the public website is on 8088, with secure Setup on 8443.
 
+The supervisor passes the private `data/device.json` path to the worker using
+`--device-config`; the token itself is absent from process arguments. Device
+configuration mutations are serialized and atomically replace private files.
+Setup content and browser actions live in `setup_web.py`, separate from HTTP routes.
+Start/Stop intent has a single pending slot and serialized delivery attempts;
+the supervisor retries transient failures until the worker handler acknowledges
+acceptance. A newer explicit request supersedes pending intent. This mechanism
+does not buffer camera frames or controller state, and acknowledgement does not
+prove emulator consumption. Receiver socket timeout and last-valid-packet
+expiry both publish neutral native state and release the virtual gamepad.
+
 Two app-owned support containers provide the profile-control UDP relay and
 local-hostname resolution. The profile relay publishes port 55356 and forwards
 packets to the main service without interpreting or authenticating them.

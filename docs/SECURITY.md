@@ -62,6 +62,14 @@ active token belongs only in the PowerGlove Vision Controller's private `data/de
 RetroPie's `/etc/powerglove/token`. It must not be committed, placed in a shell
 argument, stored in `launcher.json`, or included in a screenshot or log.
 
+The supervised vision worker reads its token using `--device-config`, keeping
+the secret out of process arguments. Device settings are created and replaced
+atomically with mode `0600`. Legacy `--token` remains a compatibility option for
+manual commands; prefer `--token-file` or `--device-config` for the worker.
+Browser mutation routes reject cross-site origins, and connection-setting writes
+require JSON. These browser protections do not add local-user authentication or
+change the trusted-network model.
+
 The recommended setup path uses a short-lived one-time code to authenticate
 the RetroPie pairing server over pinned TLS. Password pairing uses authenticated SSH. After the initial connection
 establishes trust, subsequent connections verify the saved remote host key.

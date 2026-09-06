@@ -106,10 +106,10 @@ one-time-code method after both installers finish.
 
 1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair`. Leave the command running; it prints a 20-character code that expires after two minutes.
 2. In your computer's browser, open `https://UNO-Q-NAME.local:8443/setup`. This is the secure Setup page; ordinary HTTP Setup cannot accept pairing credentials.
-3. Enter your RetroPie hostname and its one-time code, then select **Prepare one-time code**.
+3. Enter your RetroPie hostname and its one-time code, then select **Prepare code pairing**.
 4. Read the identifier after `ID` on the Controller's matrix. Compare it with the beginning of the browser certificate's SHA-256 fingerprint. The locally generated certificate may cause a browser warning; verify the fingerprint before continuing.
 5. If the identifiers match, select the confirmation checkbox, enter the six-digit PIN shown after `PN` on the matrix, and select **Complete pairing**.
-6. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
+6. If Setup asks you to save the console destination, select **Save connection settings** above. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
 
 If the code expires, restart the RetroPie command and prepare a new attempt.
 Never paste the private token into a document, screenshot, or support request.
@@ -119,7 +119,7 @@ Never paste the private token into a document, screenshot, or support request.
 Use this route only if RetroPie accepts SSH password login and your account
 can run `sudo` with that password.
 
-1. Open secure Setup and enter the RetroPie hostname and username.
+1. Open secure Setup, expand **Pair using an SSH password**, and enter the RetroPie hostname and username.
 2. Select **Prepare password pairing** and compare the matrix `ID` with the browser certificate fingerprint.
 3. If they match, select the confirmation checkbox, enter the matrix PIN and your RetroPie password, and complete pairing.
 4. Confirm that the receiver service is active on RetroPie.
@@ -127,6 +127,21 @@ can run `sudo` with that password.
 The password is used for one SSH operation and is not stored. If neither
 pairing route works, follow the [token-management reference](CONFIGURATION_REFERENCE.md#pairing-and-token-management).
 
+
+### Connection settings and recovery
+
+**Connection and startup** saves the console address and startup game profile.
+Port, camera, and pairing-key replacement are under **Advanced connection settings**.
+**Check console address** only checks name resolution. If loading fails, use
+**Reload saved settings**; if a save fails, correct or retry it without losing
+fields. Start/Stop may show a pending request while tracking reconnects.
+
+Connection saves restart tracking. The separate **Save attract mode** action
+changes only the idle matrix display. Hand setup, players, and backups are in
+**Glove Academy**. Existing private settings and calibration remain preserved
+through the normal installation/upgrade process; this review needs no matrix
+firmware update. The receiver timeout correction takes effect after updating
+RetroPie as well as the Controller application.
 
 ## 5. Calibrate and test a game
 
@@ -281,7 +296,7 @@ exact software and running firmware identities; older firmware may report unavai
 Completing all sixteen lessons replaces the lesson panel with
 the **Glove Master** award. **Start again** restores the lessons.
 
-![Setup page; use HTTPS to enable pairing](images/setup-page.png)
+![Setup connection settings and pairing; use HTTPS to enable pairing](images/setup-page.png)
 
 Help serves the public manuals, illustrations, and PDFs locally. **This cabinet**
 shows addresses derived from your current browser connection and public device

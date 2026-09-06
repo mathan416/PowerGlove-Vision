@@ -4,8 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
-# Change log:
 # Full history: docs/CHANGELOG.md and Git history.
+# Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Verified Help discovery for Rock Paper Scissors and native validation.
 #   2026-09-05 - Verified persistent armed state and clearer delivery status.
 #   2026-09-05 - Kept mocked forwarding assertions compatible with Python 3.7.
@@ -478,9 +479,9 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"pair-password').disabled=true", SETUP)
         self.assertIn(b"verified').checked", SETUP)
 
-    def test_one_time_code_pairing_is_an_advanced_option(self):
-        self.assertIn(b"Advanced: pair without a RetroPie password", SETUP)
-        self.assertIn(b"Prepare one-time code", SETUP)
+    def test_pairing_methods_are_explicit(self):
+        self.assertIn(b"Pair using an SSH password", SETUP)
+        self.assertIn(b"Prepare code pairing", SETUP)
 
     def test_controller_connection_starts_disarmed_until_player_arms_it(self):
         self.assertFalse(self.state.controller_enabled())
@@ -496,7 +497,7 @@ class ControlStateTests(unittest.TestCase):
 
     def test_shutdown_controls_are_on_dashboard_and_setup(self):
         for page in (DASHBOARD, SETUP):
-            self.assertIn(b">Shutdown</button>", page)
+            self.assertIn(b"id=shutdown-system", page)
             self.assertIn(b"/api/system/shutdown", page)
             self.assertIn(b"restart automatically", page.lower())
             self.assertIn(b"does not confirm it is safe to remove power", page.lower())

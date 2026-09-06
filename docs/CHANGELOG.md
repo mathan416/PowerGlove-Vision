@@ -31,7 +31,27 @@ authoritative record for line-level and file-level history.
 - Phone/tablet layout refinements for navigation, forms, player controls, and
   Academy/Play camera panels, verified at widths down to 320 pixels.
 
+### Changed
+
+- Reorganized Setup with clearer connection, pairing, attract, and power sections;
+  one-time-code pairing is prominent and SSH password pairing remains available.
+  Address checks explicitly test name resolution; the hand/glove label is identified
+  as diagnostic. Refreshed Help, installation instructions, screenshots, and PDFs.
+- Recorded review coverage and a maintainer parking lot for later decisions.
+
 ### Fixed
+
+- Setup recovers from failed loading and actions, retains unsaved connection fields
+  during controller/pairing refreshes, and resets approval when the pairing host changes.
+- Concurrent device settings saves are serialized and privately atomic; first-run
+  configuration is private from creation. Rotating the pairing key disarms output.
+- Failed worker delivery of Start/Stop is reported as pending and retried using only
+  the latest request; Dashboard and Setup show failures instead of implying success.
+- Supervised worker launches read the pairing token from a private file instead of
+  exposing it in process arguments. Browser mutation routes reject cross-site requests,
+  and connection saves require JSON.
+- Receiver socket timeouts release native input as well as the virtual gamepad;
+  malformed nested profile messages no longer terminate the listener.
 
 - Glove Academy now replaces the final lesson with the Glove Master award after
   all sixteen lessons are completed, instead of displaying both and pushing the

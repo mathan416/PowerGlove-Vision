@@ -270,3 +270,10 @@ repeat updates, private-settings preservation, and read-only checks. Run
 Keep development builds as prereleases. Workflow artifacts are not published
 release downloads. Physical fresh-device and upgrade tests, cold boot, pairing,
 and gameplay remain release gates; simulated filesystem tests do not replace them.
+
+## Review parking lot
+
+The [6 September Setup and code review](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
+records tested fixes, review coverage, and decisions awaiting the maintainer.
+Update that record as items are resolved. Keep measurement-dependent movement
+changes separate from routine UI and persistence fixes.

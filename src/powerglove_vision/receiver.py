@@ -4,10 +4,11 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Validate controller datagrams and publish them as a Linux virtual gamepad through uinput."""
 
@@ -174,6 +175,8 @@ def main() -> int:
             except socket.timeout:
                 if device is not None and not released:
                     device.release()
+                    if native is not None:
+                        native.release(last_sequence + 1)
                     released = True
     except KeyboardInterrupt:
         return 0

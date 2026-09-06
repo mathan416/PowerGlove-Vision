@@ -39,7 +39,7 @@ appears and **Calibrate** becomes available before continuing.
 
 1. Stand where the camera can see your whole hand with a little room on every side.
 2. Open your hand and face your palm toward the camera. On first use, or if your camera or playing position has changed, select **Calibrate**. Otherwise reuse your saved resting position, which the app treats as the centre of movement.
-3. Wait for tracking to settle, then select **Start controller** to arm delivery.
+3. Wait for tracking to settle, then select **Start controller** to arm delivery. If the tracker is reconnecting, the request is shown as pending and retried. A later **Stop controller** replaces the pending Start request.
 4. Launch a registered game. Controls begin only after RetroArch is running and
    its short initialization guard ends.
 5. Move your whole hand away from center for directions. Return to center to stop.

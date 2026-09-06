@@ -71,16 +71,30 @@ the PowerGlove Vision Controller matrix before entering the one-time PIN.
 
 ### Settings shown in the browser
 
+Setup groups **Connection and startup**, **Pair with RetroPie**, **Matrix attract
+mode**, **Controller and power**, and **Games**. Port, camera, and key replacement
+are under **Advanced connection settings**. Key replacement stops output and
+requires pairing again. A saved destination and key are not proof that RetroPie
+has received that key. **Check console address** verifies name resolution only.
+
+A failed initial load offers **Reload saved settings**; connection fields remain
+disabled until loading succeeds. Failed actions can be retried. Start/Stop and
+pairing refreshes retain unsaved connection edits. HTTP 202 from `/api/controller`
+means the latest request is saved but still awaiting worker delivery. The
+supervisor retries it; another explicit request supersedes it. This is separate
+from camera frames and controller packets, which remain newest-state-only.
+
+
 | Setting | Default | Meaning and recommendation |
 | --- | --- | --- |
 | Console hostname or IP | Empty (not configured) | Set your RetroPie hostname (`RETROPIE-NAME.local` in examples) or a reserved LAN address and pair through Connection before starting controls. Glove Academy and local settings work without a destination. Existing saved destinations are preserved. |
-| Controller port | `55355` | PowerGlove Vision Controller to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
-| Startup profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
-| Tracking aid | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
+| Receiver UDP port | `55355` | PowerGlove Vision Controller to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
+| Startup game profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
+| Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
 | Camera | `auto` | Prefer `auto`. Use a number from `0` through `99` only when automatic selection chooses the wrong capture device. |
-| Generate a new token | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
+| Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
 
-Selecting **Save** validates the fields, writes them atomically with private
+Selecting **Save connection settings** validates the fields, writes them atomically with private
 permissions, and restarts the vision worker using the saved calibration.
 Recalibrate only if you have moved the camera, changed your playing position,
 or notice unwanted movement while your hand is at rest.
@@ -360,7 +374,7 @@ must already have the software installed.
 3. Save with Ctrl+O, confirm the filename, and exit with Ctrl+X. Apply the ownership and permission commands above.
 4. Run `sudo systemctl restart powerglove-receiver.service`, then test controller delivery from Dashboard. Clear the token from your clipboard and close the private file afterward.
 
-If you generate a new token in Setup, pair the devices again immediately.
+If you replace the pairing key in Setup, controller output stops; pair the devices again before selecting Start controller.
 Do not transfer the new token through a command-line argument; process listings
 and shell history can expose it.
 
@@ -745,7 +759,7 @@ gamepad named `PowerGlove Vision`. Its installed service is:
 
 The supplied service listens on all local interfaces at UDP port `55355`, reads
 `/etc/powerglove/token`, and releases held controls when a socket receive times out after 250 milliseconds.
-This is a receive timeout, rather than a separate timer for the last valid packet. If you change the controller port in PowerGlove Vision Controller Setup, add
+The receiver measures its release deadline from the last valid packet; rejected traffic cannot postpone release. Both the virtual gamepad and native state are neutralized on timeout. If you change the controller port in PowerGlove Vision Controller Setup, add
 the same `--port` value to the service's `ExecStart`, then reload and restart:
 
 ```sh
@@ -989,7 +1003,7 @@ changing controller mappings.
 
 ## Local hostname resolution inside App Lab
 
-If the console name fails, use **Test console name** in Connection, then follow
+If the console name fails, use **Check console address** in Connection, then follow
 [hostname troubleshooting](CONFIGURATION_REFERENCE.md#faq-what-if-the-console-name-cannot-be-resolved).
 A router-reserved IPv4 address is a fallback, not a setup requirement.
 
@@ -1191,7 +1205,9 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | --- | --- | --- |
 | `--receiver HOST` | Required | RetroPie hostname or IPv4 address. An empty string permits local-only tracking but cannot deliver controls. |
 | `--port NUMBER` | `55355` | Destination UDP controller port. |
-| `--token VALUE` | Required | Shared token. This worker currently has no `--token-file` flag; its token appears in process arguments. |
+| `--token VALUE` | None | Legacy direct shared token; exposes the value in process arguments. Prefer a private-file option. |
+| `--token-file PATH` | None | Read the shared token from a private text file. |
+| `--device-config PATH` | Supervisor: `data/device.json` | Read the shared token from private device JSON. Supply exactly one of the three token options. Other worker settings still come from their flags. |
 | `--profile NAME` | `bad_street_brawler` | Initial profile, one of the eleven supported profiles or `off`. |
 | `--camera VALUE` | `auto` | Camera selection; use `auto` or a camera index. |
 | `--width PIXELS` | `640` | Requested capture width; the camera may negotiate another size. |
@@ -1603,7 +1619,7 @@ scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
 Enter the PowerGlove Vision Controller `arduino` account password at the remote `sudo` prompt. The
 script does not read or store it. The helper watches only the fixed
 `data/shutdown-request` path and can perform only a system halt. After it is
-installed, **Shutdown** is available on Dashboard and Setup. Each press
+installed, **Shutdown** is available on Dashboard and **Shut down Controller** on Setup. Each press
 requires browser confirmation and warns that the PowerGlove Vision Controller may restart automatically
 and that a disconnected website does not confirm it is safe to remove power. Its boot-time tmpfiles rule recreates the readiness
 marker if the PowerGlove Vision Controller reboots or App Lab replaces the application directory.
@@ -1751,7 +1767,7 @@ its archive extension, if the selected profile is **off**.
 
 ### FAQ: What if the console name cannot be resolved?
 
-1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Test console name**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the PowerGlove Vision Controller app; successful lookup on your laptop alone is not sufficient.
+1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Check console address**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the PowerGlove Vision Controller app; successful lookup on your laptop alone is not sufficient.
 2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
 3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
 4. On the PowerGlove Vision Controller, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
@@ -1759,7 +1775,7 @@ its archive extension, if the selected profile is **off**.
 6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the PowerGlove Vision Controller by name, check that reverse direction separately.
 7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
 
-After fixing the problem, reboot both machines and repeat **Test console name** before testing gameplay. The app-owned resolver has been verified across a PowerGlove Vision Controller reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
+After fixing the problem, reboot both machines and repeat **Check console address** before testing gameplay. The app-owned resolver has been verified across a PowerGlove Vision Controller reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
 
 ## Removing the installation
 

@@ -47,6 +47,16 @@ Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
 or turn it Off except for faint connection pixels. This does not change game
 displays, T, L, or gesture recognition. The setting saves without a tracker restart.
 
+Setup now groups connection and startup settings, secure pairing, matrix attract
+mode, and controller/power actions. **Check console address** tests name resolution;
+use a running game to verify delivery. Failed requests can be retried, and
+controller actions preserve unsaved connection edits. Pending Start/Stop requests
+are reported while the tracker reconnects.
+
+The [development review and parking lot](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
+records completed fixes and decisions for a later session, including latency,
+player calibration, and backup behavior across future default changes.
+
 ## Choose a guide
 
 ### User manuals
