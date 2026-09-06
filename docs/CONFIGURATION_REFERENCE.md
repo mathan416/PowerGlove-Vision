@@ -1128,6 +1128,31 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--controller-enabled` | Off | Starts sending controller input immediately; omit it for local inspection. |
 | `-h`, `--help` | — | Prints usage and exits. |
 
+### Collect a live status baseline
+
+Run `python3 scripts/measure-vision-status.py` from the development checkout.
+The command performs GET requests only. It does not open the camera, arm the
+controller, change profiles, or record images. Set the intended state through
+Dashboard before starting. See the [baseline procedure](direction-response-benchmark.md#collect-a-live-status-baseline)
+for interpretation and the separate receiver, core, and display measurements.
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--status-url URL` | Required | Explicit HTTP(S) `/status` endpoint without credentials, query, or fragment. Ordinary environment proxies are ignored. HTTPS uses normal certificate validation. |
+| `--seconds NUMBER` | `30` | Observation duration, from 1 to 600 seconds. Requests have a timeout of at most two seconds. |
+| `--interval NUMBER` | `0.1` | Seconds between requests, from 0.05 to 5. Slow requests reduce the actual poll rate. |
+| `--phase NAME` | Required | `neutral`, `movement`, or `idle`. Neutral adds aggregate X/Y span and standard deviation for detected, calibrated samples; the label is supplied by the operator, not inferred from the hand. |
+| `--output PATH` | Required | New JSON report path. The parent directory must exist; existing reports are never overwritten. Keep reports outside release files. |
+| `-h`, `--help` | — | Prints usage and exits. |
+
+Exit `0` means at least one fresh active sample was observed, not that a latency
+target passed. Exit `2` means no active samples or invalid arguments. Inspect
+request errors, detection/calibration counts, send-success counts, and condition
+segments before comparing runs. Timing distributions describe unique observed
+samples; public status polling can miss intervening inference results.
+Reports separate detected-hand from missing-hand inference costs and include
+the skipped-capture counter delta within each condition segment.
+
 ### Deploy or repair the PowerGlove Vision Controller application
 
 Run these scripts from the project checkout on your development computer.

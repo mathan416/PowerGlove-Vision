@@ -82,7 +82,7 @@ The RetroPie receiver owns `/run/powerglove/native-state` and creates it read-on
 for consumers. Format version 1 is a fixed 64-byte little-endian record containing:
 
 - magic, format version, record size, and matching begin/end coherence guards;
-- sample sequence and receiver-arrival monotonic timestamp;
+- sample sequence and a RetroPie monotonic timestamp taken at publication, after receiver validation and virtual-gamepad writes;
 - signed normalized X, Y, Z, and roll axes;
 - detected and calibrated flags;
 - four compact finger-flex levels;
@@ -96,6 +96,10 @@ The core copies one record at the beginning of its input callback and rejects it
 unless both guards match and are even. It consumes only current, calibrated,
 detected Super Glove Ball samples. Stale or invalid input leaves the emulated
 device neutral.
+
+That timestamp is not the socket receive time or the core-consumption time.
+The [live baseline procedure](direction-response-benchmark.md#collect-a-live-status-baseline)
+keeps those stages separate before movement-latency tuning.
 
 ## Build the research core
 

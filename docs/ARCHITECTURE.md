@@ -85,6 +85,14 @@ so the browser refresh rate is not the controller state update rate. Capture
 age, inference cadence, skipped frames, preview cost, and send time expose the
 local stages; none alone is an end-to-end camera-to-game latency measurement.
 
+The read-only `scripts/measure-vision-status.py` collector deduplicates observed
+inference timestamps and capture sequences. Public status is cached by the
+supervisor, so even frequent polling observes only a subset of results. The
+collector separates changing profiles, preview state, and delivery conditions;
+it does not average overlapping rolling percentiles. Camera exposure, network
+reception, receiver processing, native core pickup, and physical display delay
+require separate evidence. See the [live baseline procedure](direction-response-benchmark.md#collect-a-live-status-baseline).
+
 The current transport is ordinary gamepad emulation. Bad Street Brawler maps
 Glove Zap to a 180 ms simultaneous Left + Right pulse on each push activation;
 its FCEUmm game-specific options allow that combination. The receiver already

@@ -12,6 +12,17 @@ faster inference for more responsive play.
 
 ### Added
 
+- Added `scripts/measure-vision-status.py` for read-only, bounded latency baselines.
+  It ignores duplicate cached status samples, separates changing run conditions,
+  and reports observed timing distributions and optional neutral X/Y variation.
+  Reports contain aggregate measurements, with explicit limits for unmeasured
+  network, receiver, core, and display stages. Recognition and movement defaults
+  are unchanged.
+- Recorded separate live movement, requested-stationary, network round-trip,
+  and native-publication cadence observations. The movement window retained
+  detection in all 315 observed samples and measured 132.8 ms read-to-send p95;
+  physical display latency and a reliable stationary-jitter baseline remain
+  separate validation steps.
 - Added a camera-controlled Rock Paper Scissors page at `/play`. A closed hand
   plays rock, an open palm plays paper, and the held V-sign plays scissors in a
   first-to-three match against Pixel Pal. It reuses the local practice-camera
@@ -26,6 +37,8 @@ faster inference for more responsive play.
 
 ### Changed
 
+- Updated native compatibility test assertions to match the already documented
+  completed-game confirmation and deliberately neutral unused packet fields.
 - Adopted **PowerGlove Vision Controller** as the user-facing name for the
   Arduino UNO Q device throughout current guides, while retaining literal
   `uno-q` commands, filenames, host placeholders, and hardware-specific notes.

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Aligned evidence assertions with the confirmed completed native game.
 #   2026-09-05 - Required native depth, fist, and index-point packet mapping.
 #   2026-09-05 - Distinguished confirmed recognition from unmapped native fields.
 #   2026-09-04 - Required installed records to identify the exact local patch.
@@ -69,13 +70,13 @@ class NativeCoreTests(unittest.TestCase):
         record = (ROOT / "docs/super-glove-ball-native.md").read_text()
         self.assertIn("NESdev material is a source of testable hypotheses", record)
         self.assertIn("Detection signature, packet length, boundaries, and bit order | Confirmed", record)
-        self.assertIn("Native Z encoding | Packet mapping confirmed headlessly", record)
+        self.assertIn("Native Z encoding | Confirmed headlessly and in live gameplay", record)
         self.assertIn(
-            "Native open, fist, and index-point encoding | Packet mapping confirmed headlessly",
+            "Native open, fist, and index-point encoding | Confirmed headlessly and in live gameplay",
             record,
         )
         self.assertIn(
-            "Native wrist rotation and remaining action buttons | Not yet mapped in-game",
+            "Native wrist rotation and remaining action buttons | Not mapped; deliberately neutral",
             record,
         )
         self.assertIn(

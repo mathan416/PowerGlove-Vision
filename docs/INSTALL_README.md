@@ -206,6 +206,11 @@ sudo access to inspect protected settings.
 A successful technical installation can still report ACTION for the physical
 checks. Those checks need you and your cabinet.
 
+If movement feels delayed after installation, use the
+[read-only latency baseline](direction-response-benchmark.md#collect-a-live-status-baseline)
+before changing sensitivity or video settings. It separates Controller timing
+from the receiver, emulator, and display checks and does not enable controls.
+
 For a specific version or a development prerelease, use the
 [technical installation reference](CONFIGURATION_REFERENCE.md#versioned-two-script-installation).
 It also explains compatibility, package building, backups, and recovery.

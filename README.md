@@ -210,6 +210,10 @@ The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that t
 other listed games consume standard NES controller bits. They continue to use
 FCEUmm and the same global recognition settings.
 
+For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
+collects fresh timing observations without changing camera settings or controls.
+It keeps Controller software timing separate from network, emulator, and display delay.
+
 ## Use the web interface
 
 | Page | What it does |
