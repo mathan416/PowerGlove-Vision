@@ -4,6 +4,8 @@
 
 # PowerGlove Vision
 
+**Release candidate:** [v0.3.2-rc.6](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.6). Update both computers together using the [candidate installation commands](docs/INSTALL_README.md#install-this-release-candidate). The default installer commands select the latest stable release, not this candidate. Live gameplay and latency validation remain pending.
+
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
 a camera connected to the **PowerGlove Vision Controller**, built on an Arduino
 UNO Q. Use your bare hand or a plain glove; there are no glove electronics to

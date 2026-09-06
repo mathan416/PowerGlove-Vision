@@ -7,74 +7,42 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+No changes yet.
+
+## [0.3.2-rc.6] - 2026-09-06
+
+Changes since rc.5. This candidate adds saved player setups, complete hand backups, signed controller sessions, and Setup/mobile refinements. Update both computers together: the default version-2 sender and receiver do not interoperate with older controller transport. The project base version remains 0.3.2; the release tag and installer manifests identify the candidate.
+
 ### Added
 
-- Version-2 HMAC controller messages with receiver-issued challenges, restart/retired-session replay rejection, and bounded nonblocking handshakes. Existing native and gamepad mappings are unchanged; upgrade both computers together.
-
-- Per-player saved calibration with explicit same-position reuse after switching;
-  internal stores migrate to version 4 with private recovery backups.
-- Version-2 hand backups now include all effective sensitivity pairs and software
-  identity. Restore separately reviews complete sensitivity and calibration reuse.
-  Earlier version-2 files work; version-1 portable exports are no longer accepted.
-- Background hostname refresh removes synchronous DNS/mDNS work from controller
-  sends without queuing frames or states. An isolated 12-lookup Controller sample
-  measured 2.35 ms median and 107.54 ms maximum cold-cache lookup time before this change.
-- Independent host Wi-Fi health in Setup and a fourth faint Off-mode pixel.
-  Normal setup/deployment installs an unprivileged sampler. Requires updated matrix
-  firmware; active game, T/L, pairing, and startup displays are unchanged.
-
-- Complete hand-setup backups with player name, saved sensitivity, and calibration;
-  restore review offers explicit same-position calibration reuse or fresh centering.
-  Portable backups now start at version 2, as noted above. Restore pauses controller output,
-  preserves Academy progress, and resumes safely after an interrupted calibration
-  write. Existing player stores migrate with retained backups and unchanged progress.
-
-- Idle-only matrix attract setting in Setup: On, Dim, or Off with faint app,
-  console-network, and authenticated RetroPie indicators. Saves without restarting
-  vision; game modes, T, L, startup, errors, and pairing remain unchanged.
-
-- Controller-stored player presets with individual hand sensitivity, saved
-  Academy lessons, and persistent Glove Master awards. Existing settings become
-  Player 1 with a private version-1 backup retained before migration.
-- Player switches and restores pause controls; stale tabs cannot overwrite
-  another player or undo progress resets. Device credentials remain excluded
-  from portable backups.
-- Exact software commit/candidate metadata and matrix source-fingerprint readback,
-  distinguishing running firmware from the expected packaged sketch. Older
-  firmware is reported as unavailable instead of assumed to match.
-- Phone/tablet layout refinements for navigation, forms, player controls, and
-  Academy/Play camera panels, verified at widths down to 320 pixels.
+- Up to twelve Controller-stored players with individual sensitivity, Academy progress, Glove Master awards, and saved calibration. Switching players pauses output and requires fresh centering or explicit same-position reuse.
+- Complete version-2 hand-setup backups with name, personal and effective sensitivity, software identity, and per-player calibration. Restore reviews complete sensitivity and calibration reuse separately, preserves Academy progress, and recovers safely after interrupted writes. Earlier version-2 backups work; portable version-1 exports are rejected. Internal stores migrate to version 4 with private recovery backups.
+- Version-2 HMAC-SHA256 controller messages with receiver-issued challenges, replay/retired-session rejection, bounded nonblocking handshakes, and restart recovery. No input state is queued during negotiation, and the shared secret is absent from signed packets.
+- Idle matrix controls for On, Dim, or Off with faint app, console-service, authenticated-console, and independent Wi-Fi pixels. Setup reports unavailable Wi-Fi telemetry separately from disconnection. The unprivileged host sampler is installed on setup/upgrade; the fourth pixel requires the matching matrix firmware. Game, T/L, startup, error, and pairing displays are unchanged.
+- Exact software commit/candidate metadata and running matrix firmware readback. Older firmware reports unavailable identity instead of an assumed match.
 
 ### Changed
 
-- Extracted Dashboard, Academy, shared page rendering, Games, and personalization into maintained web modules; removed obsolete tuning UI without changing rendered pages.
-- Receiver defaults to signed controller input; an explicit temporary `--allow-legacy-controller` upgrade option closes after the first signed state.
-
-- Reorganized Setup with clearer connection, pairing, attract, and power sections;
-  one-time-code pairing is prominent and SSH password pairing remains available.
-  Address checks explicitly test name resolution; the hand/glove label is identified
-  as diagnostic. Refreshed Help, installation instructions, screenshots, and PDFs.
-- Recorded review coverage and a maintainer parking lot for later decisions.
+- Reorganized Setup wording and connection, pairing, attract, and power sections. One-time-code pairing is prominent; SSH password pairing remains available. Address checks distinguish name resolution from game delivery.
+- Refined phone/tablet navigation, forms, and Academy/Play layouts down to 320 pixels.
+- Moved hostname refresh off the controller send path without queues or new smoothing. Hardware microbenchmarks document packet processing cost separately from end-to-end latency.
+- Extracted the shared page shell, Dashboard, Academy, Games, and tuning into maintained modules and removed obsolete UI definitions. Rendered pages remain byte-for-byte equivalent.
+- Receiver defaults to signed input. The explicit temporary `--allow-legacy-controller` upgrade option closes after the first signed state and should be removed after migration.
+- Updated README, Help, installation material, screenshots, architecture diagrams, PDF editions, and the maintained review parking lot.
 
 ### Fixed
 
-- Preserve the contacted Linux address/interface for handshake replies when RetroPie has Ethernet and Wi-Fi on the same subnet; also accept a different authenticated reply address when necessary; signatures, fresh request/session identifiers, and the receiver port remain required. Verified against the cabinet's Ethernet/Wi-Fi addresses.
+- Preserved the contacted Linux address/interface for UDP handshake replies when RetroPie has Ethernet and Wi-Fi on the same subnet. Replies require HMAC, fresh request/session identifiers, and the configured receiver port.
+- Setup retries failed loads/actions, retains unsaved connection edits during refresh, and clears pairing approval after destination changes. Device-setting writes are serialized, private, and atomic; pairing-key changes disarm output.
+- Start/Stop worker requests report pending delivery and retry only the latest intent. Supervised workers read pairing credentials from private configuration rather than process arguments.
+- Receiver timeouts release native input and the virtual gamepad; rejected traffic and handshakes cannot postpone release. Malformed nested profile messages no longer terminate the listener.
+- Glove Master replaces the final lesson panel after all sixteen lessons, avoiding an extra panel pushing the page downward. Start again restores the lesson panel.
 
-- Setup recovers from failed loading and actions, retains unsaved connection fields
-  during controller/pairing refreshes, and resets approval when the pairing host changes.
-- Concurrent device settings saves are serialized and privately atomic; first-run
-  configuration is private from creation. Rotating the pairing key disarms output.
-- Failed worker delivery of Start/Stop is reported as pending and retried using only
-  the latest request; Dashboard and Setup show failures instead of implying success.
-- Supervised worker launches read the pairing token from a private file instead of
-  exposing it in process arguments. Browser mutation routes reject cross-site requests,
-  and connection saves require JSON.
-- Receiver socket timeouts release native input as well as the virtual gamepad;
-  malformed nested profile messages no longer terminate the listener.
+### Validation and remaining work
 
-- Glove Academy now replaces the final lesson with the Glove Master award after
-  all sixteen lessons are completed, instead of displaying both and pushing the
-  lesson downward. Start again restores the lesson panel.
+- All 355 tests pass on Python 3.7 and 3.12. Source/documentation audits, package verification, browser checks, and visual PDF inspection pass.
+- Both devices ran the completed code at `a7131f8`. Cross-device dry-run tests accepted both fresh sessions, dropped negotiation frames, and rejected retired-session input. Production handshakes worked through both RetroPie addresses. Controller firmware matched, Wi-Fi status was connected, and saved hand settings, calibration, pairing, and Start/Stop choice were preserved.
+- Full live gameplay, synchronized camera-to-display latency, stationary jitter, and fresh-device installation checks remain release gates. Earlier successful native Super Glove Ball gameplay does not substitute for repeating gameplay on this candidate. This is not the final 0.3.2 release.
 
 ## [0.3.2-rc.5] - 2026-09-06
 

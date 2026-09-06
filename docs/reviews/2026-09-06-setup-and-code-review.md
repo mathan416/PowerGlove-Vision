@@ -75,3 +75,7 @@ scripts from the large combined files, then remove unused older definitions.
 This would improve maintainability and make future changes easier to review,
 without adding a visible feature. It can be scheduled in small steps with browser
 regression checks. The bounded extraction described above is now implemented; HTTP routes and application behavior are preserved.
+
+## Release-candidate preparation
+
+The maintainer authorized merging to main and publishing v0.3.2-rc.6 after deployment of `a7131f8`. All 355 tests passed on both supported Python versions. The installed sender/receiver passed an isolated two-session network test, including dropped handshake frames and retired-session rejection. Production handshakes worked through both cabinet interfaces; the Controller reported matching firmware. Mobile Help and complete version-2 backup checks passed. Physical gameplay, synchronized latency/jitter measurement, and fresh-device installation validation remain pending, as recorded in the changelog.

@@ -30,3 +30,7 @@ If compiled cores are published later, provide a separate build for each tested
 RetroPie architecture. Accompany every binary release with its exact complete
 corresponding source archive, this patch, build instructions, upstream notices,
 and the GPLv2 license. Keep the FCEUmm fallback available.
+
+## Controller transport compatibility
+
+PowerGlove Vision v0.3.2-rc.6 requires matching signed-controller software on the Controller and RetroPie. The receiver validates that transport before publishing the existing version-1 native-state record; this candidate does not change the core patch or require a native-core rebuild. Follow the [coordinated upgrade instructions](../../docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades). Native gameplay and full camera-to-display latency still need validation on the candidate; FCEUmm remains the explicit fallback.
