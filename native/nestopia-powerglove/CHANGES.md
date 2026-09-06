@@ -80,3 +80,13 @@ Do not replace or prepend project ownership text over an upstream file header.
 Keep upstream author notices and license files in source distributions and
 beside installed or distributed core binaries. The build verifies the protected
 Nestopia Power Glove header after applying the patch and stops if it changed.
+
+## Optional diagnostic build — September 6, 2026
+
+A separate build option inserts checked hooks in `libretro/libretro.cpp` after
+the normal patch is applied. The project-owned `diagnostic_trace.h` buffers
+valid/invalid callback observations, sequence/guard/publication identities, and
+local monotonic consumption time, then exports a private CSV on game unload.
+This instrumentation does not change the maintained production patch, upstream
+headers, native-state ABI, or normal core selection. It is disabled unless a
+diagnostic build and trace environment are both selected.

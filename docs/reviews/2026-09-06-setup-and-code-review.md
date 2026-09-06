@@ -134,3 +134,13 @@ These are outstanding measurements and validation, not unapproved implementation
 proposals or newly imposed release gates. Unused native packet fields, including
 wrist rotation, remain deliberately neutral; they are not missing confirmed
 Super Glove Ball functionality.
+
+## Latency test preparation follow-up
+
+Prepared guided windows, bounded optional Controller/receiver traces, a separate
+diagnostic core build, and original-video indexing/annotation tools. See the
+[native session procedure](../direction-response-benchmark.md#native-latency-and-stationary-jitter-session).
+Local synthetic and regression checks validate the tools; physical recording,
+actual-device overhead comparison, and accepted stationary baselines remain
+pending. The maintainer chose to prepare tools now and record later. No device
+deployment, core selection, or responsiveness tuning is part of this preparation.

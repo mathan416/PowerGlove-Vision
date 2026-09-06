@@ -52,6 +52,13 @@ PUBLIC_PDF_NAMES = {
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
+    "PowerGlove-Vision/src/powerglove_vision/diagnostic_trace.py",
+    "PowerGlove-Vision/scripts/run-native-latency-session.py",
+    "PowerGlove-Vision/scripts/analyze-latency-trace.py",
+    "PowerGlove-Vision/scripts/analyze-latency-video.py",
+    "PowerGlove-Vision/scripts/benchmark-diagnostic-overhead.py",
+    "PowerGlove-Vision/scripts/instrument-native-core.py",
+    "PowerGlove-Vision/native/nestopia-powerglove/diagnostic_trace.h",
     "PowerGlove-Vision/src/powerglove_vision/controller_protocol.py",
     "PowerGlove-Vision/src/powerglove_vision/web_common.py",
     "PowerGlove-Vision/src/powerglove_vision/dashboard_web.py",

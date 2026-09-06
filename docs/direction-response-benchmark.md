@@ -225,9 +225,9 @@ and individual coordinate records. Full options are in the
 Use durations within one machine's clock domain. Do not subtract independent
 monotonic clocks across machines, halve an ICMP round trip into a claimed UDP
 delay, or add independently measured p95 values into an end-to-end percentile.
-Receiver publication and core-consumption timestamps need additional diagnostic
-instrumentation before those intervals can be reported as measured. Keep any
-instrumentation bounded and compare its overhead before using its results.
+The opt-in tools in the [native session procedure](#native-latency-and-stationary-jitter-session)
+provide receiver/core instrumentation. Collect actual traces and compare their
+overhead before reporting those intervals as measured.
 
 For the visual test, frame the hand and game display in one 120/240-fps recording.
 Hold an open hand still for five seconds, then make five short horizontal steps
@@ -334,3 +334,222 @@ An isolated comparison ran on the actual Controller app container and RetroPie w
 | Validation, RetroPie | v2 | 0.4488 | 0.5640 | 0.7606 |
 
 The representative released-state packet grew from 505 to 606 bytes, using a dummy 32-character token. Signed packet size no longer depends on token length. Median processing additions were 0.1104 ms for Controller packet creation and 0.3398 ms for RetroPie validation. These microbenchmarks do not include scheduling, network transit, initial handshake, uinput/native publication, core consumption, display latency, or stationary jitter. No movement smoothing or recognition settings changed. The synchronized physical movement baseline remains pending.
+
+## Native latency and stationary-jitter session
+
+The development tools below prepare the next physical session. No new live
+latency or stationary-jitter result is claimed. Keep the current recognition,
+camera, calibration, smoothing, and video settings unchanged for the baseline.
+
+### Preflight and camera placement
+
+Record the installed software/core identities, active player, calibrated state,
+selected native-state path, and effective RetroArch video settings (including
+per-game append files). Confirm `lr-nestopia-powerglove`, device `517`, and that
+the Robo-Glove follows the hand. Local send success alone is not receiver
+acceptance. Keep lighting, player position, and game conditions fixed. Close the
+Controller preview for the primary baseline.
+
+Put the external camera behind and slightly to one side of the player, looking
+past the shoulder. Both the real hand and the cabinet screen must be visible;
+the hand must not obscure the Robo-Glove. Keep them at similar vertical positions
+in the recording where practical to reduce rolling-shutter timing differences.
+Leave the PowerGlove Vision Controller camera in its normal playing position.
+Make a short framing clip before starting measurements.
+
+An iPhone high-frame-rate original is useful: 120 fps gives 8.3 ms frame spacing,
+240 fps gives 4.2 ms. A Mac camera works too; verify its actual recording cadence
+(30 fps gives 33.3 ms spacing). One recording supplies the timeline for both
+events, so no phone/Mac clock synchronization is necessary. Preserve the original
+file. Slow-motion playback time is not necessarily physical elapsed time.
+
+### Guided windows
+
+Run from the development checkout on the Mac:
+
+```sh
+python3 scripts/run-native-latency-session.py \
+  --status-url http://UNO-Q-NAME.local:8088/status \
+  --output-dir /tmp/powerglove-session-01
+```
+
+The read-only runner waits for Enter before each window, counts down, then
+collects status at a requested 50 ms interval. It guides three 20-second supported
+open-hand holds, then ten moves in each direction: five short and five longer
+steps, with a hold and return to center between moves. Each direction lasts
+60 seconds. Terminal cues pace the operator; they do not synchronize clocks.
+A direct worker status endpoint through an SSH tunnel can avoid the supervisor
+cache; it still samples rather than recording every inference.
+
+Reports include observed-sample gaps, tracking-loss transitions, X/Y span and
+standard deviation, and active button sample counts during neutral windows.
+These counts are observations, not complete gesture-event counts. A stationary
+candidate needs continuous observed detection/calibration and no active buttons;
+video, delivery, condition changes, and request errors must still be reviewed.
+Repeat invalid holds using the single-window collector and a new output path.
+Physical tremor is part of the live measurement, not isolated tracker noise.
+
+### Optional correlated software tracing
+
+Tracing is disabled by default. It adds no controller packets and does not change
+the signed transport or the 64-byte native-state ABI. Set these variables in the
+**environment of the processes being started**, not just a later SSH shell:
+
+```sh
+POWERGLOVE_DIAGNOSTIC_TRACE=/tmp/pgv-session-01
+POWERGLOVE_DIAGNOSTIC_SECONDS=180
+```
+
+On the Controller, the App Lab supervisor passes its environment to the worker.
+On RetroPie, use a temporary receiver service environment override. Start with
+existing launch arguments, ports, private token files, and configuration. Do not
+start a second worker or receiver alongside the normal one. Verify the selected
+environment reached the actual worker/receiver. Use separate windows or up to
+600 seconds when preparing a longer session; the duration starts at process
+initialization, so allow time for launch and preflight. Remove temporary overrides
+and restart normally afterward. Normal installation does not enable tracing.
+
+Each process reserves a new private file named `PREFIX.ROLE.PID.json`. It retains
+at most 20,000 events in memory. Recording uses a nonblocking lock, drops evidence
+under contention, and freezes when its time/capacity limit is reached. A background
+thread exports the frozen window; normal close also requests export. Gameplay
+callbacks perform no file writes. A crash/forced termination can leave incomplete
+evidence: only parse finalized files. `dropped` and `stop_reason` describe loss or
+early truncation; counts stop when the window freezes. Files contain timing,
+hashed session correlation, sequence, X/Y and button flags, but no images,
+landmarks, token, raw session identifier, address, or player name.
+
+Controller events separate camera-read completion, processing start, tracking
+completion, gesture/calibration completion, and encode/send start/end. Receiver
+events record userspace socket return, validation completion, publication start
+and completion, plus the published record's timestamp/guard. These are local
+clock measurements; camera exposure/driver buffering and kernel socket arrival
+remain outside their boundaries.
+
+Core consumption needs a **separate diagnostic build** in a fresh build directory:
+
+```sh
+POWERGLOVE_BUILD_DIAGNOSTICS=1 \
+  scripts/build-nestopia-powerglove.sh build/nestopia-latency-01
+```
+
+Build on the target architecture; a Mac `.dylib` cannot run on RetroPie. The result
+is named `nestopia_powerglove_diagnostic_libretro`, distinct from the normal core.
+The production patch and its digest remain unchanged. Select the diagnostic
+binary only for the test launch, preserving all existing arguments and the
+`POWERGLOVE_NATIVE_STATE` path. Do not replace the installed normal core. Set
+`POWERGLOVE_CORE_DIAGNOSTIC_TRACE=/tmp/pgv-core-01.csv` and the same duration in
+RetroArch's launch environment. Leave the old verbose `POWERGLOVE_TRACE` unset.
+The diagnostic callback buffers at most 20,000 consumption records, with no
+logging or disk writes in the callback. **Exit the game normally** to export the
+CSV; it is not readable as complete evidence until unload. Saturation is reported
+in its final `# dropped=` line. Restore the normal core selection afterward.
+
+Collect matching files from one session. Receiver and core must use the same
+cabinet boot and native-state path. Controller/receiver joins use a hashed session
+and sequence; receiver/core joins use sequence, guard, and publication timestamp,
+so profile/session sequence resets do not falsely match older publications.
+
+```sh
+python3 scripts/analyze-latency-trace.py \
+  --controller /tmp/pgv-controller.json \
+  --receiver /tmp/pgv-receiver.json --core /tmp/pgv-core-01.csv \
+  --same-cabinet-boot --output /tmp/pgv-stages.json
+```
+
+The report counts first observed consumption per publication. Repeated core reads
+are not additional input samples. Missing matches can reflect window boundaries,
+overwritten states, or dropped evidence; they are not automatically network loss.
+Network transit and physical display latency remain explicitly unmeasured here.
+Never subtract independent monotonic clocks or add stage percentiles. Measure
+clock offset and its uncertainty separately before attempting one-way network
+attribution; no such synchronization is implemented by these tools.
+
+### Instrumentation overhead
+
+Run `scripts/benchmark-diagnostic-overhead.py --output /tmp/pgv-overhead.json`
+with the appropriate Python interpreter on each device. It needs no camera,
+network traffic, or virtual gamepad. It compares 5,000 iterations after warm-up
+with the trace guard disabled/enabled, including event allocation, timestamps,
+session hashing, and buffer insertion. It excludes core tracing and file export.
+
+A preparation run on the development Mac (arm64, Python 3.14.7) measured disabled
+p50/p95 0.042/0.083 microseconds and enabled 0.833/0.917 microseconds, with an
+enabled maximum of 1,301.875 microseconds. This is a local synthetic measurement,
+not a device or gameplay result. Before using traced gameplay results, repeat
+workload windows with tracing off/on/off on the actual devices, including the
+normal/diagnostic core comparison. Report distribution changes and capture/
+tracking continuity; do not silently subtract a synthetic overhead estimate.
+
+### Original-video review and screenshots
+
+Install `av` (PyAV) and `Pillow` into a temporary **Mac diagnostic environment**;
+they are not Controller or receiver runtime dependencies. First index the original
+recording and extract selected zero-based frames for visual review:
+
+```sh
+python scripts/analyze-latency-video.py --video /path/to/original.mov \
+  --frames 100,101,102 --output-dir /tmp/pgv-video-index
+```
+
+The report includes the original SHA-256 and decoded presentation timestamp of
+every frame, bounded to 150,000 frames. Inspect candidate onset frames and their
+immediate predecessors. Record first physical motion and first corresponding
+Robo-Glove motion, not terminal cue time. To measure stopping, also mark hand stop
+and game settling. Use a reviewed annotation file with this structure (example
+frame numbers and digest are placeholders, not measurements):
+
+```json
+{
+  "video_sha256": "digest-from-index-report",
+  "timing_verified": true,
+  "seconds_per_pts_second": 1,
+  "trials": [{
+    "label": "right-1", "direction": "right", "unoccluded": true,
+    "hand_onset": 100, "game_onset": 120,
+    "hand_stop": 130, "game_settled": 150
+  }],
+  "stationary": []
+}
+```
+
+Set `timing_verified` only after confirming actual capture cadence and retiming.
+The scale is real seconds per file-timestamp second; use 1 for an original whose
+PTS already represent physical time. Only a verified uniform retime can use a
+single different scale. Gaps, duplicate/backward timestamps, and intervals over
+1.5 times the median are rejected for measurement. A recording with changing
+slow-motion speed needs an original uniform-timing export, not a guessed scale.
+
+```sh
+python scripts/analyze-latency-video.py --video /path/to/original.mov \
+  --annotations /tmp/pgv-annotations.json \
+  --output-dir /tmp/pgv-video-analysis
+```
+
+The analyser reports onset median/p95/range, each onset's preceding-frame timing
+bracket, per-direction counts, and optional stop-to-settle time. It extracts
+annotated PNG stills without covering the original picture. These screenshots
+are evidence from the recording, not remotely timed screenshots of the display.
+Exposure, rolling shutter, and annotation uncertainty remain beyond the frame
+bracket and must be stated with conclusions.
+
+Optional `trajectory` points on a trial contain `frame`, `hand_x`, `hand_y`,
+`glove_x`, and `glove_y` in original-image pixels. Supply at least three
+chronological points covering one movement through its settled endpoint. The
+report compares normalized progress and reports glove overshoot; these are
+following-behavior measures, not another latency estimate. Optional `stationary`
+entries contain `label`, `unoccluded`, `tracking_losses`, and `points` with the
+same five fields. They report sampled hand/screen coordinate span and standard
+deviation separately; tracking loss or occlusion prevents acceptance. Positions
+are manually reviewed, not inferred automatically. Use matching telemetry to
+identify tracking loss and unintended gestures, and sample enough of each full
+20-second hold to describe resting behavior.
+
+A synthetic 100 fps video with a known ten-frame delay produced 100 ms onset,
+with a 90-110 ms frame-sampling bracket; extracted stills were visually checked.
+This validates the analysis path, not the physical cabinet. Keep raw recordings,
+traces, indexes and individual coordinates temporary and local. Retain aggregate
+reports and selected non-sensitive annotated evidence in this benchmark record
+only after the physical session. Tune one identified stage at a time, requiring
+repeatable responsiveness improvement without increased resting movement or
+reduced recognition reliability.

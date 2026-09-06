@@ -239,6 +239,10 @@ FCEUmm and the same global recognition settings.
 For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
 collects fresh timing observations without changing camera settings or controls.
 It keeps Controller software timing separate from network, emulator, and display delay.
+The [native latency session tools](docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
+guide stationary/movement windows, optionally correlate software traces, and
+extract annotated evidence from an original hand-and-screen recording. They are
+disabled during normal play; physical measurements remain pending.
 
 ## Use the web interface
 

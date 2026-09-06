@@ -2085,3 +2085,31 @@ recovery. The manifest never scans or deletes unknown user files or directories.
 `--source STAGING --backup BACKUP` applies a staged payload; BACKUP must be a new
 location outside both source and installation trees. This is used by the deployment
 script; normal users should use the two standard installers.
+
+## Optional native latency diagnostics
+
+These developer tools do not change recognition settings or production packet
+and native-state formats. See the [complete session procedure](direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
+for camera placement, interpretation, process activation, and rollback.
+
+| Interface | Default | Meaning |
+| --- | --- | --- |
+| `POWERGLOVE_DIAGNOSTIC_TRACE` | Unset/off | Private output prefix inherited by the vision worker or receiver at process startup. Writes `PREFIX.ROLE.PID.json`, never overwriting a file. |
+| `POWERGLOVE_DIAGNOSTIC_SECONDS` | `180` | Finite trace duration, 1-600 seconds from initialization. Python and diagnostic core buffers hold at most 20,000 events each. |
+| `POWERGLOVE_BUILD_DIAGNOSTICS=1` | Unset/off | Build a separately named diagnostic core in a fresh directory; no installation or launch-selection change. |
+| `POWERGLOVE_CORE_DIAGNOSTIC_TRACE` | Unset/off | New private CSV path used only by the diagnostic core. Export occurs at normal game unload. |
+
+`run-native-latency-session.py` takes `--status-url` and a new `--output-dir`;
+it reads status and provides operator cues. `analyze-latency-trace.py` takes
+`--controller`, `--receiver`, optional `--core`, and a new `--output`; core joins
+require `--same-cabinet-boot` after verifying the same boot/native-state path.
+`benchmark-diagnostic-overhead.py --output PATH` measures local synthetic trace
+overhead without controlling hardware.
+
+`analyze-latency-video.py` takes `--video`, a new `--output-dir`, and optional
+`--frames` (up to 500 zero-based indexes) or `--annotations`. It needs PyAV and
+Pillow only on the analysis computer. It requires an exact video hash and
+reviewed timing before measuring annotated events. All raw traces, recordings,
+and position annotations remain temporary and local. Public status still samples
+inference; the new trace joins never estimate cross-host network delay by
+subtracting independent monotonic clocks.

@@ -7,7 +7,16 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- Native Super Glove Ball test tools for three stationary holds and ten movements per direction, with sampled tracking losses, gaps, and neutral button counts.
+- Opt-in, bounded Controller/receiver timing traces and a separately built diagnostic native core. Normal transport, native-state format, and responsiveness settings are unchanged. No diagnostic deployment is performed automatically.
+- Local original-video indexing, reviewed onset/settling and coordinate analysis, frame-sampling uncertainty, and annotated screenshots. Retimed or incomplete evidence requires review; no physical latency improvement is claimed.
+
+### Validation
+
+- Diagnostic core compiled on macOS; finite-buffer/export and timestamp-analysis regressions passed. A synthetic 100 fps, ten-frame response measured 100 ms with a 90-110 ms sampling bracket.
+- Actual-device instrumentation overhead, live gameplay, synchronized hand/screen recording, and accepted stationary-jitter baselines remain pending.
 
 ## [0.3.2-rc.6] - 2026-09-06
 

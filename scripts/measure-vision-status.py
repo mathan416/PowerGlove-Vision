@@ -111,11 +111,25 @@ class StatusWindow:
                             "local_send_success_samples": 0,
                             "timings": {key: [] for key in TIMINGS},
                             "detected_inference_ms": [], "missing_hand_inference_ms": [],
-                            "capture_skips": [],
+                            "capture_skips": [], "observation_intervals_ms": [],
+                            "last_observed_at": None, "tracking_losses": 0, "previous_detected": None,
+                            "button_active_samples": {},
                             "sent_sample_age_ms": [], "axes": {"x": [], "y": []}}
             self.segments.append(self.current)
         segment = self.current
         segment["observed_samples"] += 1
+        if segment["last_observed_at"] is not None:
+            segment["observation_intervals_ms"].append((timestamp - segment["last_observed_at"]) * 1000)
+        segment["last_observed_at"] = timestamp
+        detected = status.get("detected") is True
+        if segment["previous_detected"] is True and not detected:
+            segment["tracking_losses"] += 1
+        segment["previous_detected"] = detected
+        if self.phase == "neutral" and isinstance(status.get("buttons"), dict):
+            for name in ("a", "b", "start", "select", "glove_zap", "menu_guard", "closed_hand", "index_point"):
+                if status["buttons"].get(name) is True:
+                    counts = segment["button_active_samples"]
+                    counts[name] = counts.get(name, 0) + 1
         for field in ("detected", "calibrated"):
             segment[field + "_samples"] += int(status.get(field) is True)
         sent = status.get("receiver_available") is True
@@ -148,7 +162,13 @@ class StatusWindow:
         for segment in self.segments:
             result = {key: value for key, value in segment.items()
                       if key not in ("timings", "sent_sample_age_ms", "axes", "capture_skips",
-                                     "detected_inference_ms", "missing_hand_inference_ms")}
+                                     "detected_inference_ms", "missing_hand_inference_ms",
+                                     "observation_intervals_ms", "last_observed_at", "previous_detected")}
+            result["observation_interval_ms"] = summarize(segment["observation_intervals_ms"])
+            result["stationary_candidate"] = (self.phase == "neutral" and segment["observed_samples"] > 0
+                and segment["detected_samples"] == segment["observed_samples"]
+                and segment["calibrated_samples"] == segment["observed_samples"]
+                and not segment["button_active_samples"])
             result["timings_ms"] = {key: summarize(values) for key, values in segment["timings"].items()}
             for key in ("detected_inference_ms", "missing_hand_inference_ms"):
                 result[key] = summarize(segment[key])

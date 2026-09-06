@@ -350,3 +350,12 @@ worker and RetroPie launch hook.
 Vision and the dashboard keep running while output is unarmed or waiting for a game,
 so setup never generates surprise game inputs.
 **Shutdown** is different: it halts Linux on the Controller. The tested board automatically restarts; remaining halted is not guaranteed.
+
+## Optional latency diagnostics
+
+Normal installation leaves timing traces off and does not install or select the
+separate diagnostic core. The [native test procedure](direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
+explains temporary process environments, same-architecture diagnostic builds,
+private local evidence, and restoration of the normal launch configuration.
+Video analysis dependencies belong in a temporary Mac environment. Capture the
+physical hand and cabinet screen together; deployment alone is not a latency test.

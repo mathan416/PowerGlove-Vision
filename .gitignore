@@ -17,3 +17,6 @@ src/powerglove_vision/_build_info.json
 
 # Full-resolution photo backup; optimized guide images are tracked.
 /output/Matrix-Photo-Originals.zip
+
+# Isolated emulator source/build products, never release payloads.
+/build/

@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-05 - Carried native closed-hand and index-point recognition states.
@@ -22,6 +23,7 @@ import socket
 import time
 import uuid
 
+from .diagnostic_trace import DiagnosticTrace, session_key
 from .model import ControllerState
 from .controller_protocol import encode_message, decode_message
 
@@ -94,6 +96,7 @@ from .resolver import BackgroundAddress, resolve_ipv4
 class UdpSender:
     """Send controller states in recoverable sessions over connectionless UDP."""
     def __init__(self, host: str, port: int, token: str | None) -> None:
+        self.trace = DiagnosticTrace.from_environment("controller")
         self.destination = (host, port)
         self.token = token
         self.session = uuid.uuid4().hex
@@ -158,10 +161,15 @@ class UdpSender:
             if self.challenge is None:
                 self.last_error = "Waiting for the RetroPie controller handshake; update both computers if this persists."
                 return False
+            send_started_ns = time.monotonic_ns() if self.trace and self.trace.enabled else 0
             data = state.to_dict()
             data.pop("protocol", None)
             self.socket.sendto(encode_message("state", self.token, session=self.session,
                 challenge=self.challenge, state=data), peer)
+            send_finished_ns = time.monotonic_ns() if send_started_ns else 0
+            if send_started_ns:
+                self.trace.record(dict(event="send", session=session_key(self.session),
+                    sequence=state.sequence, start_ns=send_started_ns, end_ns=send_finished_ns))
         except OSError as exc:
             self.last_error = str(exc)
             self._retry_at = now + 2.0
@@ -177,5 +185,7 @@ class UdpSender:
 
     def close(self) -> None:
         """Close the sender socket."""
+        if self.trace:
+            self.trace.close()
         self.address.close()
         self.socket.close()

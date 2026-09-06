@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -22,6 +23,7 @@ import sys
 import time
 from pathlib import Path
 
+from .diagnostic_trace import DiagnosticTrace, session_key
 from .native_state import DEFAULT_PATH as DEFAULT_NATIVE_STATE_PATH, NativeStateWriter
 from .transport import MAX_PACKET_BYTES, decode_state
 from .controller_protocol import ReceiverSessions
@@ -151,6 +153,7 @@ def main() -> int:
     retired_sessions = set()
     sessions = ReceiverSessions(token)
     signed_seen = False
+    trace = DiagnosticTrace.from_environment("receiver")
     try:
         while True:
             now = time.monotonic()
@@ -169,6 +172,7 @@ def main() -> int:
                                   if level == socket.IPPROTO_IP and kind == 8 and len(data) >= 12]
                 else:
                     payload, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
+                received_ns = time.monotonic_ns() if trace and trace.enabled else 0
                 try:
                     state, reply = sessions.receive(payload, _peer)
                     if reply is not None:
@@ -203,15 +207,25 @@ def main() -> int:
                         last_session, last_sequence = session, -1
                     if state["sequence"] <= last_sequence:
                         continue
+                validated_ns = time.monotonic_ns() if received_ns else 0
                 sequence = state["sequence"]
                 last_sequence = sequence
                 if device is None:
                     device = UInputDevice()
                 device.write_state(state)
+                publication_started_ns = time.monotonic_ns() if received_ns else 0
                 if native is not None:
                     native.write(state)
                 released = False
                 last_valid_at = time.monotonic()
+                if received_ns:
+                    completed_ns = time.monotonic_ns()
+                    identity = sessions.active[0][0] if signed_seen else last_session
+                    trace.record(dict(event="receive", session=session_key(identity),
+                        sequence=sequence, received_ns=received_ns, validated_ns=validated_ns,
+                        publication_start_ns=publication_started_ns, end_ns=completed_ns,
+                        published_ns=native.published_ns if native else None,
+                        guard=native.guard if native else None))
             except socket.timeout:
                 if device is not None and not released:
                     device.release()
@@ -227,6 +241,8 @@ def main() -> int:
         if native is not None:
             native.close()
         sock.close()
+        if trace:
+            trace.close()
 
 
 if __name__ == "__main__":

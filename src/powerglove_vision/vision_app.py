@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
@@ -44,6 +45,7 @@ from .camera import CameraUnavailableError, camera_candidates
 from .debug_server import SharedDebugState, start_debug_server
 from .gesture import GestureConfig, GestureEngine, load_calibration, save_calibration
 from .matrix import MatrixStatus, UnoQMatrix
+from .diagnostic_trace import session_key
 from .model import ControllerState
 from .profile_control import ActiveGameLease, ProfileCommandServer, ProfileRequest, read_token
 from .realtime import LatestFrameCapture, LatestPreviewEncoder, RollingPerformance
@@ -361,6 +363,7 @@ def main() -> int:
     practice_mode = False
     token = load_worker_token(args)
     sender = UdpSender(args.receiver, args.port, token)
+    trace = getattr(sender, "trace", None)
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
     shared = SharedDebugState()
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
@@ -616,6 +619,7 @@ def main() -> int:
             tracker.preview_enabled = preview_due
             tracker.diagnostics_enabled = preview_due or shared.tuning.active()
             result = tracker.process(frame)
+            tracking_finished_ns = time.monotonic_ns() if trace and trace.enabled else None
             if preview_due:
                 latest_diagnostics = result.diagnostics
             if startup_timer is not None:
@@ -643,6 +647,16 @@ def main() -> int:
                 and controller_context_active and not launch_guard_active
             ) else False
             sent_at = time.monotonic()
+            if trace and trace.enabled:
+                trace.record(dict(event="vision", session=session_key(sender.session),
+                    sequence=state.sequence, capture_sequence=captured_frame.sequence,
+                    capture_ns=int(captured_frame.captured_at * 1e9),
+                    start_ns=int(inference_started * 1e9), tracking_end_ns=tracking_finished_ns,
+                    end_ns=int(inference_finished * 1e9),
+                    sent=receiver_available, detected=state.detected, calibrated=state.calibrated,
+                    x=state.axes.get("x", 0), y=state.axes.get("y", 0),
+                    buttons=sum(1 << i for i, name in enumerate(("a", "b", "start", "select",
+                        "glove_zap", "menu_guard", "closed_hand", "index_point")) if state.buttons.get(name))))
             inference_ms = (inference_finished - inference_started) * 1000
             send_ms = (sent_at - inference_finished) * 1000
             sample_age_ms = max(0.0, (sent_at - captured_frame.captured_at) * 1000)

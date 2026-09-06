@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-05 - Added native closed-hand and index-point recognition flags.
 #   2026-09-04 - Added a guarded read-only latest-sample record for custom Nestopia.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -127,6 +128,7 @@ class NativeStateWriter:
         self.mapping[:] = encode_record(state, odd, arrived_ns)
         self.guard = odd + 1
         self.mapping[:] = encode_record(state, self.guard, arrived_ns)
+        self.published_ns = arrived_ns
 
     def release(self, sequence: int = 0) -> None:
         """Publish a neutral stale-safe record."""

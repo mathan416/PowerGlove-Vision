@@ -34,3 +34,14 @@ and the GPLv2 license. Keep the FCEUmm fallback available.
 ## Controller transport compatibility
 
 PowerGlove Vision v0.3.2-rc.6 requires matching signed-controller software on the Controller and RetroPie. The receiver validates that transport before publishing the existing version-1 native-state record; this candidate does not change the core patch or require a native-core rebuild. Follow the [coordinated upgrade instructions](../../docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades). Native gameplay and full camera-to-display latency still need validation on the candidate; FCEUmm remains the explicit fallback.
+
+## Optional consumption-timing build
+
+`POWERGLOVE_BUILD_DIAGNOSTICS=1 scripts/build-nestopia-powerglove.sh build/nestopia-latency-01`
+uses a fresh isolated directory and emits a separately named diagnostic core for
+the build machine's architecture. It leaves the production patch and native-state
+ABI unchanged. The MIT-licensed `diagnostic_trace.h` buffers finite optional
+callback timestamps and writes them only on normal game unload. The resulting
+Nestopia-derived binary remains subject to Nestopia's GPL distribution terms.
+See the [session procedure](../../docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
+for environment variables, overhead comparison, and restoring the normal core.
