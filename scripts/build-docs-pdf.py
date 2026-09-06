@@ -238,6 +238,8 @@ def parse_table(
         widths = [1.05 * inch, 2.05 * inch, 1.75 * inch, 1.75 * inch]
     if rows[0] == ["Game", "ROM SHA-256", "Input finding", "Shared profile"]:
         widths = [1.2 * inch, 1.5 * inch, 2.7 * inch, 1.2 * inch]
+    if rows[0] == ["Port", "Protocol", "Direction", "Boundary"]:
+        widths = [1.0 * inch, 0.9 * inch, 2.35 * inch, 2.35 * inch]
     if rows[0] == ["Lane", "Core", "Exact game image"]:
         widths = [1.2 * inch, 2.3 * inch, 3.1 * inch]
     table = Table(formatted, colWidths=widths, repeatRows=1, hAlign="LEFT")
@@ -368,8 +370,8 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
             if image_path.exists():
                 # Interface screenshots need enough space for labels to remain readable.
                 screenshot = image_path.name in {
-                    "debug-dashboard.png", "learn-page.png", "tune-page.png",
-                    "setup-page.png", "games-section.png", "help-page.png", "player-settings.png",
+                    "debug-dashboard.png", "play-page.png", "learn-page.png", "tune-page.png",
+                    "setup-page.png", "games-section.png", "help-page.png", "help-technical.png", "player-settings.png",
                 }
                 architecture = image_path.parent.name == "architecture"
                 image = image_flowable(image_path, 6.6 * inch if screenshot or architecture else 6.1 * inch,

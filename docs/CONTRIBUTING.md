@@ -163,6 +163,16 @@ scripts/check-documentation.py --require-pdfs
 ```
 
 When the interface changes, refresh the affected screenshots in `docs/images/`.
+The repeatable full capture uses the current page templates, isolated sample data,
+and an omitted-camera placeholder; it does not contact either device:
+
+```sh
+PYTHONPATH=src python scripts/capture-guide-screenshots.py
+```
+
+Install Playwright and Chrome in your development environment before running it.
+The script also refreshes guided-pairing screenshots and checks the Security
+network table at phone, tablet, and desktop widths.
 Capture Dashboard, Play, Glove Academy practice, Glove Academy tuning, Setup, the Games section, and Help
 from the running application. Blur the entire camera image before saving a
 screenshot, keeping instructions and controls readable. Check that no passwords,
@@ -256,9 +266,8 @@ recognition quality or visually confirm the physical matrix animation.
 Use the complete pinned Zephyr 1.0.0 configuration for compile-only validation,
 then explicitly upload through App Lab. See the installation guide's
 [firmware workflow](CONFIGURATION_REFERENCE.md#build-and-install-matrix-firmware).
-Regenerate all PDF editions after documentation updates. Reference screenshots
-may show earlier labels; keep instructions authoritative and refresh screenshots
-with camera imagery blurred when the interface layout changes.
+Regenerate all PDF editions after documentation updates. Keep reference screenshots aligned with the current labels and layout. Use the
+isolated capture workflow, or blur live camera imagery before taking a screenshot.
 
 
 ## Two-machine installer releases

@@ -9,6 +9,8 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Gave the Security network-exposure table dedicated column widths so port numbers stay intact, with less space assigned to Boundary. Refreshed every documented application screenshot from current templates using isolated sample data and an omitted-camera placeholder; added a repeatable capture script and rebuilt the affected PDF editions.
+
 - Pairing now releases the physical approval-PIN display after the submitted request succeeds or fails, allowing the normal matrix display to resume without waiting for the authorization timer. Idle animation still respects On, Dim, or Off. Setup now serves directly at `/setup`; removed the page-revision redirect and link rewriting while retaining the shared favicon and compatibility with old bookmarks. Refreshed Setup screenshots and maintained guides.
 
 - Fixed a Safari/WebKit pairing click failure caused by replacing button text during the half-second refresh. Pairing now brings a dedicated progress panel, completion, and errors into view; missing credentials receive explicit guidance, and live announcements are no longer inside a busy region. Verified delayed mouse clicks and progress feedback in WebKit and Chrome.

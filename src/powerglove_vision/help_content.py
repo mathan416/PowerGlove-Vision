@@ -468,6 +468,8 @@ def render_markdown(source: str) -> tuple[str, list[tuple[int, str, str]]]:
                 if headers == ["Program", "See it", "Try it with", "Know before playing"]
                 else " class=rom-input-audit"
                 if headers == ["Game", "ROM SHA-256", "Input finding", "Shared profile"]
+                else " class=network-exposure"
+                if headers == ["Port", "Protocol", "Direction", "Boundary"]
                 else " class=reproducible-inputs"
                 if headers == ["Lane", "Core", "Exact game image"]
                 else ""

@@ -235,16 +235,17 @@ marks remain the property of their respective owners.
 
 ### Application screenshots
 
-The interface screenshots in `docs/images/` were refreshed from the running
-PowerGlove Vision application on September 4, 2026. They cover Dashboard, Glove Academy,
-Tune, Setup, Games, and Help. Camera imagery is blurred for privacy; gesture
-illustrations remain unchanged. These screenshots are project documentation
-assets and add no runtime dependencies. Setup, its attract-mode panel, and the player/backup panels were
-refreshed on September 6, 2026 using the current page in an isolated browser
-with simulated device data and placeholder hostnames; these captures do not
-claim live pairing or hardware verification. The guided-pairing screenshots are
-produced by `tests/browser_setup_pairing.py --screenshots`, using simulated
-credentials, a placeholder hostname, and an isolated browser.
+All application screenshots in `docs/images/` were refreshed from the current
+PowerGlove Vision source on September 6, 2026. They cover Dashboard, local Rock Paper Scissors, Glove Academy,
+personalization, players and hand-setup restoration, Setup and guided pairing,
+Games, and the Help library. `scripts/capture-guide-screenshots.py` renders the
+real page templates in an isolated browser with temporary player state and
+sample telemetry. Camera areas use an explicit “Camera preview omitted”
+placeholder; no live camera, cabinet, or personal settings are accessed.
+The script also invokes `tests/browser_setup_pairing.py --screenshots` for
+pairing states using non-secret fixtures. These captures document the interface,
+not live delivery or hardware verification. Gesture illustrations and physical
+matrix photographs remain unchanged. No runtime dependencies are added.
 
 ### Website icon
 
@@ -255,6 +256,6 @@ wordmark. Browser-tab and Apple touch icon variants were resized from that
 square artwork. `assets/favicon.ico` contains 16, 32, and 48 pixel variants and
 is the single browser-tab icon declared by the shared page template. The Apple
 touch icon is separate. Setup and Help use the same root-relative icon URL;
-there is no Setup-specific asset directory. A stable `ui` query revision on
-Setup refreshes Safari’s page-specific missing-icon cache. Existing `/setup`
-bookmarks redirect to that revision; no browser history or website data is cleared. The original logo remains unchanged.
+there is no Setup-specific asset directory. Setup is served directly at `/setup`,
+without a query revision or redirect. Older query-string bookmarks still work.
+The original logo remains unchanged.

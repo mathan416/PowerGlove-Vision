@@ -301,8 +301,8 @@ it is safe to remove power. See the installation guide before using Shutdown.
 
 ![Dashboard showing the selected profile and controller readings](docs/images/debug-dashboard.png)
 
-The screenshots below show the current interface. Camera imagery is blurred or
-excluded for privacy.
+The screenshots below show the current interface with isolated sample data. Camera imagery is
+replaced with a labelled placeholder for privacy.
 
 ![Glove Academy with Pixel Pal guiding the personalization choices](docs/images/tune-page.png)
 

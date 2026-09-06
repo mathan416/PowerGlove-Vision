@@ -26,6 +26,8 @@ Select **Start round**, follow the countdown, and hold the pose after **Shoot!**
 until its button is highlighted. The first player to win three rounds takes the
 match. Mouse and touch buttons remain available if the camera is unavailable.
 
+![Local Rock Paper Scissors, with the camera preview omitted in this documentation example.](images/play-page.png)
+
 ## Get ready to play
 
 Choose your player in **Your player** so practice and sensitivity changes belong

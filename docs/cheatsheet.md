@@ -289,12 +289,16 @@ although normal camera variation means the saved numbers will not be identical.
 ## Website screenshots
 
 These are reference screenshots, not live views. Open the browser URLs above
-to see your own camera and controller status. Camera imagery is blurred for privacy.
-These screenshots were refreshed on September 4, 2026.
+to see your own camera and controller status. The camera preview is replaced with an explicit documentation placeholder.
+All application screenshots were refreshed from the current source on September 6, 2026 using isolated sample data.
 
 ### Dashboard
 
-![Dashboard showing Gestures off and controller diagnostics](images/debug-dashboard.png)
+![Dashboard showing the selected profile and stopped controller output](images/debug-dashboard.png)
+
+### Local Play
+
+![Rock Paper Scissors with Pixel Pal; camera preview omitted.](images/play-page.png)
 
 ### Glove Academy
 
@@ -336,7 +340,9 @@ Scroll down Setup to edit mappings. Saving affects the next game launch.
 
 ### Help
 
-![Help page linking to the manuals and printable editions](images/help-page.png)
+![Help user manuals in their current reading order.](images/help-page.png)
+
+![Help technical documentation, with the native-emulation guides together.](images/help-technical.png)
 
 ## Choose a profile
 

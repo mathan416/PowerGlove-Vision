@@ -210,7 +210,8 @@ tokens, addresses, or saved personal thresholds.
 
 ### Documentation screenshots
 
-Documentation screenshots blur the complete camera image before capture. Keep
+Documentation screenshots use isolated sample data and an omitted-camera placeholder.
+If capturing a live page instead, blur the complete camera image before capture. Keep
 controls legible, but never publish unblurred camera frames or screenshots that
 contain passwords, private tokens, or pairing codes. The reference images show
 the interface; they are not saved gesture recordings.
