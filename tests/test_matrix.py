@@ -19,6 +19,19 @@ from powerglove_vision.matrix import MatrixStatus, UnoQMatrix, status_from_worke
 
 
 class MatrixTests(unittest.TestCase):
+    def test_running_firmware_identity_is_cached_and_old_firmware_is_unknown(self):
+        calls = []
+        def identify(*args):
+            calls.append(args)
+            return 'a' * 64
+        matrix = UnoQMatrix(call=identify)
+        self.assertEqual(matrix.firmware_identity(), 'a' * 64)
+        self.assertEqual(matrix.firmware_identity(), 'a' * 64)
+        self.assertEqual(calls, [('get_powerglove_firmware',)])
+        def old_firmware(*args):
+            raise RuntimeError('Unknown endpoint')
+        self.assertIsNone(UnoQMatrix(call=old_firmware).firmware_identity())
+
     def test_status_is_sent_over_bridge(self):
         calls = []
         matrix = UnoQMatrix(call=lambda *args: calls.append(args))

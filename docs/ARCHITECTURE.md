@@ -207,7 +207,7 @@ validate range and scope, not recorded pose quality. Live testing is still neede
 
 The candidate is temporary until the same recognition path observes two complete
 activation/release cycles and three neutral seconds. Only then can the wizard
-atomically merge selected pairs into the saved version-1 file. Raw controls remain
+atomically merge selected pairs into the active player’s version-2 record. Raw controls remain
 inside Advanced. Normal personalization retains no camera recording. The separate
 diagnostic path deletes its temporary AVI after producing an aggregate-only report.
 
@@ -216,7 +216,7 @@ diagnostic path deletes its temporary AVI after producing an aggregate-only repo
 ![Threshold precedence and the separate neutral-calibration reference](images/architecture/settings.png)
 
 Effective settings are resolved component by component: shipped shared recognition defaults,
-then saved personal overrides, then temporary Tune preview. The gesture engine
+then the active player’s saved overrides, then temporary Tune preview. The gesture engine
 receives the resulting configuration during frame processing, so saved values
 also apply when controlling a game. Adjusting a finger changes other gestures
 that use that finger; it does not change the button assignments in a game profile.
@@ -224,7 +224,7 @@ that use that finger; it does not change the button assignments in a game profil
 | Data | Owner and lifetime | Purpose |
 | --- | --- | --- |
 | `config/profiles.json` | Shipped project source | One shared set of recognition parameters; profiles remain output mappings |
-| `data/gesture-tuning.json` | PowerGlove Vision Controller, persistent | Global personal activation/release pairs; version-1 format |
+| `data/gesture-tuning.json` | PowerGlove Vision Controller, persistent | Version-2 player presets, sensitivity, Academy progress, and required-center flag; version-1 files migrate with a backup |
 | `data/calibration.json` | PowerGlove Vision Controller, private persistent | Neutral palm position, apparent scale, wrist angle, and positional jitter for the installed camera and player |
 | `data/device.json` | PowerGlove Vision Controller, private persistent settings | Destination, selected settings, pairing-related configuration |
 | Tuning samples, preview, leases | Worker memory only | Temporary measurement and ownership state |
@@ -296,6 +296,17 @@ release carries the patch and build recipe, not a compiled core. See the
 [native compatibility record](super-glove-ball-native.md).
 
 ## Interfaces and recovery
+
+Player operations pass through the bounded same-origin `/api/players` endpoint
+into the worker. Its tuning lock owns one atomic player/settings/progress file.
+Generations reject stale writes; switching/restoring requires fresh centering
+before delivery. Progress writes occur on lesson transitions, not camera frames.
+Portable backups exclude credentials and neutral calibration.
+
+Build metadata records the source commit and candidate. A generated sketch
+fingerprint is compiled into firmware and read through Router Bridge in the
+supervisor, independently of the expected packaged value. Missing readback stays
+unavailable; this introduces no firmware RPC in the vision worker's frame path.
 
 | Interface | Direction | Contract |
 | --- | --- | --- |

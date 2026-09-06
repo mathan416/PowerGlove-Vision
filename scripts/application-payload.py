@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Reject stale generated matrix firmware identity before staging.
 #   2026-09-04 - Unified release and maintenance file selection.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -49,6 +50,7 @@ def selected_files(root):
 
 def stage(root, destination):
     """Copy the selected files and stamp identity without exporting Git metadata."""
+    subprocess.run(["python3", str(root / "scripts/stamp-firmware-version.py"), "--check"], check=True)
     for name in selected_files(root):
         source = root / name
         if source.is_symlink():

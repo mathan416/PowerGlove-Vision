@@ -7,6 +7,20 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Added
+
+- Controller-stored player presets with individual hand sensitivity, saved
+  Academy lessons, and persistent Glove Master awards. Existing settings become
+  Player 1 with a private version-1 backup retained before migration.
+- Bounded hand-setting export/restore excluding pairing credentials and neutral
+  calibration. Player switches and restores pause controls and require fresh
+  centering; stale tabs cannot overwrite another player or undo progress resets.
+- Exact software commit/candidate metadata and matrix source-fingerprint readback,
+  distinguishing running firmware from the expected packaged sketch. Older
+  firmware is reported as unavailable instead of assumed to match.
+- Phone/tablet layout refinements for navigation, forms, player controls, and
+  Academy/Play camera panels, verified at widths down to 320 pixels.
+
 ### Fixed
 
 - Glove Academy now replaces the final lesson with the Glove Master award after

@@ -512,6 +512,15 @@ remain extended; it suppresses controls while you reposition. Saved tuning value
 drive gameplay recognition globally, while each game profile only decides button
 assignments, pulses, and toggles.
 
+Choose a player in **Your player** before practicing. Each player's hand
+sensitivity and lesson progress are retained on the Controller across browsers
+and restarts. Add or select another player to keep family members' settings
+separate. Switching players pauses controls until you set your center again.
+Download or restore sensitivity under **Players and hand-setting backups**;
+backups never include pairing credentials or camera calibration.
+
+![Player selection and portable hand-setting backups](images/player-settings.png)
+
 Complete all sixteen lessons to earn **Glove Master**. The award replaces the
 final lesson card; **Start again** restores the lessons and clears session progress.
 

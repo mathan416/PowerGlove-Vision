@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Bind tuning starts to the selected player generation.
 #   2026-09-06 - Added the Pixel Pal personalization wizard and private diagnostics.
 #   2026-09-04 - Added Games and guided gesture tuning views.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -42,14 +43,14 @@ _LEGACY_TUNE_CONTENT = """<style>
 <div id=tune-panel hidden><p>Tuning is optional. Start with Set up my hand, or adjust only a control that feels difficult or triggers accidentally. Directions usually only need neutral calibration.</p><label for=tune-gesture>Gesture</label><select id=tune-gesture></select><button id=tune-hand-setup>Set up my hand</button><button id=tune-calibrate>Recalibrate neutral</button><p id=tune-components></p>
 <p id=tune-instruction></p><button id=tune-record>Record open hand (3 seconds)</button><button id=tune-suggest>Analyze and preview</button>
 <p id=tune-progress role=status aria-live=polite></p><p id=tune-fingers role=status aria-live=polite></p>
-<div class=controls><button id=tune-preview>Preview adjustments</button><button id=tune-save>Save for all profiles</button><button id=tune-discard>Discard / record again</button><button id=tune-reset>Restore defaults</button></div>
+<div class=controls><button id=tune-preview>Preview adjustments</button><button id=tune-save>Save for this player</button><button id=tune-discard>Discard / record again</button><button id=tune-reset>Restore defaults</button></div>
 <p id=tune-notice role=status aria-live=polite></p><details><summary>Preview and reset help</summary><p>Preview is temporary until saved. Reset restores only the selected components across all profiles.</p></details></div></section>"""
 
 _LEGACY_TUNE_THRESHOLDS = """<section class=card id=tune-thresholds hidden><h3>Gesture thresholds</h3><p id=tune-live></p><table><thead><tr><th scope=col>Gesture</th><th scope=col>Activation</th><th scope=col>Release</th></tr></thead><tbody id=tune-fields></tbody></table><p style="font-size:12px;color:var(--muted);margin-bottom:0">Activation starts the gesture. The lower release value stops it.</p></section>"""
 
 _LEGACY_TUNE_SCRIPT = r"""(()=>{
 const el=id=>document.getElementById(id);let enabled=false,busy=false,last=null,fieldsKey='',polling=false;
-async function api(action,extra={}){const r=await fetch('/api/tuning',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'tuning'},body:JSON.stringify({action,session:practiceSession,...extra})});const x=await r.json();if(!r.ok)throw Error(x.error||'Tuning request failed');return x}
+async function api(action,extra={}){const r=await fetch('/api/tuning',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'tuning'},body:JSON.stringify({action,session:practiceSession,...(window.playerIdentity?.()||{}),...extra})});const x=await r.json();if(!r.ok)throw Error(x.error||'Tuning request failed');return x}
 function pairs(){const values={};el('tune-fields').querySelectorAll('[data-channel]').forEach(row=>{const inputs=row.querySelectorAll('input');if(!row.dataset.changed&&!last?.preview?.[row.dataset.channel])return;values[row.dataset.channel]={on:Number(inputs[0].value),off:Number(inputs[1].value)}});return values}
 const featured=['hand_setup','start','select','thumb','index','middle','ring','pinky','push','pull'];
 const movements={left:'Move your open hand left without changing its distance from the camera.',right:'Move your open hand right without changing its distance from the camera.',up:'Move your open hand up without changing its distance from the camera.',down:'Move your open hand down without changing its distance from the camera.',push:'Push your open hand toward the camera, keeping your palm facing it.',pull:'Pull your open hand away from the camera, keeping your palm facing it.',roll_left:'Roll your wrist left while keeping your hand centered at the starting distance.',roll_right:'Roll your wrist right while keeping your hand centered at the starting distance.'};
@@ -69,7 +70,7 @@ el('tune-record').disabled=busy||s.recording||phase>=s.total_phases||!s.ready;el
 const key=s.gesture+'-'+s.revision+'-'+JSON.stringify(s.effective);if(force||key!==fieldsKey||!el('tune-fields').children.length){fieldsKey=key;el('tune-fields').replaceChildren();for(const channel of s.components){const pair=s.preview?.[channel]||s.effective[channel];if(!pair)continue;const row=document.createElement('tr');row.dataset.channel=channel;const title=document.createElement('th');title.scope='row';title.textContent=channel;row.append(title);for(const name of ['on','off']){const label=document.createElement('td');const input=document.createElement('input');input.type='number';input.min='0';input.step='.01';input.value=pair[name];input.style.width='100px';input.oninput=()=>{row.dataset.changed='yes'};input.setAttribute('aria-label',channel+' '+name);label.append(input);row.append(label)}el('tune-fields').append(row)}}
 for(const id of ['tune-preview','tune-save'])el(id).disabled=busy||!el('tune-fields').children.length;
 }
-async function command(action,extra={}){if(busy)return;busy=true;try{draw(await api(action,extra),true);el('tune-notice').textContent=action==='save'?'Saved for every profile.':action==='suggest'||action==='preview'?'Preview active. Try the gesture; select Save to keep these thresholds.':action==='reset'?'Selected gesture components restored to their supplied defaults.':action==='discard'?'Unsaved adjustments discarded.':''}catch(e){el('tune-notice').textContent=e.message}finally{busy=false;if(last)draw(last)}}
+async function command(action,extra={}){if(busy)return;busy=true;try{draw(await api(action,extra),true);el('tune-notice').textContent=action==='save'?'Saved for this player across game profiles.':action==='suggest'||action==='preview'?'Preview active. Try the gesture; select Save to keep these thresholds.':action==='reset'?'Selected gesture components restored to their supplied defaults.':action==='discard'?'Unsaved adjustments discarded.':''}catch(e){el('tune-notice').textContent=e.message}finally{busy=false;if(last)draw(last)}}
 el('tune-switch').onchange=async()=>{enabled=el('tune-switch').checked;try{const s=await api(enabled?'begin':'end');el('tune-panel').hidden=!enabled;el('tune-thresholds').hidden=!enabled;el('practice-lessons').hidden=enabled;if(enabled)draw(s,true)}catch(e){enabled=false;el('tune-switch').checked=false;el('tune-panel').hidden=false;el('tune-notice').textContent=e.message}};
 el('tune-gesture').onchange=()=>command('select',{gesture:el('tune-gesture').value});
 el('tune-hand-setup').onclick=()=>command('select',{gesture:'hand_setup'});
@@ -100,7 +101,7 @@ TUNE_THRESHOLDS = ""
 
 TUNE_SCRIPT = r"""(()=>{
 const el=id=>document.getElementById(id);let enabled=false,busy=false,last=null,polling=false,counting=false,fieldsKey='';
-async function api(action,extra={}){const r=await fetch('/api/tuning',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'tuning'},body:JSON.stringify({action,session:practiceSession,...extra})});const x=await r.json();if(!r.ok)throw Error(x.error||'Personalization request failed');return x}
+async function api(action,extra={}){const r=await fetch('/api/tuning',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'tuning'},body:JSON.stringify({action,session:practiceSession,...(window.playerIdentity?.()||{}),...extra})});const x=await r.json();if(!r.ok)throw Error(x.error||'Personalization request failed');return x}
 function show(id,on){el(id).hidden=!on}function pairs(){const out={};el('tune-fields').querySelectorAll('[data-channel]').forEach(row=>{const a=row.querySelectorAll('input');if(row.dataset.changed||last?.preview?.[row.dataset.channel])out[row.dataset.channel]={on:Number(a[0].value),off:Number(a[1].value)}});return out}
 const featured=['start','select','thumb','index','middle','ring','pinky','push','pull','closed_hand','menu_guard'];
 const motion={left:'Move your open hand left and hold.',right:'Move your open hand right and hold.',up:'Move your open hand up and hold.',down:'Move your open hand down and hold.',roll_left:'Roll your wrist left and hold.',roll_right:'Roll your wrist right and hold.',push:'Push toward the camera and return. Repeat three times.',pull:'Move away from the camera and return. Repeat three times.'};

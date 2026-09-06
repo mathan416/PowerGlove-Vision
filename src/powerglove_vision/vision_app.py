@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Require fresh centering after player changes before delivery.
 # Full history: docs/CHANGELOG.md and Git history.
 #   2026-09-05 - Resumed armed controls from renewable RetroPie game leases.
 #   2026-09-05 - Measured fresh-frame publication and controller-transition latency.
@@ -468,6 +469,7 @@ def main() -> int:
                     current_game = "Manual selection"
 
             if shared.take_calibration_request() and engine is not None:
+                shared.tuning.begin_center()
                 engine.begin_calibration()
                 last_controller_signature = None
 
@@ -597,6 +599,7 @@ def main() -> int:
                 retained_calibration = engine.calibration
                 try:
                     save_calibration(calibration_path, retained_calibration)
+                    shared.tuning.finish_center()
                     calibration_save_error = None
                 except OSError as exc:
                     calibration_save_error = str(exc)
@@ -609,6 +612,7 @@ def main() -> int:
             )
             receiver_available = sender.send(state) if (
                 controller_enabled and not practice_mode and not shared.tuning.active()
+                and not shared.tuning.needs_center()
                 and controller_context_active and not launch_guard_active
             ) else False
             sent_at = time.monotonic()

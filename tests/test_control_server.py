@@ -44,6 +44,47 @@ from powerglove_vision.vision_app import _base_status, _effective_profile
 
 
 class ControlStateTests(unittest.TestCase):
+    def test_players_route_requires_same_origin_and_action_header(self):
+        servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            for extra in ({}, {"X-PowerGlove-Action":"players", "Sec-Fetch-Site":"cross-site"},
+                          {"X-PowerGlove-Action":"players", "Origin":"http://other.invalid"}):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                with mock.patch('powerglove_vision.control_server.urllib.request.urlopen') as forward:
+                    connection.request("POST", "/api/players", json.dumps({"action":"read"}),
+                                       dict({"Content-Type":"application/json"}, **extra))
+                    response = connection.getresponse()
+                    response.read()
+                    self.assertEqual(response.status, 403)
+                    forward.assert_not_called()
+                connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_players_switch_stops_before_forwarding_and_requires_center(self):
+        """A failed or interrupted switch cannot leave a persisted armed marker."""
+        servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            state.set_controller_enabled(True)
+            def fail_forward(*args, **kwargs):
+                self.assertFalse(state.controller_enabled())
+                self.assertFalse(state._controller_marker.exists())
+                raise ValueError("worker unavailable")
+            connection = http.client.HTTPConnection("127.0.0.1", servers.servers[0].server_address[1], timeout=2)
+            with mock.patch('powerglove_vision.control_server.urllib.request.urlopen', side_effect=fail_forward):
+                connection.request("POST", "/api/players", json.dumps({"action":"select", "id":"other"}),
+                                   {"Content-Type":"application/json", "X-PowerGlove-Action":"players"})
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, 400)
+            connection.close()
+            state.worker_status["player"] = {"needs_center": True}
+            with self.assertRaisesRegex(ValueError, "Set your center"):
+                state.set_controller_enabled(True)
+        finally:
+            servers.shutdown()
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.path = Path(self.temporary.name) / "device.json"
@@ -502,7 +543,7 @@ class ControlStateTests(unittest.TestCase):
             b"setTimeout(()=>finishLesson(advanceRevision),700)", LEARN
         )
         self.assertIn(b"$('restart-training').onclick=restartTraining", LEARN)
-        self.assertIn(b"if(trainingComplete)restartTraining()", LEARN)
+        self.assertIn(b"if(trainingComplete)return restartTraining()", LEARN)
 
     def test_profile_selectors_use_descriptive_names_and_stable_ids(self):
         expected = {

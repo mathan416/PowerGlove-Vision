@@ -267,7 +267,12 @@ startup sequence. An animation does not prove that shutdown has finished.
 | Connection settings | `http://UNO-Q-NAME.local:8088/setup` |
 | Secure pairing | `https://UNO-Q-NAME.local:8443/setup` |
 
-In Glove Academy, completing all sixteen lessons replaces the lesson panel with
+In Glove Academy, choose or add a player before practicing. Progress and hand
+sensitivity persist across restarts and normal upgrades. Switching players or
+restoring a hand-settings backup requires fresh centering. The web footer reports
+exact software and running firmware identities; older firmware may report unavailable.
+
+Completing all sixteen lessons replaces the lesson panel with
 the **Glove Master** award. **Start again** restores the lessons.
 
 ![Setup page; use HTTPS to enable pairing](images/setup-page.png)

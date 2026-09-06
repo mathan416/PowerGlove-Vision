@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Add player controls, exact version details, and responsive layouts.
 #   2026-09-06 - Replace the completed lesson panel with the Glove Master award.
 #   2026-09-06 - Added the camera-controlled Rock Paper Scissors page.
 #   2026-09-05 - Persisted the player's armed controller choice across app restarts.
@@ -16,7 +17,6 @@
 #   2026-09-05 - Displayed plain-language tracker backend names.
 #   2026-09-05 - Made Academy lesson navigation atomic against recognition polls.
 #   2026-09-05 - Added live capture and inference performance diagnostics.
-#   2026-09-04 - Added Pixel Pal artwork, Extra-Digit Hunt, and the default Dashboard route.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Serve the UNO Q dashboard, local play, setup, pairing, and controller controls."""
@@ -40,8 +40,10 @@ from typing import Any, Callable
 
 from .game_registry import registry_request, validate_document, MAX_REQUEST
 from .play_game import PLAY_CONTENT, PLAY_SCRIPT, PLAY_STYLE
+from .player_web import PLAYER_CONTENT, PLAYER_SCRIPT
 from .web_features import GAMES_CONTENT, GAMES_SCRIPT, TUNE_CONTENT, TUNE_SCRIPT, TUNE_THRESHOLDS
 from . import __version__
+from .versioning import current_identity
 from .resolver import resolve_ipv4
 
 from .help_content import (
@@ -97,7 +99,7 @@ def _page(title: str, content: str, script: str) -> bytes:
                 "alt='Pixel Pal waving hello' width=112 height=112></div>" + remainder
             )
     started = "<span id=app-started>Application last started: checking…</span>" if title in ("Glove Academy", "Setup") else ""
-    metadata_script = """(()=>{const el=document.getElementById('app-started');if(!el)return;async function refresh(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();const date=new Date(s.app_started_at*1000);if(!s.app_started_at||isNaN(date.getTime()))throw Error();el.textContent='Application last started: '+new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'long'}).format(date);el.title='Application start time, shown in your browser time zone';}catch(e){el.textContent='Application last started: unavailable'}}refresh();setInterval(refresh,30000)})();"""
+    metadata_script = """(()=>{const el=document.getElementById('app-started');async function refresh(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();const b=s.build||{},f=s.firmware||{};const info=document.getElementById('build-identity');if(info){info.textContent='Software: '+(b.release||s.version||'unknown')+' · '+(b.commit||'commit unavailable')+(b.dirty?' · modified source':'')+' | Matrix firmware: '+(f.running||'unavailable — older firmware or bridge offline')+(f.state==='different'?' · update available':'');}if(!el)return;const date=new Date(s.app_started_at*1000);if(!s.app_started_at||isNaN(date.getTime()))throw Error();el.textContent='Application last started: '+new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'long'}).format(date);el.title='Application start time, shown in your browser time zone';}catch(e){if(el)el.textContent='Application last started: unavailable'}}refresh();setInterval(refresh,30000)})();"""
     return f"""<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
 <title>{html.escape(title)} · PowerGlove Vision</title>
@@ -121,6 +123,8 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .bits{{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}}.bit{{padding:6px 9px;border:1px solid var(--line);border-radius:7px;color:var(--muted)}}.bit.on{{color:#081109;background:var(--green);border-color:var(--green)}}
 .events{{height:170px;overflow:auto;background:#080a10;border-radius:9px;padding:12px;color:#c9d2ec;font-size:13px}}.events div{{padding:3px 0;border-bottom:1px solid #171b25}}
 .learn-grid{{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:14px;align-items:start}}.learn-camera{{position:relative}}.learn-camera .camera{{height:min(55vh,500px);aspect-ratio:auto;margin:0}}.practice-badge{{position:absolute;left:12px;top:12px;padding:7px 10px;border-radius:999px;background:#090b11dc;border:1px solid var(--green);color:var(--green);font-size:12px}}.lesson-number{{color:var(--cyan);font-size:12px;letter-spacing:1.5px;text-transform:uppercase}}.lesson-title{{font:900 clamp(26px,4vw,40px)/1.05 system-ui;margin:8px 0}}.lesson-cue{{color:var(--muted);min-height:72px}}.lesson-result{{border:1px solid var(--line);border-radius:10px;padding:12px;margin:14px 0;background:#090b11}}.lesson-result.ready{{border-color:var(--green);color:var(--green)}}.lesson-progress{{display:flex;gap:5px;margin:14px 0}}.lesson-progress i{{height:7px;flex:1;border-radius:9px;background:#303748}}.lesson-progress i.done{{background:var(--green)}}.lesson-progress i.current{{background:var(--cyan)}}.live-readout{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}}.live-readout>div{{padding:10px;border-radius:9px;background:#090b11;text-align:center}}.live-readout strong{{display:block;font:800 18px system-ui;margin-top:4px}}
+header nav{{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:flex-end}}header nav a{{margin:0;min-height:44px;display:inline-flex;align-items:center}}main,.card,.learn-grid>*,.rps-layout>*,.pal-intro>*,.formgrid>*{{min-width:0}}p,label,.notice,.lesson-cue,.build-details{{overflow-wrap:anywhere}}button,.button,summary{{min-height:44px}}.build-details{{width:100%}}.advanced-tuning{{min-width:0;overflow-x:auto}}.build-details p{{font-size:12px}}.player-card{{margin:0 0 14px}}.player-card h2{{margin-top:0}}.player-row{{display:flex;align-items:end;flex-wrap:wrap;gap:10px}}.player-row label{{flex:1;min-width:150px}}.player-card details{{margin-top:12px}}.player-card .button{{display:inline-flex;align-items:center;cursor:pointer}}.controls{{flex-wrap:wrap}}input,select,textarea{{max-width:100%;min-width:0}}[hidden]{{display:none!important}}
+@media(max-width:700px){{header{{flex-direction:column;align-items:flex-start;gap:4px}}.brand{{width:230px;max-width:85%}}header nav{{justify-content:flex-start;gap:0 14px;width:100%}}.learn-grid,.rps-layout{{grid-template-columns:minmax(0,1fr)!important}}.learn-camera .camera,.rps-camera .camera{{height:clamp(180px,28vh,280px)}}.pal-intro p.lead{{font-size:14px}}.formgrid{{grid-template-columns:minmax(0,1fr)}}.player-row>button{{flex:1}}.live-readout{{grid-template-columns:repeat(3,minmax(0,1fr))}}.live-readout strong{{font-size:15px}}.document-actions,.help-toolbar{{flex-wrap:wrap}}}}
 {PLAY_STYLE}
 form{{display:grid;gap:16px}}.formgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}}label{{display:grid;gap:7px;color:var(--muted);font-size:13px}}input,select{{width:100%;background:#090b11;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;font:16px inherit}}input:focus,select:focus{{outline:2px solid var(--blue);border-color:transparent}}.check{{display:flex;align-items:center;gap:10px}}.check input{{width:auto}}.notice{{min-height:24px;color:var(--cyan)}}code{{color:var(--cyan)}}
 details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}details.advanced summary{{color:var(--cyan);cursor:pointer;font-weight:800}}details.advanced p{{color:var(--muted);max-width:760px}}.markdown-body details.extra-digit-answer{{margin-top:42px;padding:18px;border:2px solid #087ebd;border-radius:12px;background:#e7f7fc}}.markdown-body details.extra-digit-answer summary{{cursor:pointer;color:#075fc4;font-weight:800;font-size:18px}}.markdown-body details.extra-digit-answer h2{{margin-top:20px}}
@@ -133,7 +137,7 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 @media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid,.rps-layout{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera,.rps-camera .camera{{height:auto;aspect-ratio:4/3}}}}
 @media(max-width:900px){{.help-layout{{grid-template-columns:1fr}}.help-sidebar{{position:static;max-height:none}}.guide-nav{{grid-template-columns:repeat(2,minmax(0,1fr))}}.toc{{display:none}}}}
 @media(max-width:600px){{header{{align-items:center}}.brand{{max-width:58%}}nav{{display:grid;grid-template-columns:repeat(2,auto);gap:5px 12px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}.guide-nav{{grid-template-columns:1fr}}.markdown-body{{padding:20px 17px}}}}
-</style></head><body><header><a class=brand href=/dashboard aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/dashboard>Dashboard</a><a href=/play>Play</a><a href=/learn>Glove Academy</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}</footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
+</style></head><body><header><a class=brand href=/dashboard aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/dashboard>Dashboard</a><a href=/play>Play</a><a href=/learn>Glove Academy</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}<details class=build-details><summary>Software and matrix firmware</summary><p id=build-identity>Checking installed versions…</p></details></footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
 
 
 VISION_STARTUP_SCRIPT = r"""
@@ -233,6 +237,7 @@ const lessons=[
  {title:'Close your hand',image:'close-all-fingers.png',cue:'Curl your thumb and all four fingers into a comfortable closed hand.',ok:s=>s.recognition?.closed_hand,result:'CLOSED HAND recognized.'},
  {title:'Menu guard — thumb and ring',image:'menu-guard.png',cue:'Curl only your thumb and ring finger. Keep index, middle, and pinky extended. This suppresses movement and A/B in every game mapping.',ok:s=>s.recognition?.menu_guard,result:'MENU GUARD recognized.'}
 ];
+let playerReady=false;
 let index=0,completed=new Set(),holdStarted=0,lastSequence=-1,latestSequence=-1,sequenceFloor=-1,advancing=false,practiceActive=false,advanceTimer=null,trainingComplete=false,lessonRevision=0,cameraRetryAt=0;
 const practiceSession=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`;
 async function practice(enabled){const r=await fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:practiceSession,enabled}),keepalive:!enabled});if(!r.ok)throw new Error('Practice camera request failed.');practiceActive=enabled;return r}
@@ -245,17 +250,17 @@ function drawHand(points){const canvas=$('hand-detail'),ctx=canvas.getContext('2
 // Completion requires every lesson; skipping never earns the achievement.
 function cancelLessonAdvance(){lessonRevision++;clearTimeout(advanceTimer);advanceTimer=null;advancing=false}
 function beginTransition(){sequenceFloor=Math.max(sequenceFloor,latestSequence,lastSequence);cancelLessonAdvance();holdStarted=0;lastSequence=sequenceFloor}
-function restartTraining(){beginTransition();index=0;completed.clear();trainingComplete=false;$('achievement').hidden=true;$('lesson-result').textContent='Show your hand to begin.';$('lesson-result').className='lesson-result';draw()}
-function moveLesson(next){beginTransition();index=next;$('lesson-result').textContent='Lesson skipped.';$('lesson-result').className='lesson-result';draw()}
-function finishLesson(revision){if(revision!==lessonRevision)return;advanceTimer=null;holdStarted=0;advancing=false;if(completed.size===lessons.length){beginTransition();trainingComplete=true;$('achievement').hidden=false;$('lesson-result').textContent='Training complete — achievement unlocked!';}else{let next=(index+1)%lessons.length;while(completed.has(next))next=(next+1)%lessons.length;beginTransition();index=next;}draw()}
+function restartTraining(){if(window.resetAcademyProgress){return window.resetAcademyProgress()}beginTransition();index=0;completed.clear();trainingComplete=false;$('achievement').hidden=true;$('lesson-result').textContent='Show your hand to begin.';$('lesson-result').className='lesson-result';draw()}
+function moveLesson(next){if(!playerReady)return;beginTransition();index=next;$('lesson-result').textContent='Lesson skipped.';$('lesson-result').className='lesson-result';draw();window.saveAcademyProgress?.()}
+function finishLesson(revision){if(revision!==lessonRevision)return;advanceTimer=null;holdStarted=0;advancing=false;if(completed.size===lessons.length){beginTransition();trainingComplete=true;$('achievement').hidden=false;$('lesson-result').textContent='Training complete — achievement unlocked!';}else{let next=(index+1)%lessons.length;while(completed.has(next))next=(next+1)%lessons.length;beginTransition();index=next;}draw();window.saveAcademyProgress?.()}
 function draw(s={}){$('lesson-content').hidden=trainingComplete;$('achievement').hidden=!trainingComplete;const lesson=lessons[index],panel=$('practice-lessons');panel.dataset.lesson=String(index+1);panel.dataset.complete=String(trainingComplete);panel.dataset.revision=String(lessonRevision);const menu=!!s.menu_gesture?.pose;const actions={'A':!!s.finger_active?.index&&!menu,'B':!!s.finger_active?.thumb&&!menu,'Glove Zap':!!s.push_gesture?.active,'Pull Back':!!s.pull_gesture?.active};$('practice-actions').innerHTML=Object.entries(actions).map(([label,active])=>`<span class="bit ${active?'on':''}">${label}</span>`).join('');$('lesson-image').src='/help-assets/gestures/actions/'+lesson.image;$('lesson-image').alt=lesson.title;$('finger-feedback').textContent='Curl / activation: '+Object.entries(s.finger_curls||{}).map(([name,value])=>`${name} ${Number(value).toFixed(3)} / ${Number(s.tuning?.effective?.[name]?.on??s.curl_threshold??0.5).toFixed(2)}`).join(' · ');const depth=lesson.image==='pull-away-from-camera.png'?s.pull_gesture:s.push_gesture;$('depth-feedback').textContent=depth?`${lesson.image==='pull-away-from-camera.png'?'Backward':'Forward'} movement: ${Math.max(0,Math.round(depth.depth*100))}% / ${Math.round(depth.threshold*100)}% required`:'';drawHand(s.hand_landmarks||[]);$('lesson-number').textContent=`Lesson ${index+1} of ${lessons.length}`;$('lesson-title').textContent=lesson.title;$('lesson-cue').textContent=lesson.cue;$('lesson-progress').innerHTML=lessons.map((_,i)=>`<i class="${completed.has(i)?'done':i===index?'current':''}"></i>`).join('');$('previous').disabled=trainingComplete||index===0;$('next').disabled=false;$('next').textContent=trainingComplete?'Start again':index===lessons.length-1?'Review lessons':'Skip lesson';$('tracking').textContent=s.detected?'Hand found':'No hand';$('recognized').textContent=action(s);$('confidence').textContent=`${Math.round((s.confidence||0)*100)}%`;}
 async function update(){const requestRevision=lessonRevision;try{const s=await(await fetch('/status',{cache:'no-store'})).json();if(requestRevision!==lessonRevision)return;const startup=startupMessage(s),starting=s.vision_state==='starting',ready=s.vision_state==='active'&&s.practice_mode;
 const sequence=Number(s.sequence);if(Number.isFinite(sequence)){if(latestSequence>=0&&sequence<latestSequence){latestSequence=sequence;sequenceFloor=-1;lastSequence=-1}else latestSequence=Math.max(latestSequence,sequence)}
 syncPracticeCamera(s);updateCalibration(s);
-if(trainingComplete||document.getElementById('tune-switch')?.checked){draw(s);return}
+if(!playerReady||trainingComplete||document.getElementById('tune-switch')?.checked){draw(s);return}
 if(!ready){holdStarted=0;$('lesson-result').textContent=s.vision_state==='error'?(s.vision_error||'Vision unavailable; retrying.'):startup||'Starting practice camera…';$('lesson-result').className='lesson-result';$('tracking').textContent=starting?'Starting…':'Waiting';$('recognized').textContent='None';$('confidence').textContent='—';return}
-if(!Number.isFinite(sequence)||sequence<=sequenceFloor||sequence===lastSequence)return;lastSequence=sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=lessons[index].instant?0:Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);advancing=true;draw(s);const advanceRevision=lessonRevision;advanceTimer=setTimeout(()=>finishLesson(advanceRevision),700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?(lessons[index].menu?(s.menu_gesture?.pose===lessons[index].menu?'Pose found — keep holding…':'Match the hand image. Keep your palm near center; check which fingers read closed.'):'Try the gesture shown above.'):'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){if(requestRevision!==lessonRevision)return;cameraMessage('Camera status unavailable. Reconnecting…');$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
-$('restart-training').onclick=restartTraining;$('previous').onclick=()=>moveLesson(Math.max(0,index-1));$('next').onclick=()=>{if(trainingComplete)restartTraining();else moveLesson((index+1)%lessons.length)};$('center').onclick=calibrate;
+if(!Number.isFinite(sequence)||sequence<=sequenceFloor||sequence===lastSequence)return;lastSequence=sequence;const passed=lessons[index].ok(s),box=$('lesson-result');if(passed){if(!holdStarted)holdStarted=Date.now();const remaining=lessons[index].instant?0:Math.max(0,600-(Date.now()-holdStarted));box.textContent=remaining?`Hold it… ${Math.ceil(remaining/100)/10}s`:lessons[index].result;box.className='lesson-result ready';if(!remaining&&!advancing){completed.add(index);window.saveAcademyProgress?.();advancing=true;draw(s);const advanceRevision=lessonRevision;advanceTimer=setTimeout(()=>finishLesson(advanceRevision),700)}}else if(!advancing){holdStarted=0;box.textContent=s.worker_running?(s.detected?(lessons[index].menu?(s.menu_gesture?.pose===lessons[index].menu?'Pose found — keep holding…':'Match the hand image. Keep your palm near center; check which fingers read closed.'):'Try the gesture shown above.'):'Show your hand to begin.'):(s.camera_available?'Gesture tracker is starting…':'Camera is offline.');box.className='lesson-result';}draw(s)}catch(e){if(requestRevision!==lessonRevision)return;cameraMessage('Camera status unavailable. Reconnecting…');$('lesson-result').textContent='Waiting for the gesture tracker…';$('lesson-result').className='lesson-result'}}
+$('restart-training').onclick=restartTraining;$('previous').onclick=()=>moveLesson(Math.max(0,index-1));$('next').onclick=()=>{if(trainingComplete)return restartTraining();else moveLesson((index+1)%lessons.length)};$('center').onclick=calibrate;
 $('learn-camera').onload=()=>{$('learn-camera').style.display='block';$('learn-startup').style.display='none'};$('learn-camera').onerror=()=>{cameraRetryAt=Date.now()+1000;$('learn-camera').removeAttribute('src');cameraMessage('Camera image unavailable. Reconnecting…')};
 window.addEventListener('pagehide',stopPractice);draw();startPractice();setInterval(()=>{if(practiceActive)practice(true).catch(()=>{})},2000);setInterval(update,75);update();""",
 )
@@ -270,6 +275,8 @@ LEARN = LEARN.replace(b'<section class=card id=practice-lessons>',
     + b'<section class=card id=practice-lessons>', 1)
 LEARN = LEARN.replace('<div class=practice-badge>● PRACTICE ONLY</div></div>'.encode(), '<div class=practice-badge>● PRACTICE ONLY</div>'.encode() + TUNE_THRESHOLDS.encode() + b'</div>', 1)
 LEARN = LEARN.replace(b'</body>', b'<script>' + TUNE_SCRIPT.encode() + b'</script></body>')
+LEARN = LEARN.replace((_tune_intro + '</section>').encode(), PLAYER_CONTENT.encode() + (_tune_intro + '</section>').encode(), 1)
+LEARN = LEARN.replace(b'</body>', b'<script>' + PLAYER_SCRIPT.encode() + b'</script></body>')
 
 
 PLAY = _page(
@@ -359,6 +366,8 @@ class ControlState:
         self._pairing_locked_until = 0.0
         self._shutdown_scheduled = False
         self.started_at = time.time()
+        self.build_identity = current_identity()
+        self.firmware_identity = None
 
     def configure_pairing_identity(self, identity: str) -> None:
         """Publish the current certificate identity used for physical verification."""
@@ -423,6 +432,9 @@ class ControlState:
     def set_controller_enabled(self, enabled: bool) -> None:
         """Queue a controller start or stop request for the vision worker."""
         if enabled:
+            with self.lock:
+                if self.worker_status.get("player", {}).get("needs_center"):
+                    raise ValueError("Set your center in Glove Academy before starting controls for this player.")
             config = self.load_config()
             if not str(config.get("receiver", "")).strip() or not config.get("token"):
                 raise ValueError("Configure your RetroPie destination and pairing in Connection before starting controls.")
@@ -555,11 +567,21 @@ class ControlState:
                 "uptime_seconds": round(time.time() - self.started_at),
                 "app_started_at": self.started_at,
                 "version": __version__,
+                "build": dict(self.build_identity),
+                "firmware": {"running": self.firmware_identity,
+                    "expected": self.build_identity.get("firmware_expected"),
+                    "state": "unavailable" if not self.firmware_identity else
+                        "matched" if self.firmware_identity == self.build_identity.get("firmware_expected") else "different"},
             })
         config = self.public_config()
         status["connection_configured"] = config["connection_configured"]
         status.setdefault("configured_profile", config["profile"])
         return status
+
+    def update_firmware(self, identity):
+        """Publish only the identity read from the running sketch."""
+        with self.lock:
+            self.firmware_identity = identity
 
     def update_supervisor(self, *, camera: bool, running: bool, error: str | None = None) -> None:
         """Publish camera, worker, and supervisor-error state for the dashboard."""
@@ -674,7 +696,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             path = self.path.split("?", 1)[0]
             try:
-                if path in ("/api/games", "/api/tuning"):
+                if path in ("/api/games", "/api/tuning", "/api/players"):
                     expected = path.rsplit("/", 1)[-1]
                     origin = self.headers.get("Origin")
                     if (self.headers.get("X-PowerGlove-Action") != expected
@@ -693,7 +715,10 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                         else:
                             raise ValueError("Unknown Games action.")
                     else:
-                        request = urllib.request.Request(WORKER_URL + "/tuning", method="POST",
+                        if path == "/api/players" and incoming.get("action") in ("create", "select", "delete", "restore"):
+                            # Persist stop before changing players, including across a supervisor restart.
+                            state.set_controller_enabled(False)
+                        request = urllib.request.Request(WORKER_URL + ("/players" if path == "/api/players" else "/tuning"), method="POST",
                             data=json.dumps(incoming).encode(), headers={"Content-Type": "application/json"})
                         try:
                             with urllib.request.urlopen(request, timeout=2) as response:
@@ -726,6 +751,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     try:
                         with urllib.request.urlopen(request, timeout=1):
                             pass
+                    except urllib.error.HTTPError as exc:
+                        state.set_controller_enabled(False)
+                        raise ValueError(json.loads(exc.read()).get("error", "Controller request rejected.")) from None
                     except (OSError, urllib.error.URLError):
                         pass
                     _send(self, 200, json.dumps({"controller_enabled": enabled}).encode(), "application/json")

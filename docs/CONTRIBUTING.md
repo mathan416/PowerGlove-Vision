@@ -233,7 +233,10 @@ the previous saved reference until atomic completion; and reproduces a close,
 not necessarily identical, result for the same simulated stance.
 Check insufficient samples, tracking loss, overlapping ranges, and calibration
 changes. Verify preview expiry, save/reload, selected-component reset, existing
-version-1 files, and controller suppression throughout tuning. Automatic
+version-1 migration with a retained backup, isolated player settings and progress,
+stale-tab rejection after player changes or progress resets, and controller
+suppression throughout tuning. Check that player switches and hand-setting
+restores require fresh centering and explicit Start controller. Automatic
 suggestions must check separation and a simultaneous full-pose match in at least
 90% of accepted samples in each phase, using candidate values and existing
 personal extension thresholds. Test each extended finger, exact threshold

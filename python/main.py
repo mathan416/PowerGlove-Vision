@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Publish the running matrix firmware identity outside the worker.
 #   2026-09-05 - Request one guarded host USB reset after a sustained camera outage.
 #   2026-09-05 - Selected the deployed legacy-lite tracker explicitly.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -134,6 +135,7 @@ def main() -> int:
                     with urllib.request.urlopen("http://127.0.0.1:8089/status", timeout=0.3) as response:
                         status = json.load(response)
                     control.update_worker(status)
+                    control.update_firmware(matrix.firmware_identity())
                     if camera_recovery.observe(status):
                         print(
                             "PowerGlove Vision: requested guarded USB camera preparation/recovery",

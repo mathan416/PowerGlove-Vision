@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Read and cache the running matrix firmware source identity.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added a gestures-idle state distinct from system shutdown.
@@ -16,6 +17,7 @@
 from __future__ import annotations
 
 import time
+import re
 from enum import IntEnum
 from typing import Any, Callable
 
@@ -71,6 +73,8 @@ class UnoQMatrix:
         self._status_retry_at = 0.0
         self._profile_retry_at = 0.0
         self._call = call
+        self._firmware_checked_at = -60.0
+        self._firmware_id = None
         if enabled and self._call is None:
             try:
                 from arduino.app_utils import Bridge
@@ -85,6 +89,22 @@ class UnoQMatrix:
     def available(self) -> bool:
         """Return whether Router Bridge matrix calls can currently be attempted."""
         return self.enabled and self._call is not None
+
+    def firmware_identity(self):
+        """Read the running sketch identity occasionally, outside the vision worker."""
+        if time.monotonic() - self._firmware_checked_at < 30:
+            return self._firmware_id
+        self._firmware_checked_at = time.monotonic()
+        self._firmware_id = None
+        if self.available:
+            try:
+                result = self._call("get_powerglove_firmware")
+                if isinstance(result, str) and re.fullmatch(r"[0-9a-f]{64}", result):
+                    self._firmware_id = result
+            except Exception:
+                # Older sketches do not expose the identity endpoint.
+                pass
+        return self._firmware_id
 
     def set_status(self, status: MatrixStatus) -> bool:
         """Display a new status unless a temporary pairing display owns the matrix."""

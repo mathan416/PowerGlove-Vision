@@ -82,6 +82,11 @@ An automated documentation check keeps the answers synchronized with the art.
 The art itself remains untouched in the interests of arcade archaeology - and
 because it is far too funny to fix.
 
+The web footer shows exact software and running matrix firmware identities.
+Glove Academy supports twelve player presets, saved lesson progress, and portable
+hand-sensitivity backups. Switching players requires fresh centering. Navigation
+and controls adapt to phone and tablet widths.
+
 ## Quick start
 
 Prepare the PowerGlove Vision Controller with Arduino App Lab and use an existing RetroPie installation.
@@ -225,7 +230,7 @@ It keeps Controller software timing separate from network, emulator, and display
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
 | Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
-| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Completing every lesson replaces the lesson panel with the Glove Master award. |
+| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Hand-setting backups are available. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 

@@ -508,6 +508,51 @@ and rerun PowerGlove Vision Controller setup. On RetroPie, compare the game's ac
 exact entries. Updating the template does not overwrite an installed registry;
 add missing names while preserving your custom mappings.
 
+## Players, Academy progress, and hand-setting backups
+
+Glove Academy's **Your player** card selects the active player on this Controller,
+across browsers and game profiles. Up to twelve players with names of 1–32
+characters can be stored. **Add player** copies current sensitivity, starts fresh
+lesson progress, and selects the new player. Rename/delete controls are under
+**Players and hand-setting backups**; at least one player is retained.
+
+Completed lessons, the current lesson, and Glove Master persist across refreshes
+and restarts. Skips do not count; **Start again** resets the active player's
+progress. Other tabs notice switches/resets, and stale writes cannot undo a
+reset or update another player. Saving errors pause lesson recognition until
+saved state is available again.
+
+Switching players, adding/deleting the active player, and restoring settings
+pause controller output. Select **Set this as my center**, wait for calibration,
+then explicitly start controller output on Dashboard. Finish tuning and turn
+**Tune gestures** off before switching players or restoring settings.
+
+**Download hand settings** exports format/version, player name, and validated
+sensitivity pairs. **Restore hand settings** asks before replacing current
+sensitivity, retaining the current name and progress. Backups exclude credentials,
+addresses, images, landmarks, and neutral calibration. Unknown fields, invalid
+numbers, device configuration files, and files larger than 8 KB are rejected.
+
+`data/gesture-tuning.json` version 2 stores `version`, `active`, `generation`, and
+`players`. Each player has `name`, `thresholds`, `progress` (`course`, `completed`,
+`lesson`), and `needs_center`. Course version 1 uses sixteen zero-based lesson
+indices. Generations reject stale writes after switches/restores/resets. The
+worker owns atomic writes under its tuning lock.
+
+Version-1 files load as **Player 1**, preserving sensitivity. Before migration,
+a private `data/gesture-tuning-v1-backup.json` is retained. Both files are written
+with mode `0600` and survive normal upgrades. Older apps cannot read version 2:
+when deliberately rolling back, stop the app and restore that version-1 backup
+privately. Never commit personal settings to Git.
+
+`POST /api/players` supports `read`, `progress`, `reset_progress`, `create`,
+`select`, `rename`, `delete`, `export`, and `restore`. Non-read requests include
+`player` and `generation`. JSON bodies are limited to 8192 bytes and require
+`X-PowerGlove-Action: players` and the same origin checks as tuning. Names and
+progress are available on the trusted LAN; presets are not login accounts.
+
+![Player selection and portable hand-setting backups](images/player-settings.png)
+
 ## Tune gesture sensitivity
 
 Use **Glove Academy → Tune gestures** to personalize recognition. You do not need to edit
@@ -520,7 +565,7 @@ remains untouched.
 3. Keep the complete hand visible at 70% confidence for one second. Select **I'm ready** and wait through the two-second countdown.
 4. Follow the three recordings. Ordinary poses and movement steps last two seconds. Glove Zap and Pull Back use a six-second middle step containing three motions and returns.
 5. Analyze the recording and try the temporary preview twice. Return to neutral after each use and remain neutral for three seconds.
-6. Save when the guided test passes. Only selected components are merged into the existing version-1 tuning file.
+6. Save when the guided test passes. Only selected components are merged into the active player’s hand settings.
 
 ![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
 
@@ -539,11 +584,11 @@ remain unchanged.
 
 Hand setup learns open and curled thresholds for all five fingers. Individual tuning can be used without setup; it only learns new thresholds for fingers observed both open and curled. Fingers extended throughout retain hand-setup thresholds or existing settings. Feedback uses the same V-sign and thumbs-up checks as recognition. Hand setup reset restores all five finger components; individual reset restores only the selected components. Difficult gestures place activation 55% into the measured rest-to-action gap; accidental gestures use 75% activation and 40% release. Standard setup retains 65% activation and 30% release. Every path rejects a gap below 0.08.
 
-Only adjusted components override all game profiles. Untuned components retain
+Only the active player’s adjusted components override all game profiles. Untuned components retain
 the shared supplied values. Personal adjustments are saved atomically in
 `data/gesture-tuning.json` and survive application restarts and normal updates.
-Normal personalization saves no images or recordings. Existing version-1 files remain compatible;
-hand setup adds ordinary finger pairs rather than a new file format. The versioned format is:
+Normal personalization saves no images or recordings. Existing version-1 files
+migrate as described above; this legacy example remains readable:
 
 ```json
 {
@@ -1710,6 +1755,18 @@ sudo systemctl daemon-reload
 
 
 ### Build and install matrix firmware
+
+The footer's **Software and matrix firmware** details show the candidate when
+available, exact software commit, modified-source indicator, and source SHA-256
+read from the running matrix firmware. The expected fingerprint covers sketch
+sources and the pinned build profile; it is not a compiled-binary hash. Older
+firmware or an unavailable bridge reports **unavailable**. A differing readback
+indicates an update is needed. Expected metadata never substitutes for readback.
+
+After editing sketch sources, run `python3 scripts/stamp-firmware-version.py`
+before compiling. Its `--check` option verifies `sketch/firmware_version.h`;
+packaging/deployment reject stale stamps. App Lab **Run** still uploads firmware.
+Readback runs in the supervisor every thirty seconds, outside the frame path.
 
 To preview the idle animation from the actual sketch renderer on a development
 computer, install Pillow and a C++ compiler, then run

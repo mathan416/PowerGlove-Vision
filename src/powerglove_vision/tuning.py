@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Persist separate player sensitivity and Academy progress.
 #   2026-09-06 - Added the family-facing personalization wizard and validation gate.
 #   2026-09-04 - Added guided gesture sampling and persistent personal thresholds.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -13,7 +14,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import math
 import threading
 import time
@@ -21,6 +21,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from .academy_diagnostics import AcademyDiagnostics
+from .players import PlayerSettings
 from .gesture import GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
 
 CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
@@ -164,16 +165,10 @@ class TuningManager:
     def __init__(self, path, clock=time.monotonic):
         self.path, self.clock = Path(path), clock
         self.lock = threading.RLock()
-        self.saved = {}
-        self.error = None
-        try:
-            if self.path.exists():
-                data = json.loads(self.path.read_text())
-                if data.get("version") != 1:
-                    raise ValueError("Unsupported tuning version")
-                self.saved = validate_overrides(data["thresholds"])
-        except (OSError, ValueError, KeyError, TypeError):
-            self.error = "Saved tuning could not be loaded; using supplied defaults. Restore defaults to replace the invalid file."
+        self.players = PlayerSettings(self.path, validate_overrides)
+        self.saved = copy.deepcopy(self.players.active["thresholds"])
+        self.error = self.players.error
+        self.center_generation = None
         self.session = None
         self.expires = 0
         self.gesture = "index"
@@ -201,6 +196,42 @@ class TuningManager:
         self.test_last_at = None
         self.test_passed = False
         self._configuration_cache = None
+
+    def player_snapshot(self):
+        """Read player state under the same lock as recognition settings."""
+        with self.lock:
+            return self.players.snapshot()
+
+    def player_command(self, data):
+        """Change presets without overlapping an active tuning session."""
+        with self.lock:
+            self._expire()
+            if self.session and data.get("action") not in ("read", "progress", "export"):
+                raise ValueError("Finish tuning and switch Tune gestures off before changing players or restoring settings.")
+            result = self.players.command(data)
+            if data.get("action") in ("create", "select", "delete", "restore"):
+                self.saved = copy.deepcopy(self.players.active["thresholds"])
+                self.error = self.players.error
+                self.preview, self.phases, self.recording = None, [], None
+                self.center_generation = None
+                self.revision += 1
+            return result
+
+    def needs_center(self):
+        """Keep delivery paused until explicit calibration follows a preset change."""
+        with self.lock:
+            return bool(self.players.error or self.players.active["needs_center"])
+
+    def begin_center(self):
+        """Associate a requested calibration with the active player generation."""
+        with self.lock:
+            self.center_generation = self.players.data["generation"]
+
+    def finish_center(self):
+        """Persist successful calibration only for its original player."""
+        with self.lock:
+            self.players.centered(self.center_generation)
+            self.center_generation = None
 
     def _expire(self):
         """Discard temporary state when the browser lease ends."""
@@ -367,13 +398,14 @@ class TuningManager:
 
     def command(self, data: dict) -> dict:
         """Validate ownership, stage recordings, preview changes, and atomically save."""
-        from .game_registry import atomic_write
         with self.lock:
             self._expire()
             action, session = data.get("action"), data.get("session")
             if not isinstance(session, str) or not 8 <= len(session) <= 128 or not all(c.isalnum() or c in "-_" for c in session):
                 raise ValueError("A valid tuning session is required.")
             if action == "begin":
+                if "player" in data and (data["player"] != self.players.data["active"] or data.get("generation") != self.players.data["generation"]):
+                    raise ValueError("The player changed. Reload Glove Academy before tuning.")
                 if self.session and self.session != session:
                     raise ValueError("Another Learn tab is tuning. Close it or wait for its session to expire.")
                 self.session, self.expires = session, self.clock() + 6
@@ -453,7 +485,7 @@ class TuningManager:
                 if not self.test_passed or not self.preview:
                     raise ValueError("Complete the guided try-it test before saving.")
                 merged = dict(self.saved, **validate_overrides(self.preview))
-                atomic_write(self.path, json.dumps({"version": 1, "thresholds": merged}, indent=2) + "\n")
+                self.players.save_thresholds(merged)
                 self.saved, self.preview = merged, None
                 self.wizard_step = "done"
                 self.error = None
@@ -482,7 +514,7 @@ class TuningManager:
                     raise ValueError("Adjust only the selected gesture's components.")
                 if action == "save":
                     merged = dict(self.saved, **values)
-                    atomic_write(self.path, json.dumps({"version": 1, "thresholds": merged}, indent=2) + "\n")
+                    self.players.save_thresholds(merged)
                     self.saved, self.preview = merged, None
                 else:
                     self.preview = values
@@ -492,7 +524,7 @@ class TuningManager:
                 self.revision += 1
             elif action == "reset":
                 merged = {k: v for k, v in self.saved.items() if k not in GESTURES[self.gesture]}
-                atomic_write(self.path, json.dumps({"version": 1, "thresholds": merged}, indent=2) + "\n")
+                self.players.save_thresholds(merged)
                 self.saved, self.preview, self.error = merged, None, None
                 self.revision += 1
             elif action == "discard":

@@ -5,6 +5,7 @@
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
 // Change log:
+//   2026-09-06 - Expose the compiled matrix source fingerprint through Router Bridge.
 //   2026-09-06 - Add an idle lightning flash, clearer fingers and cuff, and a softer glow.
 //   2026-09-04 - Share the scanning letter animation between Learn and Tune.
 //   2026-09-02 - Added to PowerGlove Vision.
@@ -17,6 +18,7 @@
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
 #include <zephyr/kernel.h>
+#include "firmware_version.h"
 
 // App Lab starts this sketch after the UNO Q's protected system-boot display
 // has finished. The Python vision process then selects one of these states.
@@ -371,6 +373,11 @@ void set_powerglove_profile(int profile) {
   requestedProfile = (profile >= 0 && profile <= 11) ? profile : 0;
 }
 
+// Report the identity compiled into the running microcontroller firmware.
+String get_powerglove_firmware() {
+  return String(POWERGLOVE_FIRMWARE_ID);
+}
+
 // Keep the display alive while Router Bridge initialization waits for Linux.
 // This task is the sole framebuffer writer after setup draws its first frame.
 void refreshMatrix();
@@ -398,6 +405,7 @@ void setup() {
   Bridge.provide("set_powerglove_status", set_powerglove_status);
   Bridge.provide("set_powerglove_profile", set_powerglove_profile);
   Bridge.provide("set_powerglove_pairing", set_powerglove_pairing);
+  Bridge.provide("get_powerglove_firmware", get_powerglove_firmware);
 }
 
 // Refresh animations only when their frame or requested state changes.
