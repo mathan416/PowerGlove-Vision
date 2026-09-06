@@ -185,7 +185,8 @@ The sixteen lessons include A (index curl), B (thumb curl), Glove Zap (forward
 push), Pull Back, Start, Select, roll left, roll right, close hand, and menu guard.
 Menu guard requires curled thumb/ring with index, middle, and pinky extended and
 suppresses movement, A, B, Start, and Select. Completing every lesson earns Glove Master; skipped
-lessons must be revisited. **Start again** clears session progress. The practice
+lessons must be revisited. The award replaces the completed lesson in the same
+card. **Start again** clears session progress and restores the lesson panel. The practice
 indicators do not change a game's gesture mapping.
 
 | Recognition pose | See it | Required hand shape |

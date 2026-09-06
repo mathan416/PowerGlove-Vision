@@ -267,6 +267,9 @@ startup sequence. An animation does not prove that shutdown has finished.
 | Connection settings | `http://UNO-Q-NAME.local:8088/setup` |
 | Secure pairing | `https://UNO-Q-NAME.local:8443/setup` |
 
+In Glove Academy, completing all sixteen lessons replaces the lesson panel with
+the **Glove Master** award. **Start again** restores the lessons.
+
 ![Setup page; use HTTPS to enable pairing](images/setup-page.png)
 
 Help serves the public manuals, illustrations, and PDFs locally. **This cabinet**

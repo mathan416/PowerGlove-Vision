@@ -512,6 +512,9 @@ remain extended; it suppresses controls while you reposition. Saved tuning value
 drive gameplay recognition globally, while each game profile only decides button
 assignments, pulses, and toggles.
 
+Complete all sixteen lessons to earn **Glove Master**. The award replaces the
+final lesson card; **Start again** restores the lessons and clears session progress.
+
 | Academy gesture | See it | What recognition expects |
 | --- | --- | --- |
 | Close your hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="128"> | Curl the thumb and every finger into a comfortable closed hand. |

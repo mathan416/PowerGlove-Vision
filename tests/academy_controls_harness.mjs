@@ -5,6 +5,7 @@
 // Copyright (c) 2026 Iain Bennett
 // SPDX-License-Identifier: MIT
 // Change log:
+//   2026-09-06 - Verify the award replaces lesson content and restart restores it.
 //   2026-09-05 - Added complete lesson, restart, camera, calibration, and tuning interaction coverage.
 // Full history: docs/CHANGELOG.md and Git history.
 
@@ -238,11 +239,13 @@ const completeCourse = async () => {
 byId("restart-training").onclick();
 await completeCourse();
 assert.equal(byId("achievement").hidden, false);
+assert.equal(byId("lesson-content").hidden, true, "award must replace the completed lesson");
 assert.equal(byId("next").textContent, "Start again");
 byId("restart-training").onclick();
 assert.equal(lesson(), 1);
 assert.equal(byId("achievement").hidden, true);
 assert.equal(byId("lesson-progress").innerHTML.includes("done"), false);
+assert.equal(byId("lesson-content").hidden, false, "restart must restore lesson content");
 
 await completeCourse();
 byId("next").onclick();

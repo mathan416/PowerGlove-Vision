@@ -7,7 +7,11 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
-No unreleased changes.
+### Fixed
+
+- Glove Academy now replaces the final lesson with the Glove Master award after
+  all sixteen lessons are completed, instead of displaying both and pushing the
+  lesson downward. Start again restores the lesson panel.
 
 ## [0.3.2-rc.5] - 2026-09-06
 
