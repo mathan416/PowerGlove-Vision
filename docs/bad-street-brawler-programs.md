@@ -15,10 +15,10 @@ For a picture of each basic gesture, see [Your gesture reference](GAMEPLAY_GUIDE
 
 ## Choose a program and try it
 
-  1. Use the selector below to choose a program for your game or experiment.
-  2. Select that profile on Dashboard, wait for tracking, and check its gestures with controller delivery stopped.
-  3. Select **Start controller** when ready to play. Use the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game objectives and first-round exercises.
-  4. If the mapping suits another game, add its exact filename to the registry using [Register games and select profiles](CONFIGURATION_REFERENCE.md#register-games-and-select-profiles).
+1. Use the selector below to choose a program for your game or experiment.
+2. Select that profile on Dashboard, wait for tracking, and check its gestures with controller delivery stopped.
+3. Select **Start controller** when ready to play. Use the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game objectives and first-round exercises.
+4. If the mapping suits another game, add its exact filename to the registry using [Register games and select profiles](CONFIGURATION_REFERENCE.md#register-games-and-select-profiles).
 
 ![Dashboard profile selector and controller diagnostics](images/debug-dashboard.png)
 
@@ -60,7 +60,7 @@ open Bad Street Brawler first.
 
 | Gesture | See it | Controller result |
 | --- | --- | --- |
-| Hold a V sign steadily | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause after about two-thirds of a second |
+| Hold a V sign steadily | <img src="images/gestures/v2/v-sign.png" alt="V sign with the index and middle fingers extended" width="104"> | Start or pause after half a second |
 | Briefly show a thumbs-up with the other fingers closed | <img src="images/gestures/v2/thumbs-up.png" alt="Thumbs-up with the other fingers closed" width="104"> | Select |
 
 These menu poses suppress A/B attacks while they form. Some programs can still
@@ -205,11 +205,11 @@ the previous game's mapping does not remain active.
 
 ## Practise safely
 
-  1. Open `http://UNO-Q-NAME.local:8088/learn`.
-  2. Keep your whole hand visible. Select **Calibrate** on first use or when your resting position produces unwanted movement, then hold still.
-  3. Move slowly until the intended gesture is recognized consistently.
-  4. Open Debug to compare hand motion with generated controller output.
-  5. Start controller delivery only when ready to play.
+1. Open `http://UNO-Q-NAME.local:8088/learn`.
+2. Keep your whole hand visible. Select **Calibrate** on first use or when your resting position produces unwanted movement, then hold still.
+3. Move slowly until the intended gesture is recognized consistently.
+4. Open Debug to compare hand motion with generated controller output.
+5. Start controller delivery only when ready to play.
 
 Glove Academy mode works without RetroPie and automatically starts the camera while
 suppressing controller output. This also works while **Gestures off** is the
@@ -237,17 +237,19 @@ to their respective owners. No ROM images are distributed with this project.
 ### Personal sensitivity and practice
 
 Glove Academy has sixteen lessons, including **Glove Zap**, **Pull Back**, both wrist
-rolls, close hand, and menu guard. Tune an
-individual gesture with open hand → gesture → open hand, three seconds per step.
-Optional **Set up my hand** uses a gentle fist with the thumb outside for the
-middle step. Open means fingers and thumb gently extended, wrist straight, with
-the hand centered at a consistent camera distance. For push or Pull Back, return
-to the starting distance for the final recording. Preview before saving.
+rolls, close hand, and menu guard. In **Tune gestures**, tell Pixel Pal whether a
+hand is new, a gesture is difficult, a gesture happens accidentally, or movement
+feels off-centre. The wizard waits for one second of clear, stable tracking before
+the user starts its countdown. Pose, direction, and roll steps take two seconds;
+Glove Zap and Pull Back use three short motion-and-return repetitions so a still
+near or far hand cannot teach the motion. A preview must pass two uses and releases
+plus three neutral seconds before it can be saved.
 
 Saved thresholds apply across profiles, including these programs. Movement
 controls use separate activation and release thresholds, while program-specific
-button pulses and mappings remain in effect. Extended-only fingers retain their
-existing settings. Practice and tuning pause controller delivery.
+button pulses and mappings remain in effect. Advanced values and selective reset
+remain available without exposing them in the normal family workflow. Practice,
+personalization, preview, and diagnostics pause controller delivery.
 
 <!-- PAGEBREAK -->
 

@@ -1,0 +1,253 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/realtime.py
+# Purpose: Keep camera capture and diagnostic JPEG work off the gameplay loop.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-05 - Added latest-frame capture and asynchronous preview encoding.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Low-latency camera and preview helpers for the vision worker."""
+
+from __future__ import annotations
+
+import queue
+import threading
+import time
+from collections import deque
+from dataclasses import dataclass
+from math import ceil
+from typing import Any, Callable
+
+
+@dataclass(frozen=True)
+class CapturedFrame:
+    """Describe one camera read and when it completed."""
+
+    sequence: int
+    captured_at: float
+    ok: bool
+    frame: Any
+
+
+class RollingPerformance:
+    """Summarize recent timing samples without retaining camera content."""
+
+    def __init__(self, size: int = 300) -> None:
+        if size <= 0:
+            raise ValueError("performance window size must be positive")
+        self.size = size
+        self._values: dict[str, deque[float]] = {}
+
+    def record(self, **measurements: float | None) -> None:
+        """Append finite non-negative millisecond measurements."""
+        for name, value in measurements.items():
+            if value is None:
+                continue
+            number = float(value)
+            if number < 0 or number != number or number in (float("inf"), float("-inf")):
+                continue
+            self._values.setdefault(name, deque(maxlen=self.size)).append(number)
+
+    @staticmethod
+    def _percentile(ordered: list[float], percentile: float) -> float:
+        """Return the nearest-rank item from an already sorted window."""
+        return ordered[max(0, ceil(len(ordered) * percentile) - 1)]
+
+    def snapshot(self) -> dict[str, dict[str, float | int]]:
+        """Return rounded latest, median, tail, maximum, and sample count."""
+        summary = {}
+        for name, values in self._values.items():
+            ordered = sorted(values)
+            summary[name] = {
+                "latest": round(values[-1], 1),
+                "p50": round(self._percentile(ordered, 0.50), 1),
+                "p95": round(self._percentile(ordered, 0.95), 1),
+                "max": round(ordered[-1], 1),
+                "samples": len(ordered),
+            }
+        return summary
+
+
+class LatestFrameCapture:
+    """Continuously drain a camera while retaining only its newest frame."""
+
+    def __init__(
+        self,
+        capture: Any,
+        first_frame: Any | None = None,
+        *,
+        clock: Callable[[], float] = time.monotonic,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        self._capture = capture
+        self._clock = clock
+        self.metadata = dict(metadata or {})
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._sequence = 0
+        self._latest: CapturedFrame | None = None
+        if first_frame is not None:
+            self._sequence = 1
+            self._latest = CapturedFrame(1, clock(), True, first_frame)
+        self._thread = threading.Thread(
+            target=self._run, name="powerglove-camera", daemon=True
+        )
+        self._thread.start()
+
+    def _run(self) -> None:
+        """Read continuously so slow inference can never build a frame queue."""
+        while not self._stop.is_set():
+            try:
+                ok, frame = self._capture.read()
+            except Exception:
+                # Publish failure so the main loop can apply its timed reconnect.
+                ok, frame = False, None
+            captured_at = self._clock()
+            with self._lock:
+                self._sequence += 1
+                self._latest = CapturedFrame(
+                    self._sequence, captured_at, bool(ok), frame if ok else None
+                )
+            if not ok:
+                self._stop.wait(0.005)
+
+    def latest_after(self, sequence: int) -> CapturedFrame | None:
+        """Return a newer camera result without waiting or replaying an old frame."""
+        with self._lock:
+            if self._latest is None or self._latest.sequence <= sequence:
+                return None
+            return self._latest
+
+    def release(self) -> None:
+        """Stop capture and unblock the camera driver where supported."""
+        self._stop.set()
+        try:
+            self._capture.release()
+        finally:
+            if threading.current_thread() is not self._thread:
+                self._thread.join(timeout=1.0)
+
+
+@dataclass(frozen=True)
+class _PreviewJob:
+    """Hold one replaceable browser-preview encoding request."""
+
+    frame: Any
+    label: str
+    color: tuple[int, int, int]
+    cv2: Any
+
+
+class LatestPreviewEncoder:
+    """Encode only the latest requested browser preview on a daemon thread."""
+
+    def __init__(self, publish: Callable[[bytes], None]) -> None:
+        self._publish = publish
+        self._jobs: queue.Queue[_PreviewJob | None] = queue.Queue(maxsize=1)
+        self._lock = threading.Lock()
+        self._closed = False
+        self._submitted = 0
+        self._dropped = 0
+        self._encoded = 0
+        self._last_encode_ms: float | None = None
+        self._last_error: str | None = None
+        self._thread = threading.Thread(
+            target=self._run, name="powerglove-preview", daemon=True
+        )
+        self._thread.start()
+
+    def submit(
+        self,
+        frame: Any,
+        label: str,
+        color: tuple[int, int, int],
+        cv2: Any,
+    ) -> bool:
+        """Queue a preview, replacing pending work rather than delaying gameplay."""
+        with self._lock:
+            if self._closed:
+                return False
+            self._submitted += 1
+        job = _PreviewJob(frame, label, color, cv2)
+        try:
+            self._jobs.put_nowait(job)
+            return True
+        except queue.Full:
+            try:
+                self._jobs.get_nowait()
+            except queue.Empty:
+                pass
+            with self._lock:
+                self._dropped += 1
+            try:
+                self._jobs.put_nowait(job)
+                return True
+            except queue.Full:
+                with self._lock:
+                    self._dropped += 1
+                return False
+
+    def _run(self) -> None:
+        """Draw and encode previews independently of controller publication."""
+        while True:
+            job = self._jobs.get()
+            if job is None:
+                return
+            started = time.monotonic()
+            try:
+                job.cv2.putText(
+                    job.frame,
+                    job.label,
+                    (20, job.frame.shape[0] - 24),
+                    job.cv2.FONT_HERSHEY_SIMPLEX,
+                    0.65,
+                    job.color,
+                    2,
+                )
+                encoded, jpeg = job.cv2.imencode(
+                    ".jpg", job.frame, [job.cv2.IMWRITE_JPEG_QUALITY, 78]
+                )
+                if encoded:
+                    self._publish(jpeg.tobytes())
+                    with self._lock:
+                        self._encoded += 1
+                        self._last_error = None
+            except Exception as exc:
+                # A diagnostic preview failure must never stop controller output.
+                with self._lock:
+                    self._last_error = str(exc)
+            finally:
+                elapsed = (time.monotonic() - started) * 1000
+                with self._lock:
+                    self._last_encode_ms = elapsed
+
+    def metrics(self) -> dict[str, int | float | str | None]:
+        """Return non-blocking diagnostics for the Dashboard status payload."""
+        with self._lock:
+            return {
+                "preview_submitted": self._submitted,
+                "preview_encoded": self._encoded,
+                "preview_dropped": self._dropped,
+                "preview_encode_ms": (
+                    None if self._last_encode_ms is None else round(self._last_encode_ms, 1)
+                ),
+                "preview_error": self._last_error,
+            }
+
+    def close(self) -> None:
+        """Stop after discarding any preview that has not started encoding."""
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+        try:
+            self._jobs.get_nowait()
+        except queue.Empty:
+            pass
+        try:
+            self._jobs.put_nowait(None)
+        except queue.Full:
+            pass
+        self._thread.join(timeout=1.0)

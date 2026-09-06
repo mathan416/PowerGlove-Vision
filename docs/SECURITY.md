@@ -15,17 +15,17 @@ shutdown protections and should be upgraded before troubleshooting them.
 Please do not publish credentials, pairing codes, tokens, private device
 configuration, or working exploit instructions in a public issue.
 
-  1. Open the repository's **Security** tab and look for private vulnerability reporting.
-  2. Submit a private report with the information below. Remove secrets from every attachment.
-  3. If private reporting is unavailable, open a minimal public issue asking for a private contact channel; include no exploit details or secrets.
+1. Open the repository's **Security** tab and look for private vulnerability reporting.
+2. Submit a private report with the information below. Remove secrets from every attachment.
+3. If private reporting is unavailable, open a minimal public issue asking for a private contact channel; include no exploit details or secrets.
 
 Include these details in the private report:
 
-  - the affected commit or release;
-  - the UNO Q, RetroPie, browser, and network environment involved;
-  - concise reproduction steps and the observed result;
-  - the security boundary that was crossed;
-  - logs or screenshots after removing tokens, passwords, pairing codes, local addresses, and unrelated personal information.
+- the affected commit or release;
+- the UNO Q, RetroPie, browser, and network environment involved;
+- concise reproduction steps and the observed result;
+- the security boundary that was crossed;
+- logs or screenshots after removing tokens, passwords, pairing codes, local addresses, and unrelated personal information.
 
 This project does not currently offer a bug bounty or a guaranteed response time.
 
@@ -41,12 +41,12 @@ treated as an Internet-facing service.
 
 The main protected assets are:
 
-  - the shared controller token;
-  - the UNO Q and RetroPie operating systems;
-  - the privileged `/dev/uinput` receiver;
-  - the physical pairing display and single-use PIN;
-  - the fixed-purpose UNO Q shutdown helper;
-  - the integrity of the App Lab installation ZIP, MediaPipe wheel, bundled or downloaded model, and Arduino dependencies.
+- the shared controller token;
+- the UNO Q and RetroPie operating systems;
+- the privileged `/dev/uinput` receiver;
+- the physical pairing display and single-use PIN;
+- the fixed-purpose UNO Q shutdown and USB-camera recovery helpers;
+- the integrity of the App Lab installation ZIP, MediaPipe wheel, bundled or downloaded model, and Arduino dependencies.
 
 The project does not attempt to protect a device after an attacker obtains root
 access, physical storage access, or control of the trusted local network and
@@ -115,7 +115,7 @@ local network addresses, ports, profile selection, camera selection, and
 whether pairing is configured, but it must never return the token value,
 passwords, private files, or arbitrary Host-header content.
 
-## Shutdown permissions
+## Shutdown and camera-recovery permissions
 
 The web process does not receive general `sudo` permission. A root-owned
 systemd path unit watches one fixed file in the application data directory. A
@@ -133,20 +133,35 @@ A root-owned tmpfiles rule recreates only that fixed readiness marker during
 boot. It grants no command execution and does not change the container's
 privileges.
 
-Keep the path unit, service unit, and tmpfiles rule owned by root, with file
-permissions set to `0644`.
+Camera recovery follows the same fixed-request pattern with separate path and
+service units. Installation may occur without a camera. When exactly one UVC
+camera is healthy, the root-owned helper writes its identity and its actual
+parent hub's identity and physical USB path to the root-owned
+`/etc/powerglove-camera-recovery.json` allowlist. A later healthy sighting safely
+updates that association if the camera has moved. During an outage the helper
+validates both the stored path and hub identity and resets only that hub; it
+never accepts a device path from the web application or guesses among hubs.
+
+The helper consumes the request before acting, permits one request per camera
+outage, and enforces a root-owned cooldown. Before first enrollment it refuses
+to reset anything. A client able to activate vision could still cause one brief
+USB interruption during a real camera outage, so the web interface remains
+suitable only for a trusted LAN.
+
+Keep both helpers' path units, service units, scripts, and tmpfiles rules owned
+by root. Unit and rule permissions are `0644`; the camera helper is `0755`.
 Do not replace the fixed `ExecStart` commands with user input, a shell string,
-or an arbitrary command runner. Remove or disable all three files if remote
-shutdown is not wanted.
+or an arbitrary command runner. Remove or disable the corresponding helper set
+if remote shutdown or camera recovery is not wanted.
 
 ## Dependency and release integrity
 
-  - The App Lab installation ZIP is generated and verified; it is not maintained as a changing source-controlled binary.
-  - The custom MediaPipe wheel's provenance and checksum are recorded in `THIRD_PARTY_COMPONENTS.md`.
-  - Google's Hand Landmarker model is installed from the bundled copy, with its pinned download as a fallback only when that copy is absent. Both paths must match the expected SHA-256 digest before atomic installation; the package verifier also checks the bundled model and license text.
-  - The optional Nestopia core is built from one pinned upstream commit and one checksum-recorded local patch. Its build rejects changes to Nestopia's original Power Glove license header, and installation keeps the upstream `COPYING` file and the local modification ledger beside the separately named core. Stock Nestopia and FCEUmm are not replaced.
-  - Arduino library versions are pinned in `sketch/sketch.yaml`.
-  - GitHub Actions rebuilds and inspects documentation and the App Lab installation ZIP on every pull request and push to `main` or `dev`.
+- The App Lab installation ZIP is generated and verified; it is not maintained as a changing source-controlled binary.
+- The custom MediaPipe wheel's provenance and checksum are recorded in `THIRD_PARTY_COMPONENTS.md`.
+- Google's Hand Landmarker model is installed from the bundled copy, with its pinned download as a fallback only when that copy is absent. Both paths must match the expected SHA-256 digest before atomic installation; the package verifier also checks the bundled model and license text.
+- The optional Nestopia core is built from one pinned upstream commit and one checksum-recorded local patch. Its build rejects changes to Nestopia's original Power Glove license header, and installation keeps the upstream `COPYING` file and the local modification ledger beside the separately named core. Stock Nestopia and FCEUmm are not replaced.
+- Arduino library versions are pinned in `sketch/sketch.yaml`.
+- GitHub Actions rebuilds and inspects documentation and the App Lab installation ZIP on every pull request and push to `main` or `dev`.
 
 Changing a download URL, checksum, dependency source, pairing primitive,
 network binding, file permission, or privileged service requires focused review
@@ -170,10 +185,17 @@ to the configured registry directory and removes device access and capabilities.
 The new Games and Tune browser actions require JSON, an explicit action header,
 and matching Origin when supplied; cross-site browser requests are rejected.
 They retain the existing trusted-LAN administration model, not per-user accounts.
-Personal tuning contains numerical thresholds only. Measurements are held briefly
+Normal personalization contains numerical thresholds only. Measurements are held briefly
 in memory, previews expire with the owning session, and camera images are not saved.
 Tuning suppresses controller delivery even if a game launches or another Dashboard
 requests input. Saved settings are validated and atomically replaced.
+
+The optional Advanced diagnostic is the only Academy path that records video.
+It is explicitly started and user-paced, remains on the UNO Q, and is deleted
+immediately after aggregate analysis or cancellation. An abandoned AVI expires
+after 30 minutes. Its downloadable JSON contains aggregate continuity, latency,
+confidence, lighting, and recognized-state names only: no frames, landmarks,
+tokens, addresses, or saved personal thresholds.
 
 ### Documentation screenshots
 

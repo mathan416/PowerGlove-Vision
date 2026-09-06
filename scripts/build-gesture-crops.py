@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Built the closed-hand lesson from its own fist illustration.
 #   2026-09-03 - Added contextual gesture crops for the gameplay guide.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -134,7 +135,10 @@ def main() -> None:
     combine("wrist-roll.png", ("wrist-roll-left.png", "wrist-roll-right.png"))
     combine("index-push-combination.png", ("finger-curl.png", "push-toward-camera.png"))
     combine("thumb-finger-combination.png", ("thumb-curl.png", "finger-curl.png"))
-    labeled_copy("close-all-fingers.png", "finger-curl.png", "CLOSE ALL FINGERS")
+    fit_card(Image.open(GESTURES / "v2" / "closed-hand.png")).save(
+        OUTPUT / "closed-hand.png", optimize=True
+    )
+    labeled_copy("close-all-fingers.png", "closed-hand.png", "CLOSE ALL FINGERS")
     labeled_copy("keep-index-straight.png", "move-up.png", "KEEP INDEX STRAIGHT")
     print(f"Generated gesture crops in {OUTPUT}")
 

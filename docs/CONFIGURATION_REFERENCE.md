@@ -87,18 +87,22 @@ may replace a Dashboard selection when a game starts or ends.
 
 ### Vision startup and timing
 
-Camera capture uses the complete 640×480 field of view at 60 fps, allowing each
-recognition pass to begin with a recent frame even when inference runs more
-slowly. On
-MediaPipe builds that expose the legacy graph, its two inference stages use up
-to four CPU threads (`--inference-threads 4`) to reduce latency. Unsupported
-builds safely retain MediaPipe's normal inference behavior.
+Camera capture uses the complete 640×480 field of view at 60 fps. A dedicated
+capture thread continuously drains the camera and retains only its newest frame,
+so inference skips superseded images instead of building an input queue. The
+deployed worker explicitly selects **MediaPipe Hands (proven)**, whose stable
+command identifier is `legacy`, and lets each of its two inference stages use up to four CPU threads
+(`--inference-threads 4`). Thread-count benchmarking remains part of the 0.3.2
+performance work; more threads are not assumed to be faster on every device.
+**MediaPipe Tasks Video (experimental)** remains available under the stable
+`tasks-video` identifier for controlled comparison.
 
 Camera-preview drawing and JPEG encoding run only while a browser is actively
-watching the Dashboard or Glove Academy stream. Closing those pages leaves the
-camera tracker and controller active but reserves preview work for gameplay.
-When a preview is open, it is limited to 5 fps (`--preview-fps 5`) so the live
-diagnostic view does not compete with controller recognition for every frame.
+watching the Dashboard or Glove Academy stream. JPEG encoding runs on a separate
+latest-preview worker and is allowed to drop superseded preview jobs rather than
+delay another controller sample. Closing those pages avoids even that optional
+work. When a preview is open, submissions are limited to 5 fps
+(`--preview-fps 5`).
 
 The worker preloads OpenCV and MediaPipe on its background vision thread as
 soon as its control server is available. Preloading imports the libraries;
@@ -152,8 +156,12 @@ it displays the new status. Compare entries from the same activation.
 
 If the camera is unavailable, check `lsusb` and `/dev/v4l/by-id/` on the UNO Q.
 The built-in `qcom-venus-encoder` and `qcom-venus-decoder` video nodes are not
-webcams. A camera missing from the USB device list needs its connection checked;
-preloading cannot resolve that condition.
+webcams. A camera missing from the USB device list is below MediaPipe and OpenCV;
+preloading cannot resolve that condition. The installed host helper waits for a
+sustained outage before making one guarded reset of the camera's last observed
+parent hub. It disables autosuspend whenever the single UVC camera is present.
+If that one attempt does not restore USB enumeration, check the powered hub,
+cable, and camera connection.
 
 ### Glove Academy, calibration, and live readings
 
@@ -174,14 +182,27 @@ suppresses movement, A, B, Start, and Select. Completing every lesson earns Glov
 lessons must be revisited. **Start again** clears session progress. The practice
 indicators do not change a game's gesture mapping.
 
+| Recognition pose | See it | Required hand shape |
+| --- | --- | --- |
+| Closed hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing every finger into a fist" width="128"> | Thumb and every finger curled into a comfortable fist. |
+| Menu guard | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="128"> | Thumb and ring curled; index, middle, and pinky extended. |
+
 | Reading or control | Meaning |
 | --- | --- |
 | Finger curl | Glove Academy shows values from 0 to 1; Dashboard uses a compact 0-to-3 display. Default ordinary curl actions engage at 0.50 and release below 0.35; saved personal pairs override these values. |
-| V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold steadily for 0.65 seconds to send Start. A non-V pose must then remain visible for 0.30 seconds before Start can rearm. |
+| V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold steadily for 0.50 seconds to send Start. A non-V pose must then remain visible for 0.30 seconds before Start can rearm. |
 | Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for 0.15 seconds to send Select. |
 | Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward or backward movement relative to the calibrated hand size. |
 | Calibrate | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
-| `inference_ms` and `send_ms` | Tracking calculation and local send time; neither measures the full delay from camera movement to game response. |
+| `tracker_backend` | Stable command identifier: `legacy` means **MediaPipe Hands (proven)**; `tasks-video` means **MediaPipe Tasks Video (experimental)**. |
+| `capture_age_ms` | Time from completion of the newest camera read to the beginning of inference. This is a freshness diagnostic, not the camera exposure timestamp. |
+| `capture_interval_ms`, `capture_skipped_total` | Spacing between processed camera frames and the cumulative number intentionally superseded by newer frames. |
+| `inference_ms`, `inference_interval_ms`, and `inference_hz` | Per-frame tracking calculation, spacing between recognition passes, and its reciprocal rate. |
+| `sample_age_ms` | Time from completion of the newest camera read through inference and the local UDP send attempt. This is the primary UNO Q software-stage gameplay measurement. |
+| `controller_transition_age_ms` | `sample_age_ms` recorded only when a successfully transmitted gameplay-visible controller state changes. Native X/Y changes are included. |
+| `performance` | Rolling latest, p50, p95, and maximum values over the most recent 300 valid samples for capture age, processed-frame spacing, inference, inference spacing, send time, complete sample age, and changed-control age. |
+| `preview_encode_ms`, `preview_dropped` | Background JPEG cost and previews discarded to protect controller responsiveness. |
+| `send_ms` | Local controller-state send time. None of these readings alone measures the full delay from physical motion to the displayed game frame. |
 
 Finger recognition uses the strongest joint bend, including the base knuckle;
 a middle-knuckle bend alone can qualify. Thumb recognition uses the stronger
@@ -191,7 +212,9 @@ uses image coordinates. The legacy Arduino landmark bridge keeps its 2D
 interpretation because its depth units differ.
 
 Glove Academy and gameplay share held finger and movement states. Glove Zap and Pull Back
-remain recognized until movement falls below their respective release thresholds, and a confirmed menu pose
+need two consecutive beyond-threshold observations plus 0.10 normalized
+palm-scale movement in the intended direction within 250 ms. Once confirmed,
+they remain recognized until movement falls below their respective release thresholds, and a confirmed menu pose
 still satisfies its lesson after the short controller pulse ends. The browser
 preview is capped at 5 fps; status updates follow each tracking calculation.
 
@@ -304,10 +327,10 @@ sudo chmod 0640 /etc/powerglove/token
 Use this fallback only when neither browser pairing method works. Both machines
 must already have the software installed.
 
-  1. In App Lab, open the active application's private `data/device.json` and locate its `token` value.
-  2. On RetroPie, run `sudo nano /etc/powerglove/token`. Replace the file contents with that same value on one line, without quotation marks. Do not enter it as a shell command.
-  3. Save with Ctrl+O, confirm the filename, and exit with Ctrl+X. Apply the ownership and permission commands above.
-  4. Run `sudo systemctl restart powerglove-receiver.service`, then test controller delivery from Dashboard. Clear the token from your clipboard and close the private file afterward.
+1. In App Lab, open the active application's private `data/device.json` and locate its `token` value.
+2. On RetroPie, run `sudo nano /etc/powerglove/token`. Replace the file contents with that same value on one line, without quotation marks. Do not enter it as a shell command.
+3. Save with Ctrl+O, confirm the filename, and exit with Ctrl+X. Apply the ownership and permission commands above.
+4. Run `sudo systemctl restart powerglove-receiver.service`, then test controller delivery from Dashboard. Clear the token from your clipboard and close the private file afterward.
 
 If you generate a new token in Setup, pair the devices again immediately.
 Do not transfer the new token through a command-line argument; process listings
@@ -360,12 +383,12 @@ assigned to another device.
 
 Games is a section of **Setup**, below pairing; it is not a separate navigation tab.
 
-  1. Open **Setup → Games** in the UNO Q website. Both machines must be online and paired. The page reads the registry used by the installed RetroPie launch hook.
-  2. Select **Download backup** to keep a copy of the last verified installed registry on your computer.
-  3. Edit the JSON, adding the exact ROM filename and a supported profile identifier inside `games`. Expand **Available profile identifiers** for the choices. Preserve your existing entries.
-  4. Select **Validate**. It checks JSON syntax, supported profiles, and duplicate filenames, including names that differ only by letter case. **Format** tidies the JSON without saving it.
-  5. Select **Save**. Wait for confirmation that RetroPie saved the file and the UNO Q read it back successfully.
-  6. Launch or restart the game and confirm its profile on Dashboard.
+1. Open **Setup → Games** in the UNO Q website. Both machines must be online and paired. The page reads the registry used by the installed RetroPie launch hook.
+2. Select **Download backup** to keep a copy of the last verified installed registry on your computer.
+3. Edit the JSON, adding the exact ROM filename and a supported profile identifier inside `games`. Expand **Available profile identifiers** for the choices. Preserve your existing entries.
+4. Select **Validate**. It checks JSON syntax, supported profiles, and duplicate filenames, including names that differ only by letter case. **Format** tidies the JSON without saving it.
+5. Select **Save**. Wait for confirmation that RetroPie saved the file and the UNO Q read it back successfully.
+6. Launch or restart the game and confirm its profile on Dashboard.
 
 Saving does not change the current game's profile. **Restore previous save** swaps
 in the last valid version. **Reload** discards your draft after confirmation. If
@@ -471,37 +494,24 @@ add missing names while preserving your custom mappings.
 
 ## Tune gesture sensitivity
 
-Tuning is optional: adjust only controls that are difficult or trigger accidentally.
-The selector features hand setup, V-sign, thumbs-up, finger curls, Glove Zap, and
-Pull Back. Directions, wrist rolls, closed hand, and menu guard are under **More
-adjustments**. Try neutral calibration first if basic directions feel wrong.
-
-For **Glove Zap**, record starting position → push toward camera and hold → return
-to the starting position and distance. For **Pull Back**, record starting position
-→ pull away and hold → return to the starting position and distance. Keep your
-hand comfortably open and palm facing the camera. Each recording lasts three
-seconds. Forward push and pull-back have independent thresholds; hand setup does
-not calibrate them. For directions and wrist rolls, likewise return to your
-starting position, distance, and wrist orientation for the final recording.
-
-Use **Glove Academy → Tune gestures** to adjust sensitivity. You do not need to edit
+Use **Glove Academy → Tune gestures** to personalize recognition. You do not need to edit
 `config/profiles.json`; it is the release-owned shared baseline. Updates back up
 and replace it. Personal adjustments belong in `data/gesture-tuning.json`, which
 remains untouched.
 
-  1. Show your whole hand in the camera and wait for tracking. Calibrate your comfortable resting position if necessary.
-  2. Switch on **Tune gestures** and select a gesture, or choose **Set up my hand** for optional calibration of all five fingers. Instructions and action buttons stay beside the camera; the Activation and Release table sits beneath the camera. Directions, finger curls, wrist rolls, push/pull, and compound gestures are available.
-  3. Select **Record open hand** with fingers and thumb gently extended, wrist straight, and hand centered at a consistent camera distance. Do not stretch or spread forcefully. Each recording lasts three seconds.
-  4. Record the selected gesture, then open your hand again and record it: three recordings total. For **Set up my hand**, the middle step is a gentle fist with your thumb curled outside your fingers.
-  5. Select **Analyze and preview**. The app uses clear, fresh camera measurements to suggest activation and release values. If resting and performed measurements overlap, repeat the recordings with a clearer gesture and a complete release.
-  6. Try the temporary preview. Live finger feedback shows which required fingers are extended, curled, or not yet matching the pose. You may adjust the numeric values and select **Preview adjustments** before deciding whether to save.
-  7. Select **Save for all profiles** to keep the adjustment. **Discard / record again** removes unsaved changes. **Restore defaults** removes saved adjustments for the selected gesture's components.
+1. Choose **Set up a new hand**, **A gesture is hard to trigger**, **A gesture happens accidentally**, or **Movement feels off-center**.
+2. Choose the gesture when asked. Off-center movement instead shows the saved center and an explicit **Set this as my center** action.
+3. Keep the complete hand visible at 70% confidence for one second. Select **I'm ready** and wait through the two-second countdown.
+4. Follow the three recordings. Ordinary poses and movement steps last two seconds. Glove Zap and Pull Back use a six-second middle step containing three motions and returns.
+5. Analyze the recording and try the temporary preview twice. Return to neutral after each use and remain neutral for three seconds.
+6. Save when the guided test passes. Only selected components are merged into the existing version-1 tuning file.
 
-![Tune mode with the Activation and Release table beneath the blurred camera](images/tune-page.png)
+![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
 
-The camera imagery is blurred in this reference screenshot. On a wide screen,
-instructions and buttons sit beside the camera; on a narrow screen, they appear
-first. The matrix shows a scanning **T** while tuning and a matching scanning **L** in ordinary practice.
+The reference screenshot deliberately excludes the live camera area. Pixel Pal
+presents one instruction and primary action at a time. The numerical table and diagnostic
+capture are collapsed under **Advanced thresholds and diagnostics**. The matrix
+shows a scanning **T** while tuning and a matching scanning **L** in ordinary practice.
 
 Activation is the point where a gesture begins; release is the lower point where
 it stops. Separate values prevent rapid on/off flickering. Gameplay movement mappings use these same held states, including wrist steering, push, pull-back, and braking; game-specific button assignments and pulses still apply. Directions and fingers
@@ -511,12 +521,12 @@ adjustments tune the closed fingers; already extended fingers retain their exist
 settings from hand setup or existing personal/default values. Button assignments and menu hold timing
 remain unchanged.
 
-Hand setup learns open and curled thresholds for all five fingers. Individual tuning can be used without setup; it only learns new thresholds for fingers observed both open and curled. Fingers extended throughout retain hand-setup thresholds or existing settings. Feedback uses the same V-sign and thumbs-up checks as recognition. Hand setup reset restores all five finger components; individual reset restores only the selected components.
+Hand setup learns open and curled thresholds for all five fingers. Individual tuning can be used without setup; it only learns new thresholds for fingers observed both open and curled. Fingers extended throughout retain hand-setup thresholds or existing settings. Feedback uses the same V-sign and thumbs-up checks as recognition. Hand setup reset restores all five finger components; individual reset restores only the selected components. Difficult gestures place activation 55% into the measured rest-to-action gap; accidental gestures use 75% activation and 40% release. Standard setup retains 65% activation and 30% release. Every path rejects a gap below 0.08.
 
 Only adjusted components override all game profiles. Untuned components retain
 the shared supplied values. Personal adjustments are saved atomically in
 `data/gesture-tuning.json` and survive application restarts and normal updates.
-No images or recordings are saved. Existing version-1 files remain compatible;
+Normal personalization saves no images or recordings. Existing version-1 files remain compatible;
 hand setup adds ordinary finger pairs rather than a new file format. The versioned format is:
 
 ```json
@@ -537,6 +547,17 @@ cannot interrupt tuning or send game input. Leaving Tune discards its preview;
 a disconnected browser's session expires after six seconds. Return to Dashboard
 and explicitly start controller delivery when ready to play. **Recalibrate neutral**
 changes the resting reference separately and invalidates any current recordings.
+
+### Private Academy diagnostic capture
+
+The Advanced diagnostic is separate from personalization. Eight user-paced cues
+exercise neutral, directions, A/B, menu poses, rolls, depth motion, Menu Guard,
+and tracking recovery using the deployed **MediaPipe Hands (proven)** backend.
+The UNO Q records a temporary local AVI only while a cue is active. Completion
+produces an aggregate JSON report containing detection continuity, confidence,
+latency, hand brightness, and recognized state names. It contains no frames or
+per-frame landmarks. The AVI is deleted immediately after analysis or cancellation;
+an abandoned capture is deleted after 30 minutes. No network upload occurs.
 
 ### Supplied shared recognition defaults
 
@@ -559,6 +580,9 @@ useful for understanding the defaults; personal tuning is managed through Glove 
 | `roll_off` | Rotation at which active roll releases | Roll stays active closer to neutral |
 | `push_on` | Relative increase in apparent hand size from center | Push actions activate with less forward movement |
 | `push_off` | Depth change at which an active push releases | Push stays active closer to the centred depth |
+| `depth_confirm_frames` | Consecutive beyond-threshold observations required for Glove Zap or Pull Back | Fewer observations accept shorter changes but reduce spike rejection |
+| `depth_motion_window_ms` | Window in which the required depth travel must occur | A longer interval accepts slower depth motion |
+| `depth_motion_delta` | Minimum normalized palm-scale travel toward or away from the camera | Smaller apparent-size changes can qualify as depth actions |
 | `pulse_hz` | Repetition rate for profiles that pulse an action | Repeated actions become slower |
 | `loss_release_ms` | Tracking-loss delay before all controls release | Controls release sooner after the hand disappears |
 
@@ -582,6 +606,9 @@ The supplied shared recognition defaults are:
   "roll_off": 0.40,
   "push_on": 0.34,
   "push_off": 0.18,
+  "depth_confirm_frames": 2,
+  "depth_motion_window_ms": 250,
+  "depth_motion_delta": 0.10,
   "pulse_hz": 7.0,
   "loss_release_ms": 120
 }
@@ -596,11 +623,11 @@ recognition states map to controller output.
 When adjusting numeric values in Tune, change one pair at a time in steps of approximately `0.02` to `0.05`, then test
 from the same camera position. Useful adjustments include:
 
-  - Recalibrate first if directional movement requires too much travel or moves at rest.
-  - Keep `move_off` below `move_on` so a direction releases promptly near center.
-  - Raise an `_on` value when an action triggers unintentionally.
-  - Increase `pulse_hz` when a repeating action is too slow.
-  - Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
+- Recalibrate first if directional movement requires too much travel or moves at rest.
+- Keep `move_off` below `move_on` so a direction releases promptly near center.
+- Raise an `_on` value when an action triggers unintentionally.
+- Increase `pulse_hz` when a repeating action is too slow.
+- Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
 
 Saved personal tuning applies without reopening the camera and across every profile.
 The saved neutral calibration is reused; recalibrate only if your physical setup has changed or
@@ -659,7 +686,7 @@ or any other physical controller.
 If RetroArch has a hand-written override for this device, remove or reconcile
 that override before diagnosing the supplied autoconfiguration.
 
-## UNO Q shutdown helper
+## UNO Q privileged host helpers
 
 The standard installation includes the host shutdown helper so Dashboard and
 Setup can halt Linux cleanly. It consists of two systemd units and one
@@ -671,15 +698,38 @@ boot-time readiness rule:
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/powerglove-system-shutdown.service` | Removes that request and asks systemd to halt Linux cleanly |
 | `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/powerglove-system-shutdown.conf` | Recreates the unprivileged readiness marker at boot or after application replacement |
 
-Install them with `scripts/install-uno-q-shutdown-helper.sh`. The installer also
+The standard installer adds `powerglove-camera-recovery.path`, its fixed-purpose
+service, `/usr/local/libexec/powerglove-camera-recovery`, and a tmpfiles rule.
+Installation does not require a camera. If exactly one UVC camera is connected,
+the helper records it and its nearest external parent hub immediately; otherwise
+enrollment is deferred until vision first sees the camera successfully. The
+root-owned `/etc/powerglove-camera-recovery.json` allowlist stores the observed
+camera identity plus the hub identity and physical USB path. A later healthy
+sighting updates the association automatically if the camera has moved.
+
+During an outage the unprivileged application can request only the helper's
+fixed operation. It validates the stored hub path and identity before resetting
+that hub, waits for one UVC camera to enumerate, updates the allowlist, and sets
+the camera and hub power policies to `on`. It never guesses among hubs. A
+root-owned 60-second cooldown and the application's one-request-per-outage rule
+prevent reset loops. Resetting the hub can briefly interrupt USB Ethernet and
+any other devices attached to it. Before the first successful camera sighting,
+there is deliberately no reset target; reconnect or power-cycle the camera once
+to let automatic enrollment complete.
+
+Install all host helpers with `scripts/install-uno-q-shutdown-helper.sh`, or
+install/repair only camera recovery with
+`scripts/install-uno-q-camera-recovery-helper.sh`. The standard installer also
 creates the private `data/.shutdown-enabled` marker that allows the web UI to
-offer the action. The tmpfiles rule restores that marker at boot. The
+offer the action and `data/.camera-recovery-enabled` for camera recovery. The
+tmpfiles rules restore both markers at boot. The
 application cannot use this mechanism to execute an arbitrary privileged
-command; it can only create the fixed request after an explicit confirmation.
+command; it can only create the two fixed request files.
 
 Do not change the request path in only one component. The web application, path
 unit, service, and marker must continue to agree. After installation, confirm
-that `powerglove-system-shutdown.path` is enabled and active.
+that `powerglove-system-shutdown.path` and `powerglove-camera-recovery.path` are
+enabled and active.
 
 ## Network ports and trust boundary
 
@@ -738,6 +788,8 @@ several complete loops is the preferred review artifact for later refinements.
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
 | `data/.shutdown-enabled` | Readiness marker installed by the fixed-purpose shutdown helper included in standard setup |
+| `data/.camera-recovery-enabled` | Readiness marker for the fixed-purpose host USB-camera recovery helper |
+| `data/camera-recovery-request` | Ephemeral one-shot request consumed by the root-owned camera recovery service |
 | `output/pdf/` | Generated PDF editions; public editions are served by Help, while the cabinet quick reference remains private |
 
 Changing manifests can prevent App Lab from starting the application. Generated
@@ -820,6 +872,11 @@ not automatically migrate active configuration.
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/` | Fixed shutdown request watcher |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/` | Fixed clean-shutdown action |
 | `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/` | Boot-time shutdown readiness marker |
+| `uno-q/powerglove-camera-recovery.path` | `/etc/systemd/system/` | Watches the fixed camera-recovery request |
+| `uno-q/powerglove-camera-recovery.service` | `/etc/systemd/system/` | Runs the bounded camera recovery action |
+| `uno-q/powerglove-camera-recovery.py` | `/usr/local/libexec/powerglove-camera-recovery` | Enrolls one UVC camera and resets only its last observed, identity-checked parent hub |
+| `uno-q/powerglove-camera-recovery.conf` | `/etc/tmpfiles.d/` | Boot-time camera-recovery readiness marker |
+| Runtime camera allowlist | `/etc/powerglove-camera-recovery.json` | Root-owned camera identity and last successfully observed hub path and identity |
 | `.github/workflows/quality.yml` | GitHub Actions | Automated tests and release verification |
 | `app.yaml` | UNO Q application root | App Lab |
 | `sketch/sketch.yaml` | UNO Q application sketch directory | Arduino build system |
@@ -1033,11 +1090,15 @@ before using it. Normal UNO Q use should start through App Lab instead.
 | `--camera VALUE` | `auto` | Camera selection; use `auto` or a camera index. |
 | `--width PIXELS` | `640` | Requested capture width; the camera may negotiate another size. |
 | `--height PIXELS` | `480` | Requested capture height. |
-| `--fps NUMBER` | `30` | Requested capture rate; not a guarantee of tracking or game frame rate. |
+| `--fps NUMBER` | `60` | Requested capture rate; not a guarantee of tracking or game frame rate. |
+| `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
+| `--inference-threads NUMBER` | `4` | CPU threads requested for each legacy MediaPipe inference calculator. Benchmark before changing. |
+| `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands (proven)**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
+| `--preview-fps NUMBER` | `5` | Maximum rate at which optional browser preview jobs are submitted. |
 | `--glove-color VALUE` | `none` | `none`, `white`, or `black`; an informational label, not a different recognition model. |
 | `--no-mirror` | Off | Disables horizontal image mirroring. |
 | `--config PATH` | Project `config/profiles.json`, if present | Alternative gesture-threshold file. Otherwise built-in defaults are used. |
-| `--model PATH` | Default verified model | Alternative MediaPipe model. The standard `hand_landmarker.task` filename uses the verified model workflow. |
+| `--model PATH` | Default verified model | Alternative MediaPipe Tasks model used only with `--tracker-backend tasks-video`. The standard `hand_landmarker.task` filename uses the verified model workflow. |
 | `--web-host ADDRESS` | `0.0.0.0` | Address for the worker's diagnostic web server. |
 | `--web-port NUMBER` | `8088` | Worker diagnostic port. App Lab overrides this to `8089` on loopback behind its main web server. |
 | `--no-matrix` | Off | Disables direct matrix integration. App Lab uses this because its supervisor controls the matrix. |
@@ -1081,6 +1142,9 @@ they may still perform their normal work.
 | `scripts/configure-super-glove-ball-core.py` | `--rom PATH --mode MODE [--apply]`, where MODE is `native` or `fceumm` | Previews or atomically selects the custom core for one Super Glove Ball ROM. `--mode fceumm` is the explicit rollback. |
 | `scripts/run-nestopia-powerglove-trace.py` | Core, exact ROM, trace/state/scratch paths | Runs controlled native phases, records the ROM digest and packet evidence, and can save temporary validation frames. |
 | `scripts/benchmark-direction-response.py` | Paths to both cores and the exact Super Glove Ball ROM, scratch path, optional FCEUmm reference ROM, frame count, and JSON output | Runs matched-savestate activation and release comparisons for the same ROM in native and FCEUmm modes. The optional reference lane uses Gun.Smoke. ROMs and scratch output remain outside the project. |
+| `scripts/record-vision-benchmark.py` | Optional camera, output, size, and frame-rate flags | Records a fixed 30-second, local-only cue sequence for near/far recognition, X/Y travel, jitter, depth, and recovery comparisons. It is never run by installation or used for training. |
+| `scripts/guided-vision-benchmark.py` | Optional camera, output, bind address, port, size, and frame-rate flags | Serves a temporary live-preview page for user-paced, per-step benchmark recording. Each selected step has a two-second countdown; pauses between steps are not recorded. The camera is released when capture completes. Output stays local and is not training data. |
+| `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, and optional Tasks model path | Replays the same full frames through MediaPipe Hands at 1, 2, and 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, and preview cost. |
 | `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
 | `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Installs and verifies the bundled model into project `data/models/`; downloads only if absent. Requires Python 3, plus curl for fallback downloads. |
 | `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |
@@ -1185,14 +1249,16 @@ thresholds; use Set up my hand if comfortable extension needs adjustment. Previe
 and live gameplay testing still matter, and manual numerical edits remain a
 separate path rather than an automatically verified recording.
 
-The status response's `tuning` object reports `mode` (`hand_setup` or `gesture`),
-`gesture`, `total_phases` (3), `completed_phases`, and `finger_feedback`. Each finger
-entry contains `expected` (`extended` or `curled`), `matches`, `value`, and
-`threshold`. `saved`, `effective`, and `preview` distinguish persisted values,
-currently used pairs, and temporary adjustments. The six-second browser lease
-expires temporary recordings and previews; it does not delete saved thresholds.
-Manual preview/save validates numerical ranges and component membership, but
-cannot prove that a hand pose was performed correctly.
+The status response's `tuning` object retains its version-1 fields and adds
+`problem`, `wizard_step`, `recipe`, `stable_ready`, `test`, `image_quality`, and
+`diagnostic`. `gesture`, `total_phases` (3), `completed_phases`, and
+`finger_feedback` continue to describe the active recipe. Each finger entry has
+`expected` (`extended` or `curled`), `matches`, `value`, and `threshold`.
+`saved`, `effective`, and `preview` distinguish persisted values, currently used
+pairs, and temporary adjustments. The six-second browser lease expires temporary
+recordings and previews; it does not delete saved thresholds. Manual preview and
+selective reset remain available under Advanced; normal wizard saving requires
+the guided activation, release, and neutral check.
 
 ### Verified sketch dependencies
 
@@ -1361,20 +1427,20 @@ application; matrix firmware changes still need **Run** in App Lab.
 
 #### Set up SSH key access once
 
-  1. On your development computer, check for an existing public key in `~/.ssh/`. Use only a file ending in `.pub`; never copy its matching private key.
-  2. If you do not have a key, run `ssh-keygen -t ed25519`. Accept the suggested location only if it does not replace an existing key, and follow the passphrase prompts.
-  3. Open your public-key file and copy its complete single line. For the default key, run `cat ~/.ssh/id_ed25519.pub`.
-  4. Connect with `ssh arduino@UNO-Q-NAME.local`. On the UNO Q, run `install -d -m 0700 ~/.ssh`, then `nano ~/.ssh/authorized_keys`.
-  5. Add the public key on a new line, preserving any existing keys. Save with Ctrl+O, confirm the name, and exit with Ctrl+X.
-  6. Run `chmod 0600 ~/.ssh/authorized_keys`, then `exit` to return to your computer. If your private key has a passphrase, make it available through your computer's SSH agent before the unattended deployment check.
-  7. Run `ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname`. Continue only when it prints the UNO Q hostname without requesting a login password.
+1. On your development computer, check for an existing public key in `~/.ssh/`. Use only a file ending in `.pub`; never copy its matching private key.
+2. If you do not have a key, run `ssh-keygen -t ed25519`. Accept the suggested location only if it does not replace an existing key, and follow the passphrase prompts.
+3. Open your public-key file and copy its complete single line. For the default key, run `cat ~/.ssh/id_ed25519.pub`.
+4. Connect with `ssh arduino@UNO-Q-NAME.local`. On the UNO Q, run `install -d -m 0700 ~/.ssh`, then `nano ~/.ssh/authorized_keys`.
+5. Add the public key on a new line, preserving any existing keys. Save with Ctrl+O, confirm the name, and exit with Ctrl+X.
+6. Run `chmod 0600 ~/.ssh/authorized_keys`, then `exit` to return to your computer. If your private key has a passphrase, make it available through your computer's SSH agent before the unattended deployment check.
+7. Run `ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname`. Continue only when it prints the UNO Q hostname without requesting a login password.
 
 #### Update the application
 
-  1. On your development computer, open your project checkout and review local changes with `git status --short`.
-  2. If you are updating from GitHub, run `git pull --ff-only`. Resolve any reported local-change or branch conflict before deploying. Keep the version compatible with the RetroPie installation.
-  3. Run the deployment command below. It preserves private `data/`, restarts the application, and checks its web pages.
-  4. Open Dashboard and Glove Academy to confirm the updated app works. If you changed the matrix sketch, also rebuild and run it through App Lab.
+1. On your development computer, open your project checkout and review local changes with `git status --short`.
+2. If you are updating from GitHub, run `git pull --ff-only`. Resolve any reported local-change or branch conflict before deploying. Keep the version compatible with the RetroPie installation.
+3. Run the deployment command below. It preserves private `data/`, restarts the application, and checks its web pages.
+4. Open Dashboard and Glove Academy to confirm the updated app works. If you changed the matrix sketch, also rebuild and run it through App Lab.
 
 ```sh
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
@@ -1427,10 +1493,10 @@ unless you intend to shut down the UNO Q.
 
 ### RetroPie updates
 
-  1. On RetroPie, back up customized files under `/etc/powerglove/`, especially `games.json` and `launcher.json`, using your normal private backup method.
-  2. Open the original source checkout, normally `~/PowerGlove-Vision`. The installed copy under `/opt/powerglove-src` is not a Git checkout.
-  3. Run the commands below. Review `git status --short` before pulling; if Git reports a conflict, resolve it before running the installer.
-  4. Resolve any **FAIL** in the installer report, then launch a registered game and check its profile and controls. The installer preserves existing settings and tokens.
+1. On RetroPie, back up customized files under `/etc/powerglove/`, especially `games.json` and `launcher.json`, using your normal private backup method.
+2. Open the original source checkout, normally `~/PowerGlove-Vision`. The installed copy under `/opt/powerglove-src` is not a Git checkout.
+3. Run the commands below. Review `git status --short` before pulling; if Git reports a conflict, resolve it before running the installer.
+4. Resolve any **FAIL** in the installer report, then launch a registered game and check its profile and controls. The installer preserves existing settings and tokens.
 
 ```sh
 cd ~/PowerGlove-Vision
@@ -1452,17 +1518,20 @@ and keep only the intended application set to start at boot.
 
 ### Matrix shows a blinking X
 
-  - Confirm that an active gesture profile is selected. **Gestures off** should display the animated glove attract sequence, never the error X.
-  - Confirm the camera is connected through the powered hub.
-  - Try another hub port or USB cable.
-  - Check whether Linux sees a USB camera; internal `qcom-venus-encoder` and `qcom-venus-decoder` nodes are codecs, not your camera.
-  - Restart the app after checking power and cabling.
+- Confirm that an active gesture profile is selected. **Gestures off** should display the animated glove attract sequence, never the error X.
+- Confirm the camera is connected through the powered hub.
+- Try another hub port or USB cable.
+- Check whether Linux sees a USB camera; internal `qcom-venus-encoder` and `qcom-venus-decoder` nodes are codecs, not your camera.
+- Restart the app after checking power and cabling.
 
 ### Camera appears only after reconnecting it
 
 This usually indicates USB enumeration or power trouble. Keep the powered hub
 energized before starting the UNO Q, try another cable, and avoid passive
-adapters. The app itself waits for a camera and should recover when it appears.
+adapters. The app first retries an ordinary camera reopen. With the standard
+host helper installed, a camera that remains absent for 15 seconds receives one
+guarded hub-reset attempt; USB Ethernet can disconnect briefly. A camera still
+absent afterward needs its physical connection checked.
 
 ### First installation takes several minutes
 
@@ -1472,10 +1541,10 @@ the installed software and normally start faster.
 
 ### Setup page does not open
 
-  - Ordinary settings: `http://UNO-Q-NAME.local:8088/setup`
-  - Secure pairing: `https://UNO-Q-NAME.local:8443/setup`
-  - Try the board's IP address if `.local` does not resolve.
-  - HTTPS and HTTP are not interchangeable on these ports.
+- Ordinary settings: `http://UNO-Q-NAME.local:8088/setup`
+- Secure pairing: `https://UNO-Q-NAME.local:8443/setup`
+- Try the board's IP address if `.local` does not resolve.
+- HTTPS and HTTP are not interchangeable on these ports.
 
 ### Camera is slow to start or missing after reboot
 
@@ -1498,10 +1567,10 @@ For stage timings and further checks, see
 
 ### Password pairing fails
 
-  - Prepare a new attempt and use its new matrix PIN.
-  - Confirm the RetroPie username and password can log in through SSH.
-  - The account must be allowed to run `sudo` with that password.
-  - Prefer the one-time-code method if password SSH is disabled.
+- Prepare a new attempt and use its new matrix PIN.
+- Confirm the RetroPie username and password can log in through SSH.
+- The account must be allowed to run `sudo` with that password.
+- Prefer the one-time-code method if password SSH is disabled.
 
 ### Controller does not appear on RetroPie
 
@@ -1530,10 +1599,10 @@ are additional hooks.
 
 ### Controller exists but does not move
 
-  - Select **Start controller** on Setup or Debug.
-  - Confirm a calibrated hand and controller output on Debug.
-  - Verify the receiver address and UDP 55355 connectivity.
-  - Check whether an existing cabinet input merger filters the virtual device.
+- Select **Start controller** on Setup or Debug.
+- Confirm a calibrated hand and controller output on Debug.
+- Verify the receiver address and UDP 55355 connectivity.
+- Check whether an existing cabinet input merger filters the virtual device.
 
 ### Profiles do not change
 
@@ -1544,20 +1613,20 @@ relay. Follow [Check a queued profile change](CONFIGURATION_REFERENCE.md#check-a
 for the command and recovery steps. Check the exact ROM filename, including
 its archive extension, if the selected profile is **off**.
 
-  - Test `powerglove-profile` manually.
-  - Check `uno_q` and `token_file` in `/etc/powerglove/launcher.json`.
-  - Confirm both runcommand hooks call the supplied helper scripts.
-  - Match the exact ROM basename in `/etc/powerglove/games.json`.
+- Test `powerglove-profile` manually.
+- Check `uno_q` and `token_file` in `/etc/powerglove/launcher.json`.
+- Confirm both runcommand hooks call the supplied helper scripts.
+- Match the exact ROM basename in `/etc/powerglove/games.json`.
 
 ### FAQ: What if the console name cannot be resolved?
 
-  1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Test console name**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the UNO Q app; successful lookup on your laptop alone is not sufficient.
-  2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
-  3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
-  4. On the UNO Q, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
-  5. Check that both machines are on a network that allows communication between devices. Guest Wi-Fi, client isolation, VPN routing, separate VLANs, or multicast filtering can prevent `.local` discovery. mDNS uses UDP port 5353; do not disable your firewall wholesale or expose the app to the Internet to fix discovery.
-  6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the UNO Q by name, check that reverse direction separately.
-  7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
+1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Test console name**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the UNO Q app; successful lookup on your laptop alone is not sufficient.
+2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
+3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
+4. On the UNO Q, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
+5. Check that both machines are on a network that allows communication between devices. Guest Wi-Fi, client isolation, VPN routing, separate VLANs, or multicast filtering can prevent `.local` discovery. mDNS uses UDP port 5353; do not disable your firewall wholesale or expose the app to the Internet to fix discovery.
+6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the UNO Q by name, check that reverse direction separately.
+7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
 
 After fixing the problem, reboot both machines and repeat **Test console name** before testing gameplay. The app-owned resolver has been verified across a UNO Q reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
 

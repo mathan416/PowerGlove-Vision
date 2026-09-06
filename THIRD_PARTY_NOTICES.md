@@ -43,7 +43,7 @@ Upstream: https://github.com/libretro/nestopia
 Pinned revision: `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`
 
 PowerGlove Vision patch SHA-256:
-`6a4318673085eb4eeda3ec84da1f905cf48c8d0e5ed1a07f0d644eb0860622ec`
+`3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397`
 
 Modification and distribution details are recorded in
 [`native/nestopia-powerglove/README.md`](native/nestopia-powerglove/README.md)

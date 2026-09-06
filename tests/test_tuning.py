@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept independent finger tuning coverage with the eased thumb default.
 #   2026-09-04 - Added personal tuning regression coverage.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -13,7 +14,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from powerglove_vision.tuning import TuningManager, suggest, CHANNELS, validate_overrides
+from powerglove_vision.tuning import (
+    TuningManager, suggest, CHANNELS, validate_overrides, tuning_recipe,
+)
 from powerglove_vision.gesture import GestureConfig, GestureEngine, SUPPORTED_PROFILES, MENU_FINGERS, finger_pose_feedback
 from powerglove_vision.model import Calibration, HandObservation
 from powerglove_vision.debug_server import SharedDebugState
@@ -41,6 +44,84 @@ class TuningTests(unittest.TestCase):
         self.assertGreater(pair['off'], .1)
         self.assertLess(pair['off'], pair['on'])
         self.assertLess(pair['on'], .8)
+
+    def test_problem_biases_and_motion_recipes(self):
+        phases = self.phases()
+        difficult = suggest('index', phases, activation_fraction=.55)['index']
+        standard = suggest('index', phases)['index']
+        accidental = suggest('index', phases, activation_fraction=.75, release_fraction=.40)['index']
+        self.assertLess(difficult['on'], standard['on'])
+        self.assertGreater(accidental['on'], standard['on'])
+        self.assertGreater(accidental['off'], standard['off'])
+        self.assertEqual(tuning_recipe('push')['durations'], [2.0, 6.0, 2.0])
+        self.assertEqual(tuning_recipe('left')['kind'], 'movement')
+        self.assertEqual(tuning_recipe('start')['kind'], 'pose')
+
+    def test_wizard_requires_stable_hand_and_guided_test_before_save(self):
+        state = self.command('choose_problem', problem='difficult')
+        self.assertEqual(state['wizard_step'], 'gesture')
+        self.command('select', gesture='index')
+        with self.assertRaisesRegex(ValueError, 'moment'):
+            self.command('wizard_record')
+        self.now += 1.1
+        self.manager.observe(HandObservation(2, True, .99, .5,.5,.2,0,index_curl=.1),
+                             self.calibration, GestureConfig(), True)
+        self.command('wizard_record')
+        self.assertTrue(self.manager.snapshot()['recording'])
+        self.manager.recording = None
+        self.manager.preview = {'index': {'on': .4, 'off': .2}}
+        self.manager.wizard_step = 'test'
+        with self.assertRaisesRegex(ValueError, 'try-it'):
+            self.command('wizard_save')
+        self.command('start_test')
+        timestamp = 10
+        for seconds, curl in ((.5, .1), (.5, .1), (.5, .1), (.5, .1), (.5, .1), (.5, .1),
+                              (.1, .8), (.1, .1),
+                              (.1, .8), (.1, .1)):
+            self.now += seconds
+            timestamp += 1
+            config = self.manager.configuration(GestureConfig())
+            self.manager.observe(
+                HandObservation(timestamp, True, .99, .5,.5,.2,0,index_curl=curl),
+                self.calibration, config, True,
+            )
+        self.assertTrue(self.manager.snapshot()['test']['passed'])
+        self.command('wizard_save')
+        self.assertEqual(self.manager.saved['index'], {'on': .4, 'off': .2})
+        self.assertEqual(self.manager.snapshot()['wizard_step'], 'done')
+
+    def test_off_center_routes_to_explicit_center_without_recording(self):
+        state = self.command('choose_problem', problem='off_center')
+        self.assertEqual(state['wizard_step'], 'center')
+        self.assertEqual(state['completed_phases'], 0)
+
+    def test_depth_guided_test_uses_motion_confirmed_recognition(self):
+        self.command('choose_problem', problem='difficult')
+        self.command('select', gesture='push')
+        self.manager.preview = {'push': {'on': .2, 'off': .1}}
+        self.manager.wizard_step = 'test'
+        self.command('start_test')
+        timestamp = 20
+        # A stationary hand beyond the numerical boundary never counts.
+        for _ in range(8):
+            self.now += .5
+            timestamp += 1
+            self.manager.observe(
+                HandObservation(timestamp, True, .99, .5, .5, .3, 0),
+                self.calibration, self.manager.configuration(GestureConfig()), True,
+                recognized=[],
+            )
+        self.assertEqual(self.manager.snapshot()['test']['cycles'], 0)
+        # Only the engine's confirmed recognition state supplies activations.
+        for active in (True, False, True, False):
+            self.now += .1
+            timestamp += 1
+            self.manager.observe(
+                HandObservation(timestamp, True, .99, .5, .5, .3, 0),
+                self.calibration, self.manager.configuration(GestureConfig()), True,
+                recognized=['push'] if active else [],
+            )
+        self.assertEqual(self.manager.snapshot()['test']['cycles'], 2)
 
     def test_idle_manager_skips_live_measurement_work_and_reuses_configuration(self):
         manager = TuningManager(self.path, lambda: self.now)
@@ -86,7 +167,7 @@ class TuningTests(unittest.TestCase):
         for profile in SUPPORTED_PROFILES:
             cfg = reloaded.configuration(GestureConfig())
             engine = GestureEngine(profile, cfg, calibration=self.calibration)
-            hand = HandObservation(1, True, .99, .5,.5,.2,0,index_curl=.4,thumb_curl=.4)
+            hand = HandObservation(1, True, .99, .5,.5,.2,0,index_curl=.4,thumb_curl=.37)
             engine.update(hand)
             self.assertTrue(engine.curl_feedback(hand)['index'])
             self.assertFalse(engine.curl_feedback(hand)['thumb'])

@@ -6,6 +6,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Kept each PDF list marker with its wrapped item text.
+#   2026-09-05 - Rendered paired gesture art side by side inside See it table cells.
 #   2026-09-04 - Honoured explicit widths for standalone manual illustrations.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -26,7 +28,7 @@ from datetime import date
 from pathlib import Path
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
@@ -35,8 +37,6 @@ from reportlab.platypus import (
     Image,
     KeepTogether,
     CondPageBreak,
-    ListFlowable,
-    ListItem,
     PageBreak,
     Paragraph,
     Preformatted,
@@ -128,12 +128,12 @@ def table_cell(
     source: Path,
     style: ParagraphStyle,
 ):
-    """Render a table cell as either text or one local contextual image."""
+    """Render a table cell as text, one image, or paired contextual images."""
 
-    image_match = re.fullmatch(
+    image_pattern = re.compile(
         r'<img\s+src="([^"]+)"\s+alt="([^"]*)"(?:\s+width="([0-9]+)")?\s*/?>',
-        cell.strip(),
     )
+    image_match = image_pattern.fullmatch(cell.strip())
     if image_match:
         image_path = (source.parent / image_match.group(1)).resolve()
         if image_path.exists():
@@ -149,6 +149,26 @@ def table_cell(
             if int(image_match.group(3) or 0) >= 128:
                 return image_flowable(image_path, 1.35 * inch, 0.78 * inch)
             return image_flowable(image_path, 0.92 * inch, 0.48 * inch)
+
+    image_matches = list(image_pattern.finditer(cell.strip()))
+    if len(image_matches) > 1 and not image_pattern.sub("", cell.strip()).strip():
+        images = []
+        for match in image_matches:
+            image_path = (source.parent / match.group(1)).resolve()
+            if not image_path.exists():
+                break
+            images.append(image_flowable(image_path, 0.50 * inch, 0.48 * inch))
+        if len(images) == len(image_matches):
+            paired = Table([images], colWidths=[0.52 * inch] * len(images), hAlign="CENTER")
+            paired.setStyle(TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 1),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]))
+            return paired
     return Paragraph(inline(cell), style)
 
 
@@ -170,7 +190,10 @@ def parse_table(
         (column, row_number)
         for row_number, row in enumerate(rows[1:], start=1)
         for column, cell in enumerate(row)
-        if re.fullmatch(r'<img\s+src="[^"]+"\s+alt="[^"]*"(?:\s+width="[0-9]+")?\s*/?>', cell)
+        if re.fullmatch(
+            r'(?:<img\s+src="[^"]+"\s+alt="[^"]*"(?:\s+width="[0-9]+")?\s*/?>\s*)+',
+            cell,
+        )
     ]
     image_columns = {column for column, _row in image_cells}
     centered_head = ParagraphStyle("TableHeadCentered", parent=styles["table_head"], alignment=TA_CENTER)
@@ -206,6 +229,8 @@ def parse_table(
             widths = [1.4 * inch, 1.0 * inch, 2.1 * inch, 2.1 * inch]
     if columns == 2 and any("images/matrix/" in cell for row in rows for cell in row):
         widths = [3.3 * inch, 3.3 * inch]
+    elif "See it" in rows[0] and columns == 3 and image_columns:
+        widths = [1.85 * inch, 1.35 * inch, 3.4 * inch]
     if rows[0] == ["Profile", "Matrix code", "See it"]:
         widths = [3.7 * inch, 1.85 * inch, 1.05 * inch]
     elif rows[0] == ["Program", "See it", "Try it with", "Know before playing"]:
@@ -236,12 +261,13 @@ def parse_table(
 
 def parse_list(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
     """Parse one contiguous Markdown list and return its flowable plus the next source line."""
-    first = re.match(r"^\s*(?:[-*]|\d+\.)\s+(.+)$", lines[start])
     ordered = bool(re.match(r"^\s*\d+\.", lines[start]))
-    items: list[ListItem] = []
+    pattern = r"^\s*\d+\.\s+(.+)$" if ordered else r"^\s*[-*]\s+(.+)$"
+    rows = []
     index = start
+    item_number = 1
     while index < len(lines):
-        match = re.match(r"^\s*(?:[-*]|\d+\.)\s+(.+)$", lines[index])
+        match = re.match(pattern, lines[index])
         if not match:
             break
         parts = [match.group(1).strip()]
@@ -255,25 +281,35 @@ def parse_list(lines: list[str], start: int, styles: dict[str, ParagraphStyle]):
                 break
             parts.append(stripped)
             index += 1
-        items.append(ListItem(paragraph(" ".join(parts), styles["body"])))
+        marker_style = ParagraphStyle(
+            "OrderedListMarker" if ordered else "BulletListMarker",
+            parent=styles["body"],
+            alignment=TA_RIGHT,
+            textColor=RED if ordered else BLUE,
+            fontName="Helvetica-Bold",
+        )
+        marker = f"{item_number}." if ordered else "\u2022"
+        rows.append([
+            Paragraph(marker, marker_style),
+            paragraph(" ".join(parts), styles["body"]),
+        ])
+        item_number += 1
         if index < len(lines) and not lines[index].strip():
             lookahead = index + 1
-            if lookahead < len(lines) and re.match(r"^\s*(?:[-*]|\d+\.)\s+", lines[lookahead]):
+            if lookahead < len(lines) and re.match(pattern, lines[lookahead]):
                 index = lookahead
                 continue
             break
-    return ListFlowable(
-        items,
-        bulletType="1" if ordered else "bullet",
-        # Indent markers as well as text; item overrides otherwise outdent markers.
-        leftIndent=30,
-        bulletDedent=10,
-        bulletAlign="right",
-        bulletFontName="Helvetica-Bold",
-        bulletFontSize=8,
-        bulletColor=RED if ordered else BLUE,
-        spaceAfter=9,
-    ), index
+    listing = Table(rows, colWidths=[0.3 * inch, 6.3 * inch], hAlign="LEFT", splitByRow=1)
+    listing.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (0, -1), 7),
+        ("RIGHTPADDING", (1, 0), (1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    return listing, index
 
 
 def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):

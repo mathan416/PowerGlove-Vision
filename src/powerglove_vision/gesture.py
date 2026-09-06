@@ -5,6 +5,10 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Published native fist and index-point poses for Super Glove Ball.
+#   2026-09-05 - Added motion-confirmed depth gestures and a faster deliberate Start hold.
+#   2026-09-05 - Eased Menu Guard entry without loosening general finger recognition.
+#   2026-09-05 - Eased the default thumb-only B pose without changing other fingers.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Corrected Program I throttle and turbo output for Knight Rider.
@@ -84,10 +88,15 @@ class GestureConfig:
     coordinate_motion_boost: float = 4.00
     curl_on: float = 0.50
     curl_off: float = 0.35
+    thumb_on: float = 0.38
+    thumb_off: float = 0.28
     roll_on: float = 0.58
     roll_off: float = 0.40
     push_on: float = 0.34
     push_off: float = 0.18
+    depth_confirm_frames: int = 2
+    depth_motion_window_ms: int = 250
+    depth_motion_delta: float = 0.10
     pulse_hz: float = 7.0
     loss_release_ms: int = 120
     thresholds: dict = field(default_factory=dict)
@@ -97,7 +106,8 @@ class GestureConfig:
         if channel in self.thresholds:
             value = self.thresholds[channel]
             return value["on"], value["off"]
-        prefix = ("move" if channel in ("left", "right", "up", "down") else
+        prefix = ("thumb" if channel == "thumb" else
+                  "move" if channel in ("left", "right", "up", "down") else
                   "roll" if channel.startswith("roll_") else
                   "push" if channel in ("push", "pull") else "curl")
         return getattr(self, prefix + "_on"), getattr(self, prefix + "_off")
@@ -122,6 +132,8 @@ MENU_FINGERS = {
 MENU_GUARD_FINGERS = {
     "thumb": True, "index": False, "middle": False, "ring": True, "pinky": False,
 }
+MENU_GUARD_ON = {"thumb": 0.26, "ring": 0.44}
+MENU_GUARD_OFF = {"thumb": 0.20, "ring": 0.35}
 
 
 def finger_pose_feedback(config, gesture, requirements, values):
@@ -134,6 +146,11 @@ def finger_pose_feedback(config, gesture, requirements, values):
         if gesture in MENU_FINGERS:
             limit = config.menu_limit(finger, closed, .42 if closed else .32 if finger == "thumb" else .28)
             matches = value is not None and (value > limit if closed else value < limit)
+        elif gesture == "menu_guard" and closed and finger not in config.thresholds:
+            # A compound guard can accept a comfortable curl while its exact
+            # three-fingers-open shape keeps it distinct from V and a fist.
+            limit = MENU_GUARD_ON[finger]
+            matches = value is not None and value >= limit
         else:
             limit = config.pair(finger)[0 if closed else 1]
             matches = value is not None and (value >= limit if closed else value < limit)
@@ -254,11 +271,16 @@ class GestureEngine:
         self._filtered_palm_y: float | None = None
         self._push_was_active = False
         self._pull_was_active = False
+        self._depth_history: deque[tuple[float, float]] = deque(maxlen=32)
+        self._push_candidate_frames = 0
+        self._pull_candidate_frames = 0
+        self._push_motion = 0.0
+        self._pull_motion = 0.0
         self._program_toggle = False
         self._zap_until = 0.0
         # Start is especially disruptive during play. Require a deliberate V
         # hold, then a sustained non-V release before allowing another pulse.
-        self._start_gesture = HeldGesture(hold_seconds=0.65, release_seconds=0.30)
+        self._start_gesture = HeldGesture(hold_seconds=0.50, release_seconds=0.30)
         self._select_gesture = HeldGesture()
         self._menu_guard_active = False
         self._switches = {
@@ -292,6 +314,7 @@ class GestureEngine:
         self._calibrating = True
         self._push_was_active = False
         self._pull_was_active = False
+        self._reset_depth_candidates(clear_active=True)
         self._program_toggle = False
         self._zap_until = 0.0
         self._menu_guard_active = False
@@ -325,6 +348,9 @@ class GestureEngine:
             noise_y=min(1.0, noise_y),
         )
         self._calibrating = False
+        # The completed neutral sample seeds the short motion window without
+        # making first use depend on an otherwise unrelated extra frame.
+        self._depth_history.append((observation.timestamp, 0.0))
 
     def curl_feedback(self, observation: HandObservation) -> dict:
         """Expose held finger switches to Learn, independent of game button pulses."""
@@ -337,14 +363,83 @@ class GestureEngine:
         ready = self.calibrated and observation.detected
         depth = observation.palm_scale / self.calibration.palm_scale - 1 if ready else 0.0
         return {"active": bool(ready and self._push_was_active),
-                "depth": depth, "threshold": self.config.pair("push")[0]}
+                "depth": depth, "threshold": self.config.pair("push")[0],
+                "candidate_frames": self._push_candidate_frames,
+                "confirmation_frames": self.config.depth_confirm_frames,
+                "motion": self._push_motion,
+                "motion_required": self.config.depth_motion_delta}
 
     def pull_feedback(self, observation: HandObservation) -> dict:
         """Expose continuous pull recognition in Learn, independent of game mappings."""
         ready = self.calibrated and observation.detected
         depth = 1.0 - observation.palm_scale / self.calibration.palm_scale if ready else 0.0
         return {"active": bool(ready and self._switches["pull"].active),
-                "depth": depth, "threshold": self.config.pair("pull")[0]}
+                "depth": depth, "threshold": self.config.pair("pull")[0],
+                "candidate_frames": self._pull_candidate_frames,
+                "confirmation_frames": self.config.depth_confirm_frames,
+                "motion": self._pull_motion,
+                "motion_required": self.config.depth_motion_delta}
+
+    def _reset_depth_candidates(self, clear_active: bool = False) -> None:
+        """Discard unconfirmed depth motion and optionally neutralize confirmed states."""
+        self._depth_history.clear()
+        self._push_candidate_frames = 0
+        self._pull_candidate_frames = 0
+        self._push_motion = 0.0
+        self._pull_motion = 0.0
+        if clear_active:
+            self._push_was_active = False
+            self._switches["pull"].active = False
+
+    def _update_depth(self, depth: float, timestamp: float) -> tuple[bool, bool]:
+        """Confirm deliberate push/pull motion, then retain it with hysteresis."""
+        cfg = self.config
+        previous_depth = self._depth_history[-1][1] if self._depth_history else None
+        self._depth_history.append((timestamp, depth))
+        window_start = timestamp - max(0, cfg.depth_motion_window_ms) / 1000.0
+        while self._depth_history and self._depth_history[0][0] < window_start:
+            self._depth_history.popleft()
+        depths = [value for _sample_at, value in self._depth_history]
+        self._push_motion = max(0.0, depth - min(depths))
+        self._pull_motion = max(0.0, max(depths) - depth)
+        frames = max(1, int(cfg.depth_confirm_frames))
+        reversal = max(0.001, cfg.depth_motion_delta / 4)
+
+        push_on, push_off = cfg.pair("push")
+        if self._push_was_active:
+            pushing = depth >= push_off
+            self._push_candidate_frames = 0
+        else:
+            if previous_depth is not None and depth < previous_depth - reversal:
+                self._push_candidate_frames = 0
+            if depth >= push_on:
+                self._push_candidate_frames += 1
+            else:
+                self._push_candidate_frames = 0
+            pushing = (
+                self._push_candidate_frames >= frames
+                and self._push_motion >= cfg.depth_motion_delta
+            )
+
+        pull_on, pull_off = cfg.pair("pull")
+        pull_active = self._switches["pull"].active
+        if pull_active:
+            pulling = depth <= -pull_off
+            self._pull_candidate_frames = 0
+        else:
+            if previous_depth is not None and depth > previous_depth + reversal:
+                self._pull_candidate_frames = 0
+            if depth <= -pull_on:
+                self._pull_candidate_frames += 1
+            else:
+                self._pull_candidate_frames = 0
+            pulling = (
+                self._pull_candidate_frames >= frames
+                and self._pull_motion >= cfg.depth_motion_delta
+            )
+
+        self._switches["pull"].active = pulling
+        return pushing, pulling
 
     def menu_feedback(self) -> dict:
         """Expose held menu recognition to Learn independently of short button pulses."""
@@ -382,7 +477,7 @@ class GestureEngine:
             self._last_seen = observation.timestamp
         lost_for = observation.timestamp - self._last_seen
         if not observation.detected and lost_for * 1000 >= self.config.loss_release_ms:
-            self._push_was_active = False
+            self._reset_depth_candidates(clear_active=True)
             self._zap_until = 0.0
             self._pull_was_active = False
             self._start_gesture.update(False, observation.timestamp)
@@ -397,6 +492,7 @@ class GestureEngine:
             )
             return self._last_state
         if not observation.detected:
+            self._reset_depth_candidates(clear_active=False)
             self._zap_until = 0.0
             if (self.profile == "bad_street_brawler" and self._last_state is not None
                     and self._last_state.dpad.get("left") and self._last_state.dpad.get("right")):
@@ -468,8 +564,7 @@ class GestureEngine:
         )
 
         events: list[str] = []
-        self._switches["pull"].negative(depth, *cfg.pair("pull"))
-        pushing = depth >= cfg.pair("push")[1 if self._push_was_active else 0]
+        pushing, _pulling = self._update_depth(depth, observation.timestamp)
         if pushing and not self._push_was_active:
             events.append("glove_zap")
         self._push_was_active = pushing
@@ -485,7 +580,9 @@ class GestureEngine:
             # its clearly-straight range, guard releases into the deliberate
             # deadband before that finger can help form a V-sign.
             curled_hold = all(
-                observation.fingers[name] >= cfg.pair(name)[1]
+                observation.fingers[name] >= (
+                    cfg.pair(name)[1] if name in cfg.thresholds else MENU_GUARD_OFF[name]
+                )
                 for name in ("thumb", "ring")
             )
             extended_hold = all(
@@ -515,6 +612,14 @@ class GestureEngine:
             dpad = {name: False for name in dpad}
 
         pulse_on = int(observation.timestamp * cfg.pulse_hz * 2) % 2 == 0
+        closed_hand = all(
+            self._switches[name].active
+            for name in ("thumb", "index", "middle", "ring", "pinky")
+        )
+        index_point = (
+            observation.index_curl < cfg.pair("index")[1]
+            and all(self._switches[name].active for name in ("middle", "ring", "pinky"))
+        )
         if self.profile == "bad_street_brawler":
             buttons = {
                 "a": (middle or roll_left or roll_right) and not menu_pose,
@@ -543,6 +648,8 @@ class GestureEngine:
                 "start": start,
                 "select": select,
                 "glove_zap": False,
+                "closed_hand": closed_hand and not menu_pose,
+                "index_point": index_point and not menu_pose,
             }
         else:
             dpad, buttons = self._program_mapping(
@@ -557,6 +664,7 @@ class GestureEngine:
         if menu_guard:
             dpad = {name: False for name in dpad}
             buttons["a"] = buttons["b"] = buttons["start"] = buttons["select"] = False
+            buttons["closed_hand"] = buttons["index_point"] = False
         buttons["menu_guard"] = menu_guard
 
         fingers = {

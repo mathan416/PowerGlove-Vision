@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Covered stable backend identifiers and display names.
 #   2026-09-03 - Covered folded fingers, rotation, API variants, and menu recognition.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -15,6 +16,7 @@ import unittest
 from types import SimpleNamespace
 
 from powerglove_vision.tracker import (
+    TRACKER_BACKEND_LABELS,
     _Point, _camera_curl_points, _curl, _finger_bends,
     _finger_curls, _finger_curls_from_bends,
 )
@@ -32,6 +34,12 @@ def pose_points(closed):
 
 
 class TrackerGeometryTests(unittest.TestCase):
+    def test_backend_identifiers_have_clear_display_names(self):
+        self.assertEqual(TRACKER_BACKEND_LABELS, {
+            "legacy": "MediaPipe Hands (proven)",
+            "tasks-video": "MediaPipe Tasks Video (experimental)",
+        })
+
     def test_precomputed_bends_produce_identical_curls(self):
         points = pose_points({'thumb', 'middle', 'pinky'})
         self.assertEqual(

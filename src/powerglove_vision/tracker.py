@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added clear proven and experimental backend display names.
+#   2026-09-05 - Made legacy and Tasks tracker selection explicit for benchmarks.
 #   2026-09-04 - Logged hand-tracker startup stage durations.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -23,6 +25,12 @@ from pathlib import Path
 from typing import Any
 
 from .model import HandObservation
+
+
+TRACKER_BACKEND_LABELS = {
+    "legacy": "MediaPipe Hands (proven)",
+    "tasks-video": "MediaPipe Tasks Video (experimental)",
+}
 
 
 def log_startup_stage(label: str, started: float) -> None:
@@ -179,6 +187,7 @@ class MediaPipeTracker:
         mirror: bool = True,
         model_path: Path | str | None = None,
         inference_threads: int = 4,
+        backend: str = "legacy",
     ) -> None:
         try:
             import cv2
@@ -198,7 +207,13 @@ class MediaPipeTracker:
         self.preview_enabled = True
         self.diagnostics_enabled = True
         self._last_timestamp_ms = -1
-        self._tasks = not hasattr(mp, "solutions")
+        if backend not in TRACKER_BACKEND_LABELS:
+            raise ValueError(f"unsupported tracker backend: {backend}")
+        if backend == "legacy" and not hasattr(mp, "solutions"):
+            raise RuntimeError("this MediaPipe build does not provide the legacy Hands API")
+        self.backend = backend
+        self.backend_label = TRACKER_BACKEND_LABELS[backend]
+        self._tasks = backend == "tasks-video"
         if self._tasks:
             if model_path is None:
                 model_path = (
@@ -299,6 +314,8 @@ class MediaPipeTracker:
         diagnostics = {}
         if self.diagnostics_enabled:
             diagnostics = {
+                "tracker_backend": self.backend,
+                "tracker_backend_label": self.backend_label,
                 "finger_bends": bends,
                 "hand_landmarks": [[p.x, p.y] for p in landmarks],
             }

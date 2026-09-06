@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Added native coordinate filter step-response and jitter checks.
 #   2026-09-04 - Added matched native and FCEUmm direction-response benchmarks.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -196,6 +197,41 @@ def recognition_results() -> dict:
     return result
 
 
+def coordinate_filter_results() -> dict:
+    """Measure the shared full-field native X/Y filter without an emulator queue."""
+    calibration = Calibration(.5, .5, .2, 0, 0, 0)
+    engine = GestureEngine("super_glove_ball", calibration=calibration)
+    engine.update(observation(0.0))
+    jitter_values = [
+        engine.update(HandObservation(
+            timestamp=index * .025, detected=True, confidence=1.0,
+            palm_x=x, palm_y=.5, palm_scale=.2,
+        )).axes["x"]
+        for index, x in enumerate((.502, .498, .501, .499), 1)
+    ]
+    movement_started = .125
+    target_x = round((.80 - .50) / (.50 - engine.config.coordinate_edge_margin) * 32767)
+    samples = []
+    reached_ms = None
+    for timestamp in (movement_started, .200, .275):
+        value = engine.update(HandObservation(
+            timestamp=timestamp, detected=True, confidence=1.0,
+            palm_x=.80, palm_y=.20, palm_scale=.2,
+        )).axes["x"]
+        fraction = min(1.0, abs(value) / abs(target_x))
+        samples.append({"elapsed_ms": round((timestamp - movement_started) * 1000),
+                        "x": value, "target_fraction": round(fraction, 3)})
+        if reached_ms is None and fraction >= .90:
+            reached_ms = round((timestamp - movement_started) * 1000)
+    return {
+        "target_x": target_x,
+        "reaches_90_percent_ms": reached_ms,
+        "meets_150_ms_target": reached_ms is not None and reached_ms <= 150,
+        "stationary_jitter_span": max(jitter_values) - min(jitter_values),
+        "samples": samples,
+    }
+
+
 def prepare_fceumm_gun_smoke(session: Session) -> bytes:
     """Advance Gun.Smoke from boot into active play using conventional Start."""
     for _ in range(120):
@@ -363,6 +399,7 @@ def main() -> int:
     args.scratch.mkdir(parents=True, exist_ok=True)
     result = {
         "unit": "emulated_frames",
+        "native_coordinate_filter": coordinate_filter_results(),
         "native_super_glove_ball": benchmark_native(
             args.nestopia_core, args.super_glove_ball_rom,
             args.scratch / "native-state", args.scratch / "nestopia", args.frames,

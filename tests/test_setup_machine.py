@@ -92,7 +92,7 @@ class SetupTests(unittest.TestCase):
             (app / "data/device.json").write_text('{"token":"keep-this-private","profile":"off"}')
             compose = app / ".cache/app-compose.yaml"
             compose.write_text("services:\n  main:\n    volumes:\n    - /app:/app\n    ports:\n    - 8088:8088\n")
-            for original in (ROOT / "uno-q").glob("powerglove-system-shutdown.*"):
+            for original in (ROOT / "uno-q").glob("powerglove-*"):
                 (app / "uno-q" / original.name).write_bytes(original.read_bytes())
             (app / "scripts/configure-uno-q-mdns.py").write_bytes((ROOT / "scripts/configure-uno-q-mdns.py").read_bytes())
             class AppPath:
@@ -102,7 +102,7 @@ class SetupTests(unittest.TestCase):
                     return app / relative
             def mapped(value):
                 path = Path(value)
-                return root / str(path).lstrip("/") if str(path).startswith("/etc/") else path
+                return root / str(path).lstrip("/") if str(path).startswith(("/etc/", "/usr/local/")) else path
             with patch.object(setup, "SOURCE", AppPath()), patch.object(setup, "Path", side_effect=mapped), patch.object(setup, "BACKUPS", root / "backups"), patch.object(setup, "run") as command, patch.object(setup, "install_early_start") as early, patch.object(setup.os, "chown"), patch.object(setup.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)):
                 setup.install_unoq(None)
                 first = compose.read_text()
@@ -118,3 +118,11 @@ class SetupTests(unittest.TestCase):
             service = mapped("/etc/systemd/system/powerglove-system-shutdown.service").read_text()
             self.assertIn("ExecStart=/usr/bin/systemctl --no-block halt", service)
             self.assertNotIn("--no-block poweroff", service)
+            self.assertTrue(mapped("/etc/systemd/system/powerglove-camera-recovery.path").exists())
+            camera_service = mapped("/etc/systemd/system/powerglove-camera-recovery.service").read_text()
+            self.assertIn("/usr/local/libexec/powerglove-camera-recovery", camera_service)
+            self.assertTrue(mapped("/usr/local/libexec/powerglove-camera-recovery").exists())
+            command.assert_any_call(
+                "/usr/local/libexec/powerglove-camera-recovery", "--configure-if-present"
+            )
+            command.assert_any_call("systemctl", "enable", "--now", "powerglove-camera-recovery.path")

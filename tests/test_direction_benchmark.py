@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Verified native X/Y reaches its target without added filter lag.
 #   2026-09-04 - Added deterministic native and FCEUmm response coverage.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -54,11 +55,19 @@ class DirectionBenchmarkTests(unittest.TestCase):
             self.assertEqual(direction["activation_displacement"], .29)
             self.assertEqual(direction["release_displacement"], .13)
 
+    def test_native_coordinate_filter_reaches_90_percent_inside_150_ms(self):
+        result = benchmark.coordinate_filter_results()
+        self.assertTrue(result["meets_150_ms_target"])
+        self.assertLessEqual(result["reaches_90_percent_ms"], 150)
+        self.assertGreaterEqual(result["samples"][0]["target_fraction"], .90)
+        self.assertLess(result["stationary_jitter_span"], 500)
+
     def test_fceumm_build_is_pinned_and_benchmark_covers_both_paths(self):
         build = (ROOT / "scripts/build-fceumm-benchmark.sh").read_text()
         runner = (ROOT / "scripts/benchmark-direction-response.py").read_text()
         self.assertIn("236ccdfc911e84c60fea6b9d0699c2d440a8de14", build)
         self.assertIn("native_super_glove_ball", runner)
+        self.assertIn("native_coordinate_filter", runner)
         self.assertIn("fceumm_super_glove_ball", runner)
         self.assertIn("fceumm_gun_smoke", runner)
         self.assertIn("standard_libretro_joypad", runner)

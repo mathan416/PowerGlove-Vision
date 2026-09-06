@@ -99,12 +99,12 @@ Pairing and live gameplay checks will still be listed as actions.
 Pairing gives both devices the same private token. Use the recommended
 one-time-code method after both installers finish.
 
-  1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair`. Leave the command running; it prints a 20-character code that expires after two minutes.
-  2. In your computer's browser, open `https://UNO-Q-NAME.local:8443/setup`. This is the secure Setup page; ordinary HTTP Setup cannot accept pairing credentials.
-  3. Enter your RetroPie hostname and its one-time code, then select **Prepare one-time code**.
-  4. Read the identifier after `ID` on the UNO Q matrix. Compare it with the beginning of the browser certificate's SHA-256 fingerprint. The locally generated certificate may cause a browser warning; verify the fingerprint before continuing.
-  5. If the identifiers match, select the confirmation checkbox, enter the six-digit PIN shown after `PN` on the matrix, and select **Complete pairing**.
-  6. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
+1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair`. Leave the command running; it prints a 20-character code that expires after two minutes.
+2. In your computer's browser, open `https://UNO-Q-NAME.local:8443/setup`. This is the secure Setup page; ordinary HTTP Setup cannot accept pairing credentials.
+3. Enter your RetroPie hostname and its one-time code, then select **Prepare one-time code**.
+4. Read the identifier after `ID` on the UNO Q matrix. Compare it with the beginning of the browser certificate's SHA-256 fingerprint. The locally generated certificate may cause a browser warning; verify the fingerprint before continuing.
+5. If the identifiers match, select the confirmation checkbox, enter the six-digit PIN shown after `PN` on the matrix, and select **Complete pairing**.
+6. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
 
 If the code expires, restart the RetroPie command and prepare a new attempt.
 Never paste the private token into a document, screenshot, or support request.
@@ -114,10 +114,10 @@ Never paste the private token into a document, screenshot, or support request.
 Use this route only if RetroPie accepts SSH password login and your account
 can run `sudo` with that password.
 
-  1. Open secure Setup and enter the RetroPie hostname and username.
-  2. Select **Prepare password pairing** and compare the matrix `ID` with the browser certificate fingerprint.
-  3. If they match, select the confirmation checkbox, enter the matrix PIN and your RetroPie password, and complete pairing.
-  4. Confirm that the receiver service is active on RetroPie.
+1. Open secure Setup and enter the RetroPie hostname and username.
+2. Select **Prepare password pairing** and compare the matrix `ID` with the browser certificate fingerprint.
+3. If they match, select the confirmation checkbox, enter the matrix PIN and your RetroPie password, and complete pairing.
+4. Confirm that the receiver service is active on RetroPie.
 
 The password is used for one SSH operation and is not stored. If neither
 pairing route works, follow the [token-management reference](CONFIGURATION_REFERENCE.md#pairing-and-token-management).
@@ -125,12 +125,12 @@ pairing route works, follow the [token-management reference](CONFIGURATION_REFER
 
 ## 5. Calibrate and test a game
 
-  1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Calibrate** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
-  2. Select **Start controller**. This allows controller packets to reach RetroPie and creates the virtual input device.
-  3. On RetroPie, run `grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices`. Look for the device name **PowerGlove Vision**. If it is missing, check pairing and the receiver service before changing emulator settings.
-  4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **PowerGlove Vision**. Menu labels can vary with the RetroArch version.
-  5. Check the D-pad, A, B, Start, and Select assignments. The installer provides an automatic mapping; adjust bindings only if needed, then save the controller profile or RetroArch configuration.
-  6. Test movement and buttons in a game. If your cabinet merges multiple controllers, also configure that merger to accept the virtual device.
+1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Calibrate** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
+2. Select **Start controller**. This allows controller packets to reach RetroPie and creates the virtual input device.
+3. On RetroPie, run `grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices`. Look for the device name **PowerGlove Vision**. If it is missing, check pairing and the receiver service before changing emulator settings.
+4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **PowerGlove Vision**. Menu labels can vary with the RetroArch version.
+5. Check the D-pad, A, B, Start, and Select assignments. The installer provides an automatic mapping; adjust bindings only if needed, then save the controller profile or RetroArch configuration.
+6. Test movement and buttons in a game. If your cabinet merges multiple controllers, also configure that merger to accept the virtual device.
 
 **Checkpoint:** A gesture changes the intended control in the running game.
 Seeing the device name or a running service alone is not an end-to-end test.
@@ -149,7 +149,10 @@ tracking or controller delivery.
 For Super Glove Ball testing, enter RetroPie's launch menu while starting the
 ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the
 ordinary D-pad and buttons for the whole session. The native core uses absolute
-X/Y and currently keeps unconfirmed native fields neutral. A per-ROM selection
+X/Y/Z plus open-hand, fist, and index-point packets for grab/throw, index fire,
+and Power Punch testing. Wrist rotation and remaining native button codes stay
+neutral while their exact-ROM behavior is validated. Shared recognition remains
+available to every FCEUmm profile. A per-ROM selection
 is remembered, so choose FCEUmm again whenever you want the complete fallback.
 
 
@@ -213,8 +216,12 @@ It also explains compatibility, package building, backups, and recovery.
   project release. Do not bypass the installer's compatibility check.
 - **Website does not open:** try the UNO Q's current IP address instead of its
   hostname. Use HTTP on port 8088 and HTTPS on port 8443.
-- **Camera missing:** check the powered hub, cable, and camera connection. Open
-  Glove Academy and wait for the camera view.
+- **Camera missing:** open Glove Academy and wait for the camera view. The UNO Q
+  host helper automatically enrolls the single UVC camera and its parent hub on
+  first successful use, even if no camera was connected during installation.
+  After enrollment it makes one guarded reset attempt during a sustained outage.
+  If it remains missing, reconnect or power-cycle the camera and check the powered
+  hub and cable; USB Ethernet may briefly disconnect during recovery.
 - **No controller in RetroArch:** finish pairing, select Start controller, and
   select PowerGlove Vision for Port 1 using your physical controller.
 - **Partial installation:** correct the reported problem and rerun the same
@@ -262,14 +269,14 @@ excluded from the public package; the live cabinet page supplies local details.
 
 ## Play Checklist
 
-  1. Power the RetroPie and UNO Q; leave the camera connected to the powered hub.
-  2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
-  3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
-  4. On first use, or after changing your camera or playing position, select **Calibrate** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
-  5. Select **Start controller** only when you are ready to play.
-  6. Launch the game and confirm its profile code on the matrix.
-  7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
-  8. Read the shutdown limitation before disconnecting power. **Shutdown** requests a graceful halt, but the tested board restarts; an offline website is not proof that it is safe to unplug.
+1. Power the RetroPie and UNO Q; leave the camera connected to the powered hub.
+2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
+3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
+4. On first use, or after changing your camera or playing position, select **Calibrate** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
+5. Select **Start controller** only when you are ready to play.
+6. Launch the game and confirm its profile code on the matrix.
+7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
+8. Read the shutdown limitation before disconnecting power. **Shutdown** requests a graceful halt, but the tested board restarts; an offline website is not proof that it is safe to unplug.
 
 PowerGlove Vision deliberately boots with controller delivery stopped. Vision
 and the dashboard keep running so setup never generates surprise game inputs.

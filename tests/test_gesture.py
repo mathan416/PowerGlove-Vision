@@ -5,6 +5,10 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Verified native fist and index-point recognition states.
+#   2026-09-05 - Verified two-frame, motion-confirmed push and pull recognition.
+#   2026-09-05 - Verified Menu Guard easing remains isolated from general curls.
+#   2026-09-05 - Verified the eased thumb-only B pose remains distinct from Closed Hand.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified Program I throttle, brake, steering, turbo, and weapons.
@@ -95,6 +99,19 @@ class GestureTests(unittest.TestCase):
             observation = hand(t, index_curl=curl)
             engine.update(observation)
             self.assertEqual(engine.curl_feedback(observation)["index"], active)
+
+    def test_comfortable_thumb_fold_triggers_b_without_becoming_closed_hand(self):
+        """A natural thumb-to-palm fold should not require an exaggerated bend."""
+        engine = calibrated_engine("super_glove_ball")
+        self.assertEqual(engine.config.pair("thumb"), (.38, .28))
+        state = engine.update(hand(.1, thumb_curl=.41))
+        self.assertTrue(state.buttons["b"])
+        self.assertTrue(engine.curl_feedback(hand(.1, thumb_curl=.41))["thumb"])
+        self.assertFalse(engine.recognition_feedback()["closed_hand"])
+        held = engine.update(hand(.2, thumb_curl=.31))
+        self.assertTrue(held.buttons["b"])
+        released = engine.update(hand(.3, thumb_curl=.27))
+        self.assertFalse(released.buttons["b"])
         observation = hand(.5, index_curl=.58)
         engine.update(observation)
         self.assertFalse(engine.curl_feedback(HandObservation(.6, False))["index"])
@@ -106,14 +123,39 @@ class GestureTests(unittest.TestCase):
         engine.update(observation)
         self.assertFalse(engine.curl_feedback(observation)["index"])
 
+    def test_super_glove_ball_publishes_fist_open_and_index_point(self):
+        """Native poses use all five shared finger switches and release immediately."""
+        engine = calibrated_engine("super_glove_ball")
+        fist = engine.update(hand(
+            .10, thumb_curl=.8, index_curl=.8, middle_curl=.8,
+            ring_curl=.8, pinky_curl=.8,
+        ))
+        self.assertTrue(fist.buttons["closed_hand"])
+        self.assertFalse(fist.buttons["index_point"])
+
+        opened = engine.update(hand(.20))
+        self.assertFalse(opened.buttons["closed_hand"])
+        self.assertFalse(opened.buttons["index_point"])
+
+        pointing = engine.update(hand(
+            .30, index_curl=.1, middle_curl=.8, ring_curl=.8, pinky_curl=.8,
+        ))
+        self.assertFalse(pointing.buttons["closed_hand"])
+        self.assertTrue(pointing.buttons["index_point"])
+
+        ambiguous = engine.update(hand(
+            .40, index_curl=.40, middle_curl=.8, ring_curl=.8, pinky_curl=.8,
+        ))
+        self.assertFalse(ambiguous.buttons["index_point"])
+
     def test_comfortable_v_requires_both_curled_and_both_straight_fingers(self):
         pose = dict(index_curl=.23, middle_curl=.22, ring_curl=.50, pinky_curl=.45)
         engine = calibrated_engine("program_h")
-        for t in (.1, .2, .26, .70):
+        for t in (.1, .2, .26, .59):
             state = engine.update(hand(t, palm_x=.8, **pose))
             self.assertFalse(any(state.dpad.values()))
         self.assertFalse(state.buttons["start"])
-        state = engine.update(hand(.76, palm_x=.8, **pose))
+        state = engine.update(hand(.61, palm_x=.8, **pose))
         self.assertTrue(state.buttons["start"])
         engine.update(hand(1.2, **pose))
         self.assertTrue(engine.menu_feedback()["recognized"])
@@ -125,6 +167,18 @@ class GestureTests(unittest.TestCase):
                 state = engine.update(hand(t, **candidate))
             self.assertFalse(state.buttons["start"])
             self.assertFalse(engine.menu_feedback()["recognized"])
+
+    def test_start_uses_500_ms_hold_and_300_ms_release_guard(self):
+        pose = dict(index_curl=.2, middle_curl=.2, ring_curl=.8, pinky_curl=.8)
+        engine = calibrated_engine("program_h")
+        self.assertFalse(engine.update(hand(.10, **pose)).buttons["start"])
+        self.assertFalse(engine.update(hand(.599, **pose)).buttons["start"])
+        self.assertTrue(engine.update(hand(.601, **pose)).buttons["start"])
+        engine.update(hand(.70))
+        engine.update(hand(.99))
+        engine.update(hand(1.01))
+        self.assertFalse(engine.update(hand(1.02, **pose)).buttons["start"])
+        self.assertTrue(engine.update(hand(1.521, **pose)).buttons["start"])
 
     def test_comfortable_thumbs_up_requires_thumb_open_and_all_fingers_closed(self):
         pose = dict(thumb_curl=.21, index_curl=.46, middle_curl=.58,
@@ -171,18 +225,51 @@ class GestureTests(unittest.TestCase):
         engine = calibrated_engine()
         first = engine.update(hand(0.1, palm_scale=0.28))
         held = engine.update(hand(0.2, palm_scale=0.28))
-        self.assertEqual(first.events, ["glove_zap"])
-        self.assertEqual(held.events, [])
+        self.assertEqual(first.events, [])
+        self.assertEqual(held.events, ["glove_zap"])
         self.assertTrue(engine.push_feedback(hand(.2, palm_scale=.28))["active"])
         self.assertFalse(engine.push_feedback(HandObservation(.3, False))["active"])
         engine.begin_calibration()
         self.assertFalse(engine.push_feedback(hand(.4, palm_scale=.28))["active"])
 
+    def test_depth_motion_rejects_spikes_and_stationary_near_far_hands(self):
+        push = calibrated_engine()
+        push.update(hand(.90))
+        spike = push.update(hand(1.00, palm_scale=.30))
+        self.assertEqual(spike.events, [])
+        self.assertFalse(push.update(hand(1.05)).buttons["glove_zap"])
+        # With no neutral observation in the 250 ms window, an already-near
+        # stationary hand cannot manufacture a push merely by being large.
+        self.assertFalse(push.update(hand(2.00, palm_scale=.30)).buttons["glove_zap"])
+        self.assertFalse(push.update(hand(2.08, palm_scale=.30)).buttons["glove_zap"])
+
+        pull = calibrated_engine()
+        pull.update(hand(.90))
+        pull.update(hand(1.00, palm_scale=.12))
+        pull.update(hand(1.05))
+        self.assertFalse(pull.pull_feedback(hand(1.05))["active"])
+        pull.update(hand(2.00, palm_scale=.12))
+        pull.update(hand(2.08, palm_scale=.12))
+        self.assertFalse(pull.pull_feedback(hand(2.08, palm_scale=.12))["active"])
+
+    def test_depth_candidates_confirm_with_motion_and_cancel_on_reversal(self):
+        engine = calibrated_engine()
+        engine.update(hand(.90))
+        first = engine.update(hand(1.00, palm_scale=.30))
+        self.assertEqual(first.events, [])
+        reversed_sample = engine.update(hand(1.05, palm_scale=.28))
+        self.assertEqual(reversed_sample.events, [])
+        confirmed = engine.update(hand(1.12, palm_scale=.28))
+        self.assertEqual(confirmed.events, ["glove_zap"])
+        released = engine.update(hand(1.20, palm_scale=.22))
+        self.assertFalse(released.buttons["glove_zap"])
+
     def test_pull_learning_feedback_uses_personal_thresholds_and_releases(self):
         engine = calibrated_engine()
         engine.config = GestureConfig(thresholds={"pull": {"on": .25, "off": .10}})
-        for t, scale, expected in ((.1, .2, False), (.2, .14, True),
-                                   (.3, .17, True), (.4, .19, False), (.5, .14, True)):
+        for t, scale, expected in ((.1, .2, False), (.15, .14, False), (.2, .14, True),
+                                   (.3, .17, True), (.4, .19, False),
+                                   (.45, .14, False), (.5, .14, True)):
             observation = hand(t, palm_scale=scale)
             state = engine.update(observation)
             feedback = engine.pull_feedback(observation)
@@ -271,7 +358,8 @@ class GestureTests(unittest.TestCase):
         self.assertTrue(throttle.dpad["up"])
         self.assertFalse(throttle.buttons["a"])
 
-        turbo = engine.update(hand(0.20, palm_scale=0.30))
+        engine.update(hand(0.15, palm_scale=0.28, index_curl=0.9))
+        turbo = engine.update(hand(0.20, palm_scale=0.30, index_curl=0.9))
         self.assertTrue(turbo.dpad["up"])
         self.assertTrue(turbo.buttons["a"])
 
@@ -304,7 +392,10 @@ class GestureTests(unittest.TestCase):
         for profile, channel, output, button in cases:
             with self.subTest(profile=profile, channel=channel):
                 engine = calibrated_engine(profile)
-                engine.config = GestureConfig(thresholds={channel: {"on": .6, "off": .2}})
+                engine.config = GestureConfig(
+                    depth_confirm_frames=1, depth_motion_delta=0,
+                    thresholds={channel: {"on": .6, "off": .2}},
+                )
                 for t, magnitude, expected in ((.1,.4,False),(.2,.7,True),(.3,.4,True),(.4,.1,False),(.5,.4,False)):
                     changes = {}
                     if channel.startswith('roll'):
@@ -322,7 +413,8 @@ class GestureTests(unittest.TestCase):
 
     def test_pinball_pull_toggle_requires_release_before_retrigger(self):
         engine = calibrated_engine('program_a')
-        for t, scale, toggled in ((.1,.12,True),(.2,.15,True),(.3,.12,True),(.4,.2,True),(.5,.12,False)):
+        for t, scale, toggled in ((.1,.12,False),(.15,.12,True),(.2,.15,True),
+                                  (.3,.12,True),(.4,.2,True),(.45,.12,True),(.5,.12,False)):
             state = engine.update(hand(t, palm_scale=scale, index_curl=.8))
             self.assertEqual(state.dpad['up'], toggled)
 
@@ -395,6 +487,24 @@ class GestureTests(unittest.TestCase):
             released = engine.update(hand(.2, palm_x=.62, index_curl=.9, **pose))
             self.assertFalse(engine.recognition_feedback()["menu_guard"], profile)
             self.assertFalse(released.buttons["menu_guard"], profile)
+
+    def test_menu_guard_accepts_a_comfortable_thumb_and_ring_curl(self):
+        engine = calibrated_engine("program_g")
+        guarded = engine.update(hand(.1, palm_x=.62, thumb_curl=.27,
+                                     index_curl=.1, middle_curl=.1,
+                                     ring_curl=.45, pinky_curl=.1))
+        self.assertTrue(guarded.buttons["menu_guard"])
+        self.assertFalse(guarded.buttons["a"] or guarded.buttons["b"])
+
+        held = engine.update(hand(.2, palm_x=.62, thumb_curl=.22,
+                                  index_curl=.1, middle_curl=.1,
+                                  ring_curl=.40, pinky_curl=.1))
+        self.assertTrue(held.buttons["menu_guard"])
+
+    def test_menu_guard_easing_does_not_lower_general_ring_threshold(self):
+        engine = calibrated_engine("program_g")
+        state = engine.update(hand(.1, ring_curl=.45))
+        self.assertEqual(state.fingers["ring"], 1)
 
     def test_menu_guard_and_v_sign_have_a_deadband_and_never_overlap(self):
         engine = calibrated_engine("program_g")
@@ -483,13 +593,16 @@ class CalibrationRetentionTests(unittest.TestCase):
     def test_brawler_zap_pulses_both_directions_once_per_push(self):
         engine = calibrated_engine()
         engine.config = GestureConfig(thresholds={"push": {"on": .3, "off": .1}})
+        engine.update(hand(.9, palm_scale=.20))
         first = engine.update(hand(1., palm_scale=.28, middle_curl=.8))
-        self.assertTrue(first.dpad['left'] and first.dpad['right'])
-        self.assertFalse(first.buttons['a'] or first.buttons['b'])
-        self.assertTrue(engine.update(hand(1.1, palm_scale=.25)).dpad['left'])
+        self.assertFalse(first.dpad['left'] or first.dpad['right'])
+        confirmed = engine.update(hand(1.1, palm_scale=.28, middle_curl=.8))
+        self.assertTrue(confirmed.dpad['left'] and confirmed.dpad['right'])
+        self.assertFalse(confirmed.buttons['a'] or confirmed.buttons['b'])
         held = engine.update(hand(1.3, palm_scale=.28))
         self.assertFalse(held.dpad['left'] or held.dpad['right'])
         engine.update(hand(1.4, palm_scale=.20))
+        engine.update(hand(1.45, palm_scale=.28))
         again = engine.update(hand(1.5, palm_scale=.28))
         self.assertTrue(again.dpad['left'] and again.dpad['right'])
 

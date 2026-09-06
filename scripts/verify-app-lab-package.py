@@ -6,6 +6,9 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Required the fixed, guided, and replay vision benchmark tools.
+#   2026-09-05 - Required the guarded UNO Q USB camera recovery helper.
+#   2026-09-05 - Required the corrected closed-hand Academy illustration.
 #   2026-09-03 - Added repeatable installation-package content and path verification.
 #   2026-09-03 - Required the offline Help renderer in every installation ZIP.
 #   2026-09-03 - Required only the allowlisted public PDF editions.
@@ -65,6 +68,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/THIRD_PARTY_NOTICES.md",
     "PowerGlove-Vision/src/powerglove_vision/game_registry.py",
     "PowerGlove-Vision/src/powerglove_vision/tuning.py",
+    "PowerGlove-Vision/src/powerglove_vision/realtime.py",
     "PowerGlove-Vision/src/powerglove_vision/native_state.py",
     "PowerGlove-Vision/scripts/build-nestopia-powerglove.sh",
     "PowerGlove-Vision/scripts/install-nestopia-powerglove.sh",
@@ -72,6 +76,9 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/scripts/run-nestopia-powerglove-trace.py",
     "PowerGlove-Vision/scripts/build-fceumm-benchmark.sh",
     "PowerGlove-Vision/scripts/benchmark-direction-response.py",
+    "PowerGlove-Vision/scripts/record-vision-benchmark.py",
+    "PowerGlove-Vision/scripts/guided-vision-benchmark.py",
+    "PowerGlove-Vision/scripts/benchmark-vision-replay.py",
     "PowerGlove-Vision/native/nestopia-powerglove/nestopia-powerglove.patch",
     "PowerGlove-Vision/native/nestopia-powerglove/README.md",
     "PowerGlove-Vision/native/nestopia-powerglove/CHANGES.md",
@@ -80,6 +87,8 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/power-glove-rom-input-audit.md",
     "PowerGlove-Vision/docs/images/gestures/actions/menu-guard.png",
     "PowerGlove-Vision/docs/images/web/gestures/actions/menu-guard.png",
+    "PowerGlove-Vision/docs/images/gestures/actions/close-all-fingers.png",
+    "PowerGlove-Vision/docs/images/web/gestures/actions/close-all-fingers.png",
     "PowerGlove-Vision/src/powerglove_vision/web_features.py",
     "PowerGlove-Vision/retropie/powerglove-games.service",
     "PowerGlove-Vision/retropie/bin/powerglove-games",
@@ -99,11 +108,16 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/python/main.py",
     "PowerGlove-Vision/sketch/sketch.ino",
     "PowerGlove-Vision/scripts/install-uno-q-shutdown-helper.sh",
+    "PowerGlove-Vision/scripts/install-uno-q-camera-recovery-helper.sh",
     "PowerGlove-Vision/src/powerglove_vision/runtime_assets.py",
     "PowerGlove-Vision/src/powerglove_vision/help_content.py",
     "PowerGlove-Vision/uno-q/powerglove-system-shutdown.conf",
     "PowerGlove-Vision/uno-q/powerglove-system-shutdown.path",
     "PowerGlove-Vision/uno-q/powerglove-system-shutdown.service",
+    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.py",
+    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.conf",
+    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.path",
+    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.service",
 } | {f"PowerGlove-Vision/{path}" for path in PUBLIC_PDF_PATHS}
 FORBIDDEN_PARTS = {".git", ".venv", "__pycache__", "data", "tests", "tmp"}
 FORBIDDEN_NAMES = {"CODE_REVIEW_MAP.txt", ".DS_Store", "cheatsheet.md"}

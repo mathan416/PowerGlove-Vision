@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-05 - Verified the corrected closed-hand Academy artwork.
 #   2026-09-04 - Verified current guide titles, individual gestures, and Pixel Pal.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified Help guides and artwork; added an IP fallback for mDNS pauses.
@@ -110,9 +111,9 @@ echo "Configuring persistent local hostname resolution..."
 ssh "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "test -S /run/avahi-daemon/socket && python3 '${REMOTE_APP_DIR}/scripts/configure-uno-q-mdns.py' '${REMOTE_COMPOSE}'"
 
-echo "Checking the host shutdown helper..."
+echo "Checking the host helpers..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "if systemctl is-active --quiet powerglove-system-shutdown.path; then mkdir -p '${REMOTE_APP_DIR}/data' && touch '${REMOTE_APP_DIR}/data/.shutdown-enabled'; else echo 'warning: install scripts/install-uno-q-shutdown-helper.sh to enable Dashboard shutdown' >&2; fi"
+  "mkdir -p '${REMOTE_APP_DIR}/data'; if systemctl is-active --quiet powerglove-system-shutdown.path; then touch '${REMOTE_APP_DIR}/data/.shutdown-enabled'; else rm -f '${REMOTE_APP_DIR}/data/.shutdown-enabled'; echo 'warning: install scripts/install-uno-q-shutdown-helper.sh to enable Dashboard shutdown' >&2; fi; if systemctl is-active --quiet powerglove-camera-recovery.path; then touch '${REMOTE_APP_DIR}/data/.camera-recovery-enabled'; else rm -f '${REMOTE_APP_DIR}/data/.camera-recovery-enabled'; echo 'warning: install scripts/install-uno-q-shutdown-helper.sh to enable guarded USB camera recovery' >&2; fi"
 
 echo "Restarting the UNO Q application..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
@@ -165,7 +166,7 @@ GAMEPLAY_HTML="$(curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/gameplay")"
 PROGRAMS_HTML="$(curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/programs")"
-for EXPECTED_IMAGE in v2/v-sign.png v2/thumbs-up.png v2/curl-index.png v2/wrist-roll-left.png v2/push-toward-camera.png v2/pixel-pal-web.png actions/finger-curl.png actions/wrist-roll.png; do
+for EXPECTED_IMAGE in v2/v-sign.png v2/thumbs-up.png v2/curl-index.png v2/wrist-roll-left.png v2/push-toward-camera.png v2/pixel-pal-web.png actions/finger-curl.png actions/close-all-fingers.png actions/wrist-roll.png; do
   if [[ "${GAMEPLAY_HTML}" != *"/help-assets/gestures/${EXPECTED_IMAGE}"* ]]; then
     echo "error: gameplay Help is missing ${EXPECTED_IMAGE}" >&2
     exit 1
