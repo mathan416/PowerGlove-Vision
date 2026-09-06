@@ -1,5 +1,8 @@
 # Direction-response benchmark
 
+The **PowerGlove Vision Controller (Arduino UNO Q)** performs the camera,
+recognition, and send stages measured in this record.
+
 This deterministic headless benchmark compares the same exact Super Glove Ball
 ROM through its native packet path and its conventional FCEUmm joystick path.
 Gun.Smoke remains available as an optional positional-FCEUmm reference. This is
@@ -69,7 +72,7 @@ display buffering, and physical display latency are intentionally outside this
 headless core benchmark.
 
 The Dashboard now reports rolling camera-read-to-send and changed-control-to-send
-p50/p95 measurements. Those cover the UNO Q software stage for both FCEUmm and
+p50/p95 measurements. Those cover the PowerGlove Vision Controller software stage for both FCEUmm and
 native X/Y. Receiver publication and the core's next-frame consumption remain
 separate stages: the coherent native record timestamps its RetroPie arrival,
 and the headless core benchmark publishes the changed record immediately before
@@ -103,7 +106,7 @@ local and releases the camera automatically. A fixed-duration subset may then
 be sampled from those confirmed steps for repeatable replay. Guided capture is
 diagnostic evidence, not training data or an automatic part of Glove Academy.
 
-### Preliminary UNO Q steady-state timing
+### Preliminary PowerGlove Vision Controller steady-state timing
 
 After deploying 0.3.2-dev on September 5, 2026, two controller-off 300-sample
 smoke-test windows exercised the current MediaPipe Hands configuration at

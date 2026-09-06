@@ -1,22 +1,23 @@
 # PowerGlove Vision Installation Guide
 
-Install PowerGlove Vision with one script on your UNO Q and one on RetroPie.
+Install PowerGlove Vision with one script on the **PowerGlove Vision Controller
+(Arduino UNO Q)** and one on RetroPie.
 The scripts prepare the software and startup helpers; you finish by pairing the
 devices, positioning the camera, and testing a game.
 
 ## 1. Prepare your devices
 
-You need a provisioned Arduino UNO Q, a working RetroPie system, a UVC USB camera,
+You need a provisioned PowerGlove Vision Controller, a working RetroPie system, a UVC USB camera,
 a powered USB hub, and a physical controller for RetroArch setup. Put both devices
 on the same trusted local network with internet access. Supply your own games;
 no ROMs or BIOS files are included.
 
-For a new UNO Q, use Arduino App Lab to complete board setup and networking.
+For a new Controller, use Arduino App Lab to complete board setup and networking.
 Record both devices' hostnames. Connect the camera through the powered hub.
 You do not need to import PowerGlove Vision through App Lab or build a ZIP on
 your computer. The installer builds and uploads the Arduino sketch for you.
 
-Open a terminal on each device, either locally or over SSH. For the UNO Q:
+Open a terminal on each device, either locally or over SSH. For the Controller:
 
 ```sh
 ssh arduino@UNO-Q-NAME.local
@@ -34,9 +35,9 @@ if a new release appeared between runs, rerun the older installation.
 Development prereleases are available separately in the technical reference.
 The latest release must include the installer assets before these commands work.
 
-## 2. Run the UNO Q installer
+## 2. Run the PowerGlove Vision Controller installer
 
-Run this single line in the UNO Q terminal:
+Run this single line in the Controller terminal:
 
 ```sh
 curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/latest/download/install-uno-q.sh && bash install-uno-q.sh
@@ -58,8 +59,8 @@ installer checks compatibility before changing the application.
 
 **Checkpoint:** Open `http://UNO-Q-NAME.local:8088/dashboard` in your browser.
 Dashboard should load. With gestures off, a closed camera is normal. Open
-**Glove Academy** to check that your camera view and whole hand appear, then
-return to Dashboard with controller transmission stopped.
+**Play** or **Glove Academy** to check that your camera view and whole hand
+appear, then return to Dashboard with controller transmission stopped.
 
 ## 3. Run the RetroPie installer
 
@@ -69,7 +70,7 @@ Run this single line in the RetroPie terminal:
 curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/latest/download/install-retropie.sh && bash install-retropie.sh
 ```
 
-For a new installation, the script asks for your UNO Q hostname or IP address.
+For a new installation, the script asks for your Controller hostname or IP address.
 There are no placeholders to replace in the command.
 
 The script installs the receiver, controller mapping, game-launch integration,
@@ -102,7 +103,7 @@ one-time-code method after both installers finish.
 1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair`. Leave the command running; it prints a 20-character code that expires after two minutes.
 2. In your computer's browser, open `https://UNO-Q-NAME.local:8443/setup`. This is the secure Setup page; ordinary HTTP Setup cannot accept pairing credentials.
 3. Enter your RetroPie hostname and its one-time code, then select **Prepare one-time code**.
-4. Read the identifier after `ID` on the UNO Q matrix. Compare it with the beginning of the browser certificate's SHA-256 fingerprint. The locally generated certificate may cause a browser warning; verify the fingerprint before continuing.
+4. Read the identifier after `ID` on the Controller's matrix. Compare it with the beginning of the browser certificate's SHA-256 fingerprint. The locally generated certificate may cause a browser warning; verify the fingerprint before continuing.
 5. If the identifiers match, select the confirmation checkbox, enter the six-digit PIN shown after `PN` on the matrix, and select **Complete pairing**.
 6. On RetroPie, confirm that the helper reports completion and exits. Run `sudo systemctl status powerglove-receiver.service`; the receiver should be active.
 
@@ -167,7 +168,7 @@ is remembered, so choose FCEUmm again whenever you want the complete fallback.
 - Select **Start controller** when ready and verify movement and buttons in the game.
 
 The installers never reboot or request a shutdown automatically. They check
-that the UNO Q shutdown helper is ready. The tested UNO Q restarts after a halt;
+that the Controller shutdown helper is ready. The tested Arduino UNO Q hardware restarts after a halt;
 a disconnected website or blank matrix is not proof that power can be removed.
 
 ## Updates and checks
@@ -179,14 +180,14 @@ before trying again.
 
 To update, repeat the same single-line commands on both machines. Each selects
 the latest published stable release. Changed managed files are backed up, and the installer prints their
-location. It asks before interrupting an active UNO Q session. Close RetroArch
+location. It asks before interrupting an active Controller session. Close RetroArch
 before updating RetroPie. `config/profiles.json` is intentionally replaced;
 saved personal tuning remains in `data/gesture-tuning.json`.
 
 For checks only, use the script you already downloaded:
 
 ```sh
-# On the UNO Q:
+# On the PowerGlove Vision Controller:
 bash install-uno-q.sh --check
 # On RetroPie:
 bash install-retropie.sh --check
@@ -214,9 +215,9 @@ It also explains compatibility, package building, backups, and recovery.
   check internet access, and retry. A failed verification installs nothing.
 - **Unsupported board software:** complete App Lab provisioning or use a compatible
   project release. Do not bypass the installer's compatibility check.
-- **Website does not open:** try the UNO Q's current IP address instead of its
+- **Website does not open:** try the Controller's current IP address instead of its
   hostname. Use HTTP on port 8088 and HTTPS on port 8443.
-- **Camera missing:** open Glove Academy and wait for the camera view. The UNO Q
+- **Camera missing:** open Glove Academy and wait for the camera view. The Controller
   host helper automatically enrolls the single UVC camera and its parent hub on
   first successful use, even if no camera was connected during installation.
   After enrollment it makes one guarded reset attempt during a sustained outage.
@@ -238,7 +239,7 @@ For diagnostic commands or manual repair, use the
 | System heart | <img src="images/matrix/Heart.jpg" alt="Heart matrix display" width="104"> | System startup is progressing. |
 | Pulsing hourglass | <img src="images/matrix/Hourglass.jpg" alt="Hourglass matrix display" width="104"> | PowerGlove Vision is starting. |
 | Animated glove | <img src="images/matrix/Glove.jpg" alt="Glove matrix display" width="104"> | Gestures are off. |
-| Scanning `L` | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Glove Academy practice is active; controller output is paused. |
+| Scanning `L` | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Play or Glove Academy practice is active; controller output is paused. |
 | Scanning `T` | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Tune gestures is active; controller output is paused. |
 | `A`–`I` | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | The corresponding profile is selected; Program A is shown. |
 | `BS` | <img src="images/matrix/BS.jpg" alt="BS matrix display" width="104"> | Bad Street Brawler is selected. |
@@ -253,6 +254,7 @@ startup sequence. An animation does not prove that shutdown has finished.
 | Page | Address |
 | --- | --- |
 | Dashboard | `http://UNO-Q-NAME.local:8088/dashboard` |
+| Play | `http://UNO-Q-NAME.local:8088/play` |
 | Glove Academy | `http://UNO-Q-NAME.local:8088/learn` |
 | Games (lower Setup section) | `http://UNO-Q-NAME.local:8088/setup#games-section` |
 | Help and printable manuals | `http://UNO-Q-NAME.local:8088/help` |
@@ -269,7 +271,7 @@ excluded from the public package; the live cabinet page supplies local details.
 
 ## Play Checklist
 
-1. Power the RetroPie and UNO Q; leave the camera connected to the powered hub.
+1. Power the RetroPie and PowerGlove Vision Controller; leave the camera connected to the powered hub.
 2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
 3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
 4. On first use, or after changing your camera or playing position, select **Calibrate** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
@@ -280,16 +282,16 @@ excluded from the public package; the live cabinet page supplies local details.
 8. Read the shutdown limitation before disconnecting power. **Shutdown** requests a graceful halt, but the tested board restarts; an offline website is not proof that it is safe to unplug.
 
 PowerGlove Vision remembers the player's explicit **Start controller** or **Stop
-controller** choice across UNO Q application and system restarts. A remembered
+controller** choice across Controller application and system restarts. A remembered
 Start means **armed**, not unconditional output: controls are sent only during a
 live registered RetroArch session or after an intentional manual Dashboard profile
 selection. A registered game renews its session while RetroArch is running, so an
-UNO Q application restart can reconnect automatically. Game exit, an unknown game,
+Controller application restart can reconnect automatically. Game exit, an unknown game,
 or an expired session releases all controls and stops delivery without changing the
 armed preference. **Stop controller** remains sticky until explicitly started again.
-Install the same release on both devices because this behavior uses a matching UNO Q
+Install the same release on both devices because this behavior uses a matching Controller
 worker and RetroPie launch hook.
 
 Vision and the dashboard keep running while output is unarmed or waiting for a game,
 so setup never generates surprise game inputs.
-**Shutdown** is different: it halts Linux on the UNO Q. The tested board automatically restarts; remaining halted is not guaranteed.
+**Shutdown** is different: it halts Linux on the Controller. The tested board automatically restarts; remaining halted is not guaranteed.

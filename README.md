@@ -5,8 +5,9 @@
 # PowerGlove Vision
 
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
-a camera connected to an Arduino UNO Q. Use your bare hand or a plain glove;
-there are no glove electronics to build. The UNO Q tracks your movements and
+a camera connected to the **PowerGlove Vision Controller**, built on an Arduino
+UNO Q. Use your bare hand or a plain glove; there are no glove electronics to
+build. The PowerGlove Vision Controller tracks your movements and
 sends controller input to a Raspberry Pi, where RetroArch sees a virtual
 gamepad named **PowerGlove Vision**.
 
@@ -16,11 +17,13 @@ profile automatically when you launch a registered game. Glove Academy mode lets
 practise without sending input to the cabinet. Its optional Pixel Pal-guided
 personalization wizard adjusts recognition to a player's hand without retraining
 the model, changing game mappings, or exposing raw thresholds during normal use.
+The local Play page adds a camera-controlled Rock Paper Scissors match against
+Pixel Pal without requiring RetroPie.
 
-The Dashboard's **Start controller** choice is retained across UNO Q application
+The Dashboard's **Start controller** choice is retained across Controller application
 and system restarts as an armed preference. Armed does not mean that controls are
 always being sent: a registered RetroPie launch maintains a short renewable game
-session only while RetroArch is running. Controller delivery resumes after an UNO Q
+session only while RetroArch is running. Controller delivery resumes after a Controller
 restart when that session is still live, then returns to neutral when the game ends,
 the session becomes stale, or an unregistered game is launched. **Stop controller**
 remains sticky until the player explicitly starts it again. Manual Dashboard profile
@@ -79,7 +82,7 @@ because it is far too funny to fix.
 
 ## Quick start
 
-Prepare your UNO Q with Arduino App Lab and use an existing RetroPie installation.
+Prepare the PowerGlove Vision Controller with Arduino App Lab and use an existing RetroPie installation.
 Connect both to the same trusted network and attach the camera through a powered
 USB hub. Keep a physical controller available for RetroArch setup.
 
@@ -87,7 +90,7 @@ The commands in the Installation Guide select the latest published stable releas
 Use the same release on both devices. Download `install-uno-q.sh` and
 `install-retropie.sh` from that published
 [release](https://github.com/mathan416/PowerGlove-Vision/releases). Run the first
-on the UNO Q and the second on RetroPie as your normal login user. Each verifies
+on the Controller and the second on RetroPie as your normal login user. Each verifies
 its package and requests sudo access when needed. The UNO installer includes
 the Arduino sketch, early-start helper, shutdown helper, and guarded USB-camera
 recovery helper; no separate App Lab import or helper installation is needed.
@@ -107,8 +110,8 @@ the palm center, apparent hand size, wrist angle, and resting jitter for one
 camera and playing position, so the installer never substitutes another
 person’s recorded coordinates for yours.
 
-Install the same release on the UNO Q and RetroPie. Automatic game-session resume
-depends on the current UNO Q worker and current RetroPie launch hook being present
+Install the same release on the Controller and RetroPie. Automatic game-session resume
+depends on the current Controller worker and current RetroPie launch hook being present
 together; mixed old/new installations continue to fail safe but cannot provide the
 renewable session behavior.
 
@@ -209,19 +212,21 @@ FCEUmm and the same global recognition settings.
 | Page | What it does |
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
+| Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
 | Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. |
 | Help, `/help` | Opens the local manuals and PDFs; **This cabinet** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
-With **Gestures off** selected, the camera stays closed. Choose an active profile
-or open Glove Academy to begin. Wait for the camera view before practicing or
-playing; starting immediately after a reboot can take longer.
+With **Gestures off** selected, the camera stays closed. Choose an active profile,
+open Play, or open Glove Academy to begin. Wait for the camera view before
+practicing or playing; starting immediately after a reboot can take longer.
 
 The live camera is diagnostic rather than part of controller output. Camera
 capture continuously keeps only the newest frame, and browser JPEG encoding
 runs on a separate latest-preview worker that may drop stale preview jobs. The
-preview remains capped at 5 fps. Closing Dashboard or Glove Academy still avoids
-optional drawing and encoding work; tracking and controller delivery continue.
+preview remains capped at 5 fps. Closing Dashboard or Glove Academy while playing
+a RetroPie game still avoids optional drawing and encoding work; tracking and
+controller delivery continue.
 
 Strong light behind the player can leave the hand dark even when the room looks
 bright. Prefer light from the camera side or move bright windows out of the
@@ -229,7 +234,7 @@ background. The project does not force hardware backlight compensation: on the
 tested Razer Kiyo Pro it made the measured backlit scene darker, and aggressive
 manual exposure can trade brightness for motion blur and reduced frame rate.
 
-The UNO Q host helper supports one UVC camera. Installation works with or without
+The Controller host helper supports one UVC camera. Installation works with or without
 the camera connected. On the first healthy sighting it records the camera and its
 actual parent USB hub in a root-owned allowlist, disables autosuspend for both,
 and automatically updates that association if the camera is later moved to a
@@ -242,7 +247,7 @@ cable rather than repeatedly resetting it.
 
 **Stop controller** pauses delivery while leaving active tracking available.
 **Gestures off** closes the camera. **Shutdown** requests a Linux halt, but
-the tested UNO Q restarts afterward. A disappearing website is not proof that
+the tested Arduino UNO Q hardware restarts afterward. A disappearing website is not proof that
 it is safe to remove power. See the installation guide before using Shutdown.
 
 ![Dashboard showing the selected profile and controller readings](docs/images/debug-dashboard.png)
@@ -252,7 +257,7 @@ excluded for privacy.
 
 ![Glove Academy with Pixel Pal guiding the personalization choices](docs/images/tune-page.png)
 
-In **Glove Academy**, switch on **Tune gestures** to adjust sensitivity. The UNO Q shows
+In **Glove Academy**, switch on **Tune gestures** to adjust sensitivity. The Controller shows
 a scanning **T** during tuning and a matching scanning **L** during ordinary practice. Both modes pause game input.
 
 Pixel Pal first asks what feels wrong, then presents one instruction at a time.
@@ -262,7 +267,7 @@ conservative adjustment, requires two successful uses and releases plus three
 neutral seconds, and enables Save only after that check passes. Saved recognition
 settings apply across profiles. Numerical thresholds, selective reset, manual
 preview, and the private diagnostic capture live under **Advanced**. Diagnostic
-video remains on the UNO Q, is deleted after analysis or cancellation, and its
+video remains on the Controller, is deleted after analysis or cancellation, and its
 downloadable aggregate report contains no pictures or per-frame hand data.
 
 ![Games editor in the lower part of Setup](docs/images/games-section.png)

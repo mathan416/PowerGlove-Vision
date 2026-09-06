@@ -1,10 +1,11 @@
 # Project: PowerGlove Vision
 # File: src/powerglove_vision/control_server.py
-# Purpose: Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request.
+# Purpose: Serve the UNO Q dashboard, local play, setup, pairing, controller controls, and guarded shutdown request.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Added the camera-controlled Rock Paper Scissors page.
 #   2026-09-05 - Persisted the player's armed controller choice across app restarts.
 #   2026-09-05 - Displayed fresh-frame and controller-transition latency.
 #   2026-09-05 - Made every Academy lesson and completion control transition atomic.
@@ -16,10 +17,9 @@
 #   2026-09-05 - Added live capture and inference performance diagnostics.
 #   2026-09-04 - Added Pixel Pal artwork, Extra-Digit Hunt, and the default Dashboard route.
 #   2026-09-03 - Added profile, shutdown, Help/PDF, cabinet, practice, and startup controls.
-#   2026-09-03 - Standardized source documentation and first-run behavior.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Serve the UNO Q dashboard, setup, pairing, controller controls, and guarded shutdown request."""
+"""Serve the UNO Q dashboard, local play, setup, pairing, and controller controls."""
 
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .game_registry import registry_request, validate_document, MAX_REQUEST
+from .play_game import PLAY_CONTENT, PLAY_SCRIPT, PLAY_STYLE
 from .web_features import GAMES_CONTENT, GAMES_SCRIPT, TUNE_CONTENT, TUNE_SCRIPT, TUNE_THRESHOLDS
 from . import __version__
 from .resolver import resolve_ipv4
@@ -87,7 +88,7 @@ class ForbiddenActionError(Exception):
 
 def _page(title: str, content: str, script: str) -> bytes:
     """Assemble a complete branded HTML page as UTF-8 bytes."""
-    if title in ("Dashboard", "Glove Academy", "Setup", "Help"):
+    if title in ("Dashboard", "Rock Paper Scissors", "Glove Academy", "Setup", "Help"):
         introduction, separator, remainder = content.partition("</p>")
         if separator:
             content = (
@@ -120,6 +121,7 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .bits{{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}}.bit{{padding:6px 9px;border:1px solid var(--line);border-radius:7px;color:var(--muted)}}.bit.on{{color:#081109;background:var(--green);border-color:var(--green)}}
 .events{{height:170px;overflow:auto;background:#080a10;border-radius:9px;padding:12px;color:#c9d2ec;font-size:13px}}.events div{{padding:3px 0;border-bottom:1px solid #171b25}}
 .learn-grid{{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(340px,.8fr);gap:14px;align-items:start}}.learn-camera{{position:relative}}.learn-camera .camera{{height:min(55vh,500px);aspect-ratio:auto;margin:0}}.practice-badge{{position:absolute;left:12px;top:12px;padding:7px 10px;border-radius:999px;background:#090b11dc;border:1px solid var(--green);color:var(--green);font-size:12px}}.lesson-number{{color:var(--cyan);font-size:12px;letter-spacing:1.5px;text-transform:uppercase}}.lesson-title{{font:900 clamp(26px,4vw,40px)/1.05 system-ui;margin:8px 0}}.lesson-cue{{color:var(--muted);min-height:72px}}.lesson-result{{border:1px solid var(--line);border-radius:10px;padding:12px;margin:14px 0;background:#090b11}}.lesson-result.ready{{border-color:var(--green);color:var(--green)}}.lesson-progress{{display:flex;gap:5px;margin:14px 0}}.lesson-progress i{{height:7px;flex:1;border-radius:9px;background:#303748}}.lesson-progress i.done{{background:var(--green)}}.lesson-progress i.current{{background:var(--cyan)}}.live-readout{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}}.live-readout>div{{padding:10px;border-radius:9px;background:#090b11;text-align:center}}.live-readout strong{{display:block;font:800 18px system-ui;margin-top:4px}}
+{PLAY_STYLE}
 form{{display:grid;gap:16px}}.formgrid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}}label{{display:grid;gap:7px;color:var(--muted);font-size:13px}}input,select{{width:100%;background:#090b11;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;font:16px inherit}}input:focus,select:focus{{outline:2px solid var(--blue);border-color:transparent}}.check{{display:flex;align-items:center;gap:10px}}.check input{{width:auto}}.notice{{min-height:24px;color:var(--cyan)}}code{{color:var(--cyan)}}
 details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}details.advanced summary{{color:var(--cyan);cursor:pointer;font-weight:800}}details.advanced p{{color:var(--muted);max-width:760px}}.markdown-body details.extra-digit-answer{{margin-top:42px;padding:18px;border:2px solid #087ebd;border-radius:12px;background:#e7f7fc}}.markdown-body details.extra-digit-answer summary{{cursor:pointer;color:#075fc4;font-weight:800;font-size:18px}}.markdown-body details.extra-digit-answer h2{{margin-top:20px}}
 .help-group{{margin-top:28px}}.help-group>h2{{margin-bottom:12px;color:var(--cyan)}}.guide-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}}
@@ -128,10 +130,10 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 .help-toolbar{{display:flex;justify-content:space-between;gap:16px;margin:0 0 14px}}.help-toolbar a{{color:var(--cyan);text-decoration:none}}.document-actions{{display:flex;gap:16px}}.help-layout{{display:grid;grid-template-columns:250px minmax(0,1fr);gap:18px;align-items:start}}
 .help-sidebar{{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding:16px;background:#11141d;border:1px solid var(--line);border-radius:12px}}.guide-nav,.toc{{display:grid;gap:2px;margin-top:8px}}.guide-nav a,.toc a{{padding:7px 9px;color:var(--muted);text-decoration:none;border-radius:7px;font-size:13px}}.guide-nav a:hover,.toc a:hover,.guide-nav a.current{{color:var(--ink);background:#202636}}.toc{{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}}.toc-level-3{{padding-left:20px!important}}
 .markdown-body{{min-width:0;padding:clamp(20px,4vw,46px);background:#f8f9fc;color:#151927;border-radius:14px;font:16px/1.65 system-ui,sans-serif}}.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4{{color:#101522;scroll-margin-top:20px}}.markdown-body h1{{font-size:clamp(30px,5vw,46px);letter-spacing:-1.5px}}.markdown-body h2{{margin-top:38px;font-size:27px;border-bottom:2px solid #d9dfeb;padding-bottom:7px}}.markdown-body h3{{margin-top:28px;font-size:21px}}.markdown-body a{{color:#075fc4}}.markdown-body code{{color:#005dc7;background:#e9eef7;border-radius:4px;padding:2px 5px}}.markdown-body pre{{overflow:auto;padding:16px;background:#0b1220;border-left:4px solid var(--cyan);border-radius:8px}}.markdown-body pre code{{padding:0;color:#eaf2ff;background:none}}.markdown-body blockquote{{margin:20px 0;padding:14px 18px;border-left:5px solid #0b78d1;background:#e9f4fd}}.markdown-body ul,.markdown-body ol{{margin:16px 0 20px;padding-left:1.75rem}}.markdown-body li{{margin:7px 0;padding-left:.3rem}}.markdown-body li::marker{{color:#087ebd;font-weight:800}}.markdown-body ol li::marker{{color:#d51f42}}.markdown-body img{{display:block;max-width:100%;height:auto;margin:22px auto;border-radius:9px}}.table-scroll{{overflow-x:auto;margin:18px 0}}.markdown-body table{{width:100%;border-collapse:collapse;font-size:14px}}.markdown-body table.program-starters{{table-layout:fixed;min-width:760px}}.markdown-body table.program-starters th:nth-child(1){{width:16%}}.markdown-body table.program-starters th:nth-child(2){{width:31%}}.markdown-body table.program-starters th:nth-child(3),.markdown-body table.program-starters th:nth-child(4){{width:26.5%}}.markdown-body th{{background:#101827;color:white;text-align:left}}.markdown-body th,.markdown-body td{{padding:10px 12px;border:1px solid #cbd3e2;vertical-align:top}}.markdown-body th.art-column{{text-align:center}}.markdown-body td.art-cell{{text-align:center;vertical-align:middle}}.markdown-body td.art-cell img{{margin:0 auto}}.markdown-body tr:nth-child(even) td{{background:#eef2f8}}
-@media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera{{height:auto;aspect-ratio:4/3}}}}
+@media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid,.rps-layout{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera,.rps-camera .camera{{height:auto;aspect-ratio:4/3}}}}
 @media(max-width:900px){{.help-layout{{grid-template-columns:1fr}}.help-sidebar{{position:static;max-height:none}}.guide-nav{{grid-template-columns:repeat(2,minmax(0,1fr))}}.toc{{display:none}}}}
 @media(max-width:600px){{header{{align-items:center}}.brand{{max-width:58%}}nav{{display:grid;grid-template-columns:repeat(2,auto);gap:5px 12px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}.guide-nav{{grid-template-columns:1fr}}.markdown-body{{padding:20px 17px}}}}
-</style></head><body><header><a class=brand href=/dashboard aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/dashboard>Dashboard</a><a href=/learn>Glove Academy</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}</footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
+</style></head><body><header><a class=brand href=/dashboard aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/dashboard>Dashboard</a><a href=/play>Play</a><a href=/learn>Glove Academy</a><a href=/help>Help</a><a href=/setup>Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}</footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
 
 
 VISION_STARTUP_SCRIPT = r"""
@@ -268,6 +270,13 @@ LEARN = LEARN.replace(b'<section class=card id=practice-lessons>',
     + b'<section class=card id=practice-lessons>', 1)
 LEARN = LEARN.replace('<div class=practice-badge>● PRACTICE ONLY</div></div>'.encode(), '<div class=practice-badge>● PRACTICE ONLY</div>'.encode() + TUNE_THRESHOLDS.encode() + b'</div>', 1)
 LEARN = LEARN.replace(b'</body>', b'<script>' + TUNE_SCRIPT.encode() + b'</script></body>')
+
+
+PLAY = _page(
+    "Rock Paper Scissors",
+    PLAY_CONTENT,
+    VISION_STARTUP_SCRIPT + PLAY_SCRIPT,
+)
 
 
 SETUP = _page(
@@ -608,6 +617,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 self.send_response(302); self.send_header("Location", "/dashboard"); self.end_headers()
             elif path == "/dashboard":
                 _send(self, 200, DASHBOARD, "text/html; charset=utf-8")
+            elif path == "/play":
+                _send(self, 200, PLAY, "text/html; charset=utf-8")
             elif path == "/games":
                 self.send_response(302)
                 self.send_header("Location", "/setup#games-section")

@@ -1,6 +1,7 @@
 # Matrix display guide
 
-The blue LED matrix on the UNO Q is PowerGlove Vision's status display. It tells
+The blue LED matrix on the **PowerGlove Vision Controller (Arduino UNO Q)** is
+PowerGlove Vision's status display. It tells
 you which mode is active and helps distinguish startup, practice, tracking, and
 pairing. It does not show a game's score or confirm that a game accepted a button.
 
@@ -11,11 +12,11 @@ what to do next.
 
 | What you see | See it | What it means | What to do |
 | --- | --- | --- | --- |
-| Arduino boot logo | <img src="images/matrix/Boot.jpg" alt="Boot matrix display" width="104"> | The UNO Q's system software is starting, before PowerGlove Vision controls the display. | Wait for the app's hourglass or normal display. |
+| Arduino boot logo | <img src="images/matrix/Boot.jpg" alt="Boot matrix display" width="104"> | The PowerGlove Vision Controller's system software is starting, before PowerGlove Vision controls the display. | Wait for the app's hourglass or normal display. |
 | System heart animation | <img src="images/matrix/Heart.jpg" alt="Heart matrix display" width="104"> | The board is progressing through system startup. | Wait for the app display. |
 | Pulsing hourglass | <img src="images/matrix/Hourglass.jpg" alt="Hourglass matrix display" width="104"> | PowerGlove Vision is starting. | Allow startup to finish. If it persists, check Dashboard. |
 | Glove animation with moving cuff, curling fingers, and a spark | <img src="images/matrix/Glove.jpg" alt="Glove matrix display" width="104"> | Gestures are off; the app is in its idle mode. | Open Glove Academy to practice, or choose a game profile on Dashboard. |
-| A large scanning **L** | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Glove Academy lessons are active. L stands for lessons. | Practice the moves shown in your browser; controller output is paused. |
+| A large scanning **L** | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Play or Glove Academy lessons are active. L stands for local play or lessons. | Follow the game or practice moves shown in your browser; controller output is paused. |
 | A large scanning **T** | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Gesture tuning is active, including hand setup. | Follow the recording, preview, and save instructions in Glove Academy. Controller output is paused. |
 | A steady **A-I**, **BS**, or **GB** | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | A game profile is selected, but a calibrated hand is not currently being reported as tracked. | Show your hand and check tracking/calibration on Dashboard. |
 | **A-I**, **BS**, or **GB** gently changing brightness | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | The app reports a detected, calibrated hand for that profile. | Check Dashboard's controller status before playing. This pulse alone does not mean controls are enabled. |
@@ -36,7 +37,7 @@ A typical startup with **Gestures off** selected is:
 | <img src="images/matrix/Boot.jpg" alt="Arduino boot logo: system startup before the app display." width="190"> | <img src="images/matrix/Heart.jpg" alt="System heart animation: startup is progressing; the app may still be loading." width="190"> | <img src="images/matrix/Hourglass.jpg" alt="Hourglass: PowerGlove Vision is starting." width="190"> |
 
 With an active startup profile, the later display can instead be its profile
-letters. Opening Glove Academy selects **L**; enabling tuning selects **T**.
+letters. Opening Play or Glove Academy selects **L**; enabling tuning selects **T**.
 Wait for the camera view and startup message in your browser before practicing
 or playing.
 
@@ -55,13 +56,13 @@ means gestures are off. It is different from selecting a game profile and merely
 pressing **Stop controller**: that keeps the camera/profile active and can leave
 profile letters visible.
 
-## Glove Academy: L and T
+## Local play and Glove Academy: L and T
 
-| L: Glove Academy lessons | T: Gesture tuning |
+| L: Local play or Glove Academy lessons | T: Gesture tuning |
 | --- | --- |
-| <img src="images/matrix/L.jpg" alt="Glove Academy lessons" width="230"> | <img src="images/matrix/T.jpg" alt="Gesture tuning" width="230"> |
+| <img src="images/matrix/L.jpg" alt="Local play or Glove Academy lessons" width="230"> | <img src="images/matrix/T.jpg" alt="Gesture tuning" width="230"> |
 
-**L** means Glove Academy lessons are active. **T** means gesture tuning is
+**L** means local Play or Glove Academy lessons are active. **T** means gesture tuning is
 active, including **Set up my hand**, individual adjustments, and previews.
 Follow the browser's instructions to practice or complete your recordings.
 

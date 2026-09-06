@@ -5,7 +5,9 @@
 # PowerGlove Vision — Quick Reference
 
 Use this guide to install, pair, check, and operate your PowerGlove Vision system.
-Replace `UNO-Q-NAME.local` with your UNO Q hostname and `RETROPIE-NAME.local`
+The **PowerGlove Vision Controller** is the project's camera and recognition
+device, built on an Arduino UNO Q. Replace `UNO-Q-NAME.local` with your
+PowerGlove Vision Controller hostname and `RETROPIE-NAME.local`
 with your Raspberry Pi hostname. Each command section identifies the machine
 on which to run it. Keep passwords and pairing tokens out of this document.
 
@@ -13,10 +15,10 @@ on which to run it. Keep passwords and pairing tokens out of this document.
 
 | Item | Value |
 | --- | --- |
-| UNO Q network address | `UNO-Q-NAME.local` |
+| PowerGlove Vision Controller network address | `UNO-Q-NAME.local` |
 | RetroPie network address | `RETROPIE-NAME.local` |
-| UNO Q App Lab application | PowerGlove Vision |
-| UNO Q application directory | `/home/arduino/ArduinoApps/powerglove-vision` |
+| PowerGlove Vision Controller App Lab application | PowerGlove Vision |
+| PowerGlove Vision Controller application directory | `/home/arduino/ArduinoApps/powerglove-vision` |
 | Camera | UVC-compatible USB camera; select `auto` in Setup |
 | Startup profile | Choose in Setup |
 
@@ -31,6 +33,7 @@ Open these pages on a computer or phone connected to the same trusted network.
 | Page | Address |
 | --- | --- |
 | Dashboard: camera and controller output | [Open Dashboard](http://UNO-Q-NAME.local:8088/dashboard) |
+| Play: Rock Paper Scissors | [Open Play](http://UNO-Q-NAME.local:8088/play) |
 | Learn: practice and tune gestures | [Open Learn](http://UNO-Q-NAME.local:8088/learn) |
 | Games: edit game mappings | [Open Games](http://UNO-Q-NAME.local:8088/setup#games-section) |
 | Help: manuals and live cabinet reference | [Open Help](http://UNO-Q-NAME.local:8088/help) |
@@ -41,7 +44,7 @@ Open these pages on a computer or phone connected to the same trusted network.
 | Project repository | [PowerGlove Vision on GitHub](https://github.com/mathan416/PowerGlove-Vision) |
 
 The links above contain example hostnames. Replace them in the browser's address
-bar. The live **Help > This cabinet** page builds links using the UNO Q address
+bar. The live **Help > This cabinet** page builds links using the PowerGlove Vision Controller address
 you used to open it.
 
 ## Install and deploy over Wi-Fi
@@ -53,7 +56,7 @@ All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#co
 ### Download and package on your computer
 
 1. Install Arduino App Lab on your development computer. Run `command -v git python3 bash rsync zip` and install any missing tools.
-2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `main` branch and build its UNO Q installation ZIP.
+2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `main` branch and build its PowerGlove Vision Controller installation ZIP.
 3. Confirm that verification reports **App Lab installation ZIP verified**.
 
 ```sh
@@ -63,19 +66,19 @@ scripts/build-app-lab-package.sh
 python3 scripts/verify-app-lab-package.py
 ```
 
-### Prepare the UNO Q
+### Prepare the PowerGlove Vision Controller
 
-1. Connect the UNO Q by USB and complete its setup in App Lab. Join the same network as RetroPie and record the board's hostname.
+1. Connect the PowerGlove Vision Controller by USB and complete its setup in App Lab. Join the same network as RetroPie and record the board's hostname.
 2. Import `output/app-lab/PowerGlove-Vision-Uno-Q.zip` from your computer's checkout. Open **PowerGlove Vision** and select **Run** to transfer and start the app and matrix sketch.
 3. Connect the camera through the powered USB hub. Follow the [Installation Guide](INSTALL_README.md) if you need help with the initial board setup.
 
-Open a terminal on the UNO Q, or connect from your computer:
+Open a terminal on the PowerGlove Vision Controller, or connect from your computer:
 
 ```sh
 ssh arduino@UNO-Q-NAME.local
 ```
 
-Run these commands **on the UNO Q** after importing and running the app once:
+Run these commands **on the PowerGlove Vision Controller** after importing and running the app once:
 
 ```sh
 cd /home/arduino/ArduinoApps/powerglove-vision
@@ -85,16 +88,16 @@ sudo python3 scripts/setup-machine.py uno-q
 This installs host support for local names, shutdown, and guarded USB-camera recovery, sets the app
 to start at boot, and restarts it. Review every **FAIL** or **ACTION** result.
 The installer requires the application directory shown above. Run `exit` after
-setup to leave the UNO Q terminal. Check Dashboard and Learn before pairing.
+setup to leave the PowerGlove Vision Controller terminal. Check Dashboard, Play, and Learn before pairing.
 
 ### Install the Raspberry Pi receiver before pairing
 
 The Raspberry Pi needs the receiver, pairing command, game registry, and launch
-hooks before you can pair it with the UNO Q. Run the following in a terminal
+hooks before you can pair it with the PowerGlove Vision Controller. Run the following in a terminal
 **on the Raspberry Pi running RetroPie**. You can use a local terminal or SSH
 with your RetroPie account.
 
-For a new installation, download the same `main` branch used on the UNO Q:
+For a new installation, download the same `main` branch used on the PowerGlove Vision Controller:
 
 ```sh
 sudo apt update
@@ -105,7 +108,7 @@ cd PowerGlove-Vision
 ```
 
 If you already have a checkout, open that directory instead of cloning again.
-Then install the RetroPie components, substituting your UNO Q hostname:
+Then install the RetroPie components, substituting your PowerGlove Vision Controller hostname:
 
 ```sh
 sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local
@@ -124,10 +127,10 @@ saved emulator remains FCEUmm until you explicitly choose the native core from
 RetroPie's per-ROM launch menu. Declining the optional build leaves the complete
 FCEUmm fallback available.
 
-For an existing installation, `--peer` does not replace the saved UNO Q address.
+For an existing installation, `--peer` does not replace the saved PowerGlove Vision Controller address.
 If that address has changed, update `/etc/powerglove/launcher.json` on RetroPie.
 
-### Update the UNO Q from your computer
+### Update the PowerGlove Vision Controller from your computer
 
 Complete the [SSH key setup](CONFIGURATION_REFERENCE.md#set-up-ssh-key-access-once) first. From the full project
 checkout **on your development computer**, verify access and deploy:
@@ -137,11 +140,11 @@ ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
 ```
 
-The deployment preserves the UNO Q's private `data/` directory and restarts the
-application. It updates the UNO Q only. To update RetroPie, update its source
+The deployment preserves the PowerGlove Vision Controller's private `data/` directory and restarts the
+application. It updates the PowerGlove Vision Controller only. To update RetroPie, update its source
 checkout and rerun the RetroPie installer above; it preserves local settings.
 
-The UNO Q installer includes the shutdown and camera-recovery helpers. To update
+The PowerGlove Vision Controller installer includes the shutdown and camera-recovery helpers. To update
 or repair them separately, run this from your development computer's project checkout:
 
 ```sh
@@ -159,7 +162,7 @@ camera sighting enrolls the one UVC camera and its actual parent hub. Moving the
 camera to another hub updates the association automatically the next time vision
 sees it. Until that first sighting, recovery intentionally has no hub to reset.
 
-The terminal prompts for the UNO Q account password if needed. The helper
+The terminal prompts for the PowerGlove Vision Controller account password if needed. The helper
 requests a Linux halt; the tested board restarts afterward. See the shutdown
 limitation below.
 
@@ -168,7 +171,7 @@ limitation below.
 Complete both machine installations above, then use the one-time-code method:
 
 1. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Its code expires after two minutes.
-2. In your browser, open `https://UNO-Q-NAME.local:8443/setup` using your UNO Q's actual hostname.
+2. In your browser, open `https://UNO-Q-NAME.local:8443/setup` using your PowerGlove Vision Controller's actual hostname.
 3. Enter your RetroPie hostname and the 20-character code printed by the pairing command.
 4. Select **Prepare one-time code**. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint.
 5. If they match, select the certificate confirmation checkbox, enter the six-digit PIN displayed after `PN` on the matrix, and select **Complete pairing**.
@@ -232,16 +235,16 @@ replace a check of the controls in a running game.
 
 ## Camera troubleshooting
 
-Connect the camera to the **UNO Q** through a powered USB hub. A camera attached
-to your computer is not available to the UNO Q application.
+Connect the camera to the **PowerGlove Vision Controller** through a powered USB hub. A camera attached
+to your computer is not available to the PowerGlove Vision Controller application.
 
-Open a terminal on the UNO Q, using SSH if necessary:
+Open a terminal on the PowerGlove Vision Controller, using SSH if necessary:
 
 ```sh
 ssh arduino@UNO-Q-NAME.local
 ```
 
-Run the following **on the UNO Q** to see each Linux video device and its name:
+Run the following **on the PowerGlove Vision Controller** to see each Linux video device and its name:
 
 ```sh
 for device in /sys/class/video4linux/video*; do
@@ -275,7 +278,7 @@ The app retries camera initialization automatically. Keep **Camera** set to
 1. Put the camera in its normal cabinet position before calibration.
 2. Stand or sit at your normal playing distance. Keep your comfortable center and the full area you intend to reach inside the camera view, with room at every edge.
 3. Hold a relaxed open hand at that center and select **Calibrate**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
-4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable UNO Q work and game stutter.
+4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable PowerGlove Vision Controller work and game stutter.
 
 Recalibrate after moving the camera, changing your playing distance, or changing
 your normal center. Returning to the same position produces a similar reference,
@@ -348,7 +351,7 @@ game, RetroArch stopping, or a session becoming stale also turns gestures off.
 For a registered game, a one-second post-RetroArch guard pauses controller output so
 hand movement cannot operate RetroPie's pre-emulator runcommand menu. Output
 resumes automatically when the guard ends, provided the controller was already
-armed. An UNO Q application restart can reconnect on the next renewal while that
+armed. A PowerGlove Vision Controller application restart can reconnect on the next renewal while that
 game remains open. The guard and game session never start a controller that the
 player explicitly stopped.
 
@@ -403,7 +406,7 @@ fallback. A failed or incomplete native setup does not remove it.
 
 ### Gun Smoke: tested FCEUmm controls
 
-The `program_g` path was tested end to end from the UNO Q through RetroPie and
+The `program_g` path was tested end to end from the PowerGlove Vision Controller through RetroPie and
 FCEUmm. Use these controls:
 
 | Gesture | Gun Smoke action |
@@ -437,7 +440,7 @@ Once a profile works well, register the game **on RetroPie**. The launch hook
 reads `/etc/powerglove/games.json` to choose the profile each time a game starts.
 
 1. Find the game file in your RetroPie ROM folder, usually `~/RetroPie/roms/nes/`. Record its complete filename, including the extension. For example, `/home/pi/RetroPie/roms/nes/My Game (USA).zip` has the filename `My Game (USA).zip`. Use the archive filename when launching an archive, not the filename inside it.
-2. Open **Setup → Games** on the UNO Q website and select **Download backup**.
+2. Open **Setup → Games** on the PowerGlove Vision Controller website and select **Download backup**.
 3. Edit the loaded JSON in the Games section.
 4. Add the filename and your chosen profile inside the existing `games` object. Keep all existing entries, separate entries with commas, and leave no comma after the last entry.
 5. Select **Validate**, then **Save**. Wait for verified save confirmation and restart the game. **Restore previous save** reverses the last saved edit.
@@ -467,10 +470,10 @@ Confirm the selected profile on Dashboard after restarting the game.
 See the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game-specific instructions and
 the [Programs A–I manual](bad-street-brawler-programs.md) for all reusable mappings.
 
-A **profile queued** launch message means the UNO Q accepted the request for
+A **profile queued** launch message means the PowerGlove Vision Controller accepted the request for
 processing. Confirm the active profile and game name on Dashboard. For timeouts,
 see [Check a queued profile change](CONFIGURATION_REFERENCE.md#check-a-queued-profile-change);
-the UNO Q must publish UDP `55356`, and the registry must match the exact archive filename.
+the PowerGlove Vision Controller must publish UDP `55356`, and the registry must match the exact archive filename.
 
 ### Tune a gesture
 
@@ -494,14 +497,14 @@ for the recording recipes, neutral calibration, image-quality advice, and shared
 | RetroPie connection settings | `/etc/powerglove/launcher.json` |
 | Receiver service | `powerglove-receiver.service` |
 | Receiver startup timer | `powerglove-receiver.timer`; starts 45 seconds after boot |
-| UNO Q shutdown watcher | `powerglove-system-shutdown.path` |
-| UNO Q shutdown action | `powerglove-system-shutdown.service`; requests a Linux halt |
-| UNO Q readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
-| UNO Q boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
-| UNO Q camera recovery watcher | `powerglove-camera-recovery.path` |
-| UNO Q camera recovery action | `powerglove-camera-recovery.service`; performs one guarded reset of the last observed parent hub |
-| UNO Q camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use |
-| UNO Q camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera and hub identity/path |
+| PowerGlove Vision Controller shutdown watcher | `powerglove-system-shutdown.path` |
+| PowerGlove Vision Controller shutdown action | `powerglove-system-shutdown.service`; requests a Linux halt |
+| PowerGlove Vision Controller readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
+| PowerGlove Vision Controller boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
+| PowerGlove Vision Controller camera recovery watcher | `powerglove-camera-recovery.path` |
+| PowerGlove Vision Controller camera recovery action | `powerglove-camera-recovery.service`; performs one guarded reset of the last observed parent hub |
+| PowerGlove Vision Controller camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use |
+| PowerGlove Vision Controller camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera and hub identity/path |
 
 The boot rule creates the readiness marker; it does not initiate shutdown or
 prove that shutdown has completed. The watcher responds to a separate
@@ -509,7 +512,7 @@ prove that shutdown has completed. The watcher responds to a separate
 Update the rule and its matching service files together using the helper
 installation command under **Install and deploy over Wi-Fi**.
 
-Verify the helper **on the UNO Q** without requesting a shutdown:
+Verify the helper **on the PowerGlove Vision Controller** without requesting a shutdown:
 
 ```sh
 systemctl is-enabled powerglove-system-shutdown.path
@@ -527,18 +530,18 @@ activation. The timer starts the service after EmulationStation initializes.
 
 | Port | Direction | Purpose |
 | --- | --- | --- |
-| TCP `8088` | Browser → UNO Q | Dashboard, Learn, Help, Setup, status, and camera stream |
-| TCP `8443` | Browser → UNO Q | Secure Setup and pairing |
-| UDP `55355` | UNO Q → RetroPie | Controller-state packets |
-| UDP `55356` | RetroPie → UNO Q | Profile requests and acknowledgements |
-| TCP `55357` | UNO Q → RetroPie | Temporary one-time-code pairing server |
+| TCP `8088` | Browser → PowerGlove Vision Controller | Dashboard, Play, Learn, Help, Setup, status, and camera stream |
+| TCP `8443` | Browser → PowerGlove Vision Controller | Secure Setup and pairing |
+| UDP `55355` | PowerGlove Vision Controller → RetroPie | Controller-state packets |
+| UDP `55356` | RetroPie → PowerGlove Vision Controller | Profile requests and acknowledgements |
+| TCP `55357` | PowerGlove Vision Controller → RetroPie | Temporary one-time-code pairing server |
 
 Keep these ports on your trusted local network. Do not expose them to the internet.
 
 ## Saved calibration and startup
 
 Calibration records your resting hand position, apparent size, and wrist angle
-in the UNO Q's `data/calibration.json`. It survives profile changes, Learn
+in the PowerGlove Vision Controller's `data/calibration.json`. It survives profile changes, Learn
 sessions, and restarts. Include it in private backups. Recalibrate when your
 physical setup changes or the resting hand position produces unwanted movement.
 The app uses 24 clear observations at 70% confidence or better. Returning to the
@@ -561,12 +564,12 @@ With preloading complete, the first activation after a tested reboot took
 1.21 seconds; actual times vary. For a slow start, inspect the
 [startup stage logs](CONFIGURATION_REFERENCE.md#vision-startup-and-timing).
 If the camera disappears after reboot, check `lsusb` and `/dev/v4l/by-id/` on
-the UNO Q and reconnect the camera or hub if it is missing.
+the PowerGlove Vision Controller and reconnect the camera or hub if it is missing.
 
-## Known limitation: UNO Q restarts after Shutdown
+## Known limitation: PowerGlove Vision Controller restarts after Shutdown
 
 **Stop controller** leaves Linux and the website running. **Shutdown** requests
-a graceful Linux halt. The tested UNO Q automatically restarts after halt, both
+a graceful Linux halt. The tested PowerGlove Vision Controller automatically restarts after halt, both
 with a powered hub and with a direct Mac USB connection. A disappearing website,
 matrix animation, or fixed waiting period does not confirm that power can safely
 be removed. See the [Installation Guide](INSTALL_README.md) for the recorded

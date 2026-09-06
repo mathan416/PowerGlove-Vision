@@ -10,7 +10,18 @@ authoritative record for line-level and file-level history.
 Development toward 0.3.2 focuses on lower-latency camera interpretation and
 faster inference for more responsive play.
 
+### Added
+
+- Added a camera-controlled Rock Paper Scissors page at `/play`. A closed hand
+  plays rock, an open palm plays paper, and the held V-sign plays scissors in a
+  first-to-three match against Pixel Pal. It reuses the local practice-camera
+  lease, pauses cabinet input while open, and provides touch and mouse controls.
+
 ### Changed
+
+- Adopted **PowerGlove Vision Controller** as the user-facing name for the
+  Arduino UNO Q device throughout current guides, while retaining literal
+  `uno-q` commands, filenames, host placeholders, and hardware-specific notes.
 
 - Remembered the player's explicit Start/Stop controller choice across UNO Q
   application and system restarts. Registered RetroPie launches now maintain a

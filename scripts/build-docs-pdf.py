@@ -580,7 +580,7 @@ def main():
     build(
         install, OUTPUT / "PowerGlove-Vision-Guide.pdf",
         "Power Glove Vision Installation Guide",
-        "Install, pair, and play on Arduino UNO Q and RetroPie.",
+        "Install, pair, and play with the PowerGlove Vision Controller and RetroPie.",
         "Installation instructions",
     )
     build(

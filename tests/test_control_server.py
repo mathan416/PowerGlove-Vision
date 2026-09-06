@@ -33,7 +33,7 @@ from pathlib import Path
 from unittest import mock
 
 from powerglove_vision.control_server import (
-    DASHBOARD, LEARN, LOGO_PATH, SETUP, ControlState, help_document_page,
+    DASHBOARD, LEARN, LOGO_PATH, PLAY, SETUP, ControlState, help_document_page,
     help_index_page, start_control_server,
 )
 from powerglove_vision.debug_server import SharedDebugState
@@ -121,11 +121,25 @@ class ControlStateTests(unittest.TestCase):
         logo_url = b"/assets/powerglove-vision-logo.png"
         self.assertIn(logo_url, DASHBOARD)
         self.assertIn(logo_url, LEARN)
+        self.assertIn(logo_url, PLAY)
         self.assertIn(logo_url, SETUP)
 
     def test_help_is_in_the_primary_navigation(self):
-        for page in (DASHBOARD, LEARN, SETUP, help_index_page()):
+        for page in (DASHBOARD, LEARN, PLAY, SETUP, help_index_page()):
             self.assertIn(b"href=/help>Help", page)
+
+    def test_play_page_has_camera_controlled_rock_paper_scissors(self):
+        self.assertIn(b"Rock Paper Scissors", PLAY)
+        self.assertIn(b"data-src=/stream", PLAY)
+        self.assertIn(b"/api/practice", PLAY)
+        self.assertIn(b"recognition?.closed_hand", PLAY)
+        self.assertIn(b"menu_gesture?.pose==='start'", PLAY)
+        self.assertIn(b"First to three wins", PLAY)
+        self.assertIn(b"pagehide", PLAY)
+        self.assertIn(b"keepalive:true", PLAY)
+        self.assertIn(b"Camera image unavailable. Reconnecting", PLAY)
+        for page in (DASHBOARD, LEARN, PLAY, SETUP, help_index_page()):
+            self.assertIn(b"href=/play>Play", page)
 
     def test_dashboard_exposes_realtime_performance_readings(self):
         self.assertIn(b'id=performance', DASHBOARD)
@@ -162,6 +176,7 @@ class ControlStateTests(unittest.TestCase):
         body, title = cabinet_reference_content("10.0.2.105:8088", self.state.public_config())
         self.assertEqual(title, "This cabinet")
         self.assertIn("http://10.0.2.105:8088/help", body)
+        self.assertIn("http://10.0.2.105:8088/play", body)
         self.assertIn("https://10.0.2.105:8443/setup", body)
         self.assertIn("retropieconsole.local", body)
         self.assertIn("55355", body)
@@ -299,6 +314,7 @@ class ControlStateTests(unittest.TestCase):
         try:
             port = servers.servers[0].server_address[1]
             for path, expected_type in (
+                ("/play", "text/html"),
                 ("/help", "text/html"),
                 ("/help/cabinet", "text/html"),
                 ("/help/gameplay", "text/html"),
@@ -443,9 +459,10 @@ class ControlStateTests(unittest.TestCase):
 
     def test_footer_version_and_application_start_metadata(self):
         from powerglove_vision import __version__
-        for page in (DASHBOARD, LEARN, SETUP):
+        for page in (DASHBOARD, LEARN, PLAY, SETUP):
             self.assertIn(("PowerGlove Vision v" + __version__).encode(), page)
         self.assertNotIn(b"id=app-started", DASHBOARD)
+        self.assertNotIn(b"id=app-started", PLAY)
         for page in (LEARN, SETUP):
             self.assertIn(b"id=app-started", page)
         first = self.state.snapshot()

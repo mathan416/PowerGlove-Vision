@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Verified the Rock Paper Scissors page during deployment.
 #   2026-09-05 - Verified the corrected closed-hand Academy artwork.
 #   2026-09-04 - Verified current guide titles, individual gestures, and Pixel Pal.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -16,7 +17,6 @@
 #   2026-09-03 - Preserved PowerGlove Vision as the UNO Q default startup app.
 #   2026-09-03 - Restored shutdown readiness when the host helper is active.
 #   2026-09-03 - Allowed three minutes for a cold App Lab runtime startup.
-#   2026-09-03 - Used the SSH connection address instead of a Docker bridge for health checks.
 # Full history: docs/CHANGELOG.md and Git history.
 
 set -euo pipefail
@@ -137,6 +137,12 @@ fi
 
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/dashboard" >/dev/null
+PLAY_HTML="$(curl --fail --silent --show-error --max-time 5 \
+  "http://${UNO_HEALTH_AUTHORITY}:8088/play")"
+if [[ "${PLAY_HTML}" != *"Rock Paper Scissors"* || "${PLAY_HTML}" != *"data-src=/stream"* ]]; then
+  echo "error: deployed Play page is incomplete" >&2
+  exit 1
+fi
 curl --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/learn" >/dev/null
 curl --fail --silent --show-error --max-time 5 \
@@ -179,7 +185,7 @@ fi
 curl --insecure --fail --silent --show-error --max-time 5 \
   "https://${UNO_HEALTH_AUTHORITY}:8443/setup" >/dev/null
 
-for PAL_PAGE in dashboard learn setup help; do
+for PAL_PAGE in dashboard play learn setup help; do
   PAL_HTML="$(curl --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/${PAL_PAGE}")"
   if [[ "${PAL_HTML}" != *"/help-assets/gestures/v2/pixel-pal-web.png"* ]]; then
@@ -191,6 +197,7 @@ curl --fail --silent --show-error --max-time 10 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/v2/pixel-pal-web.png" >/dev/null
 
 echo "Deployment complete."
+echo "  Play:   http://${UNO_HOST}:8088/play"
 echo "  Learn:  http://${UNO_HOST}:8088/learn"
 echo "  Dashboard:  http://${UNO_HOST}:8088/dashboard"
 echo "  Help:   http://${UNO_HOST}:8088/help"

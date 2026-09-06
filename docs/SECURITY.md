@@ -22,7 +22,7 @@ configuration, or working exploit instructions in a public issue.
 Include these details in the private report:
 
 - the affected commit or release;
-- the UNO Q, RetroPie, browser, and network environment involved;
+- the PowerGlove Vision Controller, RetroPie, browser, and network environment involved;
 - concise reproduction steps and the observed result;
 - the security boundary that was crossed;
 - logs or screenshots after removing tokens, passwords, pairing codes, local addresses, and unrelated personal information.
@@ -34,18 +34,21 @@ problems in public issues after removing sensitive information from the logs.
 
 ## Security model
 
-PowerGlove Vision is designed for a trusted home or workshop network. The UNO Q
+The **PowerGlove Vision Controller** is the Arduino UNO Q device that owns the
+camera, recognition pipeline, local website, and controller sender.
+
+PowerGlove Vision is designed for a trusted home or workshop network. The PowerGlove Vision Controller
 performs hand tracking and sends virtual-controller state to RetroPie. RetroPie
-sends per-game profile changes back to the UNO Q. Neither device should be
+sends per-game profile changes back to the PowerGlove Vision Controller. Neither device should be
 treated as an Internet-facing service.
 
 The main protected assets are:
 
 - the shared controller token;
-- the UNO Q and RetroPie operating systems;
+- the PowerGlove Vision Controller and RetroPie operating systems;
 - the privileged `/dev/uinput` receiver;
 - the physical pairing display and single-use PIN;
-- the fixed-purpose UNO Q shutdown and USB-camera recovery helpers;
+- the fixed-purpose PowerGlove Vision Controller shutdown and USB-camera recovery helpers;
 - the integrity of the App Lab installation ZIP, MediaPipe wheel, bundled or downloaded model, and Arduino dependencies.
 
 The project does not attempt to protect a device after an attacker obtains root
@@ -54,8 +57,8 @@ both paired hosts.
 
 ## Pairing boundaries
 
-The UNO Q and RetroPie share one random token of at least 16 characters. The
-active token belongs only in the UNO Q's private `data/device.json` and
+The PowerGlove Vision Controller and RetroPie share one random token of at least 16 characters. The
+active token belongs only in the PowerGlove Vision Controller's private `data/device.json` and
 RetroPie's `/etc/powerglove/token`. It must not be committed, placed in a shell
 argument, stored in `launcher.json`, or included in a screenshot or log.
 
@@ -65,7 +68,7 @@ establishes trust, subsequent connections verify the saved remote host key.
 The password is not placed on the process command line.
 
 Both browser pairing methods require you to open secure Setup, compare the
-browser certificate identity with the identifier on the UNO Q matrix, and
+browser certificate identity with the identifier on the PowerGlove Vision Controller matrix, and
 enter the single-use PIN shown on the matrix before the token is released. This is a local certificate-pinning ceremony, not
 validation by a public certificate authority.
 
@@ -79,11 +82,11 @@ requires explicit security review.
 
 | Port | Protocol | Direction | Boundary |
 | --- | --- | --- | --- |
-| `55355` | UDP | UNO Q to RetroPie | Authenticated virtual-controller packets |
-| `55356` | UDP | RetroPie to UNO Q | HMAC-authenticated profile commands and acknowledgements |
+| `55355` | UDP | PowerGlove Vision Controller to RetroPie | Authenticated virtual-controller packets |
+| `55356` | UDP | RetroPie to PowerGlove Vision Controller | HMAC-authenticated profile commands and acknowledgements |
 | `55357` | TCP/TLS | Pairing client to temporary server | Short-lived code-pairing exchange only |
-| `8088` | HTTP | Browser to UNO Q | Local dashboard, public Help guides, diagnostics, and ordinary controls; no pairing credentials accepted |
-| `8443` | HTTPS | Browser to UNO Q | Protected setup and pairing operations |
+| `8088` | HTTP | Browser to PowerGlove Vision Controller | Local dashboard, Play, public Help guides, diagnostics, and ordinary controls; no pairing credentials accepted |
+| `8443` | HTTPS | Browser to PowerGlove Vision Controller | Protected setup and pairing operations |
 
 Keep these ports on a trusted LAN. Do not configure router port forwarding,
 public reverse proxies, cloud tunnels, or Internet firewall exceptions for
@@ -127,7 +130,7 @@ the fixed request when the host installer has placed the private
 `.shutdown-enabled` marker. These checks reduce accidents and prevent command
 substitution; they do not make the dashboard safe for public network exposure.
 Anyone able to use the reachable dashboard may still cause a denial of service
-by shutting down the UNO Q.
+by shutting down the PowerGlove Vision Controller.
 
 A root-owned tmpfiles rule recreates only that fixed readiness marker during
 boot. It grants no command execution and does not change the container's
@@ -191,7 +194,7 @@ Tuning suppresses controller delivery even if a game launches or another Dashboa
 requests input. Saved settings are validated and atomically replaced.
 
 The optional Advanced diagnostic is the only Academy path that records video.
-It is explicitly started and user-paced, remains on the UNO Q, and is deleted
+It is explicitly started and user-paced, remains on the PowerGlove Vision Controller, and is deleted
 immediately after aggregate analysis or cancellation. An abandoned AVI expires
 after 30 minutes. Its downloadable JSON contains aggregate continuity, latency,
 confidence, lighting, and recognized-state names only: no frames, landmarks,

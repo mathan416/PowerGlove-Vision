@@ -1,6 +1,7 @@
 # PowerGlove Vision architecture
 
-A camera-to-controller system for the UNO Q and RetroPie.
+A camera-to-controller system for the **PowerGlove Vision Controller (Arduino
+UNO Q)** and RetroPie.
 
 This guide describes the implementation reviewed on September 4, 2026, including
 three-step tuning, optional personal hand setup, shared gameplay thresholds, the
@@ -9,10 +10,10 @@ It is a map of current behaviour, not a proposed redesign or a hardware test rep
 
 ## Read this first
 
-PowerGlove Vision observes a hand on the UNO Q, turns its measurements into
+PowerGlove Vision observes a hand on the PowerGlove Vision Controller, turns its measurements into
 controller states, and sends those states to a virtual gamepad on RetroPie.
 The browser configures and explains that process; it is not required in the
-per-frame gameplay path. The UNO Q microcontroller drives the status matrix;
+per-frame gameplay path. The PowerGlove Vision Controller microcontroller drives the status matrix;
 Linux performs hand tracking and gesture recognition.
 
 There are four independent questions: which game profile is selected, whether
@@ -39,9 +40,9 @@ camera, receiver, or game is working.
 
 | Boundary | Responsibilities | Does not own |
 | --- | --- | --- |
-| Browser | Dashboard, Glove Academy, Tune, Setup, Games, Help; live feedback and user commands | Authoritative per-frame recognition or gamepad output |
-| UNO Q Linux application | Web server, vision-worker supervision, camera tracking, calibration, thresholds, profile mapping, network sender | RetroArch button consumption |
-| UNO Q microcontroller | Arduino sketch, Router Bridge commands, LED matrix animations and pairing display | Camera inference or personal thresholds |
+| Browser | Dashboard, Play, Glove Academy, Tune, Setup, Games, Help; live feedback and user commands | Authoritative per-frame recognition or gamepad output |
+| PowerGlove Vision Controller Linux application | Web server, vision-worker supervision, camera tracking, calibration, thresholds, profile mapping, network sender | RetroArch button consumption |
+| PowerGlove Vision Controller microcontroller | Arduino sketch, Router Bridge commands, LED matrix animations and pairing display | Camera inference or personal thresholds |
 | RetroPie services | Receive controller packets, expose a virtual gamepad, signal game launches, serve paired game-registry edits | Camera processing |
 | RetroArch and game | Consume virtual-gamepad input using emulator and game mappings | Glove Academy/Tune feedback |
 
@@ -215,13 +216,13 @@ that use that finger; it does not change the button assignments in a game profil
 | Data | Owner and lifetime | Purpose |
 | --- | --- | --- |
 | `config/profiles.json` | Shipped project source | One shared set of recognition parameters; profiles remain output mappings |
-| `data/gesture-tuning.json` | UNO Q, persistent | Global personal activation/release pairs; version-1 format |
-| `data/calibration.json` | UNO Q, private persistent | Neutral palm position, apparent scale, wrist angle, and positional jitter for the installed camera and player |
-| `data/device.json` | UNO Q, private persistent settings | Destination, selected settings, pairing-related configuration |
+| `data/gesture-tuning.json` | PowerGlove Vision Controller, persistent | Global personal activation/release pairs; version-1 format |
+| `data/calibration.json` | PowerGlove Vision Controller, private persistent | Neutral palm position, apparent scale, wrist angle, and positional jitter for the installed camera and player |
+| `data/device.json` | PowerGlove Vision Controller, private persistent settings | Destination, selected settings, pairing-related configuration |
 | Tuning samples, preview, leases | Worker memory only | Temporary measurement and ownership state |
 | `config/games.json` | Shipped default registry | Exact ROM-name mappings copied to the RetroPie installation |
 | RetroPie registry and launcher settings | RetroPie, persistent | Active game-to-profile mappings and UNO destination |
-| `data/models/hand_landmarker.task` | UNO Q, verified cache | Reusable pretrained hand-landmark model |
+| `data/models/hand_landmarker.task` | PowerGlove Vision Controller, verified cache | Reusable pretrained hand-landmark model |
 
 Neutral calibration is distinct from hand setup. It accepts 24 detected hand
 observations at 70% confidence or better, centers position, depth, and roll,
@@ -245,7 +246,7 @@ as lease refreshes rather than profile transitions. The acknowledgement travels 
 through the relay. The relay has no shared token and cannot declare a profile applied.
 
 The first live renewal changes profile once and starts a one-second initialization
-guard. An UNO Q application restart can therefore rediscover an already-running
+guard. A PowerGlove Vision Controller application restart can therefore rediscover an already-running
 registered game from the next renewal without exposing the runcommand menu to hand
 input. Game-end hooks, RetroArch termination, marker replacement, unknown games, and
 lease expiry request or produce neutral/off state. The player's armed/stopped choice
@@ -287,14 +288,14 @@ release carries the patch and build recipe, not a compiled core. See the
 
 | Interface | Direction | Contract |
 | --- | --- | --- |
-| HTTP 8088 | Browser to UNO Q | Pages, live status/video, ordinary settings and commands |
-| HTTPS 8443 | Browser to UNO Q | Secure Setup and pairing workflow |
+| HTTP 8088 | Browser to PowerGlove Vision Controller | Pages, live status/video, ordinary settings and commands |
+| HTTPS 8443 | Browser to PowerGlove Vision Controller | Secure Setup and pairing workflow |
 | HTTP 8089, loopback | Supervisor/web proxy to worker | Internal status, frame and control requests |
-| UDP 55355 | UNO Q to RetroPie | Controller states, shared token, session and sequence |
+| UDP 55355 | PowerGlove Vision Controller to RetroPie | Controller states, shared token, session and sequence |
 | UDP 55356 | RetroPie to UNO relay to worker | Signed profile requests and acknowledgements |
 | `/run/powerglove/native-state` | Authenticated RetroPie receiver to custom core | Read-only, guarded latest sample for experimental native input |
 | TCP 55357 | Pairing participants | Temporary one-time-code pairing service |
-| TCP 55358 | UNO Q to RetroPie | Paired game-registry service |
+| TCP 55358 | PowerGlove Vision Controller to RetroPie | Paired game-registry service |
 | Private Unix sockets | App resolver to host Avahi | Local hostname resolution |
 | Router Bridge RPC | Linux supervisor to microcontroller | Matrix status/profile/pairing commands |
 
@@ -313,7 +314,7 @@ checks. See the [Security policy](SECURITY.md) for the full trust model.
 | Worker exits | Supervisor reports failure and retries | Temporary in-memory Tune state is lost |
 | Tune browser disappears | Six-second lease expires | Preview and recordings discarded; saved pairs retained |
 | Calibration changes | Current Tune recordings/preview invalidated | Record new measurements against the new reference |
-| Shutdown requested | Web action writes fixed request; host systemd helper requests halt | The tested UNO Q can restart; not proof that power is safe to remove |
+| Shutdown requested | Web action writes fixed request; host systemd helper requests halt | The tested PowerGlove Vision Controller can restart; not proof that power is safe to remove |
 
 A successful UDP send means the local networking call succeeded. It does not
 prove the receiver applied a state or the game accepted it. Diagnose in stages:

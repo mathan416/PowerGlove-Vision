@@ -1,5 +1,8 @@
 # Programs A-I: The Cartridge-Free Field Manual
 
+The **PowerGlove Vision Controller (Arduino UNO Q)** recognizes these shared
+gestures and sends the selected Program's gamepad mapping to RetroPie.
+
 Bad Street Brawler supplied nine programs that configured the original
 Power Glove for different games. This guide explains how those programs
 worked and how PowerGlove Vision recreates their controls with a camera.
@@ -181,7 +184,7 @@ Setup. Automatic selection matches the complete ROM filename, including its
 extension but excluding its folder path, against `/etc/powerglove/games.json`
 on RetroPie. Matching ignores letter case.
 
-The launch hook sends an authenticated profile request. The UNO Q releases held
+The launch hook sends an authenticated profile request. The PowerGlove Vision Controller releases held
 controls, changes the mapping, reuses the saved calibration, and acknowledges
 the new profile on its blue matrix. If no valid calibration is saved, it collects
 an initial reference while you hold your open hand still in a comfortable

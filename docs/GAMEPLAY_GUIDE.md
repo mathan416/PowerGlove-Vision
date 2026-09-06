@@ -1,11 +1,30 @@
 # Play with PowerGlove Vision
 
+The **PowerGlove Vision Controller (Arduino UNO Q)** watches your hand and sends
+the recognized controls to RetroPie.
+
 This guide provides eight game-specific play cards and explains how to use
 the nine reusable programs. It shows you which gestures to make, what controls
 they produce, and how to try them with other games in your library.
 
 Find your game below, check its profile, and try the first-round exercise.
 If the system is not installed yet, start with the [Installation Guide](INSTALL_README.md).
+
+## Play Rock Paper Scissors locally
+
+Open **Play** at `http://UNO-Q-NAME.local:8088/play` for a first-to-three match
+against Pixel Pal. This local game uses the Controller camera and pauses cabinet
+input while the page is open, so RetroPie does not need to be connected.
+
+| Your move | Make this pose | See it |
+| --- | --- | --- |
+| Rock | Close all five fingers into a comfortable fist. | <img src="images/gestures/v2/closed-hand.png" alt="Closed hand for rock" width="96"> |
+| Paper | Face an open, relaxed palm toward the camera. | <img src="images/gestures/v2/show-your-hand.png" alt="Open palm for paper" width="96"> |
+| Scissors | Extend the index and middle fingers in a V sign. | <img src="images/gestures/v2/v-sign.png" alt="V sign for scissors" width="96"> |
+
+Select **Start round**, follow the countdown, and hold the pose after **Shoot!**
+until its button is highlighted. The first player to win three rounds takes the
+match. Mouse and touch buttons remain available if the camera is unavailable.
 
 ## Get ready to play
 
@@ -36,11 +55,11 @@ appears and **Calibrate** becomes available before continuing.
 | **GB** | <img src="images/matrix/GB.jpg" alt="GB matrix display" width="104"> | Super Glove Ball |
 
 Confirm the profile on Dashboard and select **Start controller** when ready. The
-choice stays armed across UNO Q restarts, but sends nothing while no valid game or
+choice stays armed across PowerGlove Vision Controller restarts, but sends nothing while no valid game or
 manual Dashboard context exists. At a registered launch, the RetroPie hook waits for
 RetroArch, then renews a short game session while it remains running. Controls begin
 after a one-second initialization guard, avoiding the runcommand screen. They resume
-automatically after an UNO Q application restart while the same game is still live;
+automatically after a PowerGlove Vision Controller application restart while the same game is still live;
 you do not need to select **Start controller** again. Exiting the game, launching an
 unknown game, or losing the session releases all controls. **Stop controller** remains
 stopped until you explicitly start it again.
@@ -367,7 +386,7 @@ changing the ROM or emulator.
 ### Try a combination
 
 1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
-2. Open the UNO Q **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
+2. Open the PowerGlove Vision Controller **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
 3. Use **Calibrate** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended center and distance while 24 clear observations are collected, then select **Start controller** and return to the game. The same stance should produce a closely comparable—but not numerically identical—reference.
 4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
 
@@ -389,7 +408,7 @@ entries and assign the profile that worked:
 ```
 
 Restart the game after saving. The launch hook will then select that profile
-automatically and the UNO Q matrix will show its letter. Automatic selection is
+automatically and the PowerGlove Vision Controller matrix will show its letter. Automatic selection is
 currently limited to NES and Famicom; other systems deliberately turn gesture
 control off until their mappings and launch behaviour are validated.
 
