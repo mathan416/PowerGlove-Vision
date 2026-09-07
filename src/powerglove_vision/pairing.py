@@ -31,10 +31,12 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from .resolver import resolve_ipv4
+from .controller_protocol import encode_message, decode_message
 
 
 PAIRING_PORT = 55357
 CODE_PART_LENGTH = 10
+CONTROLLER_PORT = 55355
 
 
 class QuietHTTPServer(HTTPServer):
@@ -223,6 +225,33 @@ def pair_with_code(host: str, port: int, code: str, token: str, timeout: float =
         except (ValueError, json.JSONDecodeError):
             message = "pairing failed"
         raise ValueError(message)
+    verify_controller_pairing(host, CONTROLLER_PORT, token)
+
+
+def verify_controller_pairing(host: str, port: int, token: str, timeout: float = 4.0) -> None:
+    """Confirm the receiver accepts the newly installed token after pairing."""
+    address = resolve_ipv4(host)
+    session = secrets.token_hex(16)
+    deadline = time.monotonic() + timeout
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.settimeout(0.25)
+        request = secrets.token_hex(16)
+        while time.monotonic() < deadline:
+            sock.sendto(encode_message("hello", token, session=session, request=request),
+                        (address, port))
+            try:
+                while time.monotonic() < deadline:
+                    payload, peer = sock.recvfrom(4096)
+                    if peer[0] != address or peer[1] != port:
+                        continue
+                    reply = decode_message(payload, token)
+                    if (reply.get("kind") == "challenge"
+                            and reply.get("session") == session
+                            and reply.get("request") == request):
+                        return
+            except (socket.timeout, ValueError, UnicodeError, RecursionError):
+                continue
+    raise ValueError("RetroPie did not accept the paired token; pair again from this Controller")
 
 
 def pair_over_ssh(
@@ -294,6 +323,7 @@ def pair_over_ssh(
         error = completed.stderr.decode("utf-8", "replace").strip().splitlines()
         message = error[-1] if error else "SSH pairing failed"
         raise ValueError(message[:240])
+    verify_controller_pairing(host, CONTROLLER_PORT, token)
 
 
 def build_parser() -> argparse.ArgumentParser:
