@@ -56,6 +56,7 @@ def load_device_config() -> dict:
         "glove_color": "none",
         "camera": "auto",
         "matrix_attract": "on",
+        "native_xy_mode": "bounded",
     }
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     from powerglove_vision.game_registry import atomic_write
@@ -86,8 +87,10 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
         command.extend(["--camera-buffers", "2"])
     if settings.get("kiyo_hdr_off") is True:
         command.append("--kiyo-hdr-off")
-    if settings.get("motion_tracking") is True:
-        command.append("--motion-tracking")
+    native_xy_mode = settings.get("native_xy_mode", "bounded")
+    if native_xy_mode not in ("bounded", "latest"):
+        native_xy_mode = "bounded"
+    command.extend(["--native-xy-mode", native_xy_mode])
     if controller_enabled:
         command.append("--controller-enabled")
     return command

@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from powerglove_vision.tuning import (
-    TuningManager, suggest, CHANNELS, validate_overrides, tuning_recipe,
+    TuningManager, suggest, CHANNELS, REACH_DIRECTIONS, validate_overrides, tuning_recipe,
 )
 from powerglove_vision.gesture import GestureConfig, GestureEngine, SUPPORTED_PROFILES, MENU_FINGERS, finger_pose_feedback
 from powerglove_vision.model import Calibration, HandObservation
@@ -183,6 +183,106 @@ class TuningTests(unittest.TestCase):
             with self.assertRaises(OSError): self.command('save', thresholds={'index':{'on':.8,'off':.6}})
         self.assertEqual(self.path.read_text(), original)
         self.assertEqual(self.manager.saved['index']['on'], .3)
+
+    def test_reach_save_changes_only_reach_and_restores_after_restart(self):
+        from dataclasses import asdict
+        from powerglove_vision.gesture import load_calibration, save_calibration
+        reference = Calibration(.5, .5, .2, .3, .01, .02, .3, .25, .4, .35)
+        save_calibration(self.path.with_name('calibration.json'), reference)
+        self.manager.calibration = reference
+        self.command('save', thresholds={'index': {'on': .3, 'off': .2}})
+        before = self.manager.players.data.copy()
+        values = {'left': .28, 'right': .22, 'up': .38, 'down': .32}
+        state = self.command('reach_save', reach=values)
+        self.assertTrue(state['reach']['pending'])
+        self.assertEqual(state['reach']['values'], values)
+        self.assertEqual(self.manager.players.active['thresholds'], before['players']['default']['thresholds'])
+        restarted = TuningManager(self.path)
+        applied = restarted.apply_calibration_restore()
+        expected = Calibration(.5, .5, .2, .3, .01, .02, .28, .22, .38, .32)
+        self.assertEqual(applied, expected)
+        self.assertEqual(load_calibration(self.path.with_name('calibration.json')), expected)
+        original = asdict(reference)
+        actual = asdict(applied)
+        for name in set(original) - {'reach_left', 'reach_right', 'reach_up', 'reach_down'}:
+            self.assertEqual(actual[name], original[name])
+
+    def test_reach_reset_preserves_calibration_and_rejects_bad_values(self):
+        from powerglove_vision.gesture import save_calibration
+        reference = Calibration(.5, .5, .2, .3, .01, .02, .3, .25, .4, .35)
+        save_calibration(self.path.with_name('calibration.json'), reference)
+        self.manager.calibration = reference
+        original = self.path.read_bytes() if self.path.exists() else None
+        invalid = (
+            {'left': .2},
+            {'left': 0, 'right': .2, 'up': .2, 'down': .2},
+            {'left': True, 'right': .2, 'up': .2, 'down': .2},
+            {'left': float('nan'), 'right': .2, 'up': .2, 'down': .2},
+            {'left': .49, 'right': .2, 'up': .2, 'down': .2},
+        )
+        for values in invalid:
+            with self.subTest(values=values), self.assertRaises(ValueError):
+                self.command('reach_save', reach=values)
+            self.assertEqual(self.path.read_bytes() if self.path.exists() else None, original)
+        state = self.command('reach_reset')
+        self.assertTrue(state['reach']['pending'])
+        self.assertEqual(set(state['reach']['values'].values()), {0.0})
+        applied = self.manager.apply_calibration_restore()
+        self.assertEqual(
+            (applied.reach_left, applied.reach_right, applied.reach_up, applied.reach_down),
+            (0, 0, 0, 0),
+        )
+
+    def test_failed_or_concurrent_reach_save_is_non_mutating(self):
+        from powerglove_vision.gesture import save_calibration
+        reference = Calibration(.5, .5, .2, 0)
+        save_calibration(self.path.with_name('calibration.json'), reference)
+        self.manager.calibration = reference
+        values = {'left': .2, 'right': .2, 'up': .2, 'down': .2}
+        with patch('powerglove_vision.game_registry.atomic_write', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                self.command('reach_save', reach=values)
+        self.assertIsNone(self.manager.players.data['calibration_restore'])
+        self.command('reach_save', reach=values)
+        with self.assertRaisesRegex(ValueError, 'finish saving'):
+            self.command('reach_save', reach=values)
+        with self.assertRaises(ValueError):
+            self.manager.command({'action': 'reach_reset', 'session': 'another-session'})
+
+    def test_reach_is_isolated_per_player_and_included_in_backup(self):
+        from powerglove_vision.gesture import save_calibration
+        first = Calibration(.5, .5, .2, 0, reach_left=.2, reach_right=.2,
+                            reach_up=.2, reach_down=.2)
+        save_calibration(self.path.with_name('calibration.json'), first)
+        self.manager.calibration = first
+        self.manager.finish_center(first)
+        self.command('end')
+        second_id = self.manager.player_command({
+            'action': 'create', 'name': 'Second',
+            'player': 'default', 'generation': self.manager.players.data['generation'],
+        })['active']
+        second = Calibration(.4, .6, .2, 0, reach_left=.15, reach_right=.25,
+                             reach_up=.3, reach_down=.2)
+        self.manager.begin_center()
+        self.manager.finish_center(second)
+        self.manager.calibration = second
+        self.command('begin')
+        changed = {'left': .14, 'right': .24, 'up': .29, 'down': .19}
+        self.command('reach_save', reach=changed)
+        self.manager.apply_calibration_restore()
+        backup = self.manager.player_command({
+            'action': 'export', 'player': second_id,
+            'generation': self.manager.players.data['generation'],
+        })['backup']
+        self.assertEqual(
+            {name: backup['calibration']['neutral']['reach_' + name]
+             for name in REACH_DIRECTIONS},
+            changed,
+        )
+        self.assertEqual(
+            self.manager.players.data['players']['default']['calibration']['neutral']['reach_left'],
+            first.reach_left,
+        )
 
     def test_fresh_high_confidence_frames_only_and_calibration_invalidation(self):
         self.command('record')

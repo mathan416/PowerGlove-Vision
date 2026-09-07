@@ -219,7 +219,10 @@ tracking or controller delivery.
 For Super Glove Ball testing, enter RetroPie's launch menu while starting the
 ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the
 ordinary D-pad and buttons for the whole session. The native core uses absolute
-X/Y/Z plus open-hand, fist, and index-point packets. Full-game cabinet play has
+X/Y/Z plus open-hand, fist, and index-point packets. On Dashboard, compare
+**Latest coordinate** with **Bounded speed curve**; both use MediaPipe Hands and
+the same saved center and reach. Adjust native travel separately under **Glove
+Academy → Tune gestures → Movement reach**. Full-game cabinet play has
 confirmed grab/throw, index fire, and fist-plus-forward Power Punch. Continuous
 movement is playable, with further latency refinement still planned. Wrist
 rotation and remaining unused native packet fields stay neutral. Shared recognition remains

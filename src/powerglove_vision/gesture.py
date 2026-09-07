@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Corrected native smoothing cadence and saturated legacy jitter handling.
 #   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-05 - Published native fist and index-point poses for Super Glove Ball.
@@ -89,10 +90,23 @@ class GestureConfig:
     coordinate_smoothing_min: float = 0.70
     coordinate_smoothing_max: float = 1.00
     coordinate_motion_boost: float = 4.00
-    # Optional override only for experimental native X/Y; None preserves baseline.
+    # Legacy experiment fields remain accepted so existing configuration files
+    # load cleanly. The bounded native speed curve does not extrapolate them.
     motion_coordinate_boost: float | None = None
-    # Experimental native X/Y only; values above 1 intentionally extrapolate.
     motion_coordinate_max: float | None = None
+    # Native X/Y speed curve. Calibration noise is converted back to camera
+    # units and multiplied by this value; the fixed floor covers legacy
+    # calibrations that did not retain a useful jitter measurement.
+    motion_noise_multiplier: float = 1.25
+    motion_noise_floor: float = 0.003
+    motion_noise_exit_ratio: float = 1.50
+    # Weight used just beyond the noise floor. It rises smoothly to one at the
+    # configured number of calibrated reach spans per second. The reference
+    # interval matches the proven MediaPipe inference cadence on the Controller;
+    # it prevents a 10 Hz observation from being treated as six 60 Hz updates.
+    motion_slow_follow: float = 0.55
+    motion_full_speed: float = 2.50
+    motion_follow_reference_ms: float = 100.0
     curl_on: float = 0.50
     curl_off: float = 0.35
     thumb_on: float = 0.38
@@ -279,6 +293,15 @@ class GestureEngine:
         self._last_state: ControllerState | None = None
         self._filtered_palm_x: float | None = None
         self._filtered_palm_y: float | None = None
+        self._motion_time: float | None = None
+        self._motion_raw_x: float | None = None
+        self._motion_raw_y: float | None = None
+        self._motion_anchor_x: float | None = None
+        self._motion_anchor_y: float | None = None
+        self._motion_direction_x = 0
+        self._motion_direction_y = 0
+        self._motion_moving_x = False
+        self._motion_moving_y = False
         self._push_was_active = False
         self._pull_was_active = False
         self._depth_history: deque[tuple[float, float]] = deque(maxlen=32)
@@ -330,6 +353,109 @@ class GestureEngine:
         self._menu_guard_active = False
         self._filtered_palm_x = None
         self._filtered_palm_y = None
+        self._reset_native_motion()
+
+    def _reset_native_motion(self) -> None:
+        """Discard native curve history without changing recognition state."""
+        self._motion_time = None
+        self._motion_raw_x = self._motion_raw_y = None
+        self._motion_anchor_x = self._motion_anchor_y = None
+        self._motion_direction_x = self._motion_direction_y = 0
+        self._motion_moving_x = self._motion_moving_y = False
+
+    @staticmethod
+    def _smoothstep(value: float) -> float:
+        """Return a bounded gradual transition from zero to one."""
+        value = _clamp(value, 0.0, 1.0)
+        return value * value * (3.0 - 2.0 * value)
+
+    def _native_axis(
+        self, axis: str, value: float, dt: float, reference: Calibration
+    ) -> float:
+        """Filter one native axis from raw velocity without prediction or overshoot."""
+        cfg = self.config
+        filtered_name = f"_filtered_palm_{axis}"
+        raw_name = f"_motion_raw_{axis}"
+        anchor_name = f"_motion_anchor_{axis}"
+        moving_name = f"_motion_moving_{axis}"
+        direction_name = f"_motion_direction_{axis}"
+        previous = getattr(self, filtered_name)
+        raw = getattr(self, raw_name)
+        anchor = getattr(self, anchor_name)
+        if previous is None or raw is None or anchor is None:
+            setattr(self, raw_name, value)
+            setattr(self, anchor_name, value)
+            setattr(self, moving_name, False)
+            setattr(self, direction_name, 0)
+            return value
+
+        scale_noise = reference.noise_x if axis == "x" else reference.noise_y
+        # Calibration stores jitter in palm-width units and saturates unusably
+        # noisy samples at 1.0. Older/saturated files are valid for centre and
+        # scale, but 1.0 is not a useful native-motion noise estimate: using it
+        # creates a large dead zone followed by a visible jump.
+        if scale_noise >= 1.0:
+            scale_noise = 0.0
+        noise = max(cfg.motion_noise_floor,
+                    scale_noise * reference.palm_scale * cfg.motion_noise_multiplier)
+        exit_noise = noise * max(1.0, cfg.motion_noise_exit_ratio)
+        delta = value - raw
+        anchor_delta = value - anchor
+        moving = getattr(self, moving_name)
+
+        if not moving and abs(anchor_delta) <= exit_noise:
+            setattr(self, raw_name, value)
+            return previous
+        if not moving:
+            moving = True
+
+        direction = 1 if delta > noise else -1 if delta < -noise else 0
+        old_direction = getattr(self, direction_name)
+        reversal = direction and old_direction and direction != old_direction
+        stopped = abs(delta) <= noise
+        if reversal or stopped:
+            # A real stop or reversal must never leave an old catch-up tail.
+            setattr(self, raw_name, value)
+            setattr(self, anchor_name, value)
+            setattr(self, moving_name, not stopped)
+            setattr(self, direction_name, direction)
+            return value
+
+        reach = self._native_axis_reach(axis, delta, reference)
+        speed = abs(delta) / max(reach * dt, 1e-9)
+        fraction = speed / max(cfg.motion_full_speed, 1e-9)
+        slow = _clamp(cfg.motion_slow_follow, 0.0, 1.0)
+        alpha = slow + (1.0 - slow) * self._smoothstep(fraction)
+        # Preserve approximately the same response per unit of time when frame
+        # cadence varies, using the Controller's MediaPipe cadence as the
+        # reference. A 60 Hz reference made each real 9-10 Hz sample nearly raw.
+        reference_interval = max(1 / 240, cfg.motion_follow_reference_ms / 1000)
+        alpha = 1.0 - (1.0 - alpha) ** (dt / reference_interval)
+        # Compatibility fields may still contain an experimental value above
+        # one. Native output is now always bounded to a real measurement.
+        alpha = min(1.0, max(0.0, alpha))
+        result = previous + alpha * (value - previous)
+        result = _clamp(result, min(previous, value), max(previous, value))
+        setattr(self, raw_name, value)
+        setattr(self, moving_name, True)
+        if direction:
+            setattr(self, direction_name, direction)
+        return result
+
+    def _native_axis_reach(
+        self, axis: str, delta: float, reference: Calibration
+    ) -> float:
+        """Return the calibrated camera span in the current axis direction."""
+        cfg = self.config
+        if axis == "x":
+            measured = reference.reach_right if delta >= 0 else reference.reach_left
+            fallback = ((1.0 - cfg.coordinate_edge_margin - reference.palm_x)
+                        if delta >= 0 else reference.palm_x - cfg.coordinate_edge_margin)
+        else:
+            measured = reference.reach_down if delta >= 0 else reference.reach_up
+            fallback = ((1.0 - cfg.coordinate_edge_margin - reference.palm_y)
+                        if delta >= 0 else reference.palm_y - cfg.coordinate_edge_margin)
+        return max(0.05, measured if measured > 0 else fallback)
 
     def _collect_calibration(self, observation: HandObservation) -> None:
         """Accumulate valid frames and derive a stable neutral-hand reference."""
@@ -475,21 +601,43 @@ class GestureEngine:
         }
 
     def update_native_motion(
-        self, observation: HandObservation, gesture: HandObservation | None = None
+        self, observation: HandObservation, gesture: HandObservation | None = None,
+        *, bounded: bool = True,
     ) -> ControllerState:
         """Update native X/Y without replaying gestures or extending their lifetime.
 
         The motion tracker bounds gesture age against its source camera frame.
-        Only a newly completed recognition may update gesture/depth state. Loss
-        releases immediately in this experimental path, including held poses.
+        Only a newly completed recognition may update gesture/depth state. A
+        single brief landmark dropout holds the last X/Y while releasing every
+        action; sustained loss returns the native controller to neutral.
+        ``bounded=False`` publishes each newest MediaPipe coordinate unchanged
+        for controlled comparison.
         """
         if self.profile != "super_glove_ball" or not self.calibrated:
             raise ValueError("native motion requires calibrated Super Glove Ball")
-        previous_time = getattr(self, "_motion_time", None)
+        previous_time = self._motion_time
         previous_x, previous_y = self._filtered_palm_x, self._filtered_palm_y
         if not observation.detected:
+            lost_ms = (observation.timestamp - self._last_seen) * 1000
+            if (self._last_state is not None and self._last_state.detected
+                    and 0 <= lost_ms < self.config.loss_release_ms):
+                self._sequence += 1
+                axes = dict(self._last_state.axes)
+                axes["z"] = axes["roll"] = 0
+                self._last_state = replace(
+                    self._last_state,
+                    sequence=self._sequence,
+                    timestamp=observation.timestamp,
+                    confidence=0.0,
+                    axes=axes,
+                    dpad=dict.fromkeys(self._last_state.dpad, False),
+                    buttons=dict.fromkeys(self._last_state.buttons, False),
+                    fingers=dict.fromkeys(self._last_state.fingers, 0),
+                    events=[],
+                )
+                return self._last_state
             self._last_seen = observation.timestamp - self.config.loss_release_ms / 1000 - 1
-            self._motion_time = None
+            self._reset_native_motion()
             return self.update(observation)
         if gesture is not None:
             self.update(gesture)
@@ -502,29 +650,21 @@ class GestureEngine:
                 self._sequence, observation.timestamp, self.profile, self.calibrated
             )
         cfg, reference = self.config, self.calibration
-        # Preserve roughly the existing damping per unit of time, independent
-        # of whether the camera delivers 30 or 60 fresh frames per second.
-        dt = .09 if previous_time is None else max(0.0, observation.timestamp - previous_time)
+        # Velocity uses consecutive selected coordinates and source timestamps,
+        # never the distance from a lagging filtered position.
+        dt = (1 / 60 if previous_time is None else
+              max(1 / 240, observation.timestamp - previous_time))
         for name, value in (("_filtered_palm_x", observation.palm_x),
                             ("_filtered_palm_y", observation.palm_y)):
-            previous = getattr(self, name)
-            if previous is None:
-                setattr(self, name, value)
-                continue
-            boost = (cfg.coordinate_motion_boost if cfg.motion_coordinate_boost is None
-                     else cfg.motion_coordinate_boost)
-            cap = (cfg.coordinate_smoothing_max if cfg.motion_coordinate_max is None
-                   else cfg.motion_coordinate_max)
-            alpha = _clamp(cfg.coordinate_smoothing_min + abs(value - previous) * boost,
-                           cfg.coordinate_smoothing_min, cap)
-            if alpha <= 1.0:
-                alpha = 1 - (1 - alpha) ** (min(dt, .25) / .09)
+            axis = name[-1]
+            if bounded:
+                value = self._native_axis(axis, value, dt, reference)
             else:
-                # Above one is an explicit experimental extrapolation. Applying
-                # the normal fractional-power easing to a negative base would
-                # produce complex/NaN values, so preserve the requested gain.
-                pass
-            setattr(self, name, previous + alpha * (value - previous))
+                setattr(self, f"_motion_raw_{axis}", value)
+                setattr(self, f"_motion_anchor_{axis}", value)
+                setattr(self, f"_motion_moving_{axis}", False)
+                setattr(self, f"_motion_direction_{axis}", 0)
+            setattr(self, name, value)
         self._motion_time = observation.timestamp
         axes = dict(self._last_state.axes)
         axes.update(

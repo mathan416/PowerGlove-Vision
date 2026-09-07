@@ -226,6 +226,44 @@ class ControlStateTests(unittest.TestCase):
         self.state.save_config(original)
         self.assertEqual(self.state.public_config()['matrix_attract'],'dim')
 
+    def test_native_xy_mode_is_validated_persisted_and_restarts_worker(self):
+        self.assertEqual(self.state.public_config()["native_xy_mode"], "bounded")
+        revision = self.state.revision
+        self.assertEqual(self.state.save_native_xy_mode({"mode": "latest"}),
+                         {"mode": "latest"})
+        self.assertEqual(self.state.load_config()["native_xy_mode"], "latest")
+        self.assertEqual(self.state.revision, revision + 1)
+        with self.assertRaisesRegex(ValueError, "Bounded speed curve"):
+            self.state.save_native_xy_mode({"mode": "optical_flow"})
+        settings = self.state.public_config()
+        self.state.save_config(settings)
+        self.assertEqual(self.state.load_config()["native_xy_mode"], "latest")
+
+    def test_dashboard_exposes_both_mediapipe_native_xy_lanes(self):
+        self.assertIn(b"id=native-xy-mode", DASHBOARD)
+        self.assertIn(b"Bounded speed curve", DASHBOARD)
+        self.assertIn(b"Latest coordinate", DASHBOARD)
+        self.assertIn(b"/api/native-xy", DASHBOARD)
+        self.assertNotIn(b"Optical flow (experimental)", DASHBOARD)
+
+    def test_native_xy_route_requires_action_header_and_saves_mode(self):
+        servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            for headers, expected in (({"Content-Type": "application/json"}, 403),
+                                      ({"Content-Type": "application/json",
+                                        "X-PowerGlove-Action": "native-xy"}, 200)):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+                connection.request("POST", "/api/native-xy",
+                                   json.dumps({"mode": "latest"}), headers)
+                response = connection.getresponse()
+                response.read()
+                self.assertEqual(response.status, expected)
+                connection.close()
+            self.assertEqual(state.public_config()["native_xy_mode"], "latest")
+        finally:
+            servers.shutdown()
+
     def test_save_preserves_token_and_updates_connection(self):
         self.state.save_config({
             "receiver": "arcade.local", "port": 55357,

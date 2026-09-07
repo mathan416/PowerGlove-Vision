@@ -47,6 +47,12 @@ and a validation terminator. Moving your hand changes a coordinate instead of
 only switching a direction on or off. That is why this path can offer more
 natural Robo-Glove positioning.
 
+MediaPipe Hands supplies every live coordinate. **Latest coordinate** uses each
+newest measured position directly; **Bounded speed curve** lightly stabilizes
+resting noise and follows faster movement more directly. Both use the same saved
+center and per-player reach. A short missed observation may hold only X/Y for up
+to 120 ms to avoid an edge jump, while action states release immediately.
+
 | What you do | Native Super Glove Ball behavior confirmed in live play |
 | --- | --- |
 | Move the hand horizontally or vertically | Continuous Robo-Glove X/Y positioning |

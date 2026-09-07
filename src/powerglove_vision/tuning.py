@@ -28,6 +28,7 @@ from .gesture import load_calibration, save_calibration, GestureConfig, MENU_FIN
 
 CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
             "roll_left", "roll_right", "push", "pull")
+REACH_DIRECTIONS = ("left", "right", "up", "down")
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
 GESTURES = {key: {key: True} for key in CHANNELS}
 GESTURES.update(**MENU_FINGERS, hand_setup={key: True for key in FINGERS},
@@ -191,6 +192,7 @@ class TuningManager:
         self.calibration = None
         self.finger_feedback = {}
         self.image_quality = {}
+        self.frame_size = (640, 480)
         self.diagnostics = AcademyDiagnostics(self.path.parent, clock)
         self.problem = None
         self.wizard_step = "problem"
@@ -271,7 +273,83 @@ class TuningManager:
             data["players"][data["active"]]["needs_center"] = False
             data["players"][data["active"]]["calibration"] = copy.deepcopy(pending)
             self.players.commit(data)
+            self.calibration = reference
             return reference
+
+    def _reach_snapshot(self):
+        """Expose exact spans and safe limits without changing the calibration."""
+        pending = self.players.data["calibration_restore"]
+        reference = self.calibration
+        if pending is not None:
+            from .model import Calibration
+            reference = Calibration(**pending["neutral"])
+        elif reference is None and self.players.active["calibration"] is not None:
+            from .model import Calibration
+            reference = Calibration(**self.players.active["calibration"]["neutral"])
+        elif reference is None:
+            reference = load_calibration(self.path.with_name("calibration.json"))
+        if reference is None:
+            return {"available": False, "pending": bool(pending)}
+        values = {name: getattr(reference, "reach_" + name) for name in REACH_DIRECTIONS}
+        margin = self.base_config.coordinate_edge_margin
+        effective = dict(values)
+        if all(value == 0 for value in values.values()):
+            effective = {
+                "left": reference.palm_x - margin,
+                "right": 1 - margin - reference.palm_x,
+                "up": reference.palm_y - margin,
+                "down": 1 - margin - reference.palm_y,
+            }
+        camera_width, camera_height = self.frame_size
+        width = max(0.0, effective["left"] + effective["right"]) * camera_width
+        height = max(0.0, effective["up"] + effective["down"]) * camera_height
+        return {
+            "available": True,
+            "values": values,
+            "limits": {
+                "left": {"min": .05, "max": max(0.0, reference.palm_x - .025)},
+                "right": {"min": .05, "max": max(0.0, .975 - reference.palm_x)},
+                "up": {"min": .05, "max": max(0.0, reference.palm_y - .025)},
+                "down": {"min": .05, "max": max(0.0, .975 - reference.palm_y)},
+            },
+            "custom": any(value != 0 for value in values.values()),
+            "pending": bool(pending),
+            "camera_width": camera_width,
+            "camera_height": camera_height,
+            "dimensions": {
+                "width": round(width, 1),
+                "height": round(height, 1),
+                "aspect": round(width / height, 3) if height else None,
+            },
+        }
+
+    def _reach_candidate(self, incoming, *, reset=False):
+        """Replace only four reach spans on the current calibrated reference."""
+        reference = self.calibration
+        if reference is None:
+            reference = load_calibration(self.path.with_name("calibration.json"))
+        if reference is None:
+            raise ValueError("Center your hand before changing movement reach.")
+        if self.players.data["calibration_restore"] is not None:
+            raise ValueError("Wait for the current reach values to finish saving.")
+        if reset:
+            values = dict.fromkeys(REACH_DIRECTIONS, 0.0)
+        else:
+            if not isinstance(incoming, dict) or set(incoming) != set(REACH_DIRECTIONS):
+                raise ValueError("Enter left, right, up, and down reach values together.")
+            values = {}
+            for name in REACH_DIRECTIONS:
+                value = incoming[name]
+                if type(value) not in (int, float) or not math.isfinite(value):
+                    raise ValueError("Reach values must be finite numbers.")
+                values[name] = float(value)
+            if any(value == 0 for value in values.values()):
+                raise ValueError("Use Restore full camera field instead of mixing zero and custom reach values.")
+            limits = self._reach_snapshot()["limits"]
+            if any(not limits[name]["min"] <= values[name] <= limits[name]["max"]
+                   for name in REACH_DIRECTIONS):
+                raise ValueError("Reach values must stay inside the safe camera area.")
+        return replace(reference, **{"reach_" + name: value for name, value in values.items()})
 
     def needs_center(self):
         """Keep delivery paused until explicit calibration follows a preset change."""
@@ -352,6 +430,7 @@ class TuningManager:
                              "neutral_seconds": round(self.test_neutral_seconds, 1),
                              "passed": self.test_passed},
                     "image_quality": copy.deepcopy(self.image_quality),
+                    "reach": self._reach_snapshot(),
                     "diagnostic": self.diagnostics.snapshot(),
                     "error": self.error, "revision": self.revision}
 
@@ -378,6 +457,9 @@ class TuningManager:
             self.last_observed = self.clock()
             self.base_config = replace(config, thresholds={})
             self.image_quality = dict(image_quality or {})
+            shape = getattr(frame, "shape", ())
+            if len(shape) >= 2 and all(type(value) is int and value > 0 for value in shape[:2]):
+                self.frame_size = (shape[1], shape[0])
             self.ready = (calibrated and observation.detected and observation.confidence >= .7
                           and self.image_quality.get("whole_hand_visible", True))
             if self.ready:
@@ -567,6 +649,13 @@ class TuningManager:
                 self.diagnostics.record()
             elif action == "diagnostic_cancel":
                 self.diagnostics.cancel()
+            elif action in ("reach_save", "reach_reset"):
+                candidate = self._reach_candidate(
+                    data.get("reach"), reset=action == "reach_reset"
+                )
+                self.players.stage_calibration(candidate)
+                self.error = None
+                self.revision += 1
             elif action in ("preview", "save"):
                 values = validate_overrides(data.get("thresholds"))
                 if not values or set(values) - set(GESTURES[self.gesture]):

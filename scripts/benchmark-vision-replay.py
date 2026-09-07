@@ -52,6 +52,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
     inference = []
     detected = []
     observations = []
+    motion_samples = []
     encoded_ms = []
     frame_index = 0
     engine = GestureEngine("practice")
@@ -79,6 +80,14 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
             inference.append((finished - started) * 1000)
             detected.append(result.observation.detected)
             state = engine.update(result.observation)
+            item = result.observation
+            motion_samples.append({
+                "frame": frame_index, "elapsed": elapsed,
+                "detected": item.detected, "confidence": item.confidence,
+                "x": item.palm_x if item.detected else None,
+                "y": item.palm_y if item.detected else None,
+                "scale": item.palm_scale if item.detected else None,
+            })
             cue = next((item for item in cues if item["start"] <= elapsed < item["end"]), None)
             feedback = engine.recognition_feedback()
             curls = engine.curl_feedback(result.observation)
@@ -113,7 +122,9 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
             if result.observation.detected:
                 item = result.observation
                 observations.append({
-                    "frame": frame_index, "x": item.palm_x, "y": item.palm_y,
+                    "frame": frame_index, "elapsed": elapsed,
+                    "confidence": item.confidence,
+                    "x": item.palm_x, "y": item.palm_y,
                     "scale": item.palm_scale, "roll": item.roll,
                     "thumb": item.thumb_curl, "index": item.index_curl,
                     "middle": item.middle_curl, "ring": item.ring_curl,
@@ -153,6 +164,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         "neutral_false_activation_frames": neutral_false_frames,
         "neutral_coordinate_jitter_span": jitter_span,
         "observation_samples": observations,
+        "motion_samples": motion_samples,
     }
 
 
@@ -198,7 +210,8 @@ def main() -> int:
                     frame_times, effective_fps,
                 ))
     result = {
-        "version": 1, "clip": str(args.clip), "full_frame_resize_only": True,
+        "version": 2, "clip": str(args.clip), "full_frame_resize_only": True,
+        "cues": cues,
         "lanes": lanes,
         "note": ("Observation samples support cue-by-cue recognition review. Live Dashboard "
                  "telemetry remains authoritative for latest-frame age and camera-to-send latency."),

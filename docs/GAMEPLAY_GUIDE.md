@@ -427,6 +427,13 @@ excluded from these screenshots for privacy. Tune one difficult gesture without
 repeating the whole hand setup. Pixel Pal may suggest better framing or lighting;
 it does not change camera exposure automatically.
 
+Use the separate **Movement reach** section when native Super Glove Ball needs
+more or less physical travel. Left, right, up, and down are normalized distances
+from the saved center; smaller values reach the corresponding screen edge sooner.
+The summary shows the tracking area's width, height, and aspect ratio. Saving
+changes only those four reach spans. **Restore full camera field** returns to the
+camera-boundary mapping without changing the center or gesture sensitivity.
+
 Leave **Advanced thresholds and diagnostics** closed unless you need numerical
 controls or a diagnostic run. The [Configuration Reference](CONFIGURATION_REFERENCE.md)
 explains the threshold checks and targeted restore options.

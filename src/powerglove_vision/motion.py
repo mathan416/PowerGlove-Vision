@@ -1,15 +1,16 @@
 # Project: PowerGlove Vision
 # File: src/powerglove_vision/motion.py
-# Purpose: Track native X/Y between asynchronous hand-recognition results.
+# Purpose: Archive the inactive optical-flow experiment for possible future reference.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Drew the experimental flow marker in full preview coordinates.
 #   2026-09-07 - Bound source-to-current correction and overlap recognition dispatch.
 #   2026-09-06 - Add experimental bounded palm optical flow and asynchronous recognition.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Keep camera motion independent of recognition, with bounded source-frame age."""
+"""Archived optical-flow experiment; the live worker no longer imports this module."""
 
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
@@ -251,7 +252,9 @@ class MotionTracker:
             "tracker_backend_label": self.backend_label + " + experimental palm flow",
         }
         if observation.detected and self.preview_enabled:
-            h, w = gray.shape
+            # The flow image may be downscaled, but normalized coordinates are
+            # drawn on the full-resolution preview returned to the browser.
+            h, w = display.shape[:2]
             self.cv2.circle(display, (int(observation.palm_x*w), int(observation.palm_y*h)),
                             6, (20, 255, 120), 2)
         return TrackingResult(observation, display, diagnostics,

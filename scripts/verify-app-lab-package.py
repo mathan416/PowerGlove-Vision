@@ -108,6 +108,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/scripts/record-vision-benchmark.py",
     "PowerGlove-Vision/scripts/guided-vision-benchmark.py",
     "PowerGlove-Vision/scripts/benchmark-vision-replay.py",
+    "PowerGlove-Vision/scripts/benchmark-native-motion-curve.py",
     "PowerGlove-Vision/native/nestopia-powerglove/nestopia-powerglove.patch",
     "PowerGlove-Vision/native/nestopia-powerglove/README.md",
     "PowerGlove-Vision/native/nestopia-powerglove/CHANGES.md",

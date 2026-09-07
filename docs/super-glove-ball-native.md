@@ -40,7 +40,7 @@ implementation.
 | Native wrist rotation and remaining action buttons | Not mapped; deliberately neutral | Roll and action recognition are confirmed in the shared layer and FCEUmm output. These packet fields are outside the Super Glove Ball actions confirmed during the completed game. Vary a field independently before enabling it only if a repeatable game behavior is identified. |
 | Poll timing tolerances | Confirmed for tested sessions | Headless runs sustained ten-byte polling throughout native phases, and live cabinet sessions remained stable. Broader hardware and timing stress coverage remains useful. |
 | Headless X/Y activation and release responsiveness | Confirmed for the exact ROM | All four axes visibly diverged by frame 3; a 3.1% positive-X step also diverged by frame 3. See the [direction-response benchmark](direction-response-benchmark.md). |
-| Cabinet field mapping and stabilization | Confirmed for live tuning | Continuous X/Y maps each side of the calibrated neutral point to the corresponding usable camera boundary, retaining an 8% tracking margin. Light adaptive damping operates in camera space, reducing near-rest jitter without delaying deliberate travel. FCEUmm D-pad thresholds remain hand-relative and unchanged. |
+| Cabinet field mapping and stabilization | Implemented; MediaPipe-first physical tuning in progress | Continuous X/Y uses fresh MediaPipe palm observations and per-player asymmetric reach. The Dashboard selects either direct latest coordinates or a bounded speed-sensitive curve that holds measured resting jitter, follows increasingly directly as velocity rises, and immediately accepts stops and reversals without overshoot. Brief loss holds only X/Y for up to 120 ms; actions release immediately and sustained loss neutralizes everything. The optical-flow experiment is archived. FCEUmm D-pad thresholds remain hand-relative and unchanged. |
 | Portable defaults versus neutral calibration | Confirmed in application and installer tests | Full-field mapping, stabilization, and recognition thresholds ship in the release-owned profile baseline. The camera/player-specific neutral reference uses 24 observations at 70% confidence or better and remains private across updates. |
 | Explicit FCEUmm joystick fallback for the same ROM | Confirmed | The ROM enters play using standard Start, requests only the libretro joypad callback, and activates/releases every D-pad direction visibly by frame 3. |
 
@@ -143,7 +143,10 @@ per-ROM emulator choice on another cabinet or after changing the core protocol:
 4. Hold every field neutral, then vary X, Y, and Z independently through minimum, center, and maximum values.
 5. Transmit open, fist, and index point independently, returning to open between each pose.
 6. Confirm repeatable continuous movement plus grab/throw, Robo-Bullet, and fist-plus-forward Power Punch behavior without relying on packet logs alone. The primary cabinet passed this check in a completed game; repeat it after relevant recognition, transport, or core changes.
-7. Test stale samples, tracking loss, and unavailable calibration; all must immediately yield neutral native input.
+7. Test stale samples, unavailable calibration, and tracking loss. Stale or
+   uncalibrated input must immediately neutralize; a brief missed observation may
+   hold only X/Y for up to 120 ms, with actions already released, before sustained
+   loss neutralizes coordinates.
 8. Build the core on the RetroPie host under the separate name `lr-nestopia-powerglove`, verify the camera-to-receiver path, and only then create the per-ROM override.
 
 Keep an explicit FCEUmm per-ROM choice available. If native detection or tracking

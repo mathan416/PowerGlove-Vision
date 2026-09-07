@@ -86,19 +86,28 @@ sockets. These functions are kept separate from camera inference.
 7. The receiver checks the message HMAC, live challenge, peer, and increasing sequence. It creates the real virtual controller when the first accepted packet arrives.
 8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
-The default path performs landmark recognition synchronously and uses the newest
-completed observation directly. An opt-in Super Glove Ball experiment separates
-native X/Y movement from that cadence: one bounded worker processes the latest
-camera frame, while palm optical flow carries the last accepted position toward
-the current frame. It never queues recognition results or replays coordinate
-samples. Each correction is source-to-current, limited to 320-pixel flow images,
-a 25 ms work budget, and a 250 ms recognition-age limit. A failed or over-budget
-correction falls back to fresh, confident MediaPipe coordinates; stale, lost, or
-uncalibrated input neutralizes movement and clears flow history. Gesture and
-button recognition still comes from completed MediaPipe observations.
+Native Super Glove Ball performs MediaPipe landmark recognition synchronously.
+The Dashboard retains the normal hand skeleton and landmark annotation. Each
+fresh palm observation follows one of two response modes: **latest coordinate**
+passes it through directly, while **bounded speed curve** suppresses measured
+resting noise and progressively reduces damping as raw hand speed rises. Neither
+mode queues, predicts, extrapolates, or filters inside the emulator core. The
+former optical-flow experiment remains in `motion.py` as inactive research code
+and is not routed by the supervisor or exposed as a live configuration.
 
 Native coordinates use each player's calibrated center and optional asymmetric
-comfortable-reach spans. Digital FCEUmm directions instead use the player's
+comfortable-reach spans. Bounded native X/Y stabilization measures velocity
+between consecutive MediaPipe coordinates in units of calibrated reach per
+second. A
+per-player noise floor holds resting jitter; movement progressively becomes
+one-to-one as speed rises. Follow weighting uses a 100 ms reference interval,
+matching the Controller's measured MediaPipe cadence; a saturated calibration
+jitter value falls back to the fixed safe floor. Stops and reversals adopt the newest coordinate
+immediately, and output never extrapolates beyond a measurement. In either mode,
+a missed observation shorter than `loss_release_ms` holds only the last X/Y
+position; buttons, fingers, depth, roll, and digital directions release at once.
+Longer tracking loss or stale input neutralizes the native sample and clears the
+coordinate history. Digital FCEUmm directions instead use the player's
 shared activation thresholds; Setup's **Joystick dead zone** changes all four
 direction thresholds together and sets release to half of activation. It does
 not alter native reach, finger gestures, or game mappings. Re-centering clears

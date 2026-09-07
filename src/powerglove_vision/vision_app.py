@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Made MediaPipe plus the bounded curve the default native X/Y path.
 #   2026-09-06 - Support measured opt-in Kiyo Pro capture controls and buffer count.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
@@ -150,8 +151,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--preview-fps", type=float, default=5.0,
         help="maximum diagnostic camera-preview rate",
     )
-    parser.add_argument("--motion-tracking", action="store_true",
-                        help="experimental asynchronous palm flow for native Super Glove Ball X/Y")
+    parser.add_argument(
+        "--native-xy-mode", choices=("bounded", "latest"), default="bounded",
+        help="native Super Glove Ball X/Y response: bounded curve or newest coordinate",
+    )
+    parser.add_argument("--motion-tracking", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--glove-color", choices=("none", "white", "black"), default="none")
     parser.add_argument("--no-mirror", action="store_true")
     parser.add_argument("--config", type=Path)
@@ -299,9 +303,6 @@ def _prepare_vision(args):
             inference_threads=args.inference_threads,
             backend=args.tracker_backend,
         )
-        if getattr(args, "motion_tracking", False):
-            from .motion import MotionTracker
-            tracker = MotionTracker(tracker)
         log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
     except Exception:
@@ -312,6 +313,41 @@ def _prepare_vision(args):
 def _effective_profile(profile: str | None, practice_mode: bool) -> str | None:
     """Choose a tracking profile while preserving an intentionally selected off state."""
     return PRACTICE_PROFILE if practice_mode else profile
+
+
+def _native_xy_active(engine: GestureEngine, practice_mode: bool,
+                      tuning_active: bool, needs_center: bool) -> bool:
+    """Use bounded native coordinates only in ready Super Glove Ball gameplay."""
+    return (
+        engine.profile == "super_glove_ball"
+        and engine.calibrated
+        and not practice_mode
+        and not tuning_active
+        and not needs_center
+    )
+
+
+def _native_xy_source(active: bool) -> str:
+    """Name the coordinate authority independently of response mode."""
+    if not active:
+        return "inactive"
+    return "mediapipe"
+
+
+def _update_controller_state(
+    engine: GestureEngine, result, native_xy_active: bool,
+    native_xy_mode: str = "bounded",
+):
+    """Route native X/Y through the selected MediaPipe response lane."""
+    if not native_xy_active:
+        return engine.update(result.observation), _native_xy_source(False)
+    return (
+        engine.update_native_motion(
+            result.observation, result.observation,
+            bounded=native_xy_mode != "latest",
+        ),
+        _native_xy_source(True),
+    )
 
 
 def _launch_guard_active(deadline: float, now: float | None = None) -> bool:
@@ -364,6 +400,7 @@ def _base_status(
         ),
         "controller_enabled": controller_enabled,
         "camera_available": False,
+        "native_xy_source": "inactive",
     })
     return status
 
@@ -656,15 +693,12 @@ def main() -> int:
             preview_due = preview_watched and inference_started >= preview_at
             tracker.preview_enabled = preview_due
             tracker.diagnostics_enabled = preview_due or shared.tuning.active()
-            if getattr(args, "motion_tracking", False):
-                result = tracker.process(
-                    frame, timestamp=captured_frame.captured_at,
-                    fast=(engine.profile == "super_glove_ball" and engine.calibrated
-                          and not practice_mode and not shared.tuning.active()
-                          and not shared.tuning.needs_center()),
-                )
-            else:
-                result = tracker.process(frame)
+            tuning_active = shared.tuning.active()
+            needs_center = shared.tuning.needs_center()
+            native_xy_active = _native_xy_active(
+                engine, practice_mode, tuning_active, needs_center
+            )
+            result = tracker.process(frame)
             motion_mode = getattr(result, "motion_only", False)
             if motion_mode != last_motion_mode:
                 performance = RollingPerformance()
@@ -678,8 +712,9 @@ def main() -> int:
             if startup_timer is not None:
                 log_startup_stage("first inference", inference_started)
             engine.config = shared.tuning.configuration(engine_base_config)
-            state = (engine.update_native_motion(result.observation, result.gesture_observation)
-                     if motion_mode else engine.update(result.observation))
+            state, native_source = _update_controller_state(
+                engine, result, native_xy_active, args.native_xy_mode
+            )
             if engine.calibrated and engine.calibration is not retained_calibration:
                 retained_calibration = engine.calibration
                 try:
@@ -708,13 +743,21 @@ def main() -> int:
                     start_ns=int(inference_started * 1e9), tracking_end_ns=tracking_finished_ns,
                     end_ns=int(inference_finished * 1e9),
                     sent=receiver_available, detected=state.detected, calibrated=state.calibrated,
+                    native_xy_source=native_source,
+                    native_xy_mode=args.native_xy_mode,
                     motion=result.motion_trace if motion_mode else None,
                     filtered_xy=[engine._filtered_palm_x, engine._filtered_palm_y] if state.detected else None,
                     smoothing={"minimum": engine.config.coordinate_smoothing_min,
                                "maximum": engine.config.coordinate_smoothing_max,
                                "motion_boost": engine.config.coordinate_motion_boost,
                                "experimental_motion_boost": engine.config.motion_coordinate_boost,
-                               "experimental_motion_max": engine.config.motion_coordinate_max},
+                               "experimental_motion_max": engine.config.motion_coordinate_max,
+                               "native_curve": "bounded_speed",
+                               "noise_multiplier": engine.config.motion_noise_multiplier,
+                               "noise_floor": engine.config.motion_noise_floor,
+                               "noise_exit_ratio": engine.config.motion_noise_exit_ratio,
+                               "slow_follow": engine.config.motion_slow_follow,
+                               "full_speed": engine.config.motion_full_speed},
                     x=state.axes.get("x", 0), y=state.axes.get("y", 0),
                     buttons=sum(1 << i for i, name in enumerate(("a", "b", "start", "select",
                         "glove_zap", "menu_guard", "closed_hand", "index_point")) if state.buttons.get(name))))
@@ -829,7 +872,9 @@ def main() -> int:
             status["curl_threshold"] = engine.config.pair("index")[0]
             status["tuning"] = shared.tuning.snapshot()
             status.update(latest_diagnostics)
-            status["motion_tracking"] = motion_mode
+            status["motion_tracking"] = False
+            status["native_xy_source"] = native_source
+            status["native_xy_mode"] = args.native_xy_mode
             if motion_mode:
                 status.update(result.diagnostics)
                 status["processing_timing_scope"] = "motion loop; recognition_inference_ms is separate"

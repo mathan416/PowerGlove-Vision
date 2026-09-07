@@ -108,7 +108,10 @@ the selected player moves before all four directions activate; release remains
 half that distance. Start with **Use standard size**, then save one small change
 at a time while watching the live direction indicators. This setting does not
 change native Super Glove Ball X/Y travel or cure processing latency. Use reach
-calibration for native screen coverage and the latency procedure below for delay.
+controls under **Glove Academy → Tune gestures → Movement reach** for native
+screen coverage and the latency procedure below for delay. Smaller reach values
+need less physical hand travel. Try the Dashboard's **Latest coordinate** and
+**Bounded speed curve** modes separately when diagnosing smoothness.
 
 ## Start triggers accidentally, or a gesture stays active
 
