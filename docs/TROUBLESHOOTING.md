@@ -65,7 +65,7 @@ problems and should be reported separately.
 ## The hand is detected but the game does not move
 
 1. Close local Play and Glove Academy; they pause cabinet input. Finish tuning, then explicitly start controller delivery if required.
-2. Check the selected player and any request to set a fresh centre. Select **Set this as my center**, or explicitly reuse a saved centre only if camera and playing position match.
+2. Check the selected player and any request to set a fresh centre. Selecting a player loads their saved centre automatically. Use **Center hand** if no centre is saved or the camera or playing position has changed.
 3. Select **Start controller**. Armed means delivery is permitted when a valid game session or intentional manual profile is active; it does not mean packets are always being sent.
 4. Check Setup's console-service and authenticated-response markers. A reachable service with unconfirmed authentication suggests pairing needs attention. Neither marker proves emulator input consumption.
 5. Confirm that the game has actually started in RetroArch. The exact ROM filename must be registered; `.nes`, `.zip`, and `.7z` are separate entries.
@@ -95,7 +95,7 @@ pairing tokens, passwords, or live approval PINs into a public support report.
 ## Movement drifts or feels reversed
 
 Check the selected game profile and centre before changing sensitivity. Hold a
-relaxed hand at the intended playing position and choose **Set this as my center**.
+relaxed hand at the intended playing position and choose **Center hand**.
 Support your forearm where practical. Re-centre after moving the camera.
 
 A profile such as Program D intentionally reverses controls. Native Super Glove
@@ -126,7 +126,7 @@ conclusions from screenshots or timestamps on different computers.
 
 ## My player or backup looks wrong
 
-Check **Your player** first: player selection applies across browsers. Progress
+Check **Active player** first: player selection applies across browsers. Progress
 and settings live on the Controller, not in browser storage. Each downloaded
 backup contains only the selected player's hand setup and excludes Academy
 progress. Your browser usually puts it in Downloads as

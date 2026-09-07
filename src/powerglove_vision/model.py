@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
 #   2026-09-05 - Included neutral native hand-pose states in released samples.
 #   2026-09-02 - Added to PowerGlove Vision.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -59,6 +60,20 @@ class Calibration:
     roll: float
     noise_x: float = 0.0
     noise_y: float = 0.0
+    reach_left: float = 0.0
+    reach_right: float = 0.0
+    reach_up: float = 0.0
+    reach_down: float = 0.0
+
+    def valid_reach(self) -> bool:
+        """Zero means legacy camera-field mapping; otherwise require four safe spans."""
+        import math
+        spans = (self.reach_left, self.reach_right, self.reach_up, self.reach_down)
+        if any(type(v) not in (int, float) or not math.isfinite(v) for v in spans):
+            return False
+        return all(v == 0 for v in spans) or all(
+            0.05 <= v <= limit + 1e-9 for v, limit in zip(
+                spans, (self.palm_x, 1-self.palm_x, self.palm_y, 1-self.palm_y)))
 
 
 @dataclass

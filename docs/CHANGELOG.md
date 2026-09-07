@@ -7,6 +7,26 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Added
+
+- Benchmarked Kiyo Pro capture on UNO Q and added an opt-in 640×480 MJPEG/two-buffer/volatile-HDR-off candidate, which delivered 59.7–59.8 fps in isolated capture repeats. Higher 720p decoding costs ruled out copying the Pi resolution. Inference threads are unchanged; recognition-under-load and physical latency validation remain pending.
+
+- Ported optional per-player comfortable reach spans from the Raspberry Pi version. Both native movement paths map asymmetric reach to the screen edges, player backups preserve spans, and re-centering clears them. Added a guided, output-paused calibration helper using raw palm measurements in practice mode. Camera defaults and inference threads are unchanged pending UNO Q measurements.
+
+- Added an opt-in experimental Super Glove Ball movement path: asynchronous hand recognition, palm optical flow between results, source-frame correction, bounded gesture freshness, and immediate release on tracking failure. Calibration, practice, tuning, and other games retain synchronous recognition. Hardware latency and gameplay validation are still required.
+
+### Fixed
+
+- Dashboard Center hand and Start controller clicks now survive status refreshes in Safari/WebKit. Controller requests stay disabled while pending, and centering guidance names the selected player beside the controls. Request feedback is announced and displayed beside those controls.
+
+### Changed
+
+- Moved player creation, renaming, deletion, and hand-setup backup/restore into Setup → Players. Academy and Dashboard offer compact selectors for the same Controller-wide active player. Dashboard places Player before Active profile and combines game name and session status in one Game card.
+
+- Glove Academy player selection now immediately loads sensitivity, lesson progress, and the player’s saved center. Removed the separate Use player and Reuse my saved center buttons. Players without a saved center still need Center hand; switching keeps controller output paused, and backup-import calibration reuse remains an explicit choice.
+
+- Renamed the explicit centering action to **Center hand** throughout Dashboard, Glove Academy, player settings, personalization, and maintained instructions. Centering continues to save only to the selected player; switching players during a sample prevents it being saved to the new player.
+
 Version **0.3.5** is planned for camera-to-game latency fixes. Tuning will follow measured stage timings and repeated stationary-jitter and recognition checks; these fixes are not included in rc.7.
 
 ## [0.3.2-rc.7] - 2026-09-06

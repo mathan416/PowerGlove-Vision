@@ -126,7 +126,7 @@ class PlayerTests(unittest.TestCase):
         self.command('restore',backup=backup)
         self.assertTrue(self.manager.needs_center())
 
-    def test_player_centers_are_isolated_and_reuse_needs_confirmation(self):
+    def test_player_selection_automatically_restores_its_isolated_center(self):
         from powerglove_vision.model import Calibration
         first=Calibration(.3,.4,.2,0)
         second=Calibration(.6,.5,.3,0)
@@ -136,12 +136,23 @@ class PlayerTests(unittest.TestCase):
         self.manager.begin_center();self.manager.finish_center(second)
         self.command('select',id='default')
         self.assertTrue(self.manager.needs_center())
-        self.assertEqual(self.command('export')['backup']['calibration']['neutral']['palm_x'],.3)
-        with self.assertRaises(ValueError):self.command('reuse_calibration')
-        self.command('reuse_calibration',confirmed=True)
+        self.assertTrue(self.manager.player_snapshot()["restoring_calibration"])
+        with self.assertRaises(ValueError):self.command("export")
         restarted=TuningManager(self.path)
         self.assertEqual(restarted.apply_calibration_restore(),first)
         self.assertFalse(restarted.needs_center())
+
+    def test_latest_player_selection_replaces_pending_center(self):
+        from powerglove_vision.model import Calibration
+        first=Calibration(.3,.4,.2,0)
+        second=Calibration(.6,.5,.3,0)
+        self.manager.begin_center();self.manager.finish_center(first)
+        other=self.command('create',name='Sam')['active']
+        self.manager.begin_center();self.manager.finish_center(second)
+        self.command('select',id='default')
+        self.command('select',id=other)
+        self.assertEqual(self.manager.apply_calibration_restore(),second)
+        self.assertFalse(self.manager.needs_center())
 
     def test_effective_thresholds_are_complete_and_import_is_explicit(self):
         from powerglove_vision.tuning import CHANNELS

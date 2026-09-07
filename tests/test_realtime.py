@@ -11,10 +11,16 @@
 """Verify the real-time pipeline without MediaPipe or camera hardware."""
 
 import queue
+import json
+import tempfile
 import threading
 import time
 import unittest
 from types import SimpleNamespace
+from pathlib import Path
+from unittest.mock import patch
+
+from powerglove_vision.diagnostic_trace import DiagnosticTrace
 
 from powerglove_vision.debug_server import SharedDebugState
 from powerglove_vision.realtime import (
@@ -61,6 +67,43 @@ class FakeCv2:
 
 
 class RealtimePipelineTests(unittest.TestCase):
+    def test_capture_trace_records_a_pending_read_and_publication_without_images(self):
+        source = QueuedCapture()
+        entered = threading.Event()
+        original_read = source.read
+
+        def read():
+            entered.set()
+            return original_read()
+
+        source.read = read
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "capture.json"
+            trace = DiagnosticTrace(path, "capture", seconds=10)
+            with patch.object(DiagnosticTrace, "from_environment", return_value=trace):
+                capture = LatestFrameCapture(source)
+            try:
+                self.assertTrue(entered.wait(1))
+                with trace.lock:
+                    pending = list(trace.events)
+                self.assertEqual([event["event"] for event in pending], ["capture_read_begin"])
+                self.assertIsNone(capture.latest_after(0))
+                source.frames.put((True, "private-camera-content"))
+                deadline = time.monotonic() + 1
+                while capture.latest_after(0) is None and time.monotonic() < deadline:
+                    time.sleep(.005)
+                self.assertEqual(capture.latest_after(0).frame, "private-camera-content")
+            finally:
+                capture.release()
+            report = json.loads(path.read_text())
+            events = [event for event in report["events"] if event["sequence"] == 1]
+            self.assertEqual([event["event"] for event in events],
+                             ["capture_read_begin", "capture_read_end", "capture_publication"])
+            self.assertLessEqual(events[0]["at_ns"], events[1]["at_ns"])
+            self.assertLessEqual(events[1]["at_ns"], events[2]["at_ns"])
+            self.assertGreaterEqual(events[1]["thread_cpu_ns"], 0)
+            self.assertNotIn("private-camera-content", path.read_text())
+
     def test_performance_window_reports_tail_latency(self):
         metrics = RollingPerformance(size=4)
         for value in (100, 10, 20, 30, 40):

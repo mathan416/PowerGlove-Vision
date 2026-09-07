@@ -30,12 +30,12 @@ match. Mouse and touch buttons remain available if the camera is unavailable.
 
 ## Get ready to play
 
-Choose your player in **Your player** so practice and sensitivity changes belong
+Choose your player in **Active player** so practice and sensitivity changes belong
 to you. Select a profile on Dashboard and wait for the camera view. Starting
 straight after a reboot can take longer.
 
 1. Stand where the camera can see your whole hand, with room to move on every side.
-2. Face a relaxed open palm toward the camera. On first use, or after moving the camera or changing your playing position, select **Set this as my center** and hold still until it finishes. Otherwise use your saved resting position.
+2. Face a relaxed open palm toward the camera. On first use, or after moving the camera or changing your playing position, select **Center hand** and hold still until it finishes. Otherwise use your saved resting position.
 3. Select **Start controller** when ready. If the tracker is reconnecting, Start remains pending until it can be delivered; **Stop controller** cancels that request.
 4. Launch a registered game and allow its short startup pause to finish. Check the selected profile on Dashboard against the play card below; the card also shows its matrix display.
 5. Try one gesture at a time. Return to your resting position between attempts. In standard movement profiles this stops directional input; Nestopia (PowerGlove) follows your hand's position continuously.
@@ -384,12 +384,12 @@ forward push for a clean burst when the road opens.
 
 ### Choose a player and save your setup
 
-Choose a player in **Your player** before practising or tuning. Each player keeps
-separate sensitivity, lesson progress, and a saved centre. Switching pauses
-controls until you set a fresh centre, or choose **Reuse my saved center** and
-confirm that the camera and playing positions are unchanged.
+Choose a player in **Active player** before practising or tuning. Each player keeps
+separate sensitivity, lesson progress, and a saved centre. Selecting a player
+loads all three automatically and pauses controller output. Use **Center hand**
+for players without a saved centre or after moving the camera or changing playing position.
 
-Use **Players and hand-setup backups → Back up hand setup** to save the player's
+Use **Setup → Players → Players and hand-setup backups → Back up hand setup** to save the player's
 name, personal and complete sensitivity, software identity, and calibration.
 During restore, choose whether to keep the complete saved sensitivity, including
 the defaults used when the backup was made, or just personal adjustments. Reuse
@@ -480,7 +480,7 @@ changing the ROM or emulator.
 
 1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
 2. Open the PowerGlove Vision Controller **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
-3. Use **Set this as my center** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended centre and distance until calibration finishes, then select **Start controller** and return to the game.
+3. Use **Center hand** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended centre and distance until calibration finishes, then select **Start controller** and return to the game.
 4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
 
 The selection is temporary. Starting or ending a game sends a new command

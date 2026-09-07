@@ -202,3 +202,9 @@ $('test').onclick=()=>action($('test'),'notice',async()=>{const x=await api('/ap
 $('attract-form').onsubmit=e=>{e.preventDefault();action(e.submitter,'attract-notice',async()=>{await api('/api/attract',{mode:$('matrix-attract').value});$('attract-notice').textContent='Attract mode saved. Tracking was not restarted.'})};
 renderPairing();
 })();"""
+
+
+from .player_web import PLAYER_CONTENT, PLAYER_SCRIPT
+
+SETUP_CONTENT += PLAYER_CONTENT
+SETUP_SCRIPT += "\n" + PLAYER_SCRIPT

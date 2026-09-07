@@ -325,7 +325,7 @@ emulator consumption. See [Setup status](CONFIGURATION_REFERENCE.md#independent-
 Player operations pass through the bounded same-origin `/api/players` endpoint
 into the worker. Its tuning lock owns one atomic player/settings/progress file.
 Generations reject stale writes. Each player retains a saved calibration;
-switching requires fresh centering or explicit same-position reuse. Version-2
+selection automatically applies the selected player’s saved center through the durable restore path, with output paused; players without a saved center require centering. Version-2
 portable backups include personal and effective sensitivity, source software
 identity, name, and the player's neutral reference. They exclude credentials and
 Academy progress. Version-1 portable backups are rejected; earlier version-2

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-05 - Added clear proven and experimental backend display names.
 #   2026-09-05 - Made legacy and Tasks tracker selection explicit for benchmarks.
 #   2026-09-04 - Logged hand-tracker startup stage durations.
@@ -76,6 +77,9 @@ class TrackingResult:
     observation: HandObservation
     frame: Any
     diagnostics: dict = field(default_factory=dict)
+    palm_points: list = field(default_factory=list)
+    motion_only: bool = False
+    gesture_observation: HandObservation | None = None
 
 
 @dataclass
@@ -152,6 +156,9 @@ def _legacy_hands(mp, cpu_threads: int):
                 inference_calculator_pb2.InferenceCalculatorOptions.ext
             ]
             options.cpu_num_thread = cpu_threads
+            # XNNPACK uses its own thread pool, independent of the interpreter.
+            if options.delegate.HasField("xnnpack"):
+                options.delegate.xnnpack.num_threads = cpu_threads
             modified += 1
         if modified != 2:
             raise RuntimeError(f"expected two CPU inference nodes, found {modified}")
@@ -186,7 +193,7 @@ class MediaPipeTracker:
         glove_color: str = "none",
         mirror: bool = True,
         model_path: Path | str | None = None,
-        inference_threads: int = 4,
+        inference_threads: int = 2,
         backend: str = "legacy",
     ) -> None:
         try:
@@ -319,4 +326,5 @@ class MediaPipeTracker:
                 "finger_bends": bends,
                 "hand_landmarks": [[p.x, p.y] for p in landmarks],
             }
-        return TrackingResult(observation, frame, diagnostics)
+        return TrackingResult(observation, frame, diagnostics,
+                              palm_points=[(landmarks[i].x, landmarks[i].y) for i in palm_ids])

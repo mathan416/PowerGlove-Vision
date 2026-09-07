@@ -190,7 +190,7 @@ RetroPie as well as the Controller application.
 
 ## 5. Calibrate and test a game
 
-1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Set this as my center** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
+1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Center hand** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
 2. Select **Start controller**. This allows controller packets to reach RetroPie and creates the virtual input device.
 3. On RetroPie, run `grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices`. Look for the device name **PowerGlove Vision**. If it is missing, check pairing and the receiver service before changing emulator settings.
 4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **PowerGlove Vision**. Menu labels can vary with the RetroArch version.
@@ -331,9 +331,8 @@ startup sequence. An animation does not prove that shutdown has finished.
 | Connection settings | `http://UNO-Q-NAME.local:8088/setup` |
 | Secure pairing | `https://UNO-Q-NAME.local:8443/setup` |
 
-In Glove Academy, choose or add a player before practicing. Progress and hand
-sensitivity persist across restarts and normal upgrades. Switching players
-requires fresh centering or explicit reuse of that player’s saved center at the same camera and playing position. Restoring a hand-setup backup requires centering unless you explicitly
+Add and manage players in **Setup → Players**. Choose the active player on Dashboard or in Glove Academy before practicing or playing. Progress and hand
+sensitivity persist across restarts and normal upgrades. Selecting a player immediately loads their sensitivity, progress, and saved center. Use **Center hand** for a new player or after moving the camera or changing playing position. Restoring a hand-setup backup requires centering unless you explicitly
 reuse its calibration with the same camera and playing positions. Backups include
 name, personal and effective sensitivity, source software identity, and calibration. Version-2 is the first supported portable format; version-1 sensitivity-only files are rejected. The web footer reports
 exact software and running firmware identities; older firmware may report unavailable.
@@ -363,7 +362,7 @@ excluded from the public package; the live cabinet page supplies local details.
 1. Power the RetroPie and PowerGlove Vision Controller; leave the camera connected to the powered hub.
 2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
 3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
-4. On first use, or after changing your camera or playing position, select **Set this as my center** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
+4. On first use, or after changing your camera or playing position, select **Center hand** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
 5. Select **Start controller** when you are ready to arm gesture control.
 6. Launch a registered game and confirm its profile code on the matrix. Delivery
    begins only after RetroArch is running and its short initialization guard ends.

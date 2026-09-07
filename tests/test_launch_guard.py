@@ -24,7 +24,7 @@ class LaunchGuardTests(unittest.TestCase):
         args = build_parser().parse_args(["--receiver", "console", "--token", "x" * 16])
         self.assertEqual(args.fps, 60)
         self.assertEqual(args.camera_format, "MJPG")
-        self.assertEqual(args.inference_threads, 4)
+        self.assertEqual(args.inference_threads, 2)
         self.assertEqual(args.tracker_backend, "legacy")
         self.assertEqual(args.preview_fps, 5.0)
 

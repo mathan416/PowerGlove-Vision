@@ -68,6 +68,10 @@ The [development review and parking lot](https://github.com/mathan416/PowerGlove
 records completed fixes and decisions for a later session, including
 latency measurements still awaiting live play. Player calibration, complete backups, background hostname refresh, independent Networking indication, signed controller sessions, and web-module cleanup are implemented. Controller transport now requires matching version-2 software on both computers; follow the [coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
 
+Manage players and backups in **Setup → Players**. Select the active player on Dashboard or in Glove Academy; that selection applies to both practice and gameplay. Dashboard combines the game name and session status in one Game card.
+
+On Dashboard, **Center hand** saves the resting reference for the selected player. If that player needs centering, guidance appears beside the controls before you can start controller output.
+
 ## Choose a guide
 
 ### User manuals
@@ -109,7 +113,7 @@ because it is far too funny to fix.
 
 The web footer shows exact software and running matrix firmware identities.
 Glove Academy supports twelve player presets, saved lesson progress, and portable
-version-2 hand-setup backups containing name, personal and effective sensitivity, software identity, and per-player calibration. Switching players requires fresh centering or explicit same-position reuse. Version-1 portable backups are no longer accepted. Navigation
+version-2 hand-setup backups containing name, personal and effective sensitivity, software identity, and per-player calibration. Selecting a player immediately loads their sensitivity, progress, and saved center, with output paused. Use **Center hand** for new players or after changing the physical setup. Version-1 portable backups are no longer accepted. Navigation
 and controls adapt to phone and tablet widths.
 
 ## Quick start
@@ -262,7 +266,7 @@ and saved home-screen shortcuts.
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
 | Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
-| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Hand-setting backups are available. |
+| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Select the same active player used for gameplay; manage players and hand-setting backups in Setup. |
 | Help, `/help` | Opens the local manuals and PDFs; **This console** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 

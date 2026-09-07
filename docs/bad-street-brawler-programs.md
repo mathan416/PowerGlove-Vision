@@ -211,7 +211,7 @@ the previous game's mapping does not remain active.
 ## Practise safely
 
 1. Open `http://UNO-Q-NAME.local:8088/learn`.
-2. Keep your whole hand visible. Select **Set this as my center** on first use or when your resting position produces unwanted movement, then hold still.
+2. Keep your whole hand visible. Select **Center hand** on first use or when your resting position produces unwanted movement, then hold still.
 3. Move slowly until the intended gesture is recognized consistently.
 4. Open Dashboard to compare hand motion with generated controller output.
 5. Start controller delivery only when ready to play.

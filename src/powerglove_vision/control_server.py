@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import html
 import json
+import hashlib
 import os
 import secrets
 import socket
@@ -116,6 +117,15 @@ class ControlState:
         self._controller_pending = None
         self._controller_revision = 0
         self._controller_retry_at = 0.0
+        self._last_controller_choice = 0.0
+        self._last_game_event = None
+        self._game_session_marker = config_path.with_name("controller-last-game")
+        self._last_auto_session = None
+        if self._game_session_marker.is_file() and not self._game_session_marker.is_symlink():
+            previous = self._game_session_marker.read_text().strip()
+            if len(previous) == 64 and all(c in "0123456789abcdef" for c in previous):
+                self._last_auto_session = previous
+        self._auto_start_error = None
         self.revision = 0
         self.worker_status: dict[str, Any] = {}
         self.camera_available = False
@@ -207,12 +217,15 @@ class ControlState:
         with self.config_lock:
             self._set_controller_enabled(enabled)
 
-    def _set_controller_enabled(self, enabled: bool) -> None:
+    def _set_controller_enabled(self, enabled: bool, *, automatic: bool = False) -> None:
         """Queue a controller start or stop request for the vision worker."""
+        if not automatic:
+            self._last_controller_choice = time.monotonic()
+            self._auto_start_error = None
         if enabled:
             with self.lock:
                 if self.worker_status.get("player", {}).get("needs_center"):
-                    raise ValueError("Set your center in Glove Academy before starting controls for this player.")
+                    raise ValueError("Select Center hand on Dashboard or in Glove Academy before starting controls for this player.")
             config = self.load_config()
             if not str(config.get("receiver", "")).strip() or not config.get("token"):
                 raise ValueError("Configure your RetroPie destination and pairing in Connection before starting controls.")
@@ -407,6 +420,8 @@ class ControlState:
         """Return a thread-safe dashboard snapshot of configuration and runtime health."""
         with self.lock:
             status = dict(self.worker_status)
+            if self._auto_start_error and not self._controller_enabled:
+                status["receiver_error"] = self._auto_start_error
             status.update({
                 "camera_available": self.camera_available,
                 "worker_running": self.worker_running,
@@ -455,11 +470,48 @@ class ControlState:
     def update_worker(self, status: dict[str, Any]) -> None:
         """Merge the latest worker diagnostics into shared dashboard state."""
         status.pop("token", None)
+        game_event = status.pop("_game_controller_event", None)
         with self.lock:
             self.worker_status = status
             self.worker_running = True
             self.camera_available = bool(status.get("camera_available", False))
             self.last_error = None
+        self._apply_game_controller_event(game_event, status)
+
+    def _apply_game_controller_event(self, event, status):
+        """Consume a private worker launch once, with explicit operator choices winning."""
+        if not isinstance(event, dict):
+            return
+        with self.config_lock:
+            identity = (event.get("session"), event.get("enabled"), event.get("at"))
+            if identity == self._last_game_event:
+                return
+            self._last_game_event = identity
+            enabled = event.get("enabled")
+            if type(enabled) is not bool:
+                return
+            if enabled:
+                raw_session = event.get("session")
+                if not isinstance(raw_session, str) or not raw_session:
+                    return
+                session = hashlib.sha256(raw_session.encode()).hexdigest()
+                if session == self._last_auto_session:
+                    return
+                if self._game_session_marker.is_symlink():
+                    return
+                from .game_registry import atomic_write
+                atomic_write(self._game_session_marker, session + "\n")
+                self._last_auto_session = session
+            if event.get("at", 0) <= self._last_controller_choice:
+                return
+            if enabled and (not event.get("eligible") or status.get("practice_mode")
+                            or status.get("tuning", {}).get("active")):
+                return
+            try:
+                self._set_controller_enabled(enabled, automatic=True)
+                self._auto_start_error = None
+            except ValueError as error:
+                self._auto_start_error = str(error)
 
 
 def _send(handler: BaseHTTPRequestHandler, status: int, body: bytes, content_type: str) -> None:

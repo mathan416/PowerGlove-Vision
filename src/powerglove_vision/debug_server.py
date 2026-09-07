@@ -60,6 +60,7 @@ class SharedDebugState:
         self.stream_clients = 0
         self.calibrate_requested = False
         self.controller_request: bool | None = None
+        self.game_controller_event = None
         self.profile_request: tuple[str | None, str, str] | None = None
         self.practice_sessions: dict[str, float] = {}
         self.invalidated_practice_sessions: dict[str, float] = {}
@@ -111,6 +112,12 @@ class SharedDebugState:
             requested = self.calibrate_requested
             self.calibrate_requested = False
             return requested
+
+    def game_controller_transition(self, session, enabled, eligible=True):
+        """Publish only the newest game lifecycle intent to the local supervisor."""
+        with self.lock:
+            self.game_controller_event = {"session": session, "enabled": enabled,
+                                          "eligible": eligible, "at": time.monotonic()}
 
     def request_controller(self, enabled: bool) -> None:
         """Queue the requested controller transmission state."""
@@ -204,6 +211,7 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                 with shared.lock:
                     status = dict(shared.status)
                     status["preview_clients"] = shared.stream_clients
+                    status["_game_controller_event"] = shared.game_controller_event
                 if shared.tuning is not None:
                     status["tuning"] = shared.tuning.snapshot()
                     status["player"] = shared.tuning.player_snapshot()
