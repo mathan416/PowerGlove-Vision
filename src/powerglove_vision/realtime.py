@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Kept optional trace thread identifiers compatible with Python 3.7.
 #   2026-09-05 - Added latest-frame capture and asynchronous preview encoding.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -108,8 +109,9 @@ class LatestFrameCapture:
             if traced:
                 started_ns = time.monotonic_ns()
                 cpu_started_ns = time.thread_time_ns()
+                thread_id = getattr(threading, "get_native_id", threading.get_ident)()
                 trace.record(dict(event="capture_read_begin", sequence=attempt,
-                                  at_ns=started_ns, thread_id=threading.get_native_id()))
+                                  at_ns=started_ns, thread_id=thread_id))
             try:
                 ok, frame = self._capture.read()
             except Exception:

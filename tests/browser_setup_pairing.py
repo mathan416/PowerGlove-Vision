@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Kept help-asset fixtures compatible with Python 3.7.
 #   2026-09-06 - Cover guided pairing, expiry, retries, responsive layouts, and screenshots.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -59,7 +60,7 @@ async def main():
                 f=ROOT/path.lstrip('/')
                 if f.is_file():return await r.fulfill(path=str(f))
             if path.startswith('/help-assets/'):
-                f=ROOT/'docs/images'/path.removeprefix('/help-assets/')
+                f=ROOT/'docs/images'/path[len('/help-assets/'):]
                 if f.is_file():return await r.fulfill(path=str(f))
             return await r.fulfill(status=404)
         await page.route('**/*',route)

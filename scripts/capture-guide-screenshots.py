@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Kept help-asset fixtures compatible with Python 3.7.
 #   2026-09-06 - Capture all documented application panels without live device data.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -85,8 +86,12 @@ async def capture():
                 if path == '/stream':
                     return await request.fulfill(body=CAMERA,content_type='image/svg+xml')
                 if path.startswith(('/help-assets/','/assets/')):
-                    asset = ROOT / ('docs/images/'+path.removeprefix('/help-assets/') if path.startswith('/help-assets/') else path.lstrip('/'))
-                    if asset.is_file() and asset.resolve().is_relative_to(ROOT):
+                    asset = ROOT / ('docs/images/'+path[len('/help-assets/'):] if path.startswith('/help-assets/') else path.lstrip('/'))
+                    try:
+                        asset.resolve().relative_to(ROOT.resolve())
+                    except ValueError:
+                        return await request.fulfill(status=404)
+                    if asset.is_file():
                         return await request.fulfill(path=str(asset))
                 return await request.fulfill(status=404)
             await page.route('**/*', route)
