@@ -50,6 +50,10 @@ project base version remains 0.3.2. This is a prerelease.
 
 ### Fixed
 
+- Restored Python 3.7 compatibility in the historical motion-matrix trace tool
+  and allowed heavily loaded CI runners more time to schedule the capture-thread
+  test. Neither change affects production capture timing or controller output.
+
 - Native speed and freshness calculations now use the selected camera frame's
   capture timestamp instead of inference-start time. Invalid or non-finite
   landmark geometry is rejected before mapping, while MediaPipe's handedness
