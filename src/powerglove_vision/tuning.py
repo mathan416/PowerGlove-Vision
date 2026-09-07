@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Use tracker geometry validity instead of handedness certainty.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Persist separate player sensitivity and Academy progress.
@@ -444,7 +445,7 @@ class TuningManager:
 
     def observe(self, observation, calibration, config, calibrated, *, frame=None,
                 image_quality=None, performance=None, recognized=None):
-        """Sample each worker frame once, accepting only calibrated high-confidence hands."""
+        """Sample each worker frame once, accepting only calibrated valid hands."""
         with self.lock:
             self._expire()
             if self.calibration is not None and calibration != self.calibration and self.session:
@@ -460,7 +461,7 @@ class TuningManager:
             shape = getattr(frame, "shape", ())
             if len(shape) >= 2 and all(type(value) is int and value > 0 for value in shape[:2]):
                 self.frame_size = (shape[1], shape[0])
-            self.ready = (calibrated and observation.detected and observation.confidence >= .7
+            self.ready = (calibrated and observation.usable
                           and self.image_quality.get("whole_hand_visible", True))
             if self.ready:
                 if self.ready_since is None:
@@ -478,6 +479,7 @@ class TuningManager:
                 self.diagnostics.observe(frame, {
                     "detected": observation.detected,
                     "confidence": observation.confidence,
+                    "confidence_source": observation.confidence_source,
                     "inference_ms": (performance or {}).get("inference_ms"),
                     "sample_age_ms": (performance or {}).get("sample_age_ms"),
                     "hand_luma": self.image_quality.get("hand_luma"),
@@ -486,7 +488,7 @@ class TuningManager:
             if not self.recording:
                 return
             started, samples, duration = self.recording
-            if (calibrated and observation.detected and observation.confidence >= .7
+            if (calibrated and observation.usable
                     and observation.timestamp != self.last_frame and len(samples) < 180
                     and all(math.isfinite(v) for v in self.latest.values())):
                 samples.append(dict(self.latest))

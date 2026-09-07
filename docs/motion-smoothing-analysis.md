@@ -6,10 +6,11 @@ The bounded native motion mode uses completed MediaPipe palm observations and
 separates resting noise from intentional velocity. It measures consecutive
 MediaPipe coordinates using capture timestamps and
 normalizes velocity by the player's directional reach. Calibration noise creates
-a per-axis resting region with hysteresis. Above it, newest-coordinate weight
-rises smoothly from `0.70` to `1.00` at 1.50 calibrated reach spans per second.
-Large travel is therefore direct, while stopping or reversing adopts the newest
-measured coordinate immediately.
+an elliptical X/Y resting region with hysteresis. Above it, one coherent
+two-dimensional newest-coordinate weight rises smoothly from `0.70` to `1.00`
+at 1.50 calibrated reach spans per second. Large travel and meaningful reversals
+are therefore direct. A stop settles inside the measured noise region on its
+first fresh result and exactly on the next, avoiding independent per-axis snaps.
 
 The runtime cap is unconditionally `1.00`. Historical
 `motion_coordinate_boost` and `motion_coordinate_max` fields remain loadable,
@@ -41,6 +42,13 @@ and recognition age when present. The temporary physical clip is not currently
 available on the development Mac, so recorded-clip and synchronized live
 camera-to-display validation remain pending.
 
+The runtime now rejects malformed/non-finite landmark geometry, retains the
+calibration-compatible five-point wrist/knuckle average as the production
+anchor, and exports three alternative anchors for comparison. It clamps the
+selected point to player reach before both Latest and Bounded processing, clears
+history on stale/lost input, and uses the frame capture timestamp rather than
+inference-start time for velocity and freshness.
+
 The gameplay and dot recordings contain aggregate timings and sampled validity;
 they do not retain recognized, flow, selected, and filtered coordinates for each
 individual move. They cannot establish how many camera images or presented game
@@ -55,6 +63,11 @@ necessarily new measurements or different coordinates.
 | Recognition fallback, fast dot movement | 447/589 (75.9%) | 34 |
 | Recognition fallback, actual gameplay | 568/590 (96.3%) | 3 |
 
+A later MediaPipe-only, Dashboard-closed status run measured 96.5% detected
+samples, 65.4 ms median and 76.2 ms p95 source age, 52.2 ms median and 58.3 ms
+p95 inference, 2 ms p95 send work, and about 16 distinct native updates per
+second. This is a software-stage sample, not physical hand-to-display latency.
+
 These were different physical movements, not controlled before/after trials.
 In gameplay, 395/590 polls reported `flow_unavailable`, 61 reported
 `flow_seed_unavailable`, and one reported `correction_budget`. Fallback therefore
@@ -62,6 +75,24 @@ frequently delivered recognition coordinates rather than a newer flow estimate.
 These are sampled frame counts, not distinct recognition-result counts.
 The receiver observed 1,367 distinct valid publications in 30 seconds, not 1,367
 new recognized positions or displayed images.
+
+## Isolated GPU feasibility result
+
+The UNO Q exposes an Adreno 702 OpenGL ES 3.1 renderer. A custom ARM64 MediaPipe
+0.10.18 research wheel initialized EGL and created the TensorFlow Lite GPU
+delegate, proving that the application container can reach the GPU when supplied
+with a compatible runtime. The synchronous Tasks Image graph measured roughly
+664 ms warm p50 on GPU and 207 ms on CPU, compared with roughly 52 ms for the
+deployed MediaPipe Hands graph on live input. Repeated single-write tensor
+synchronization warnings accompanied the GPU run.
+
+No gesture, reach, or smoothing threshold can remove hundreds of milliseconds
+inside the inference graph. The custom wheel and temporary runtime changes were
+removed from the Controller and are not release artifacts. The remaining useful
+experiment is a lean GPU palm-detection/landmark graph that keeps preprocessing
+on the GPU, prewarms once, returns only landmarks, and uses one newest result in
+flight. It must beat the proven CPU path by at least 20% without reducing
+recognition by more than one percentage point or worsening jitter or thermals.
 
 ## Historical smoothing-only experiment
 

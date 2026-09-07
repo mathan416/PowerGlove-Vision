@@ -159,10 +159,12 @@ class AuditRegressionTests(unittest.TestCase):
             def send(self,state): sent.append((self.session,state.sequence)); return True
             def close(self): pass
         count=[0]; requested=[False]
-        def frame(_):
+        def frame(_frame, timestamp=None):
+            if timestamp is None:
+                raise AssertionError("capture timestamp was not forwarded")
             count[0]+=1
             if count[0]>4: raise KeyboardInterrupt
-            return SimpleNamespace(observation=HandObservation(count[0],True,1,.5,.5,.2,index_curl=.8),
+            return SimpleNamespace(observation=HandObservation(timestamp,True,1,.5,.5,.2,index_curl=.8),
                                    frame=SimpleNamespace(shape=(480,640,3)),diagnostics={})
         def request():
             if practice: return None

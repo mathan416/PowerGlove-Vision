@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Made bounded native X/Y coherent, edge-clamped, and noise-aware.
 #   2026-09-07 - Corrected native smoothing cadence and saturated legacy jitter handling.
 #   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
@@ -193,11 +194,33 @@ def _axis(value: float) -> int:
 def _field_axis(position: float, center: float, margin: float,
                 negative_span: float = 0.0, positive_span: float = 0.0) -> int:
     """Map comfortable reach to full range, or use legacy camera boundaries."""
+    return _axis(_field_coordinate(
+        position, center, margin, negative_span, positive_span
+    ))
+
+
+def _field_coordinate(position: float, center: float, margin: float,
+                      negative_span: float = 0.0, positive_span: float = 0.0) -> float:
+    """Map and clamp one camera coordinate to the normalized gameplay field."""
     if negative_span >= 0.05 and positive_span >= 0.05:
-        return _axis((position - center) / (negative_span if position < center else positive_span))
+        return _clamp(
+            (position - center) / (negative_span if position < center else positive_span),
+            -1.0, 1.0,
+        )
     edge = _clamp(margin, 0.0, 0.45)
     span = center - edge if position < center else 1.0 - edge - center
-    return _axis((position - center) / max(0.05, span))
+    return _clamp((position - center) / max(0.05, span), -1.0, 1.0)
+
+
+def _camera_coordinate(field: float, center: float, margin: float,
+                       negative_span: float = 0.0, positive_span: float = 0.0) -> float:
+    """Convert one clamped gameplay coordinate back to camera space."""
+    if negative_span >= 0.05 and positive_span >= 0.05:
+        span = negative_span if field < 0 else positive_span
+    else:
+        edge = _clamp(margin, 0.0, 0.45)
+        span = center - edge if field < 0 else 1.0 - edge - center
+    return center + _clamp(field, -1.0, 1.0) * max(0.05, span)
 
 
 def _circular_delta(value: float, origin: float) -> float:
@@ -362,6 +385,7 @@ class GestureEngine:
         self._motion_anchor_x = self._motion_anchor_y = None
         self._motion_direction_x = self._motion_direction_y = 0
         self._motion_moving_x = self._motion_moving_y = False
+        self._motion_settle_pending = False
 
     @staticmethod
     def _smoothstep(value: float) -> float:
@@ -369,78 +393,100 @@ class GestureEngine:
         value = _clamp(value, 0.0, 1.0)
         return value * value * (3.0 - 2.0 * value)
 
-    def _native_axis(
-        self, axis: str, value: float, dt: float, reference: Calibration
-    ) -> float:
-        """Filter one native axis from raw velocity without prediction or overshoot."""
+    def _native_point(
+        self, x: float, y: float, dt: float, reference: Calibration
+    ) -> tuple[float, float]:
+        """Filter a coherent X/Y point from raw velocity without overshoot."""
         cfg = self.config
-        filtered_name = f"_filtered_palm_{axis}"
-        raw_name = f"_motion_raw_{axis}"
-        anchor_name = f"_motion_anchor_{axis}"
-        moving_name = f"_motion_moving_{axis}"
-        direction_name = f"_motion_direction_{axis}"
-        previous = getattr(self, filtered_name)
-        raw = getattr(self, raw_name)
-        anchor = getattr(self, anchor_name)
-        if previous is None or raw is None or anchor is None:
-            setattr(self, raw_name, value)
-            setattr(self, anchor_name, value)
-            setattr(self, moving_name, False)
-            setattr(self, direction_name, 0)
-            return value
+        previous = (self._filtered_palm_x, self._filtered_palm_y)
+        raw = (self._motion_raw_x, self._motion_raw_y)
+        anchor = (self._motion_anchor_x, self._motion_anchor_y)
+        if any(value is None for value in (*previous, *raw, *anchor)):
+            self._motion_raw_x, self._motion_raw_y = x, y
+            self._motion_anchor_x, self._motion_anchor_y = x, y
+            self._motion_direction_x = self._motion_direction_y = 0.0
+            self._motion_moving_x = self._motion_moving_y = False
+            self._motion_settle_pending = False
+            return x, y
 
-        scale_noise = reference.noise_x if axis == "x" else reference.noise_y
+        scale_noise_x, scale_noise_y = reference.noise_x, reference.noise_y
         # Calibration stores jitter in palm-width units and saturates unusably
         # noisy samples at 1.0. Older/saturated files are valid for centre and
         # scale, but 1.0 is not a useful native-motion noise estimate: using it
         # creates a large dead zone followed by a visible jump.
-        if scale_noise >= 1.0:
-            scale_noise = 0.0
-        noise = max(cfg.motion_noise_floor,
-                    scale_noise * reference.palm_scale * cfg.motion_noise_multiplier)
-        exit_noise = noise * max(1.0, cfg.motion_noise_exit_ratio)
-        delta = value - raw
-        anchor_delta = value - anchor
-        moving = getattr(self, moving_name)
+        if scale_noise_x >= 1.0:
+            scale_noise_x = 0.0
+        if scale_noise_y >= 1.0:
+            scale_noise_y = 0.0
+        noise_x = max(cfg.motion_noise_floor,
+                      scale_noise_x * reference.palm_scale * cfg.motion_noise_multiplier)
+        noise_y = max(cfg.motion_noise_floor,
+                      scale_noise_y * reference.palm_scale * cfg.motion_noise_multiplier)
+        delta_x, delta_y = x - raw[0], y - raw[1]
+        anchor_x, anchor_y = x - anchor[0], y - anchor[1]
+        delta_noise = math.hypot(delta_x / noise_x, delta_y / noise_y)
+        anchor_noise = math.hypot(anchor_x / noise_x, anchor_y / noise_y)
+        moving = self._motion_moving_x or self._motion_moving_y
+        exit_ratio = max(1.0, cfg.motion_noise_exit_ratio)
 
-        if not moving and abs(anchor_delta) <= exit_noise:
-            setattr(self, raw_name, value)
+        self._motion_raw_x, self._motion_raw_y = x, y
+        if not moving and anchor_noise <= exit_ratio:
             return previous
         if not moving:
             moving = True
 
-        direction = 1 if delta > noise else -1 if delta < -noise else 0
-        old_direction = getattr(self, direction_name)
-        reversal = direction and old_direction and direction != old_direction
-        stopped = abs(delta) <= noise
-        if reversal or stopped:
-            # A real stop or reversal must never leave an old catch-up tail.
-            setattr(self, raw_name, value)
-            setattr(self, anchor_name, value)
-            setattr(self, moving_name, not stopped)
-            setattr(self, direction_name, direction)
-            return value
+        reach_x = self._native_axis_reach("x", delta_x, reference)
+        reach_y = self._native_axis_reach("y", delta_y, reference)
+        direction_x, direction_y = delta_x / reach_x, delta_y / reach_y
+        magnitude = math.hypot(direction_x, direction_y)
+        old_x, old_y = self._motion_direction_x, self._motion_direction_y
+        old_magnitude = math.hypot(old_x, old_y)
+        reversal = (
+            delta_noise > 1.0 and magnitude > 0 and old_magnitude > 0
+            and direction_x * old_x + direction_y * old_y < 0
+        )
+        stopped = delta_noise <= 1.0
+        if reversal:
+            self._motion_anchor_x, self._motion_anchor_y = x, y
+            self._motion_direction_x, self._motion_direction_y = direction_x, direction_y
+            self._motion_moving_x = self._motion_moving_y = True
+            self._motion_settle_pending = False
+            return x, y
 
-        reach = self._native_axis_reach(axis, delta, reference)
-        speed = abs(delta) / max(reach * dt, 1e-9)
-        fraction = speed / max(cfg.motion_full_speed, 1e-9)
-        slow = _clamp(cfg.motion_slow_follow, 0.0, 1.0)
-        alpha = slow + (1.0 - slow) * self._smoothstep(fraction)
-        # Preserve approximately the same response per unit of time when frame
-        # cadence varies, using the Controller's MediaPipe cadence as the
-        # reference. A 60 Hz reference made each real 9-10 Hz sample nearly raw.
-        reference_interval = max(1 / 240, cfg.motion_follow_reference_ms / 1000)
-        alpha = 1.0 - (1.0 - alpha) ** (dt / reference_interval)
-        # Compatibility fields may still contain an experimental value above
-        # one. Native output is now always bounded to a real measurement.
-        alpha = min(1.0, max(0.0, alpha))
-        result = previous + alpha * (value - previous)
-        result = _clamp(result, min(previous, value), max(previous, value))
-        setattr(self, raw_name, value)
-        setattr(self, moving_name, True)
-        if direction:
-            setattr(self, direction_name, direction)
-        return result
+        if stopped:
+            error_noise = math.hypot(
+                (x - previous[0]) / noise_x,
+                (y - previous[1]) / noise_y,
+            )
+            if self._motion_settle_pending or error_noise <= 1.0:
+                result = (x, y)
+                self._motion_anchor_x, self._motion_anchor_y = x, y
+                self._motion_direction_x = self._motion_direction_y = 0.0
+                self._motion_moving_x = self._motion_moving_y = False
+                self._motion_settle_pending = False
+                return result
+            # Settle to the edge of measured noise now and finish on the next
+            # fresh result, avoiding the old per-axis raw-coordinate snap.
+            alpha = _clamp(1.0 - 1.0 / error_noise, 0.0, 1.0)
+            self._motion_settle_pending = True
+        else:
+            speed = magnitude / max(dt, 1e-9)
+            fraction = speed / max(cfg.motion_full_speed, 1e-9)
+            slow = _clamp(cfg.motion_slow_follow, 0.0, 1.0)
+            alpha = slow + (1.0 - slow) * self._smoothstep(fraction)
+            reference_interval = max(1 / 240, cfg.motion_follow_reference_ms / 1000)
+            alpha = 1.0 - (1.0 - alpha) ** (dt / reference_interval)
+            alpha = _clamp(alpha, 0.0, 1.0)
+            self._motion_settle_pending = False
+
+        result_x = _clamp(previous[0] + alpha * (x - previous[0]),
+                          min(previous[0], x), max(previous[0], x))
+        result_y = _clamp(previous[1] + alpha * (y - previous[1]),
+                          min(previous[1], y), max(previous[1], y))
+        self._motion_moving_x = self._motion_moving_y = moving
+        if not stopped and magnitude > 0:
+            self._motion_direction_x, self._motion_direction_y = direction_x, direction_y
+        return result_x, result_y
 
     def _native_axis_reach(
         self, axis: str, delta: float, reference: Calibration
@@ -459,10 +505,9 @@ class GestureEngine:
 
     def _collect_calibration(self, observation: HandObservation) -> None:
         """Accumulate valid frames and derive a stable neutral-hand reference."""
-        # Use the same confidence floor as guided tuning. A weakly located hand
-        # must not shift the shared center, scale, wrist, or jitter reference.
-        if (observation.detected and observation.confidence >= 0.70
-                and observation.palm_scale > 0.01):
+        # MediaPipe's exposed score describes handedness, not landmark quality.
+        # Tracker geometry validation supplies its usability decision instead.
+        if observation.usable and observation.palm_scale > 0.01:
             self._samples.append(observation)
         if len(self._samples) < self.calibration_frames:
             return
@@ -621,6 +666,10 @@ class GestureEngine:
             lost_ms = (observation.timestamp - self._last_seen) * 1000
             if (self._last_state is not None and self._last_state.detected
                     and 0 <= lost_ms < self.config.loss_release_ms):
+                # Hold the visible edge coordinate for this brief dropout, but
+                # discard its history so reacquisition begins at the first new
+                # clamped measurement rather than travelling from the held edge.
+                self._reset_native_motion()
                 self._sequence += 1
                 axes = dict(self._last_state.axes)
                 axes["z"] = axes["roll"] = 0
@@ -650,21 +699,44 @@ class GestureEngine:
                 self._sequence, observation.timestamp, self.profile, self.calibrated
             )
         cfg, reference = self.config, self.calibration
+        if (previous_time is not None
+                and observation.timestamp - previous_time
+                > max(.25, cfg.loss_release_ms / 1000)):
+            # The receiver will already have neutralized an interrupted stream.
+            # Do not resume from motion history the game can no longer hold.
+            self._reset_native_motion()
+            previous_time = None
         # Velocity uses consecutive selected coordinates and source timestamps,
         # never the distance from a lagging filtered position.
         dt = (1 / 60 if previous_time is None else
               max(1 / 240, observation.timestamp - previous_time))
-        for name, value in (("_filtered_palm_x", observation.palm_x),
-                            ("_filtered_palm_y", observation.palm_y)):
-            axis = name[-1]
-            if bounded:
-                value = self._native_axis(axis, value, dt, reference)
-            else:
-                setattr(self, f"_motion_raw_{axis}", value)
-                setattr(self, f"_motion_anchor_{axis}", value)
-                setattr(self, f"_motion_moving_{axis}", False)
-                setattr(self, f"_motion_direction_{axis}", 0)
-            setattr(self, name, value)
+        field_x = _field_coordinate(
+            observation.palm_x, reference.palm_x, cfg.coordinate_edge_margin,
+            reference.reach_left, reference.reach_right,
+        )
+        field_y = _field_coordinate(
+            observation.palm_y, reference.palm_y, cfg.coordinate_edge_margin,
+            reference.reach_up, reference.reach_down,
+        )
+        selected_x = _camera_coordinate(
+            field_x, reference.palm_x, cfg.coordinate_edge_margin,
+            reference.reach_left, reference.reach_right,
+        )
+        selected_y = _camera_coordinate(
+            field_y, reference.palm_y, cfg.coordinate_edge_margin,
+            reference.reach_up, reference.reach_down,
+        )
+        if bounded:
+            selected_x, selected_y = self._native_point(
+                selected_x, selected_y, dt, reference
+            )
+        else:
+            self._motion_raw_x, self._motion_raw_y = selected_x, selected_y
+            self._motion_anchor_x, self._motion_anchor_y = selected_x, selected_y
+            self._motion_moving_x = self._motion_moving_y = False
+            self._motion_direction_x = self._motion_direction_y = 0.0
+            self._motion_settle_pending = False
+        self._filtered_palm_x, self._filtered_palm_y = selected_x, selected_y
         self._motion_time = observation.timestamp
         axes = dict(self._last_state.axes)
         axes.update(

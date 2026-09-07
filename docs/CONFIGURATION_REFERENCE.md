@@ -184,6 +184,13 @@ the native X/Y source. The Dashboard selector offers two response modes:
 - **Latest coordinate** (`"native_xy_mode": "latest"`) publishes the newest
   mapped MediaPipe coordinate without coordinate smoothing.
 
+Both modes validate landmark geometry and clamp the selected point to the
+active player's reach rectangle before mapping. Movement beyond an edge stays
+pinned to that edge and cannot build hidden off-screen state. The selected
+frame's capture timestamp drives velocity and freshness; inference-start time
+is not substituted for it. The production anchor remains the five-point average
+of wrist and four knuckles so existing centers and reach spans remain valid.
+
 The selected mode is stored in `data/device.json` and restarts the vision worker.
 It changes continuous native X/Y only. MediaPipe still supplies fingers, depth,
 roll, and gestures; FCEUmm directions and every game mapping are unchanged.
@@ -203,6 +210,8 @@ up to the configured `loss_release_ms` (120 ms by default) to avoid an edge
 departure/re-entry jump. Buttons, fingers, Z, roll, and D-pad state release
 immediately during that hold. Continued loss, stale data, calibration changes,
 or profile changes neutralize native X/Y and clear both response modes' history.
+The first fresh recovered coordinate is authoritative and does not travel
+through the old held position.
 
 ### Measured PowerGlove Vision Controller Kiyo Pro capture candidate
 
@@ -799,7 +808,7 @@ remains untouched.
 
 1. Choose **Set up a new hand**, **A gesture is hard to trigger**, **A gesture happens accidentally**, or **Movement feels off-center**.
 2. Choose the gesture when asked. Off-center movement instead shows the saved center and an explicit **Center hand** action.
-3. Keep the complete hand visible at 70% confidence for one second. Select **I'm ready** and wait through the two-second countdown.
+3. Keep the complete hand visible with valid palm geometry for one second. Select **I'm ready** and wait through the two-second countdown. The displayed MediaPipe score is handedness certainty, not a position-quality requirement.
 4. Follow the three recordings. Ordinary poses and movement steps last two seconds. Glove Zap and Pull Back use a six-second middle step containing three motions and returns.
 5. Analyze the recording and try the temporary preview twice. Return to neutral after each use and remain neutral for three seconds.
 6. Save when the guided test passes. Only selected components are merged into the active player’s hand settings.
@@ -1492,7 +1501,7 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--camera-buffers NUMBER` | `1` | One or two capture buffers; the measured UNO Q Kiyo candidate uses two. |
 | `--kiyo-hdr-off` | Off | Identity-checked volatile Kiyo Pro HDR-off with automatic fixed-rate exposure. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
-| `--inference-threads NUMBER` | `4` | CPU threads requested for each legacy MediaPipe inference calculator. Benchmark before changing. |
+| `--inference-threads NUMBER` | `2` | CPU threads requested for each MediaPipe Hands inference calculator; accepted values are 1, 2, and 4. The Controller supervisor passes its validated setting explicitly. Benchmark before changing. |
 | `--native-xy-mode VALUE` | `bounded` | Native Super Glove Ball response: `bounded` for the speed-sensitive curve or `latest` for direct newest coordinates. |
 | `--motion-tracking` | Ignored | Hidden compatibility spelling retained for old launch scripts; optical flow is archived and this flag does not enable it. |
 | `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
@@ -1574,6 +1583,10 @@ they may still perform their normal work.
 | `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, and optional Tasks model path | Replays the same full frames through MediaPipe Hands at 1, 2, and 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, and preview cost. |
 | `scripts/benchmark-native-motion-curve.py` | Version-2 vision replay JSON, optional lane index, and required new output path | Compares the former overshooting experiment, capped error curve, actual bounded speed curve, and unsmoothed coordinates. Sweeps 27 bounded candidates and reports jitter, lag, medium response, fast pickup, reversals, overshoot, continuity, and available source age without controlling a game. |
 | `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH` and `--seconds 5..30` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership, compares one/two/one V4L2 buffers, performs fixed-frame profiling, keeps images in memory, and prints progress plus the final numeric report to standard output. It does not change camera controls or player settings. |
+| `scripts/benchmark-palm-anchors.py` | Version-2 replay JSON and required new output path | Compares the five-point baseline, four-knuckle centroid, palm-polygon center, and weighted wrist/knuckle center for pose shift, travel retention, continuity, and reacquisition. It reports evidence but does not change the live anchor. |
+| `scripts/benchmark-frame-preprocessing.py` | Camera or clip input and required new output path | Output-paused comparison of mirrored-frame preparation and reusable buffers. It cannot change handedness or preview conventions. |
+| `scripts/benchmark-staggered-trackers.py` | Camera or clip input and required new output path | Isolated two-tracker newest-sequence experiment. It never arms controller output and is not a gameplay backend. |
+| `scripts/benchmark-tasks-live-stream.py` | Camera or clip input, Tasks model, delegate choice, and required new output path | Isolated MediaPipe Tasks live-stream CPU/GPU probe with one result in flight and newest-sequence accounting. GPU support and performance must be demonstrated on the target; this is not a production mode. |
 | `scripts/analyze-motion-trace.py` | Required trace path; optional `--output NEW-PATH` | Reads one finite controller motion trace and reports recognition source age, selected-versus-filtered error, movement-class settling, fallback reasons, and tracking losses. Without `--output`, JSON is printed; an existing output file is never overwritten. |
 | `scripts/compare-motion-matrix.py` | Required directory and `--output NEW-PATH` | Compares `min*-boost*.trace.json` files using the shared analyzer. Use only for windows with the same movement sequence and camera conditions; the output file must not already exist. |
 | `scripts/benchmark-motion-correction.py` | Required `--before PATH` and `--output NEW-PATH`; optional `--after PATH` | Synthetic before/after benchmark for the motion-correction implementation. It uses generated frames and simulated recognition delay, never a camera or game, and cannot establish physical latency. |
@@ -1655,10 +1668,12 @@ Those are implementation details, not extra arguments accepted by the wrapper.
 ### Tuning measurements and interface contract
 
 Each three-second step needs at least twelve accepted measurements. Sampling
-requires a calibrated, detected hand with confidence at least 0.7; duplicate
-frames and non-finite measurements are excluded. Missing or low-confidence
-tracking does not contribute samples. Insufficient samples require retrying the
-step. Changing neutral calibration clears recordings and preview values.
+requires a calibrated, detected hand with finite, non-collapsed palm geometry;
+duplicate frames and non-finite measurements are excluded. Missing or invalid
+tracking does not contribute samples. MediaPipe Hands' score remains labelled
+as handedness certainty rather than being used as position confidence.
+Insufficient samples require retrying the step. Changing neutral calibration
+clears recordings and preview values.
 
 Suggestions use the 95th percentile of the two open/rest recordings and the 10th
 percentile of the performed recording. The gap must be at least 0.08; activation
@@ -2342,15 +2357,18 @@ subtracting independent monotonic clocks.
 ### Bounded native X/Y speed curve
 
 Native Super Glove Ball movement uses consecutive selected coordinates and their
-capture timestamps to measure hand speed in `bounded` mode. The selected
-coordinates come directly from MediaPipe. Speed is normalized by the active
-player's reach calibration. Measured neutral jitter establishes the resting
-noise floor, with a small fixed fallback for older calibrations. Above that
-floor, `motion_slow_follow` rises smoothly to one-to-one response at
-`motion_full_speed`. Stops and reversals immediately adopt the newest real
-coordinate. The weight is always capped at `1.00`, so the filter cannot predict
-or overshoot. Select `latest` to bypass this coordinate damping while retaining
-the same calibration, reach mapping, gesture recognition, and safety behavior.
+capture timestamps to measure hand speed in `bounded` mode. The selected point
+comes directly from validated MediaPipe geometry and is clamped to calibrated
+reach before filtering. Speed is normalized independently by directional X/Y
+reach, then combined into one vector magnitude and one follow weight. Calibrated
+X/Y jitter forms an elliptical resting region with entry/exit hysteresis and a
+small fixed fallback for older calibrations. Above that region,
+`motion_slow_follow` rises smoothly to one-to-one response at
+`motion_full_speed`. A meaningful reversal adopts the newest real coordinate;
+a stop settles inside measured noise immediately and exactly by the next fresh
+result. The weight is always capped at `1.00`, so the filter cannot predict or
+overshoot. Select `latest` to bypass coordinate damping while retaining the
+same validation, edge clamp, calibration, reach mapping, gestures, and safety.
 
 Older configurations containing `motion_coordinate_boost` or
 `motion_coordinate_max` remain loadable. They are retained for historical

@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Report native anchor, confidence source, and inference threads.
 #   2026-09-06 - Added bounded status sampling before camera-to-game latency tuning.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -30,7 +31,8 @@ TIMINGS = (
 CONDITIONS = (
     "active_profile", "vision_profile", "practice_mode", "controller_enabled",
     "controller_context_active", "tracker_backend", "camera_width", "camera_height",
-    "camera_format", "camera_fps", "preview_clients", "version",
+    "camera_format", "camera_fps", "preview_clients", "inference_threads",
+    "tracking_confidence", "palm_anchor", "confidence_source", "version",
 )
 LIMITATIONS = [
     "Status polling observes a subset of inference results, not every camera frame.",

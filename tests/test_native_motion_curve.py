@@ -76,6 +76,15 @@ class NativeMotionCurveTests(unittest.TestCase):
         self.assertEqual(speed["tracking_recoveries"], 1)
         self.assertEqual(speed["recovery_misses"], 0)
 
+    def test_settling_measurement_stops_cleanly_at_tracking_loss(self):
+        document = replay_document()
+        samples = document["lanes"][0]["observation_samples"]
+        samples.insert(30, {"frame": 100, "elapsed": 2.2, "detected": False,
+                            "confidence": 0, "x": None, "y": None, "scale": None})
+        document["lanes"][0]["motion_samples"] = samples
+        report = MODULE.compare(document)
+        self.assertEqual(report["lanes"]["speed_curve"]["overshoot_count"], 0)
+
     def test_old_replay_format_is_rejected(self):
         document = replay_document()
         del document["lanes"][0]["observation_samples"][0]["elapsed"]

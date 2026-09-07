@@ -93,6 +93,44 @@ class NativeMotionTests(unittest.TestCase):
         self.assertNotEqual(state.axes['x'], 0)
         self.assertNotEqual(state.axes['y'], 0)
 
+    def test_latest_coordinate_clamps_before_retaining_filter_state(self):
+        calibration = Calibration(.5, .5, .2, 0, reach_left=.2, reach_right=.1,
+                                  reach_up=.2, reach_down=.2)
+        engine = GestureEngine('super_glove_ball', calibration=calibration)
+        outside = replace(self.pose, palm_x=.9)
+        state = engine.update_native_motion(outside, outside, bounded=False)
+        self.assertEqual(state.axes['x'], 32767)
+        self.assertAlmostEqual(engine._filtered_palm_x, .6)
+        inside = replace(outside, timestamp=10.1, palm_x=.59)
+        state = engine.update_native_motion(inside, inside, bounded=False)
+        self.assertLess(state.axes['x'], 32767)
+        self.assertAlmostEqual(engine._filtered_palm_x, .59)
+
+    def test_stale_motion_history_recovers_at_first_fresh_coordinate(self):
+        self.engine.config = replace(
+            self.engine.config, motion_noise_floor=.0001,
+            motion_slow_follow=.2, motion_full_speed=20,
+        )
+        self.engine.update_native_motion(self.pose, self.pose)
+        moving = replace(self.pose, timestamp=10.1, palm_x=.55)
+        self.engine.update_native_motion(moving, moving)
+        self.assertLess(self.engine._filtered_palm_x, moving.palm_x)
+        recovered = replace(moving, timestamp=10.5, palm_x=.6)
+        self.engine.update_native_motion(recovered, recovered)
+        self.assertEqual(self.engine._filtered_palm_x, recovered.palm_x)
+
+    def test_bounded_diagonal_uses_one_follow_weight(self):
+        self.engine.config = replace(
+            self.engine.config, motion_noise_floor=.0001,
+            motion_slow_follow=.2, motion_full_speed=20,
+        )
+        self.engine.update_native_motion(self.pose, self.pose)
+        target = replace(self.pose, timestamp=10.1, palm_x=.51, palm_y=.52)
+        self.engine.update_native_motion(target, target)
+        x_fraction = (self.engine._filtered_palm_x - .5) / .01
+        y_fraction = (self.engine._filtered_palm_y - .5) / .02
+        self.assertAlmostEqual(x_fraction, y_fraction)
+
     def test_both_native_modes_use_the_same_calibrated_reach(self):
         calibration = Calibration(.5, .5, .2, 0, reach_left=.2, reach_right=.1,
                                   reach_up=.25, reach_down=.15)
@@ -200,10 +238,13 @@ class NativeMotionTests(unittest.TestCase):
         self.assertLess(self.engine._filtered_palm_x, moving.palm_x)
         stopped = replace(moving, timestamp=10.2)
         self.engine.update_native_motion(stopped, stopped)
+        self.assertLessEqual(abs(self.engine._filtered_palm_x - stopped.palm_x), .001000001)
+        settled = replace(stopped, timestamp=10.3)
+        self.engine.update_native_motion(settled, settled)
         self.assertEqual(self.engine._filtered_palm_x, stopped.palm_x)
-        forward = replace(stopped, timestamp=10.3, palm_x=.58)
+        forward = replace(stopped, timestamp=10.4, palm_x=.58)
         self.engine.update_native_motion(forward, forward)
-        reverse = replace(forward, timestamp=10.4, palm_x=.55)
+        reverse = replace(forward, timestamp=10.5, palm_x=.55)
         self.engine.update_native_motion(reverse, reverse)
         self.assertEqual(self.engine._filtered_palm_x, reverse.palm_x)
 
@@ -258,6 +299,18 @@ class NativeMotionTests(unittest.TestCase):
             index = command.index('--native-xy-mode')
             self.assertEqual(command[index + 1], expected)
             self.assertNotIn('--motion-tracking', command)
+            thread_index = command.index('--inference-threads')
+            self.assertEqual(command[thread_index + 1], '2')
+
+    def test_supervisor_validates_inference_thread_setting(self):
+        import runpy
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]
+        worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']
+        for value, expected in ((1, '1'), (2, '2'), (4, '4'), (3, '2'), ('4', '2')):
+            command = worker_command({'inference_threads': value}, Path('/tmp/model'))
+            index = command.index('--inference-threads')
+            self.assertEqual(command[index + 1], expected)
 
     def test_fast_position_does_not_replay_gesture_or_depth_samples(self):
         fist = replace(self.pose, thumb_curl=1, index_curl=1, middle_curl=1, ring_curl=1, pinky_curl=1)
@@ -295,17 +348,24 @@ class NativeMotionTests(unittest.TestCase):
         self.assertTrue(self.engine.update_native_motion(recovered, recovered).detected)
 
     def test_brief_loss_recovery_resumes_from_fresh_latest_coordinate(self):
-        self.engine.update_native_motion(self.pose, self.pose, bounded=False)
-        lost = self.engine.update_native_motion(HandObservation(10.05, False), bounded=False)
-        self.assertTrue(lost.detected)
-        recovered = replace(self.pose, timestamp=10.10, palm_x=.58, palm_y=.46)
-        state = self.engine.update_native_motion(recovered, recovered, bounded=False)
-        self.assertEqual(self.engine._filtered_palm_x, recovered.palm_x)
-        self.assertEqual(self.engine._filtered_palm_y, recovered.palm_y)
-        self.assertEqual(
-            state.axes['x'],
-            self.engine.update_native_motion(recovered, recovered, bounded=False).axes['x'],
-        )
+        for bounded in (False, True):
+            with self.subTest(bounded=bounded):
+                engine = GestureEngine(
+                    'super_glove_ball', calibration=Calibration(.5, .5, .2, 0)
+                )
+                engine.update_native_motion(self.pose, self.pose, bounded=bounded)
+                lost = engine.update_native_motion(
+                    HandObservation(10.05, False), bounded=bounded
+                )
+                self.assertTrue(lost.detected)
+                recovered = replace(self.pose, timestamp=10.10, palm_x=.58, palm_y=.46)
+                state = engine.update_native_motion(recovered, recovered, bounded=bounded)
+                self.assertEqual(engine._filtered_palm_x, recovered.palm_x)
+                self.assertEqual(engine._filtered_palm_y, recovered.palm_y)
+                self.assertEqual(
+                    state.axes['x'],
+                    engine.update_native_motion(recovered, recovered, bounded=bounded).axes['x'],
+                )
 
     def test_delayed_recognition_does_not_rewind_xy_filter(self):
         self.engine.update_native_motion(self.pose, self.pose)

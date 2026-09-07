@@ -40,8 +40,8 @@ implementation.
 | Native wrist rotation and remaining action buttons | Not mapped; deliberately neutral | Roll and action recognition are confirmed in the shared layer and FCEUmm output. These packet fields are outside the Super Glove Ball actions confirmed during the completed game. Vary a field independently before enabling it only if a repeatable game behavior is identified. |
 | Poll timing tolerances | Confirmed for tested sessions | Headless runs sustained ten-byte polling throughout native phases, and live cabinet sessions remained stable. Broader hardware and timing stress coverage remains useful. |
 | Headless X/Y activation and release responsiveness | Confirmed for the exact ROM | All four axes visibly diverged by frame 3; a 3.1% positive-X step also diverged by frame 3. See the [direction-response benchmark](direction-response-benchmark.md). |
-| Cabinet field mapping and stabilization | Implemented; MediaPipe-first physical tuning in progress | Continuous X/Y uses fresh MediaPipe palm observations and per-player asymmetric reach. The Dashboard selects either direct latest coordinates or a bounded speed-sensitive curve that holds measured resting jitter, follows increasingly directly as velocity rises, and immediately accepts stops and reversals without overshoot. Brief loss holds only X/Y for up to 120 ms; actions release immediately and sustained loss neutralizes everything. The optical-flow experiment is archived. FCEUmm D-pad thresholds remain hand-relative and unchanged. |
-| Portable defaults versus neutral calibration | Confirmed in application and installer tests | Full-field mapping, stabilization, and recognition thresholds ship in the release-owned profile baseline. The camera/player-specific neutral reference uses 24 observations at 70% confidence or better and remains private across updates. |
+| Cabinet field mapping and stabilization | Implemented and live-tested; synchronized physical latency remains open | Continuous X/Y uses fresh, geometry-validated MediaPipe palm observations, capture timestamps, per-player asymmetric reach, and an edge clamp. Latest is direct; bounded uses one two-dimensional calibrated-noise response with no prediction or overshoot. Brief loss holds only X/Y for up to 120 ms; actions release immediately and recovery begins at the first fresh coordinate. The optical-flow experiment is archived. FCEUmm D-pad thresholds are unchanged. |
+| Portable defaults versus neutral calibration | Confirmed in application and installer tests | Full-field mapping, stabilization, and recognition thresholds ship in the release-owned profile baseline. The camera/player-specific neutral reference uses 24 geometrically valid observations and remains private across updates; handedness certainty is not treated as position confidence. |
 | Explicit FCEUmm joystick fallback for the same ROM | Confirmed | The ROM enters play using standard Start, requests only the libretro joypad callback, and activates/releases every D-pad direction visibly by frame 3. |
 
 The validated ROM is `Super Glove Ball (USA)` with SHA-256
@@ -89,7 +89,7 @@ The RetroPie receiver owns `/run/powerglove/native-state` and creates it read-on
 for consumers. Format version 1 is a fixed 64-byte little-endian record containing:
 
 - magic, format version, record size, and matching begin/end coherence guards;
-- sample sequence and a RetroPie monotonic timestamp taken at publication, after receiver validation and virtual-gamepad writes;
+- sample sequence and a RetroPie monotonic timestamp taken at publication; for Super Glove Ball the native record is written immediately after receiver validation and before the unrelated virtual-gamepad update;
 - signed normalized X, Y, Z, and roll axes;
 - detected and calibrated flags;
 - four compact finger-flex levels;

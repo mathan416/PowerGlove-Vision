@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Covered landmark validity, palm anchors, and confidence semantics.
 #   2026-09-05 - Covered stable backend identifiers and display names.
 #   2026-09-03 - Covered folded fingers, rotation, API variants, and menu recognition.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -18,7 +19,8 @@ from types import SimpleNamespace
 from powerglove_vision.tracker import (
     TRACKER_BACKEND_LABELS,
     _Point, _camera_curl_points, _curl, _finger_bends,
-    _finger_curls, _finger_curls_from_bends,
+    _finger_curls, _finger_curls_from_bends, _landmarks_valid,
+    _palm_anchor_candidates, _polygon_centroid,
 )
 from powerglove_vision.gesture import GestureEngine
 from powerglove_vision.model import HandObservation
@@ -34,6 +36,38 @@ def pose_points(closed):
 
 
 class TrackerGeometryTests(unittest.TestCase):
+    def test_handedness_certainty_is_not_position_confidence(self):
+        self.assertFalse(HandObservation(1.0, True, confidence=.69).usable)
+        self.assertTrue(HandObservation(
+            1.0, True, confidence=.01, confidence_source="handedness"
+        ).usable)
+        self.assertFalse(HandObservation(
+            1.0, False, confidence=1.0, confidence_source="handedness"
+        ).usable)
+
+    def test_palm_anchor_candidates_translate_without_distortion(self):
+        points = [_Point(index / 100, (index % 5) / 20, 0) for index in range(21)]
+        original = _palm_anchor_candidates(points)
+        moved = _palm_anchor_candidates([
+            _Point(point.x + .2, point.y - .1, point.z) for point in points
+        ])
+        self.assertEqual(set(original), set(moved))
+        for name in original:
+            self.assertAlmostEqual(moved[name][0] - original[name][0], .2)
+            self.assertAlmostEqual(moved[name][1] - original[name][1], -.1)
+
+    def test_polygon_centroid_falls_back_for_degenerate_palm(self):
+        self.assertEqual(_polygon_centroid([(0, 0), (1, 0), (2, 0)]), (1, 0))
+
+    def test_landmark_validation_rejects_missing_and_nonfinite_values(self):
+        valid = [_Point(.2 + index * .01, .3 + (index % 4) * .01, 0)
+                 for index in range(21)]
+        self.assertTrue(_landmarks_valid(valid))
+        self.assertFalse(_landmarks_valid(valid[:-1]))
+        self.assertFalse(_landmarks_valid([_Point(.5, .5, 0) for _ in range(21)]))
+        valid[3].x = float("nan")
+        self.assertFalse(_landmarks_valid(valid))
+
     def test_backend_identifiers_have_clear_display_names(self):
         self.assertEqual(TRACKER_BACKEND_LABELS, {
             "legacy": "MediaPipe Hands",

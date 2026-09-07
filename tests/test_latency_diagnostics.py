@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Cover receiver-to-native publication timing.
 #   2026-09-06 - Cover drops, clock separation, session reuse, and video timing brackets.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -90,6 +91,7 @@ class DiagnosticTests(unittest.TestCase):
         receiver = dict(format='powerglove-diagnostic/1', role='receiver', dropped=0, events=[
             dict(event='receive', session=s, sequence=1, received_ns=900000000, validated_ns=900000100,
                  publication_start_ns=900000200, end_ns=900000400, published_ns=900000250+i,
+                 native_start_ns=900000210, native_end_ns=900000260,
                  guard=2+i*2) for i,s in enumerate(('a','b'))])
         core = [dict(valid=1, sequence=1, guard=2, published_ns=900000250, consumed_ns=t)
                 for t in (901000250, 902000250)]
@@ -98,6 +100,10 @@ class DiagnosticTests(unittest.TestCase):
         self.assertIsNone(report['network_transit_ms'])
         self.assertAlmostEqual(report['timings_ms']['capture_read_to_send']['p50'], .00018)
         self.assertAlmostEqual(report['timings_ms']['processing_to_send_start']['p50'], .00003)
+        self.assertAlmostEqual(
+            report['timings_ms']['receiver_to_native_publication']['p50'], .00026
+        )
+        self.assertAlmostEqual(report['timings_ms']['native_write']['p50'], .00005)
         self.assertEqual(report['publications_without_observed_consumption'], 1)
         timing = report['timings_ms']['publication_record_to_first_core_consumption']
         self.assertEqual(timing['samples'], 1)

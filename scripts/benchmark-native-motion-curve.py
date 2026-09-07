@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Accept bounded stops that settle within the calibrated noise floor.
 #   2026-09-07 - Added four-lane speed-curve comparison and candidate sweep.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -24,7 +25,10 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from powerglove_vision.gesture import GestureConfig, GestureEngine  # noqa: E402
+from powerglove_vision.gesture import (  # noqa: E402
+    GestureConfig, GestureEngine, _camera_coordinate, _field_coordinate,
+    load_calibration,
+)
 from powerglove_vision.model import Calibration, HandObservation  # noqa: E402
 
 
@@ -40,7 +44,9 @@ def calibration_from(samples, cues):
     """Derive the same neutral center, scale, and p95 jitter used by gameplay."""
     neutral = next((cue for cue in cues if cue["label"] == "neutral_near"), None)
     rows = [row for row in samples if row.get("detected", True)
-            and row.get("confidence", .95) >= .70 and neutral
+            and neutral
+            and all(math.isfinite(row.get(name, float("nan")))
+                    for name in ("x", "y", "scale"))
             and neutral["start"] <= row["elapsed"] < neutral["end"]]
     if len(rows) < 3:
         raise ValueError("The replay needs at least three detected neutral_near observations")
@@ -100,13 +106,36 @@ def speed_curve(samples, calibration, config):
     return output
 
 
+def clamped_samples(samples, calibration, config):
+    """Apply the same calibrated reach rectangle used before both live modes."""
+    rows = []
+    for source in samples:
+        row = dict(source)
+        if (row.get("detected", True) and row.get("x") is not None
+                and row.get("y") is not None):
+            for axis, negative, positive in (
+                ("x", calibration.reach_left, calibration.reach_right),
+                ("y", calibration.reach_up, calibration.reach_down),
+            ):
+                center = calibration.palm_x if axis == "x" else calibration.palm_y
+                field = _field_coordinate(
+                    row[axis], center, config.coordinate_edge_margin, negative, positive
+                )
+                row[axis] = _camera_coordinate(
+                    field, center, config.coordinate_edge_margin, negative, positive
+                )
+        rows.append(row)
+    return rows
+
+
 def cue_for(elapsed, cues):
     """Return the label covering one replay timestamp."""
     return next((cue["label"] for cue in cues
                  if cue["start"] <= elapsed < cue["end"]), None)
 
 
-def metrics(samples, outputs, cues, continuity=None, source_age=None):
+def metrics(samples, outputs, cues, calibration, config,
+            continuity=None, source_age=None):
     """Summarize jitter, tracking, lag, stops, reversals, and overshoot."""
     tagged = [(row, point, cue_for(row["elapsed"], cues))
               for row, point in zip(samples, outputs)
@@ -126,36 +155,72 @@ def metrics(samples, outputs, cues, continuity=None, source_age=None):
     medium_settling = []
     stop_events = 0
     stop_misses = 0
-    previous_raw_distance = 0.0
-    previous_delta = [0, 0]
+    previous_direction = (0.0, 0.0)
     tracking_recoveries = 0
     recovery_misses = 0
+    stale_recoveries = 0
+    stale_recovery_misses = 0
     for index in range(1, len(samples)):
+        stale_gap = samples[index]["elapsed"] - samples[index - 1]["elapsed"] > .25
         current_valid = samples[index].get("detected", True) and outputs[index] is not None
         previous_valid = (samples[index - 1].get("detected", True)
                           and outputs[index - 1] is not None)
         if not current_valid:
-            previous_raw_distance = 0.0
-            previous_delta = [0, 0]
+            previous_direction = (0.0, 0.0)
             continue
         if not previous_valid:
             tracking_recoveries += 1
             if math.hypot(outputs[index][0] - samples[index]["x"],
                           outputs[index][1] - samples[index]["y"]) > 1e-9:
                 recovery_misses += 1
-            previous_raw_distance = 0.0
-            previous_delta = [0, 0]
+            previous_direction = (0.0, 0.0)
             continue
-        raw_distance = math.hypot(
-            samples[index]["x"] - samples[index - 1]["x"],
-            samples[index]["y"] - samples[index - 1]["y"],
-        )
-        if raw_distance <= .003 and previous_raw_distance > .003:
-            stop_events += 1
+        if stale_gap:
+            # Gameplay discards bounded-curve history after the receiver's
+            # release interval, so the first new sample is a recovery rather
+            # than a motion reversal or stop.
+            stale_recoveries += 1
             if math.hypot(outputs[index][0] - samples[index]["x"],
                           outputs[index][1] - samples[index]["y"]) > 1e-9:
+                stale_recovery_misses += 1
+            previous_direction = (0.0, 0.0)
+            continue
+        delta_x = samples[index]["x"] - samples[index - 1]["x"]
+        delta_y = samples[index]["y"] - samples[index - 1]["y"]
+        raw_distance = math.hypot(delta_x, delta_y)
+        scale_noise_x = 0.0 if calibration.noise_x >= 1.0 else calibration.noise_x
+        scale_noise_y = 0.0 if calibration.noise_y >= 1.0 else calibration.noise_y
+        noise_x = max(config.motion_noise_floor,
+                      scale_noise_x * calibration.palm_scale * config.motion_noise_multiplier)
+        noise_y = max(config.motion_noise_floor,
+                      scale_noise_y * calibration.palm_scale * config.motion_noise_multiplier)
+        delta_noise = math.hypot(delta_x / noise_x, delta_y / noise_y)
+        reach_x = (calibration.reach_right if delta_x >= 0 else calibration.reach_left) or (
+            1.0 - config.coordinate_edge_margin - calibration.palm_x
+            if delta_x >= 0 else calibration.palm_x - config.coordinate_edge_margin
+        )
+        reach_y = (calibration.reach_down if delta_y >= 0 else calibration.reach_up) or (
+            1.0 - config.coordinate_edge_margin - calibration.palm_y
+            if delta_y >= 0 else calibration.palm_y - config.coordinate_edge_margin
+        )
+        direction = (delta_x / max(.05, reach_x), delta_y / max(.05, reach_y))
+        direction_length = math.hypot(*direction)
+        previous_length = math.hypot(*previous_direction)
+        stopped = delta_noise <= 1.0
+        reversal = (not stopped and direction_length > 0 and previous_length > 0
+                    and direction[0] * previous_direction[0]
+                    + direction[1] * previous_direction[1] < 0)
+        dt = max(1 / 240, samples[index]["elapsed"] - samples[index - 1]["elapsed"])
+        speed = direction_length / dt
+        if stopped and previous_length > 0:
+            stop_events += 1
+            output_noise = math.hypot(
+                (outputs[index][0] - samples[index]["x"]) / noise_x,
+                (outputs[index][1] - samples[index]["y"]) / noise_y,
+            )
+            if output_noise > 1.000001:
                 stop_misses += 1
-        if raw_distance >= .04:
+        if not stopped and speed >= config.motion_full_speed:
             large_changes += 1
             if math.hypot(outputs[index][0] - samples[index]["x"],
                           outputs[index][1] - samples[index]["y"]) > 1e-9:
@@ -164,6 +229,11 @@ def metrics(samples, outputs, cues, continuity=None, source_age=None):
             target = (samples[index]["x"], samples[index]["y"])
             settled = None
             for later in range(index, len(samples)):
+                if (not samples[later].get("detected", True)
+                        or outputs[later] is None
+                        or samples[later].get("x") is None
+                        or samples[later].get("y") is None):
+                    break
                 selected = (samples[later]["x"], samples[later]["y"])
                 if math.hypot(selected[0] - target[0], selected[1] - target[1]) > raw_distance * .25:
                     break
@@ -173,23 +243,17 @@ def metrics(samples, outputs, cues, continuity=None, source_age=None):
                     break
             if settled is not None:
                 medium_settling.append(settled)
+        if reversal:
+            reversals += 1
+            if math.hypot(outputs[index][0] - samples[index]["x"],
+                          outputs[index][1] - samples[index]["y"]) > 1e-9:
+                reversal_misses += 1
         for axis in (0, 1):
-            raw_old = samples[index - 1]["x" if axis == 0 else "y"]
             raw = samples[index]["x" if axis == 0 else "y"]
-            delta = raw - raw_old
             low, high = sorted((outputs[index - 1][axis], raw))
             if outputs[index][axis] < low - 1e-12 or outputs[index][axis] > high + 1e-12:
                 overshoot += 1
-            sign = 1 if delta > .003 else -1 if delta < -.003 else 0
-            if sign and previous_delta[axis] and sign != previous_delta[axis]:
-                reversals += 1
-                if abs(outputs[index][axis] - raw) > 1e-9:
-                    reversal_misses += 1
-            if sign:
-                previous_delta[axis] = sign
-            else:
-                previous_delta[axis] = 0
-        previous_raw_distance = raw_distance
+        previous_direction = (0.0, 0.0) if stopped else direction
     spans = {}
     for label in ("slow_xy", "fast_xy"):
         rows = [(row, point) for row, point, cue in tagged if cue == label]
@@ -211,6 +275,8 @@ def metrics(samples, outputs, cues, continuity=None, source_age=None):
         "stop_misses": stop_misses,
         "tracking_recoveries": tracking_recoveries,
         "recovery_misses": recovery_misses,
+        "stale_recoveries": stale_recoveries,
+        "stale_recovery_misses": stale_recovery_misses,
         "medium_time_to_90_percent_ms": {
             "samples": len(medium_settling),
             "median": percentile(medium_settling, .5),
@@ -222,7 +288,7 @@ def metrics(samples, outputs, cues, continuity=None, source_age=None):
     }
 
 
-def compare(document, lane_index=0):
+def compare(document, lane_index=0, calibration=None):
     """Create four reference lanes and a deterministic bounded-curve sweep."""
     lanes = document.get("lanes", [])
     if not lanes or not 0 <= lane_index < len(lanes):
@@ -232,7 +298,8 @@ def compare(document, lane_index=0):
     cues = document.get("cues", [])
     if not samples or "elapsed" not in samples[0] or not cues:
         raise ValueError("Run benchmark-vision-replay.py version 2 before this comparison")
-    calibration = calibration_from(samples, cues)
+    calibration = calibration or calibration_from(samples, cues)
+    samples = clamped_samples(samples, calibration, GestureConfig())
     continuity = lane.get("detection_continuity_percent")
     source_age = lane.get("recognition_source_age_ms")
     configs = {
@@ -242,7 +309,9 @@ def compare(document, lane_index=0):
         "latest_coordinate": [((row["x"], row["y"])
                                if row.get("detected", True) else None) for row in samples],
     }
-    result_lanes = {name: metrics(samples, values, cues, continuity, source_age)
+    default_config = GestureConfig()
+    result_lanes = {name: metrics(samples, values, cues, calibration, default_config,
+                                  continuity, source_age)
                     for name, values in configs.items()}
     candidates = []
     capped_jitter = result_lanes["error_curve_capped"]["neutral_jitter_span"]
@@ -252,7 +321,7 @@ def compare(document, lane_index=0):
                 config = replace(GestureConfig(), motion_noise_multiplier=noise,
                                  motion_slow_follow=slow, motion_full_speed=full)
                 values = metrics(samples, speed_curve(samples, calibration, config), cues,
-                                 continuity, source_age)
+                                 calibration, config, continuity, source_age)
                 slow_fraction = values["movement_span"]["slow_xy"]["retained_fraction"]
                 medium_p95 = values["medium_time_to_90_percent_ms"]["p95"]
                 accepted = (
@@ -260,6 +329,7 @@ def compare(document, lane_index=0):
                     and values["reversal_misses"] == 0
                     and values["stop_events"] > 0 and values["stop_misses"] == 0
                     and values["recovery_misses"] == 0
+                    and values["stale_recovery_misses"] == 0
                     and values["large_first_sample_misses"] == 0
                     and medium_p95 is not None and medium_p95 <= 150
                     and values["neutral_jitter_span"]["x"] <= capped_jitter["x"] + 1e-12
@@ -295,9 +365,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("replay", type=Path)
     parser.add_argument("--lane", type=int, default=0)
+    parser.add_argument("--calibration", type=Path,
+                        help="Active versioned calibration containing center, reach, and jitter")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    report = compare(json.loads(args.replay.read_text()), args.lane)
+    calibration = load_calibration(args.calibration) if args.calibration else None
+    if args.calibration and calibration is None:
+        parser.error("Calibration is missing or invalid")
+    report = compare(json.loads(args.replay.read_text()), args.lane, calibration)
     with args.output.open("x") as stream:
         json.dump(report, stream, indent=2)
         stream.write("\n")

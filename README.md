@@ -150,10 +150,12 @@ matrix firmware.
 The tested shared baseline includes responsive `0.28` activation and `0.14`
 release thresholds, calibrated native X/Y reach with an 8% edge margin, and two
 MediaPipe coordinate-response modes. **Latest coordinate** sends each newest
-measured palm position directly. **Bounded speed curve** holds measured resting
-jitter, follows medium movement progressively faster, and sends large movement,
-stops, and reversals without prediction or overshoot. Both modes use MediaPipe
-Hands as the authoritative source for palm landmarks, finger curls, and gestures.
+valid, reach-clamped palm position directly. **Bounded speed curve** uses one
+two-dimensional, calibrated-noise response to hold measured resting jitter,
+follow medium movement progressively faster, and handle large movement, stops,
+and reversals without prediction or overshoot. Both modes use the selected
+camera frame's capture time and MediaPipe Hands as the authoritative source for
+palm landmarks, finger curls, and gestures.
 The earlier optical-flow experiment is archived in the source tree for research
 and is no longer a live movement option. These are suitable starting values for
 every installation. A neutral calibration is different: it records
@@ -183,7 +185,10 @@ all FCEUmm profiles and automatically rise above measured resting-hand jitter;
 you do not normally calibrate each direction. Some profiles replace ordinary hand movement
 with wrist steering or other controls, as shown below.
 
-Calibration accepts 24 clear hand observations at 70% confidence or better.
+Calibration accepts 24 geometrically valid hand observations. MediaPipe Hands'
+reported score identifies handedness certainty, not landmark or position
+confidence, so it is shown diagnostically but is not used as a false quality
+gate. The whole hand must still be detected with usable palm geometry.
 Holding the same neutral pose at the same distance should reproduce a very
 similar reference, but ordinary tracking variation means the saved numbers will
 not be identical. A completed calibration is saved atomically and reused across
@@ -275,6 +280,12 @@ disabled during normal play. Historical trace tools can compare recognized,
 optical-flow, selected, and filtered coordinates without recording video; the
 current live path reports MediaPipe coordinates and the chosen response mode.
 Physical hand-to-screen latency still requires synchronized recording.
+
+The production Controller continues to run the proven CPU MediaPipe Hands path
+with two explicitly selected inference threads. An isolated Adreno GPU probe
+successfully created a delegate but the first MediaPipe Tasks graph was much
+slower than production, so no GPU wheel or runtime change ships in this
+candidate. A lean, output-paused GPU palm/landmark experiment remains research.
 
 ## Use the web interface
 

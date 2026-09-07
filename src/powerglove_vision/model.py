@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Distinguished validated MediaPipe landmarks from handedness certainty.
 #   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
 #   2026-09-05 - Included neutral native hand-pose states in released samples.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -38,6 +39,7 @@ class HandObservation:
     middle_curl: float = 0.0
     ring_curl: float = 0.0
     pinky_curl: float = 0.0
+    confidence_source: str = "generic"
 
     @property
     def fingers(self) -> dict[str, float]:
@@ -49,6 +51,13 @@ class HandObservation:
             "ring": self.ring_curl,
             "pinky": self.pinky_curl,
         }
+
+    @property
+    def usable(self) -> bool:
+        """Accept validated MediaPipe landmarks without misusing handedness certainty."""
+        return self.detected and (
+            self.confidence_source == "handedness" or self.confidence >= 0.70
+        )
 
 
 @dataclass

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Use validated landmark usability in the archived flow experiment.
 #   2026-09-07 - Drew the experimental flow marker in full preview coordinates.
 #   2026-09-07 - Bound source-to-current correction and overlap recognition dispatch.
 #   2026-09-06 - Add experimental bounded palm optical flow and asynchronous recognition.
@@ -182,7 +183,7 @@ class MotionTracker:
                 source_age_ms = (self.clock() - source.timestamp) * 1000
                 history = list(self.history)
                 origin = next((i for i, (at, _) in enumerate(history) if at == source.timestamp), None)
-                if not source.detected or source.confidence < .70:
+                if not source.usable:
                     failure = "recognition_invalid"
                 elif not 0 <= self.clock() - source.timestamp <= self.max_age:
                     failure = "recognition_stale"

@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Use capture timestamps and throttle derived performance summaries.
 #   2026-09-07 - Made MediaPipe plus the bounded curve the default native X/Y path.
 #   2026-09-06 - Support measured opt-in Kiyo Pro capture controls and buffer count.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
@@ -53,7 +54,7 @@ from .model import ControllerState
 from .profile_control import ActiveGameLease, ProfileCommandServer, ProfileRequest, read_token
 from .realtime import LatestFrameCapture, LatestPreviewEncoder, RollingPerformance
 from .runtime_assets import ensure_hand_landmarker_model
-from .tracker import MediaPipeTracker, log_startup_stage
+from .tracker import PALM_ANCHOR, MediaPipeTracker, log_startup_stage
 from .transport import UdpSender
 
 
@@ -139,7 +140,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="requested V4L2 pixel format for controlled capture benchmarks",
     )
     parser.add_argument(
-        "--inference-threads", type=int, default=2,
+        "--inference-threads", type=int, choices=(1, 2, 4), default=2,
         help="CPU threads for the legacy MediaPipe inference calculators",
     )
     parser.add_argument(
@@ -433,6 +434,8 @@ def main() -> int:
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
     preview_encoder = LatestPreviewEncoder(shared.update_frame)
     performance = RollingPerformance()
+    performance_snapshot = {}
+    performance_snapshot_at = 0.0
     last_motion_mode = None
     server = start_debug_server(shared, args.web_host, args.web_port)
     capture = tracker = engine = cv2 = None
@@ -698,10 +701,12 @@ def main() -> int:
             native_xy_active = _native_xy_active(
                 engine, practice_mode, tuning_active, needs_center
             )
-            result = tracker.process(frame)
+            result = tracker.process(frame, captured_frame.captured_at)
             motion_mode = getattr(result, "motion_only", False)
             if motion_mode != last_motion_mode:
                 performance = RollingPerformance()
+                performance_snapshot = {}
+                performance_snapshot_at = 0.0
                 latest_diagnostics = {}
                 inference_interval_ms = None
                 last_controller_signature = None
@@ -817,6 +822,10 @@ def main() -> int:
             status["sample_age_ms"] = round(sample_age_ms, 1)
             status["tracker_backend"] = tracker.backend
             status["tracker_backend_label"] = tracker.backend_label
+            status["confidence_source"] = result.observation.confidence_source
+            status["inference_threads"] = args.inference_threads
+            status["tracking_confidence"] = tracker.tracking_confidence
+            status["palm_anchor"] = PALM_ANCHOR
             status.update(capture.metadata)
             status["capture_sequence"] = captured_frame.sequence
             status["capture_age_ms"] = round(capture_age_ms, 1)
@@ -830,7 +839,10 @@ def main() -> int:
             status["inference_hz"] = (
                 None if not inference_interval_ms else round(1000.0 / inference_interval_ms, 1)
             )
-            status["performance"] = performance.snapshot()
+            if sent_at >= performance_snapshot_at:
+                performance_snapshot = performance.snapshot()
+                performance_snapshot_at = sent_at + 0.5
+            status["performance"] = performance_snapshot
             status.update(preview_encoder.metrics())
             status["calibration_save_error"] = calibration_save_error
             status["calibration_retained"] = retained_calibration is not None

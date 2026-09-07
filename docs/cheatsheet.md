@@ -567,8 +567,9 @@ Calibration records your resting hand position, apparent size, and wrist angle
 in the PowerGlove Vision Controller's `data/calibration.json`. It survives profile changes, Learn
 sessions, and restarts. Include it in private backups. Recalibrate when your
 physical setup changes or the resting hand position produces unwanted movement.
-The app uses 24 clear observations at 70% confidence or better. Returning to the
-same center, distance, and wrist pose produces a similar reference, although
+The app uses 24 geometrically valid observations. MediaPipe's displayed score
+describes handedness certainty, not position confidence, so it is not used as a
+false calibration-quality gate. Returning to the same center, distance, and wrist pose produces a similar reference, although
 normal camera variation means the saved values will not be exactly equal.
 Installers preserve this private reference while replacing the shared tested
 recognition baseline in `config/profiles.json`.
