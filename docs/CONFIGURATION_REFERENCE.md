@@ -177,17 +177,31 @@ The fast path is active only for calibrated Super Glove Ball, outside practice
 and tuning. Other profiles, initial centering, and Academy use normal synchronous
 recognition. A single background worker recognizes fingers while optical flow
 tracks textured palm features on fresh camera frames. Delayed recognition is
-propagated through a bounded in-memory frame history before correcting X/Y.
+corrected from their retained source image to the current image in one checked
+optical-flow step. Flow uses images at most 320 pixels wide; recognition still
+receives the original camera image. The next recognition job starts before
+correction. Correction exceeding 25 ms is discarded rather than publishing it;
+one OpenCV call can exceed that budget, so it is not a hard execution deadline.
 Motion alone cannot advance gesture holds, depth confirmation, or calibration.
-Tracking failure, insufficient palm texture, inference failure, or gesture data
-older than 250 ms releases native controls immediately. A new valid recognition
-is required to resume. Depth and finger poses remain at the recognition cadence.
+Failed flow, missing correction history, insufficient palm texture, or an exceeded
+correction budget falls back directly to the latest fresh, confident recognized
+position and clears incompatible flow state. No intermediate path is synthesized.
+The original recognition timestamp still bounds this fallback: undetected or
+low-confidence recognition, inference failure, or source data older than 250 ms
+releases native controls. A new valid recognition is required to resume. Depth and finger poses remain at the recognition cadence.
 
 Worker status includes `motion_tracking`, `motion_valid`, `gesture_age_ms`,
 `recognition_inference_ms`, and `recognition_error`. In this mode the existing
 `inference_ms` timing measures the foreground motion/update loop, **not** the
 background neural-network inference. Its camera-read-to-send value describes
 fresh X/Y delivery; it does not measure gesture latency or hand-to-screen delay.
+
+Additional experimental diagnostics include `motion_failure`, `motion_flow_width`,
+`motion_fallback_reason`, `motion_correction_ms`, `motion_correction_steps`,
+`recognition_pickup_ms`, and
+`recognition_source_age_ms`. Completion-only timing fields are null on frames
+without a completed recognition result. The 250 ms source freshness limit remains
+unchanged. The path is still opt-in and needs live hand/display validation.
 Compare actual hand/display video, source gesture age, update cadence, neutral
 jitter, reversals, and tracking recovery before promoting this mode. No faster
 frame rate or lower end-to-end latency is claimed until measured on the Controller.
@@ -1193,6 +1207,15 @@ only the affected service or application, and test packet delivery before
 changing controller mappings.
 
 ## Local hostname resolution inside App Lab
+
+UNO host setup limits Avahi to detected physical network interfaces, excluding
+Docker bridges and virtual Ethernet devices. On the test cabinet this prevented
+the conflict rename to `ArduIain-2.local` seen during app restarts, and restored
+automatic game-profile heartbeat delivery. The helper
+`sudo python3 scripts/configure-uno-q-avahi.py` preserves the original config as
+`/etc/avahi/avahi-daemon.conf.powerglove-backup`; restart `avahi-daemon` after
+running it manually. Rerun it if replacing a USB Ethernet adapter changes the
+interface name. It does not change your hostname, addresses, or network links.
 
 If the console name fails, use **Check console address** in Connection, then follow
 [hostname troubleshooting](CONFIGURATION_REFERENCE.md#faq-what-if-the-console-name-cannot-be-resolved).
@@ -2288,3 +2311,21 @@ reviewed timing before measuring annotated events. All raw traces, recordings,
 and position annotations remain temporary and local. Public status still samples
 inference; the new trace joins never estimate cross-host network delay by
 subtracting independent monotonic clocks.
+
+### Experimental X/Y medium-jump trial
+
+The recognition configuration accepts `motion_coordinate_boost` (default null).
+When set, it overrides `coordinate_motion_boost` only in the experimental native
+X/Y update. The UNO trial uses 8.0 instead of the baseline 4.0. With smoothing
+minimum .70 and maximum 1.00, changes roughly .0375 camera units away from the
+filtered axis pass through immediately, compared with .075 at baseline. This
+reduces damping for medium changes while retaining damping near rest. It is not
+prediction and does not remove capture or recognition delay. Remove the override
+to restore the baseline. See [offline analysis](motion-smoothing-analysis.md).
+
+`motion_coordinate_max` is an experimental native-X/Y-only cap. The normal
+maximum is 1.00; values above 1.00 intentionally extrapolate past the newest
+recognized position and can overshoot on stops or reversals. The current test
+experiment uses `1.30` with boost `15.0` and minimum smoothing `0.70`. It does
+not change recognition freshness, flow, transport, or the synchronous path used
+by other games. Remove it to restore the 1.00 cap.

@@ -201,7 +201,16 @@ class PlayerSettings:
         item = data["players"][data["active"]]
         if action in ("create", "select", "delete", "restore"):
             data["calibration_restore"] = None
-        if action == "progress":
+        if action == "joystick_deadzone":
+            value = request.get("value")
+            if type(value) not in (int, float) or not 0.14 <= value <= 1.0:
+                raise ValueError("Choose a joystick dead zone between 0.14 and 1.00.")
+            item["thresholds"].update(self.validate({
+                direction: {"on": value, "off": value / 2}
+                for direction in ("left", "right", "up", "down")
+            }))
+            data["generation"] += 1
+        elif action == "progress":
             incoming = progress(request.get("progress"))
             incoming["completed"] = sorted(set(item["progress"]["completed"]) | set(incoming["completed"]))
             item["progress"] = incoming

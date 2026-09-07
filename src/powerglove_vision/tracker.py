@@ -80,6 +80,7 @@ class TrackingResult:
     palm_points: list = field(default_factory=list)
     motion_only: bool = False
     gesture_observation: HandObservation | None = None
+    motion_trace: dict = field(default_factory=dict)
 
 
 @dataclass

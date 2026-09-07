@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Bound source-to-current correction and overlap recognition dispatch.
 #   2026-09-06 - Add experimental bounded palm optical flow and asynchronous recognition.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -89,13 +90,16 @@ class PalmFlow:
 class MotionTracker:
     """Own one recognition worker and a short, in-memory motion correction history."""
 
-    def __init__(self, tracker, max_age=.250, clock=time.monotonic):
+    def __init__(self, tracker, max_age=.250, clock=time.monotonic,
+                 flow_width=320, correction_budget=.025):
         self.tracker = tracker
         self.cv2 = tracker.cv2
         self.backend = tracker.backend
         self.backend_label = tracker.backend_label
         self.preview_enabled = self.diagnostics_enabled = True
         self.max_age, self.clock = max_age, clock
+        self.flow_width = flow_width
+        self.correction_budget = correction_budget
         self.worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hand-recognition")
         self.pending = None
         self.history = deque(maxlen=32)
@@ -111,7 +115,8 @@ class MotionTracker:
         self.tracker.preview_enabled = False
         self.tracker.diagnostics_enabled = True
         result = self.tracker.process(frame, timestamp=timestamp)
-        return result, (self.clock() - started) * 1000
+        finished = self.clock()
+        return result, (finished - started) * 1000, finished
 
     def _reset(self):
         """Discard corrections and motion when changing processing mode."""
@@ -137,47 +142,92 @@ class MotionTracker:
         self.active = True
         display = self.cv2.flip(frame, 1) if self.tracker.mirror else frame.copy()
         gray = self.cv2.cvtColor(display, self.cv2.COLOR_BGR2GRAY)
+        # Flow coordinates remain normalized; recognition still sees the original
+        # camera pixels. Bound pyramid work and history memory independently of capture.
+        h, w = gray.shape
+        if w > self.flow_width:
+            gray = self.cv2.resize(gray, (self.flow_width, max(1, round(h*self.flow_width/w))),
+                                   interpolation=self.cv2.INTER_AREA)
         self.history.append((timestamp, gray))
         while self.history and timestamp - self.history[0][0] > self.max_age:
             self.history.popleft()
-        position = self.flow.advance(gray) if self.anchor is not None else None
-        if self.anchor is not None and position is None:
-            # Keep the freshest valid recognition when the image has too little
-            # texture for optical flow; a flow miss is not hand loss.
-            position = (self.anchor.palm_x, self.anchor.palm_y)
         gesture = None
-        if self.pending is not None and self.pending.done():
+        result = None
+        completed = self.pending is not None and self.pending.done()
+        pickup_ms = correction_ms = source_age_ms = None
+        correction_steps = 0
+        failure = None
+        fallback = None
+        if completed:
             try:
-                result, self.inference_ms = self.pending.result()
+                result, self.inference_ms, finished = self.pending.result()
+                pickup_ms = max(0.0, (self.clock() - finished) * 1000)
                 self.error = None
             except Exception as exc:
-                result = None
                 self.error = type(exc).__name__
+                failure = "recognition_error"
             self.pending = None
-            self.anchor = None
-            position = None
-            if result is not None:
-                source = result.observation
-                history = list(self.history)
-                origin = next((i for i, (at, _) in enumerate(history) if at == source.timestamp), None)
-                if (origin is not None and self.clock() - source.timestamp <= self.max_age
-                        and source.confidence >= .70):
-                    # A valid recognition result remains authoritative even if
-                    # palm flow cannot seed on a textureless hand.
-                    position = (source.palm_x, source.palm_y)
-                    tracked = self.flow.seed(history[origin][1], source, result.palm_points)
-                    if tracked:
-                        for _, subsequent in history[origin + 1:]:
-                            position = self.flow.advance(subsequent)
-                            if position is None:
-                                break
-                    if position is not None:
-                        self.anchor = source
-                        gesture = source
+        # Start recognition on this fresh frame before correction. Otherwise the
+        # replay cost ages the next job's source before inference even begins.
         if self.pending is None:
             self.pending = self.worker.submit(self._recognize, frame.copy(), timestamp)
+        position = None
+        flow_position = None
+        if completed:
+            correction_started = self.clock()
+            self.anchor = None
+            if result is not None:
+                source = result.observation
+                source_age_ms = (self.clock() - source.timestamp) * 1000
+                history = list(self.history)
+                origin = next((i for i, (at, _) in enumerate(history) if at == source.timestamp), None)
+                if not source.detected or source.confidence < .70:
+                    failure = "recognition_invalid"
+                elif not 0 <= self.clock() - source.timestamp <= self.max_age:
+                    failure = "recognition_stale"
+                else:
+                    position = (source.palm_x, source.palm_y)
+                    tracked = origin is not None and self.flow.seed(
+                        history[origin][1], source, result.palm_points)
+                    if not tracked:
+                        fallback = "history_missing" if origin is None else "flow_seed_unavailable"
+                    if tracked and origin != len(history) - 1:
+                        # One source-to-current correction, with the same
+                        # forward/backward and displacement checks as normal flow.
+                        # Replaying N old frames here makes correction work grow
+                        # with recognition delay, which in turn delays the next job.
+                        if self.clock() - correction_started < self.correction_budget:
+                            position = self.flow.advance(gray)
+                            flow_position = position
+                            correction_steps = 1
+                            if position is None:
+                                fallback = "correction_flow_lost"
+                        else:
+                            position = None
+                            fallback = "correction_budget"
+                    if self.clock() - correction_started >= self.correction_budget:
+                        position = None
+                        fallback = "correction_budget"
+                    if fallback is not None:
+                        # A failed motion estimate does not invalidate recognition.
+                        # Jump to its measured point; never interpolate a missing path
+                        # or reuse flow seeded on an incompatible frame.
+                        position = (source.palm_x, source.palm_y)
+                        self.flow = PalmFlow(self.cv2)
+                    self.anchor = source
+                    gesture = source
+            correction_ms = (self.clock() - correction_started) * 1000
+        elif self.anchor is not None:
+            position = self.flow.advance(gray)
+            flow_position = position
+            if position is None:
+                # Preserve the existing recognition-only fallback for a palm
+                # without usable texture, still bounded by original source age.
+                position = (self.anchor.palm_x, self.anchor.palm_y)
+                fallback = "flow_unavailable"
         age = None if self.anchor is None else self.clock() - self.anchor.timestamp
-        if position is None or age is None or age > self.max_age:
+        if position is None or age is None or not 0 <= age <= self.max_age:
+            failure = failure or ("gesture_stale" if age is not None else "awaiting_recognition")
             self.anchor = None
             gesture = None
             observation = HandObservation(timestamp, False)
@@ -186,6 +236,13 @@ class MotionTracker:
                                   palm_x=position[0], palm_y=position[1])
         diagnostics = {
             "motion_tracking": True,
+            "motion_failure": failure,
+            "motion_fallback_reason": fallback,
+            "motion_flow_width": gray.shape[1],
+            "motion_correction_ms": None if correction_ms is None else round(correction_ms, 3),
+            "motion_correction_steps": correction_steps,
+            "recognition_pickup_ms": None if pickup_ms is None else round(pickup_ms, 3),
+            "recognition_source_age_ms": None if source_age_ms is None else round(source_age_ms, 3),
             "motion_valid": observation.detected,
             "gesture_age_ms": None if age is None else round(age * 1000, 1),
             "recognition_inference_ms": self.inference_ms,
@@ -198,7 +255,20 @@ class MotionTracker:
             self.cv2.circle(display, (int(observation.palm_x*w), int(observation.palm_y*h)),
                             6, (20, 255, 120), 2)
         return TrackingResult(observation, display, diagnostics,
-                              motion_only=True, gesture_observation=gesture)
+                              motion_only=True, gesture_observation=gesture,
+                              motion_trace={
+                                  "recognition_completed": completed,
+                                  "recognized_capture_ns": None if result is None else int(result.observation.timestamp * 1e9),
+                                  "recognized_xy": None if result is None else [result.observation.palm_x, result.observation.palm_y],
+                                  "recognized_detected": None if result is None else result.observation.detected,
+                                  "recognized_confidence": None if result is None else result.observation.confidence,
+                                  "anchor_capture_ns": None if self.anchor is None else int(self.anchor.timestamp * 1e9),
+                                  "flow_xy": flow_position,
+                                  "flow_accepted": observation.detected and fallback is None and flow_position is not None,
+                                  "selected_xy": [observation.palm_x, observation.palm_y] if observation.detected else None,
+                                  "fallback_reason": fallback,
+                                  "failure": failure,
+                              })
 
     def close(self):
         """Finish the sole in-flight job before releasing its MediaPipe instance."""

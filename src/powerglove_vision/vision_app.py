@@ -708,6 +708,13 @@ def main() -> int:
                     start_ns=int(inference_started * 1e9), tracking_end_ns=tracking_finished_ns,
                     end_ns=int(inference_finished * 1e9),
                     sent=receiver_available, detected=state.detected, calibrated=state.calibrated,
+                    motion=result.motion_trace if motion_mode else None,
+                    filtered_xy=[engine._filtered_palm_x, engine._filtered_palm_y] if state.detected else None,
+                    smoothing={"minimum": engine.config.coordinate_smoothing_min,
+                               "maximum": engine.config.coordinate_smoothing_max,
+                               "motion_boost": engine.config.coordinate_motion_boost,
+                               "experimental_motion_boost": engine.config.motion_coordinate_boost,
+                               "experimental_motion_max": engine.config.motion_coordinate_max},
                     x=state.axes.get("x", 0), y=state.axes.get("y", 0),
                     buttons=sum(1 << i for i, name in enumerate(("a", "b", "start", "select",
                         "glove_zap", "menu_guard", "closed_hand", "index_point")) if state.buttons.get(name))))

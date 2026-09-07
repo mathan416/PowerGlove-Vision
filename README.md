@@ -240,9 +240,11 @@ direction by frame 3. Their semantics differ: FCEUmm supplies held digital
 directions, while the native core supplies an absolute target position. The
 native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
 open/fist/index packet, and safe-neutralization tests. Live full-game play
-confirms grab/throw, index fire, and fist-plus-forward Power Punch. Movement is
-playable but still has latency to refine. Wrist rotation and remaining unused
-native packet fields stay neutral. See the
+confirms grab/throw, index fire, and fist-plus-forward Power Punch. The optional
+experimental movement path uses bounded palm-flow correction and per-player
+reach calibration; it remains limited to calibrated Super Glove Ball while
+recognition age and long movements are being tuned. Wrist rotation and remaining
+unused native packet fields stay neutral. See the
 [native compatibility record](docs/super-glove-ball-native.md).
 
 The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that the
@@ -252,12 +254,26 @@ FCEUmm and the same global recognition settings.
 For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
 collects fresh timing observations without changing camera settings or controls.
 It keeps Controller software timing separate from network, emulator, and display delay.
+The optional [UNO Q dot test](docs/uno-q-dot-test.md) reuses the cabinet's installed
+`lr-powerglove-dot` core to display the same receiver X/Y publication without
+game movement logic, with read-only input-range and validity measurements.
+
 The [native latency session tools](docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
 guide stationary/movement windows, optionally correlate software traces, and
 extract annotated evidence from an original hand-and-screen recording. They are
-disabled during normal play; physical measurements remain pending.
+disabled during normal play. Trace tools can compare recognized, optical-flow,
+selected, and filtered coordinates without recording video; physical
+hand-to-screen latency still requires synchronized recording.
 
 ## Use the web interface
+
+Setup includes **Joystick dead zone**, saved separately for each player. Small
+requires less hand movement to press a direction; Large gives more room around
+center. **Use standard size** selects the existing 0.28 activation / 0.14 release
+pair; select **Save dead zone** to apply. The slider sets all four directions
+together, without changing center or native Super Glove Ball reach. Live direction
+indicators work while tracking is active. Separate directional thresholds remain
+under Glove Academy → Tune gestures → Advanced thresholds and diagnostics.
 
 The Controller website uses the logo’s hand-and-target emblem for browser tabs
 and saved home-screen shortcuts.

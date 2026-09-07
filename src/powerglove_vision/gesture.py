@@ -89,6 +89,10 @@ class GestureConfig:
     coordinate_smoothing_min: float = 0.70
     coordinate_smoothing_max: float = 1.00
     coordinate_motion_boost: float = 4.00
+    # Optional override only for experimental native X/Y; None preserves baseline.
+    motion_coordinate_boost: float | None = None
+    # Experimental native X/Y only; values above 1 intentionally extrapolate.
+    motion_coordinate_max: float | None = None
     curl_on: float = 0.50
     curl_off: float = 0.35
     thumb_on: float = 0.38
@@ -507,10 +511,19 @@ class GestureEngine:
             if previous is None:
                 setattr(self, name, value)
                 continue
-            alpha = _clamp(cfg.coordinate_smoothing_min + abs(value - previous)
-                           * cfg.coordinate_motion_boost,
-                           cfg.coordinate_smoothing_min, cfg.coordinate_smoothing_max)
-            alpha = 1 - (1 - alpha) ** (min(dt, .25) / .09)
+            boost = (cfg.coordinate_motion_boost if cfg.motion_coordinate_boost is None
+                     else cfg.motion_coordinate_boost)
+            cap = (cfg.coordinate_smoothing_max if cfg.motion_coordinate_max is None
+                   else cfg.motion_coordinate_max)
+            alpha = _clamp(cfg.coordinate_smoothing_min + abs(value - previous) * boost,
+                           cfg.coordinate_smoothing_min, cap)
+            if alpha <= 1.0:
+                alpha = 1 - (1 - alpha) ** (min(dt, .25) / .09)
+            else:
+                # Above one is an explicit experimental extrapolation. Applying
+                # the normal fractional-power easing to a negative base would
+                # produce complex/NaN values, so preserve the requested gain.
+                pass
             setattr(self, name, previous + alpha * (value - previous))
         self._motion_time = observation.timestamp
         axes = dict(self._last_state.axes)

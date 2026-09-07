@@ -36,6 +36,37 @@ class NativeMotionTests(unittest.TestCase):
         self.assertFalse(build_parser().parse_args(args).motion_tracking)
         self.assertTrue(build_parser().parse_args(args + ['--motion-tracking']).motion_tracking)
 
+    def test_medium_step_override_passes_through_but_small_step_is_smoothed(self):
+        for distance, immediate in ((.05, True), (.005, False), (-.05, True)):
+            with self.subTest(distance=distance):
+                self.setUp()
+                self.engine.config = replace(self.engine.config, motion_coordinate_boost=8.)
+                self.engine.update_native_motion(self.pose, self.pose)
+                pose = replace(self.pose, timestamp=10+1/60, palm_x=.5+distance)
+                self.engine.update_native_motion(pose, pose)
+                filtered = self.engine._filtered_palm_x
+                if immediate:
+                    self.assertAlmostEqual(filtered, pose.palm_x)
+                else:
+                    self.assertGreater(filtered, .5)
+                    self.assertLess(filtered, pose.palm_x)
+
+    def test_motion_boost_override_does_not_change_synchronous_path(self):
+        other = GestureEngine('super_glove_ball', calibration=self.engine.calibration)
+        other.config = replace(other.config, motion_coordinate_boost=8.)
+        for i, x in enumerate((.5, .55, .54, .45)):
+            pose = replace(self.pose, timestamp=10+i/60, palm_x=x)
+            self.assertEqual(self.engine.update(pose).axes, other.update(pose).axes)
+
+    def test_experimental_motion_max_can_extrapolate_above_target(self):
+        self.engine.config = replace(self.engine.config, motion_coordinate_boost=14.,
+                                     motion_coordinate_max=1.15)
+        self.engine.update_native_motion(self.pose, self.pose)
+        target = replace(self.pose, timestamp=10 + 1/60, palm_x=.55)
+        self.engine.update_native_motion(target, target)
+        self.assertGreater(self.engine._filtered_palm_x, target.palm_x)
+        self.assertLessEqual(self.engine._filtered_palm_x, .5 + 1.15 * .05)
+
     def test_supervisor_passes_only_explicit_boolean_opt_in(self):
         import runpy
         from pathlib import Path
@@ -142,7 +173,7 @@ class OpticalMotionTests(unittest.TestCase):
         self.addCleanup(slow.release.set)
         return tracker, slow, clock
 
-    def test_inference_never_blocks_frames_and_correction_replays_source_history(self):
+    def test_inference_never_blocks_frames_and_correction_uses_source_image(self):
         tracker, slow, clock = self.make_tracker()
         original = cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR)
         first = tracker.process(original, timestamp=10, fast=True)
@@ -160,6 +191,8 @@ class OpticalMotionTests(unittest.TestCase):
         self.assertEqual(result.gesture_observation.timestamp, 10)
         self.assertAlmostEqual(result.observation.palm_x, .5+8/320, delta=.002)
         self.assertEqual(result.observation.timestamp, 10.08)
+        self.assertEqual(result.diagnostics['motion_correction_steps'], 1,
+                         'Correction cost must not grow with intervening frames')
 
     def test_mirror_tracks_in_screen_coordinates(self):
         tracker, slow, clock = self.make_tracker(mirror=True)
@@ -170,6 +203,145 @@ class OpticalMotionTests(unittest.TestCase):
         result = tracker.process(cv2.cvtColor(self.shifted(8), cv2.COLOR_GRAY2BGR), 10.08, fast=True)
         self.assertTrue(result.observation.detected)
         self.assertAlmostEqual(result.observation.palm_x, .5-8/320, delta=.002)
+
+    def test_next_recognition_starts_before_correction_and_flow_is_downscaled(self):
+        tracker, slow, clock = self.make_tracker()
+        frame = cv2.resize(cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR), (640, 480))
+        tracker.process(frame, 10, fast=True)
+        slow.release.set()
+        tracker.pending.result(timeout=2)
+        slow.release.clear()
+        slow.entered.clear()
+        seed = tracker.flow.seed
+        def checked_seed(gray, observation, points):
+            self.assertTrue(slow.entered.wait(1), 'Recognition must overlap correction')
+            self.assertEqual(gray.shape, (240, 320))
+            return seed(gray, observation, points)
+        tracker.flow.seed = checked_seed
+        clock[0] = 10.08
+        result = tracker.process(frame, 10.08, fast=True)
+        self.assertTrue(result.observation.detected)
+        self.assertEqual(result.diagnostics['motion_correction_steps'], 1)
+
+    def test_correction_budget_uses_recognition_without_renewing_source_age(self):
+        tracker, slow, clock = self.make_tracker()
+        frame = cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR)
+        tracker.process(frame, 10, fast=True)
+        clock[0] = 10.02
+        tracker.process(frame, 10.02, fast=True)
+        slow.release.set()
+        tracker.pending.result(timeout=2)
+        slow.release.clear()
+        advance = tracker.flow.advance
+        def expensive(gray):
+            clock[0] += .030
+            return advance(gray)
+        tracker.flow.advance = expensive
+        clock[0] = 10.08
+        result = tracker.process(frame, 10.08, fast=True)
+        self.assertTrue(result.observation.detected)
+        self.assertEqual(result.gesture_observation.timestamp, 10)
+        self.assertEqual(result.observation.palm_x, .5)
+        self.assertIsNone(tracker.flow.points)
+        self.assertIsNone(result.diagnostics['motion_failure'])
+        self.assertEqual(result.diagnostics['motion_fallback_reason'], 'correction_budget')
+        self.assertEqual(result.diagnostics['motion_correction_steps'], 1)
+
+    def test_failed_correction_jumps_to_recognition_then_flow_recovers(self):
+        tracker, slow, clock = self.make_tracker()
+        frame = cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR)
+        tracker.process(frame, 10, fast=True)
+        slow.release.set()
+        tracker.pending.result(timeout=2)
+        slow.release.clear()
+        tracker.flow.advance = lambda gray: None
+        clock[0] = 10.08
+        result = tracker.process(frame, 10.08, fast=True)
+        self.assertTrue(result.observation.detected)
+        self.assertEqual(result.observation.palm_x, .5)
+        self.assertEqual(result.diagnostics['motion_fallback_reason'], 'correction_flow_lost')
+        self.assertIsNone(tracker.flow.points)
+        self.assertEqual(result.motion_trace['recognized_capture_ns'], 10_000_000_000)
+        self.assertEqual(result.motion_trace['selected_xy'], [.5, .5])
+        self.assertIsNone(result.motion_trace['flow_xy'])
+        self.assertFalse(result.motion_trace['flow_accepted'])
+        # Next recognition can jump a large distance without inventing a path.
+        self.pose = replace(self.pose, palm_x=.8)
+        slow.release.set()
+        tracker.pending.result(timeout=2)
+        slow.release.clear()
+        clock[0] = 10.12
+        result = tracker.process(frame, 10.12, fast=True)
+        self.assertTrue(result.observation.detected)
+        self.assertAlmostEqual(result.observation.palm_x, .8, delta=.002)
+        self.assertIsNone(result.diagnostics['motion_fallback_reason'])
+        clock[0] = 10.14
+        shifted = cv2.cvtColor(self.shifted(4), cv2.COLOR_GRAY2BGR)
+        result = tracker.process(shifted, 10.14, fast=True)
+        self.assertAlmostEqual(result.observation.palm_x, .8 + 4/320, delta=.002)
+        self.assertTrue(result.motion_trace['flow_accepted'])
+        self.assertFalse(result.motion_trace['recognition_completed'])
+        self.assertIsNone(result.motion_trace['recognized_xy'])
+        self.assertEqual(result.motion_trace['anchor_capture_ns'], 10_080_000_000)
+
+    def test_fallback_expires_and_rejects_invalid_recognition(self):
+        for replacement in (None, replace(self.pose, detected=False),
+                            replace(self.pose, confidence=.69)):
+            with self.subTest(replacement=replacement):
+                tracker, slow, clock = self.make_tracker()
+                frame = cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR)
+                tracker.process(frame, 10, fast=True)
+                slow.release.set()
+                tracker.pending.result(timeout=2)
+                slow.release.clear()
+                tracker.flow.advance = lambda gray: None
+                clock[0] = 10.08
+                self.assertTrue(tracker.process(frame, 10.08, fast=True).observation.detected)
+                if replacement is not None:
+                    self.pose = replacement
+                    slow.release.set()
+                    tracker.pending.result(timeout=2)
+                    slow.release.clear()
+                    clock[0] = 10.12
+                else:
+                    clock[0] = 10.251
+                result = tracker.process(frame, clock[0], fast=True)
+                self.assertFalse(result.observation.detected)
+                self.assertIsNone(result.gesture_observation)
+                self.pose = replace(self.pose, detected=True, confidence=.95)
+                slow.release.set()
+                tracker.close()
+
+    def test_correction_cannot_publish_source_that_expires_during_work(self):
+        tracker, slow, clock = self.make_tracker()
+        frame = cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR)
+        tracker.process(frame, 10, fast=True)
+        slow.release.set()
+        tracker.pending.result(timeout=2)
+        slow.release.clear()
+        def expensive(gray):
+            clock[0] += .030
+            return None
+        tracker.flow.advance = expensive
+        clock[0] = 10.24
+        result = tracker.process(frame, 10.24, fast=True)
+        self.assertFalse(result.observation.detected)
+        self.assertIsNone(result.gesture_observation)
+        self.assertEqual(result.diagnostics['motion_failure'], 'gesture_stale')
+        self.assertIsNone(result.motion_trace['selected_xy'])
+        self.assertIsNone(result.motion_trace['anchor_capture_ns'])
+
+    def test_invalid_recognition_cannot_be_used_as_textureless_fallback(self):
+        tracker, slow, clock = self.make_tracker()
+        self.pose = replace(self.pose, detected=False)
+        frame = cv2.cvtColor(self.gray, cv2.COLOR_GRAY2BGR)
+        tracker.process(frame, 10, fast=True)
+        slow.release.set()
+        tracker.pending.result(timeout=2)
+        clock[0] = 10.08
+        result = tracker.process(frame, 10.08, fast=True)
+        self.assertFalse(result.observation.detected)
+        self.assertEqual(result.diagnostics['motion_failure'], 'recognition_invalid')
 
     def test_active_flow_expires_while_next_inference_is_blocked(self):
         tracker, slow, clock = self.make_tracker()

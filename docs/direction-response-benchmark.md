@@ -1,5 +1,50 @@
 # Direction-response benchmark
 
+## Experimental X/Y correction investigation — September 7, 2026
+
+The UNO dot comparison rejected the initial optical-flow path: only 17 of 128
+observed still-hold status samples were detected, versus 177/177 in the original
+MediaPipe baseline. Inspection found that correction replayed every intervening
+frame, then submitted the next recognition job using an already-aged source.
+
+A synthetic before/after benchmark ran on the UNO's installed Python/OpenCV
+environment (OpenCV 4.10.0, four OpenCV threads), with camera processing paused.
+It used moving textured images at requested 60 Hz and a simulated 60 ms
+recognition delay, with no camera access, controller transmission or game input.
+Two alternating four-second runs per version produced:
+
+| Measure | Original correction | Revised correction |
+| --- | --- | --- |
+| Foreground processing p95 | 78.3 / 80.0 ms | 18.6 / 18.3 ms |
+| Valid synthetic frames | 71/139 / 69/139 | 231/235 / 229/233 |
+| Recognition-source age p95 | 265.9 / 266.1 ms | 130.6 / 130.1 ms |
+
+The revised runs rejected only their four startup frames. The fix performs one
+checked source-to-current correction on at-most-320-pixel-wide flow images and
+submits the next recognition before correction. Original recognition resolution,
+the 250 ms freshness limit, and per-player reach remain unchanged. Correction
+over 25 ms is rejected; an individual OpenCV call is not interruptible. New
+diagnostics separate correction, completed-result pickup and rejection reasons.
+
+The simulated recognizer sleeps rather than competing for CPU like MediaPipe.
+This proves a correction-cost improvement on the target hardware, not live
+recognition reliability or physical hand-to-screen latency. Large movements or
+low palm texture may still fail the optical-flow checks. The revised code is
+installed with experimental mode **off**; the original MediaPipe path remains
+active pending another operator-cued hand test.
+
+Reproduce with the original `motion.py` saved outside the checkout, using an
+environment containing the vision dependencies:
+
+```sh
+PYTHONPATH=src python3 scripts/benchmark-motion-correction.py \
+  --before /tmp/original-motion.py --output /tmp/correction-comparison.json
+```
+
+Run while normal camera processing is idle. The script never changes controller
+settings itself. The original UNO report is retained locally in
+`/tmp/uno-dot-baseline-x8heur1f/correction-benchmark-uno.json`.
+
 The **PowerGlove Vision Controller (Arduino UNO Q)** performs the camera,
 recognition, and send stages measured in this record.
 

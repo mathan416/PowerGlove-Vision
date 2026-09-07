@@ -9,6 +9,14 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Prepared optional per-frame motion traces separating recognized, flow, selected and filtered coordinates, including source freshness and fallback reasons. Added an offline saved-sample review and an actual-engine smoothing step model; the model is not a physical latency measurement.
+
+- Added `analyze-motion-trace.py` and `compare-motion-matrix.py` for normalized movement classes, selected-versus-filtered error, settling estimates, source-age distributions, fallback reasons, and tracking-loss counts. Ran the six trace-only smoothing configurations on the UNO with zero dropped trace records and restored the live setting afterward.
+
+- Added Setup → Joystick dead zone: a per-player size slider with automatic half-distance release, live direction indicators, and a standard-size preset. Saves update all four digital direction thresholds while preserving center, native reach and other gestures. Advanced directional pairs remain in Glove Academy.
+
+- Added an optional UNO Q test workflow for the cabinet's installed dot core, dot-labeled guided status sessions, and a read-only native-state probe for validity, loss/recovery and coordinate ranges. MediaPipe, controller output and game defaults remain unchanged; physical comparison is pending.
+
 - Benchmarked Kiyo Pro capture on UNO Q and added an opt-in 640×480 MJPEG/two-buffer/volatile-HDR-off candidate, which delivered 59.7–59.8 fps in isolated capture repeats. Higher 720p decoding costs ruled out copying the Pi resolution. Inference threads are unchanged; recognition-under-load and physical latency validation remain pending.
 
 - Ported optional per-player comfortable reach spans from the Raspberry Pi version. Both native movement paths map asymmetric reach to the screen edges, player backups preserve spans, and re-centering clears them. Added a guided, output-paused calibration helper using raw palm measurements in practice mode. Camera defaults and inference threads are unchanged pending UNO Q measurements.
@@ -17,9 +25,19 @@ authoritative record for line-level and file-level history.
 
 ### Fixed
 
+- Experimental X/Y now falls back directly to fresh, confident MediaPipe coordinates when source-to-current flow correction fails or exceeds its budget. Failed flow is cleared, fallback reasons are reported separately, and the original 250 ms recognition freshness limit remains enforced.
+
+- Bound experimental X/Y correction to one checked source-to-current flow step on smaller images, and dispatch the next recognition job before correction. Added correction/pickup/failure diagnostics and a synthetic before/after benchmark. The original MediaPipe path remains the default; live recognition and physical latency validation are pending.
+
+- Restrict UNO host mDNS to detected physical network interfaces during host setup. The test UNO advertised Docker bridges and renamed itself to `ArduIain-2.local` after a conflict during container restarts, breaking profile heartbeat delivery. The backed-up interface correction restored the original hostname and automatic game-profile recovery across a verified app restart.
+
 - Dashboard Center hand and Start controller clicks now survive status refreshes in Safari/WebKit. Controller requests stay disabled while pending, and centering guidance names the selected player beside the controls. Request feedback is announced and displayed beside those controls.
 
 ### Changed
+
+- Added an optional experimental-only X/Y smoothing boost override. The UNO medium-jump trial uses 8 instead of 4, lowering the per-axis immediate-response threshold from roughly .075 to .0375 camera units without changing synchronous tracking or reach calibration.
+
+- Added an experimental-only `motion_coordinate_max` cap for controlled extrapolation tests. Values above 1.00 intentionally overshoot the latest coordinate; the current exploratory UNO setting uses cap 1.30 with boost 15 and minimum smoothing 0.70. The normal path remains capped at 1.00.
 
 - Moved player creation, renaming, deletion, and hand-setup backup/restore into Setup → Players. Academy and Dashboard offer compact selectors for the same Controller-wide active player. Dashboard places Player before Active profile and combines game name and session status in one Game card.
 
