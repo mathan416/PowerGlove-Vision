@@ -174,7 +174,7 @@ Complete both machine installations above, then use the one-time-code method:
 2. In **Pair with RetroPie**, choose **One-time code (recommended)** and select **Continue**. Pairing uses the saved console address.
 3. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint. If they match, check the confirmation box, enter the six-digit **Controller approval PIN**, and select **Continue**.
 4. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character **RetroPie one-time code**, then select **Pair with RetroPie**. This is not the Controller PIN.
-5. Wait for **Pairing complete**. Check `sudo systemctl status powerglove-receiver.service` on RetroPie; open Dashboard for controller Start/Stop and shutdown.
+5. Wait for **Pairing complete**. This includes a signed receiver-token check. Check `sudo systemctl status powerglove-receiver.service` on RetroPie; open Dashboard for controller Start/Stop and shutdown.
 
 For SSH, choose **SSH password** in the first step, complete the same Controller
 confirmation, then enter the RetroPie username and password in the final step.
@@ -279,7 +279,7 @@ The app retries camera initialization automatically. Keep **Camera** set to
 
 1. Put the camera in its normal cabinet position before calibration.
 2. Stand or sit at your normal playing distance. Keep your comfortable center and the full area you intend to reach inside the camera view, with room at every edge.
-3. Hold a relaxed open hand at that center and select **Set this as my center**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
+3. Hold a relaxed open hand at that center and select **Center hand**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
 4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable PowerGlove Vision Controller work and game stutter.
 
 Recalibrate after moving the camera, changing your playing distance, or changing
@@ -308,7 +308,7 @@ Glove Academy teaches sixteen lessons with camera feedback and saved progress
 for each player. Complete every lesson to earn **Glove Master**. Learning shows
 **L** on the matrix; optional personalization shows **T**. Both pause cabinet input.
 
-Use **Players and hand-setup backups** to export the selected player. Your browser
+Use **Setup → Players → Players and hand-setup backups** to export the selected player. Your browser
 saves `powerglove-hand-setup.json` on the computer, phone, or tablet you are using,
 usually in Downloads. Export each player separately and rename copies with their
 name and date. Restore selects a file from that device and updates the selected
@@ -449,7 +449,7 @@ full movement region visible, and then calibrate.
 1. Launch an unregistered NES or Famicom game. PowerGlove Vision should show **Gestures off**.
 2. Open Dashboard and choose **A: Pinball**, **D: Challenge**, **H: General**, or another profile.
 3. Wait for the camera view. Hold your open hand in your comfortable resting position. This is your **neutral position**: the position the app treats as the center for movement.
-4. If a direction remains active while your hand is at rest, select **Set this as my center** and hold still. Also recalibrate after moving the camera or changing your playing position.
+4. If a direction remains active while your hand is at rest, select **Center hand** and hold still. Also recalibrate after moving the camera or changing your playing position.
 5. Select **Start controller** and test movement, actions, Start, and Select in the game.
 6. Select **Stop controller** before adjusting the camera or testing another mapping.
 
@@ -599,9 +599,9 @@ investigation and shutdown guidance.
 
 ## Player centers, backups, and Wi-Fi status
 
-Each player retains a separate center. After switching in Glove Academy, set a
-fresh center or select **Reuse my saved center** and confirm unchanged camera
-and playing positions. Controller output remains paused until Start.
+Each player retains a separate center. Selecting a player in Glove Academy immediately
+loads their sensitivity, progress, and saved center. Use **Center hand** for a new
+player or after moving the camera or changing playing position. Controller output remains paused until Start.
 
 Portable backups start at version 2. New exports include personal and complete
 sensitivity, software identity, and the player's saved calibration. Restore

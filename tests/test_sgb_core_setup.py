@@ -49,7 +49,7 @@ class SuperGloveBallCoreSetupTests(unittest.TestCase):
         self.assertIn(str(native), system_text)
         option_path, option_text = sgb.native_options(self.prefix)
         self.assertIn("--appendconfig " + str(option_path), system_text)
-        self.assertEqual(option_text, 'input_libretro_device_p1 = "517"\n')
+        self.assertEqual(option_text, 'input_libretro_device_p1 = "517"\nvideo_threaded = "false"\n')
         self.assertIn(sgb.game_key(self.rom) + ' = "lr-nestopia-powerglove"', games_text)
         sgb.write_file(system_path, system_text)
         sgb.write_file(games_path, games_text)

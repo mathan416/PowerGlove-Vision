@@ -116,6 +116,120 @@ The Dashboard profile selector changes only the current active profile. It does
 not rewrite `device.json` or change the Setup page's startup profile. RetroPie
 may replace a Dashboard selection when a game starts or ends.
 
+### Comfortable movement range
+
+Native X/Y can map a player's comfortable left, right, up, and down positions to
+the screen edges. This applies to both normal recognition and the experimental
+independent movement path. It changes sensitivity and physical travel, not
+processing time. Gesture thresholds, D-pad behavior, depth, and smoothing stay
+unchanged.
+
+The four optional `calibration.neutral` fields `reach_left`, `reach_right`,
+`reach_up`, and `reach_down` are normalized image distances from the saved center.
+All four zero (or omitted in older backups) use the original camera-boundary
+mapping. Otherwise all four must be finite numbers at least `0.05` and fit inside
+the image around that center. Player presets and version-2 hand-setup backups
+preserve them. New reach-bearing backups require reach-aware software on import.
+**Center hand clears the reach spans**; repeat reach calibration after recentering
+or changing the camera/playing position. Never reuse another camera setup's spans
+as universal defaults.
+
+The operator helper `scripts/calibrate-reach.py` runs inside the Controller
+container, using the worker's Python environment and loopback APIs. After normal
+player centering, run these as separate commands, cueing the player before each:
+
+```sh
+python scripts/calibrate-reach.py begin
+python scripts/calibrate-reach.py center
+python scripts/calibrate-reach.py left
+python scripts/calibrate-reach.py right
+python scripts/calibrate-reach.py up
+python scripts/calibrate-reach.py down
+python scripts/calibrate-reach.py apply
+```
+
+`begin` saves a private complete backup under `data/backups/reach-*/`, persistently
+pauses delivery, and leases practice mode. Hold a relaxed palm at center for
+`center`, then a steady, comfortable endpoint for each three-second directional
+step. The helper samples raw palm positions and requires at least 12 independent
+reliable observations, at least 80% reliable observations, and a stable hold away
+from the image boundary. Failed holds can be repeated. Do not launch a game,
+change players, or enter gesture tuning during the session.
+
+`apply` uses the existing generation-checked player restore path. `cancel` restores
+the original complete hand setup. Both leave output paused for verification;
+restart delivery explicitly when ready. A pending restore or player change stops
+the helper rather than applying to a different player; the saved backup remains
+available in Setup → Players. Only numeric calibration data is stored, not images.
+
+Worker status exposes raw `palm_position` (`x` and `y`, or `null` when undetected)
+for this calibration. Its coordinates follow the configured mirror convention.
+The helper accepts synchronous practice observations only.
+
+### Experimental independent movement tracking
+
+Set `"motion_tracking": true` in the Controller's `data/device.json` and restart
+the application to opt in. For a directly launched vision worker, add
+`--motion-tracking`. Remove the setting or set it to `false` and restart to return
+to the normal tracker. The default is off; this is an unvalidated hardware experiment.
+
+The fast path is active only for calibrated Super Glove Ball, outside practice
+and tuning. Other profiles, initial centering, and Academy use normal synchronous
+recognition. A single background worker recognizes fingers while optical flow
+tracks textured palm features on fresh camera frames. Delayed recognition is
+corrected from their retained source image to the current image in one checked
+optical-flow step. Flow uses images at most 320 pixels wide; recognition still
+receives the original camera image. The next recognition job starts before
+correction. Correction exceeding 25 ms is discarded rather than publishing it;
+one OpenCV call can exceed that budget, so it is not a hard execution deadline.
+Motion alone cannot advance gesture holds, depth confirmation, or calibration.
+Failed flow, missing correction history, insufficient palm texture, or an exceeded
+correction budget falls back directly to the latest fresh, confident recognized
+position and clears incompatible flow state. No intermediate path is synthesized.
+The original recognition timestamp still bounds this fallback: undetected or
+low-confidence recognition, inference failure, or source data older than 250 ms
+releases native controls. A new valid recognition is required to resume. Depth and finger poses remain at the recognition cadence.
+
+Worker status includes `motion_tracking`, `motion_valid`, `gesture_age_ms`,
+`recognition_inference_ms`, and `recognition_error`. In this mode the existing
+`inference_ms` timing measures the foreground motion/update loop, **not** the
+background neural-network inference. Its camera-read-to-send value describes
+fresh X/Y delivery; it does not measure gesture latency or hand-to-screen delay.
+
+Additional experimental diagnostics include `motion_failure`, `motion_flow_width`,
+`motion_fallback_reason`, `motion_correction_ms`, `motion_correction_steps`,
+`recognition_pickup_ms`, and
+`recognition_source_age_ms`. Completion-only timing fields are null on frames
+without a completed recognition result. The 250 ms source freshness limit remains
+unchanged. The path is still opt-in and needs live hand/display validation.
+Compare actual hand/display video, source gesture age, update cadence, neutral
+jitter, reversals, and tracking recovery before promoting this mode. No faster
+frame rate or lower end-to-end latency is claimed until measured on the Controller.
+
+### Measured PowerGlove Vision Controller Kiyo Pro capture candidate
+
+For the Kiyo Pro connected to the tested PowerGlove Vision Controller, the measured candidate keeps MJPEG
+640×480 at requested 60 fps, sets `"camera_buffers": 2`, and sets
+`"kiyo_hdr_off": true` in `data/device.json`. Restart the app after changing these
+settings. Direct worker equivalents are `--camera-buffers 2 --kiyo-hdr-off`.
+The existing inference-thread setting is retained. See the
+[capture comparison](direction-response-benchmark.md#uno-q-kiyo-pro-capture-comparison--september-6-2026)
+for delivered-frame and decode measurements; these are not gameplay-latency figures.
+
+General defaults remain one buffer and no vendor control command. The HDR option
+checks USB identity `1532:0e05`, sends only the volatile HDR-off command, and sets
+and verifies automatic exposure with dynamic frame rate disabled. It does not
+save settings onboard. Other camera models are left untouched. Control failure
+is reported as `camera_control_error`; capture may continue, but that run must not
+be treated as a verified candidate. `camera_hdr_off_command_sent` confirms the
+command was accepted, not a readback of the sensor's HDR state. Buffer metadata
+reports requested/accepted values separately from real frame-delivery measurements.
+
+Remove these two settings (or set buffers to `1` and HDR-off to `false`) and restart
+to restore the original software capture policy. The application does not issue
+an HDR-on command on rollback; power-cycle the camera to reload its saved settings.
+Camera configuration is separate from player calibration and reach backups.
+
 ### Vision startup and timing
 
 Camera capture uses the complete 640×480 field of view at 60 fps. A dedicated
@@ -151,7 +265,7 @@ Activation waits for any unfinished preload, verifies the saved model, opens
 and configures the camera, waits for a usable frame, and creates the tracker.
 Dashboard, Play, and Glove Academy show **Starting camera and gesture tracking** until vision
 is active. The elapsed time covers startup work, not only the physical camera.
-**Set this as my center** stays disabled until initialization finishes.
+**Center hand** stays disabled until initialization finishes.
 
 Switching between active profiles reuses the camera and tracker. **Gestures off**
 releases both, while imported libraries remain in memory. An application restart,
@@ -229,7 +343,7 @@ practice indicators do not change those mappings.
 | V sign | Without personal adjustments, index and middle curl must be below 0.28; ring and little curl must exceed 0.42. Hold steadily for 0.50 seconds to send Start. A non-V pose must then remain visible for 0.30 seconds before Start can rearm. |
 | Thumbs-up | Without personal adjustments, thumb curl must be below 0.32 and all four finger curls above 0.42. Hold for 0.15 seconds to send Select. |
 | Live hand measurements | Shows curl values, thresholds, enlarged landmarks, and forward or backward movement relative to the calibrated hand size. |
-| Set this as my center | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
+| Center hand | Replaces the saved resting reference. The button turns red while sampling, then blue with a brief completion message. |
 
 #### Tracking and timing diagnostics
 
@@ -271,7 +385,7 @@ you need to reposition without sending controls.
 
 The app reuses its saved resting reference across Glove Academy, gameplay, profile
 changes, and restarts. It calibrates automatically only when that reference is
-missing or invalid. Use **Set this as my center** after moving the camera or changing your
+missing or invalid. Use **Center hand** after moving the camera or changing your
 playing position. Keep your palm near the resting position when practising
 finger curls so unintended movement does not obscure the finger readings.
 See [Saved neutral-hand calibration](#saved-neutral-hand-calibration) for storage
@@ -568,11 +682,11 @@ add missing names while preserving your custom mappings.
 
 ## Players, Academy progress, and hand-setup backups
 
-Glove Academy's **Your player** card selects the active player on this Controller,
+The player selectors on Dashboard, Glove Academy, and Setup select the active player on this Controller,
 across browsers and game profiles. Up to twelve players with names of 1–32
 characters can be stored. **Add player** copies current sensitivity, starts fresh
 lesson progress, and selects the new player. Rename/delete controls are under
-**Players and hand-setup backups**; at least one player is retained.
+**Setup → Players → Players and hand-setup backups**; at least one player is retained.
 
 Completed lessons, the current lesson, and Glove Master persist across refreshes
 and restarts. Skips do not count; **Start again** resets the active player's
@@ -581,10 +695,9 @@ reset or update another player. Saving errors pause lesson recognition until
 saved state is available again.
 
 Switching players, adding/deleting the active player, and restoring settings
-pause controller output. Each player keeps a separate saved calibration. After
-switching, select **Set this as my center**, or **Reuse my saved center** and
-confirm that the camera and playing position are unchanged. A new player has
-no saved center. Reuse applies through the same durable restore path as a backup;
+pause controller output. Each player keeps a separate saved calibration. Selecting a player immediately loads their sensitivity, progress, and saved center.
+Use **Center hand** after moving the camera or changing playing position. A new player has
+no saved center and needs centering once. Saved centers apply through the durable restore path;
 output stays paused until you explicitly start it. Finish tuning and turn
 **Tune gestures** off before changing players or restoring settings.
 
@@ -624,7 +737,7 @@ frozen by a hand backup.
 
 Calibration contains version `2` and `neutral` values: `palm_x`, `palm_y`,
 `palm_scale`, `roll`, `noise_x`, and `noise_y`. It comes from this player's saved
-reference, even when fresh centering is currently required after switching.
+reference, including while a selected player’s saved center is being applied.
 It is `null` if this player has no saved reference. The app does not assume that
 a stored center still matches the present physical setup.
 
@@ -687,7 +800,7 @@ and replace it. Personal adjustments belong in `data/gesture-tuning.json`, which
 remains untouched.
 
 1. Choose **Set up a new hand**, **A gesture is hard to trigger**, **A gesture happens accidentally**, or **Movement feels off-center**.
-2. Choose the gesture when asked. Off-center movement instead shows the saved center and an explicit **Set this as my center** action.
+2. Choose the gesture when asked. Off-center movement instead shows the saved center and an explicit **Center hand** action.
 3. Keep the complete hand visible at 70% confidence for one second. Select **I'm ready** and wait through the two-second countdown.
 4. Follow the three recordings. Ordinary poses and movement steps last two seconds. Glove Zap and Pull Back use a six-second middle step containing three motions and returns.
 5. Analyze the recording and try the temporary preview twice. Return to neutral after each use and remain neutral for three seconds.
@@ -1095,6 +1208,15 @@ changing controller mappings.
 
 ## Local hostname resolution inside App Lab
 
+UNO host setup limits Avahi to detected physical network interfaces, excluding
+Docker bridges and virtual Ethernet devices. On the test cabinet this prevented
+the conflict rename to `ArduIain-2.local` seen during app restarts, and restored
+automatic game-profile heartbeat delivery. The helper
+`sudo python3 scripts/configure-uno-q-avahi.py` preserves the original config as
+`/etc/avahi/avahi-daemon.conf.powerglove-backup`; restart `avahi-daemon` after
+running it manually. Rerun it if replacing a USB Ethernet adapter changes the
+interface name. It does not change your hostname, addresses, or network links.
+
 If the console name fails, use **Check console address** in Connection, then follow
 [hostname troubleshooting](CONFIGURATION_REFERENCE.md#faq-what-if-the-console-name-cannot-be-resolved).
 A router-reserved IPv4 address is a fallback, not a setup requirement.
@@ -1167,7 +1289,7 @@ See the installation guide for the investigation status and Arduino guidance.
 
 ## Saved neutral-hand calibration
 
-The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, wrist angle, and normal X/Y positional jitter; it is not a personally trained gesture model. The jitter estimate can raise the shared movement thresholds above their baseline, but never makes them more sensitive. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Set this as my center** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating or standing position.
+The worker saves its completed neutral reference in `data/calibration.json`. It includes palm position, apparent size, wrist angle, and normal X/Y positional jitter; it is not a personally trained gesture model. The jitter estimate can raise the shared movement thresholds above their baseline, but never makes them more sensitive. Glove Academy, gameplay, profile changes, camera reconnects, and worker restarts reuse this reference. **Center hand** explicitly replaces it after sampling completes; an interrupted calibration preserves the previous saved reference. Recalibrate after moving your camera or changing your seating or standing position.
 
 On first use, or if the saved file is missing or invalid, the worker samples an initial reference automatically. Calibration requires 24 complete observations at 70% hand confidence or better. It averages palm center and apparent size, uses a circular mean for wrist angle, and records the 95th-percentile X/Y deviation as normal jitter. Hold a relaxed open hand still at the intended neutral point and distance. Repeating from the same physical setup should produce a close reference, not identical floating-point values, because camera landmarks vary from frame to frame.
 
@@ -1350,8 +1472,11 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--width PIXELS` | `640` | Requested capture width; the camera may negotiate another size. |
 | `--height PIXELS` | `480` | Requested capture height. |
 | `--fps NUMBER` | `60` | Requested capture rate; not a guarantee of tracking or game frame rate. |
+| `--camera-buffers NUMBER` | `1` | One or two capture buffers; the measured UNO Q Kiyo candidate uses two. |
+| `--kiyo-hdr-off` | Off | Identity-checked volatile Kiyo Pro HDR-off with automatic fixed-rate exposure. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
 | `--inference-threads NUMBER` | `4` | CPU threads requested for each legacy MediaPipe inference calculator. Benchmark before changing. |
+| `--motion-tracking` | Off | Experimental independent native X/Y tracking for calibrated Super Glove Ball; see the experiment instructions above. |
 | `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
 | `--preview-fps NUMBER` | `5` | Maximum rate at which optional browser preview jobs are submitted. |
 | `--glove-color VALUE` | `none` | `none`, `white`, or `black`; an informational label, not a different recognition model. |
@@ -1429,6 +1554,14 @@ they may still perform their normal work.
 | `scripts/record-vision-benchmark.py` | Optional camera, output, size, and frame-rate flags | Records a fixed 30-second, local-only cue sequence for near/far recognition, X/Y travel, jitter, depth, and recovery comparisons. It is never run by installation or used for training. |
 | `scripts/guided-vision-benchmark.py` | Optional camera, output, bind address, port, size, and frame-rate flags | Serves a temporary live-preview page for user-paced, per-step benchmark recording. Each selected step has a two-second countdown; pauses between steps are not recorded. The camera is released when capture completes. Output stays local and is not training data. |
 | `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, and optional Tasks model path | Replays the same full frames through MediaPipe Hands at 1, 2, and 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, and preview cost. |
+| `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH` and `--seconds 5..30` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership, compares one/two/one V4L2 buffers, performs fixed-frame profiling, keeps images in memory, and prints progress plus the final numeric report to standard output. It does not change camera controls or player settings. |
+| `scripts/analyze-motion-trace.py` | Required trace path; optional `--output NEW-PATH` | Reads one finite controller motion trace and reports recognition source age, selected-versus-filtered error, movement-class settling, fallback reasons, and tracking losses. Without `--output`, JSON is printed; an existing output file is never overwritten. |
+| `scripts/compare-motion-matrix.py` | Required directory and `--output NEW-PATH` | Compares `min*-boost*.trace.json` files using the shared analyzer. Use only for windows with the same movement sequence and camera conditions; the output file must not already exist. |
+| `scripts/benchmark-motion-correction.py` | Required `--before PATH` and `--output NEW-PATH`; optional `--after PATH` | Synthetic before/after benchmark for the motion-correction implementation. It uses generated frames and simulated recognition delay, never a camera or game, and cannot establish physical latency. |
+| `scripts/analyze-motion-samples.py` | Required `--samples-dir PATH` and `--output NEW-PATH` | Summarizes saved aggregate status samples and models ideal native-coordinate steps through the actual smoothing engine. It does not replay input or measure physical latency; the output file must not already exist. |
+| `scripts/calibrate-reach.py` | One required step: `begin`, `center`, `left`, `right`, `up`, `down`, `apply`, or `cancel` | Internal operator helper for the guided comfortable-reach procedure. Run one step at a time inside the Controller container as described above; it pauses output and preserves a private backup. |
+| `scripts/measure-dot-input.py` | Optional `--state PATH`, `--seconds NUMBER`, and `--interval NUMBER`; required `--output NEW-PATH` | Reads the cabinet's native-state record without changing it and reports dot validity, loss/recovery, distinct publications, and coordinate range. Defaults are the installed state path, 30 seconds, and 60 polls per second. |
+| `scripts/configure-uno-q-avahi.py` | Optional `--config PATH` and `--interfaces NAME...` | Internal host-installer helper. It restricts Avahi to validated physical interfaces, preserves a backup, and defaults to detecting interfaces from Linux sysfs; ordinary users should rerun installation instead. |
 | `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
 | `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Installs and verifies the bundled model into project `data/models/`; downloads only if absent. Requires Python 3, plus curl for fallback downloads. |
 | `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |
@@ -2186,3 +2319,21 @@ reviewed timing before measuring annotated events. All raw traces, recordings,
 and position annotations remain temporary and local. Public status still samples
 inference; the new trace joins never estimate cross-host network delay by
 subtracting independent monotonic clocks.
+
+### Experimental X/Y medium-jump trial
+
+The recognition configuration accepts `motion_coordinate_boost` (default null).
+When set, it overrides `coordinate_motion_boost` only in the experimental native
+X/Y update. The UNO trial uses 8.0 instead of the baseline 4.0. With smoothing
+minimum .70 and maximum 1.00, changes roughly .0375 camera units away from the
+filtered axis pass through immediately, compared with .075 at baseline. This
+reduces damping for medium changes while retaining damping near rest. It is not
+prediction and does not remove capture or recognition delay. Remove the override
+to restore the baseline. See [offline analysis](motion-smoothing-analysis.md).
+
+`motion_coordinate_max` is an experimental native-X/Y-only cap. The normal
+maximum is 1.00; values above 1.00 intentionally extrapolate past the newest
+recognized position and can overshoot on stops or reversals. The current test
+experiment uses `1.30` with boost `15.0` and minimum smoothing `0.70`. It does
+not change recognition freshness, flow, transport, or the synchronous path used
+by other games. Remove it to restore the 1.00 cap.

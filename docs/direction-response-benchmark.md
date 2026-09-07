@@ -1,5 +1,50 @@
 # Direction-response benchmark
 
+## Experimental X/Y correction investigation — September 7, 2026
+
+The UNO dot comparison rejected the initial optical-flow path: only 17 of 128
+observed still-hold status samples were detected, versus 177/177 in the original
+MediaPipe baseline. Inspection found that correction replayed every intervening
+frame, then submitted the next recognition job using an already-aged source.
+
+A synthetic before/after benchmark ran on the UNO's installed Python/OpenCV
+environment (OpenCV 4.10.0, four OpenCV threads), with camera processing paused.
+It used moving textured images at requested 60 Hz and a simulated 60 ms
+recognition delay, with no camera access, controller transmission or game input.
+Two alternating four-second runs per version produced:
+
+| Measure | Original correction | Revised correction |
+| --- | --- | --- |
+| Foreground processing p95 | 78.3 / 80.0 ms | 18.6 / 18.3 ms |
+| Valid synthetic frames | 71/139 / 69/139 | 231/235 / 229/233 |
+| Recognition-source age p95 | 265.9 / 266.1 ms | 130.6 / 130.1 ms |
+
+The revised runs rejected only their four startup frames. The fix performs one
+checked source-to-current correction on at-most-320-pixel-wide flow images and
+submits the next recognition before correction. Original recognition resolution,
+the 250 ms freshness limit, and per-player reach remain unchanged. Correction
+over 25 ms is rejected; an individual OpenCV call is not interruptible. New
+diagnostics separate correction, completed-result pickup and rejection reasons.
+
+The simulated recognizer sleeps rather than competing for CPU like MediaPipe.
+This proves a correction-cost improvement on the target hardware, not live
+recognition reliability or physical hand-to-screen latency. Large movements or
+low palm texture may still fail the optical-flow checks. The revised code is
+installed with experimental mode **off**; the original MediaPipe path remains
+active pending another operator-cued hand test.
+
+Reproduce with the original `motion.py` saved outside the checkout, using an
+environment containing the vision dependencies:
+
+```sh
+PYTHONPATH=src python3 scripts/benchmark-motion-correction.py \
+  --before /tmp/original-motion.py --output /tmp/correction-comparison.json
+```
+
+Run while normal camera processing is idle. The script never changes controller
+settings itself. The original UNO report is retained locally in
+`/tmp/uno-dot-baseline-x8heur1f/correction-benchmark-uno.json`.
+
 The **PowerGlove Vision Controller (Arduino UNO Q)** performs the camera,
 recognition, and send stages measured in this record.
 
@@ -553,3 +598,45 @@ reports and selected non-sensitive annotated evidence in this benchmark record
 only after the physical session. Tune one identified stage at a time, requiring
 repeatable responsiveness improvement without increased resting movement or
 reduced recognition reliability.
+
+## UNO Q Kiyo Pro capture comparison — September 6, 2026
+
+After deploying comfortable reach support, an isolated capture experiment used
+the UNO Q's installed worker Python/OpenCV environment and its attached Kiyo Pro.
+The normal camera worker was idle and paused during capture, with controller
+output stopped. Each sequential lane warmed up for two seconds and measured six
+seconds. No hand images were saved and no inference workload was run. All lanes
+requested MJPEG at 60 fps; OpenCV reported accepting the requested buffer counts.
+Actual FPS uses completed frames, not the negotiated value. Every lane had zero
+failed reads.
+
+| Camera controls | Image size | Buffers | Actual fps | Read interval p50 / p95 (ms) | Decode p50 / p95 (ms) |
+| --- | --- | ---: | ---: | --- | --- |
+| Original HDR state unknown | 640×480 | 1 | 25.78 | 35.39 / 67.42 | 16.56 / 17.20 |
+| Original HDR state unknown | 640×480 | 2 | 30.00 | 32.60 / 51.67 | 17.63 / 18.68 |
+| Original HDR state unknown | 1280×720 | 1 | 23.25 | 35.95 / 71.20 | 21.57 / 28.03 |
+| Original HDR state unknown | 1280×720 | 2 | 30.09 | 32.13 / 53.04 | 21.29 / 21.57 |
+| HDR-off, auto exposure, fixed rate | 640×480 | 1 | 51.68 | 16.24 / 32.16 | 11.86 / 16.35 |
+| HDR-off, auto exposure, fixed rate | 640×480 | 2 | 59.71 | 16.02 / 27.80 | 10.29 / 12.05 |
+| HDR-off, auto exposure, fixed rate | 1280×720 | 1 | 21.90 | 45.74 / 64.10 | 22.91 / 23.21 |
+| HDR-off, auto exposure, fixed rate | 1280×720 | 2 | 52.43 | 16.11 / 36.19 | 15.55 / 15.98 |
+| HDR-off, auto exposure, fixed rate | 640×480 | 2 | 59.76 | 16.06 / 21.82 | 10.37 / 12.12 |
+| HDR-off, auto exposure, fixed rate | 1280×720 | 2 | 55.20 | 15.81 / 42.27 | 15.57 / 17.16 |
+
+The 480p/two-buffer/HDR-off candidate delivered 59.71 and 59.76 fps. Increasing
+to 720p cost more decoding time and produced 52.43 and 55.20 fps with longer tails.
+The selected UNO Q candidate therefore retains 640×480, requests two buffers,
+and explicitly requests volatile HDR-off, automatic exposure, and fixed frame
+rate. It retains the existing two inference threads and independent latest-frame
+capture. The settings are opt-in device settings; general defaults remain unchanged.
+
+Standard format/exposure controls were restored after the isolated experiment,
+and the worker was resumed. The original HDR state could not be read; HDR-off
+was sent without an onboard SAVE command. The experiment compares sequential
+configurations; it does not establish HDR's isolated contribution, exposure-to-read
+freshness, recognition under load, or physical hand-to-screen latency. Those still
+require live play and a hand/display recording. The protocol reference is
+[kiyoproctrls](https://github.com/soyersoyer/kiyoproctrls); UNO code uses a bounded,
+USB-identity-checked control implementation without adding that external utility.
+Aggregate source evidence is retained locally in
+`data/benchmarks/uno-q-camera-2026-09-06.json` (excluded from installation payloads).

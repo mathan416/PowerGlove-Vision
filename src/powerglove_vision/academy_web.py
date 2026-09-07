@@ -11,7 +11,7 @@
 """Render Glove Academy lessons and personal hand setup."""
 
 from .web_common import _page, VISION_STARTUP_SCRIPT
-from .player_web import PLAYER_CONTENT, PLAYER_SCRIPT
+from .player_web import PLAYER_SELECTOR_CONTENT, PLAYER_SCRIPT
 from .tuning_web import TUNE_CONTENT, TUNE_SCRIPT, TUNE_THRESHOLDS
 
 LEARN = _page(
@@ -20,19 +20,19 @@ LEARN = _page(
 <div class=learn-grid><div class=learn-camera><img class=camera id=learn-camera data-src=/stream alt='Live camera view for gesture practice'><div class=camera-idle id=learn-startup role=status aria-live=polite></div><div class=practice-badge>● PRACTICE ONLY</div></div>
 <section class=card><div id=achievement hidden role=status aria-live=polite style="text-align:center;padding:24px;border:2px solid #36dbe8;border-radius:16px;background:linear-gradient(135deg,#12334b,#261944)"><img class="pixel-pal pal-celebration" src="/help-assets/gestures/v2/pixel-pal-gold-cup.png" alt="Pixel Pal holds a golden award cup" width="180" height="200"><h2>Glove Master!</h2><p>All lessons completed. You're ready to play.</p><button id=restart-training type=button>Start again</button><a class=button href=/dashboard>Go to Dashboard</a></div><div id=lesson-content><div class=lesson-number id=lesson-number>Lesson 1 of 16</div><div class=lesson-title id=lesson-title>Show your hand</div><img id=lesson-image alt="Gesture example" style="display:block;width:100%;height:180px;object-fit:contain;background:#f8f9fc;border-radius:10px"><p class=lesson-cue id=lesson-cue>Hold one hand inside the camera frame with your palm facing the camera.</p>
 <details><summary>Live hand measurements</summary><canvas id=hand-detail width=300 height=220 style="width:100%;max-width:300px;background:#090b11" aria-label="Magnified hand landmarks"></canvas><p id=finger-feedback></p><p id=depth-feedback></p></details><div class=lesson-result id=lesson-result>Waiting for your hand…</div><div class=lesson-progress id=lesson-progress></div>
-<div class=controls><button id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button id=center type=button>Set this as my center</button></div>
+<div class=controls><button id=previous type=button>Previous</button><button id=next type=button>Skip lesson</button><button id=center type=button>Center hand</button></div>
 <div class=bits id=practice-actions aria-label="Practice actions"></div><div class=live-readout><div><span class=label>Tracking</span><strong id=tracking>—</strong></div><div><span class=label>Recognized</span><strong id=recognized>None</strong></div><div><span class=label>Confidence</span><strong id=confidence>0%</strong></div></div></div></section></div>""",
     VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
 let calibrationPending=false,calibrationSeen=false,calibrationStarted=0,calibrationDoneUntil=0;
 function updateCalibration(s){const b=$('center');if(s.calibrating){calibrationSeen=true;calibrationPending=true;if(!calibrationStarted)calibrationStarted=Date.now()}
 if(calibrationPending&&calibrationSeen&&s.calibrated&&!s.calibrating){calibrationPending=false;calibrationSeen=false;calibrationStarted=0;calibrationDoneUntil=Date.now()+1800}
 if(calibrationPending&&Date.now()-calibrationStarted>20000){calibrationPending=false;calibrationSeen=false;calibrationStarted=0;b.title='Calibration did not finish. Show a relaxed hand and try again.'}
-b.disabled=s.vision_state!=='active'||calibrationPending;b.classList.toggle('danger',calibrationPending);b.setAttribute('aria-busy',String(calibrationPending));b.textContent=calibrationPending?'Calibrating…':Date.now()<calibrationDoneUntil?'Calibrated ✓':'Calibrate';}
+b.disabled=s.vision_state!=='active'||calibrationPending;b.classList.toggle('danger',calibrationPending);b.setAttribute('aria-busy',String(calibrationPending));const text=calibrationPending?'Centering…':Date.now()<calibrationDoneUntil?'Center saved ✓':'Center hand';if(b.textContent!==text)b.textContent=text;}
 async function calibrate(){if(calibrationPending)return;calibrationPending=true;calibrationSeen=false;calibrationStarted=Date.now();calibrationDoneUntil=0;updateCalibration({vision_state:'active'});try{const r=await fetch('/calibrate',{method:'POST'});if(!r.ok)throw Error('Calibration request failed');}catch(e){calibrationPending=false;calibrationStarted=0;updateCalibration({vision_state:'active'});$('center').textContent='Retry calibration';$('center').title=e.message}}
 
 const lessons=[
  {title:'Show your hand',image:'show-your-hand.png',cue:'Hold one hand inside the camera frame with your palm facing the camera.',ok:s=>s.detected,result:'Hand found — great!' },
- {title:'Find neutral',image:'find-neutral.png',cue:'Keep your palm centered and relaxed. Your saved center changes only if you select Set this as my center.',ok:s=>s.detected&&s.calibrated&&!Object.values(s.dpad||{}).some(Boolean),result:'You are in the neutral area.'},
+ {title:'Find neutral',image:'find-neutral.png',cue:'Keep your palm centered and relaxed. Your saved center changes only if you select Center hand.',ok:s=>s.detected&&s.calibrated&&!Object.values(s.dpad||{}).some(Boolean),result:'You are in the neutral area.'},
  {title:'Move left',image:'move-left.png',instant:true,cue:'Move your whole hand a short distance left from center.',ok:s=>s.dpad?.left,result:'LEFT recognized.'},
  {title:'Move right',image:'move-right.png',instant:true,cue:'Move your whole hand a short distance right from center.',ok:s=>s.dpad?.right,result:'RIGHT recognized.'},
  {title:'Move up',image:'move-up.png',instant:true,cue:'Raise your whole hand a short distance above center.',ok:s=>s.dpad?.up,result:'UP recognized.'},
@@ -86,5 +86,5 @@ LEARN = LEARN.replace(b'<section class=card id=practice-lessons>',
     + b'<section class=card id=practice-lessons>', 1)
 LEARN = LEARN.replace('<div class=practice-badge>● PRACTICE ONLY</div></div>'.encode(), '<div class=practice-badge>● PRACTICE ONLY</div>'.encode() + TUNE_THRESHOLDS.encode() + b'</div>', 1)
 LEARN = LEARN.replace(b'</body>', b'<script>' + TUNE_SCRIPT.encode() + b'</script></body>')
-LEARN = LEARN.replace((_tune_intro + '</section>').encode(), PLAYER_CONTENT.encode() + (_tune_intro + '</section>').encode(), 1)
+LEARN = LEARN.replace((_tune_intro + '</section>').encode(), PLAYER_SELECTOR_CONTENT.encode() + (_tune_intro + '</section>').encode(), 1)
 LEARN = LEARN.replace(b'</body>', b'<script>' + PLAYER_SCRIPT.encode() + b'</script></body>')

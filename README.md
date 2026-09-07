@@ -4,7 +4,7 @@
 
 # PowerGlove Vision
 
-**Release candidate:** [v0.3.2-rc.7](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.7). Update both computers together using the [candidate installation commands](docs/INSTALL_README.md#install-this-release-candidate). The default installer commands select the latest stable release, not this candidate. Live gameplay and latency validation remain pending. Version **0.3.5** is planned for measured latency improvements, with stationary jitter and recognition reliability checked against repeated baselines.
+**Release candidate:** [v0.3.2-rc.7](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.7). Update both computers together using the [candidate installation commands](docs/INSTALL_README.md#install-this-release-candidate). The default installer commands select the latest stable release, not this candidate. Post-pairing controller gameplay is confirmed on the tested cabinet; measured latency and repeated stationary-jitter validation remain pending. Version **0.3.5** is planned for measured latency improvements, with stationary jitter and recognition reliability checked against repeated baselines.
 
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
 a camera connected to the **PowerGlove Vision Controller**, built on an Arduino
@@ -68,6 +68,10 @@ The [development review and parking lot](https://github.com/mathan416/PowerGlove
 records completed fixes and decisions for a later session, including
 latency measurements still awaiting live play. Player calibration, complete backups, background hostname refresh, independent Networking indication, signed controller sessions, and web-module cleanup are implemented. Controller transport now requires matching version-2 software on both computers; follow the [coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
 
+Manage players and backups in **Setup → Players**. Select the active player on Dashboard or in Glove Academy; that selection applies to both practice and gameplay. Dashboard combines the game name and session status in one Game card.
+
+On Dashboard, **Center hand** saves the resting reference for the selected player. If that player needs centering, guidance appears beside the controls before you can start controller output.
+
 ## Choose a guide
 
 ### User manuals
@@ -87,8 +91,12 @@ latency measurements still awaiting live play. Player calibration, complete back
 | --- | --- |
 | Get the complete project at a glance | [Project overview PDF](output/pdf/PowerGlove-Vision-Overview.pdf) |
 | Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
+| Understand joystick versus native glove input | [Native emulation explained](docs/NATIVE_EMULATION_EXPLAINED.md) |
+| Review Super Glove Ball packet and gameplay evidence | [Native compatibility record](docs/super-glove-ball-native.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
+| Review movement-filter evidence and experiments | [Motion smoothing analysis](docs/motion-smoothing-analysis.md) |
+| Isolate native X/Y from Super Glove Ball behavior | [Controller dot test](docs/uno-q-dot-test.md) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
 | Check dependency provenance or release history | [Third-party components](docs/THIRD_PARTY_COMPONENTS.md) and [Changelog](docs/CHANGELOG.md) |
@@ -109,7 +117,7 @@ because it is far too funny to fix.
 
 The web footer shows exact software and running matrix firmware identities.
 Glove Academy supports twelve player presets, saved lesson progress, and portable
-version-2 hand-setup backups containing name, personal and effective sensitivity, software identity, and per-player calibration. Switching players requires fresh centering or explicit same-position reuse. Version-1 portable backups are no longer accepted. Navigation
+version-2 hand-setup backups containing name, personal and effective sensitivity, software identity, and per-player calibration. Selecting a player immediately loads their sensitivity, progress, and saved center, with output paused. Use **Center hand** for new players or after changing the physical setup. Version-1 portable backups are no longer accepted. Navigation
 and controls adapt to phone and tablet widths.
 
 ## Quick start
@@ -236,9 +244,11 @@ direction by frame 3. Their semantics differ: FCEUmm supplies held digital
 directions, while the native core supplies an absolute target position. The
 native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
 open/fist/index packet, and safe-neutralization tests. Live full-game play
-confirms grab/throw, index fire, and fist-plus-forward Power Punch. Movement is
-playable but still has latency to refine. Wrist rotation and remaining unused
-native packet fields stay neutral. See the
+confirms grab/throw, index fire, and fist-plus-forward Power Punch. The optional
+experimental movement path uses bounded palm-flow correction and per-player
+reach calibration; it remains limited to calibrated Super Glove Ball while
+recognition age and long movements are being tuned. Wrist rotation and remaining
+unused native packet fields stay neutral. See the
 [native compatibility record](docs/super-glove-ball-native.md).
 
 The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that the
@@ -248,12 +258,26 @@ FCEUmm and the same global recognition settings.
 For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
 collects fresh timing observations without changing camera settings or controls.
 It keeps Controller software timing separate from network, emulator, and display delay.
+The optional [PowerGlove Vision Controller dot test](docs/uno-q-dot-test.md) reuses the cabinet's installed
+`lr-powerglove-dot` core to display the same receiver X/Y publication without
+game movement logic, with read-only input-range and validity measurements.
+
 The [native latency session tools](docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
 guide stationary/movement windows, optionally correlate software traces, and
 extract annotated evidence from an original hand-and-screen recording. They are
-disabled during normal play; physical measurements remain pending.
+disabled during normal play. Trace tools can compare recognized, optical-flow,
+selected, and filtered coordinates without recording video; physical
+hand-to-screen latency still requires synchronized recording.
 
 ## Use the web interface
+
+Setup includes **Joystick dead zone**, saved separately for each player. Small
+requires less hand movement to press a direction; Large gives more room around
+center. **Use standard size** selects the existing 0.28 activation / 0.14 release
+pair; select **Save dead zone** to apply. The slider sets all four directions
+together, without changing center or native Super Glove Ball reach. Live direction
+indicators work while tracking is active. Separate directional thresholds remain
+under Glove Academy → Tune gestures → Advanced thresholds and diagnostics.
 
 The Controller website uses the logo’s hand-and-target emblem for browser tabs
 and saved home-screen shortcuts.
@@ -262,7 +286,7 @@ and saved home-screen shortcuts.
 | --- | --- |
 | Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
 | Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
-| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Hand-setting backups are available. |
+| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Select the same active player used for gameplay; manage players and hand-setting backups in Setup. |
 | Help, `/help` | Opens the local manuals and PDFs; **This console** shows current connection details. |
 | Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 

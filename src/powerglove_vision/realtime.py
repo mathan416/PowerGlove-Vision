@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from math import ceil
 from typing import Any, Callable
 
+from .diagnostic_trace import DiagnosticTrace
+
 
 @dataclass(frozen=True)
 class CapturedFrame:
@@ -88,6 +90,7 @@ class LatestFrameCapture:
         self._stop = threading.Event()
         self._sequence = 0
         self._latest: CapturedFrame | None = None
+        self._trace = DiagnosticTrace.from_environment("capture")
         if first_frame is not None:
             self._sequence = 1
             self._latest = CapturedFrame(1, clock(), True, first_frame)
@@ -99,17 +102,34 @@ class LatestFrameCapture:
     def _run(self) -> None:
         """Read continuously so slow inference can never build a frame queue."""
         while not self._stop.is_set():
+            trace = self._trace
+            traced = trace is not None and trace.enabled
+            attempt = self._sequence + 1
+            if traced:
+                started_ns = time.monotonic_ns()
+                cpu_started_ns = time.thread_time_ns()
+                trace.record(dict(event="capture_read_begin", sequence=attempt,
+                                  at_ns=started_ns, thread_id=threading.get_native_id()))
             try:
                 ok, frame = self._capture.read()
             except Exception:
                 # Publish failure so the main loop can apply its timed reconnect.
                 ok, frame = False, None
             captured_at = self._clock()
+            if traced:
+                ended_ns = time.monotonic_ns()
+                cpu_ended_ns = time.thread_time_ns()
+                trace.record(dict(event="capture_read_end", sequence=attempt,
+                                  at_ns=ended_ns, ok=bool(ok),
+                                  thread_cpu_ns=cpu_ended_ns - cpu_started_ns))
             with self._lock:
                 self._sequence += 1
                 self._latest = CapturedFrame(
                     self._sequence, captured_at, bool(ok), frame if ok else None
                 )
+            if traced:
+                trace.record(dict(event="capture_publication", sequence=attempt,
+                                  at_ns=time.monotonic_ns(), ok=bool(ok)))
             if not ok:
                 self._stop.wait(0.005)
 
@@ -128,6 +148,8 @@ class LatestFrameCapture:
         finally:
             if threading.current_thread() is not self._thread:
                 self._thread.join(timeout=1.0)
+            if self._trace is not None:
+                self._trace.close()
 
 
 @dataclass(frozen=True)

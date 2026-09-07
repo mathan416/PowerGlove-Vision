@@ -312,7 +312,7 @@ class GameSetupTests(unittest.TestCase):
             self.assertFalse(games.exists())
             self.assertEqual(
                 (prefix / "configs/nes/powerglove-native.cfg").read_text(),
-                'input_libretro_device_p1 = "517"\n',
+                'input_libretro_device_p1 = "517"\nvideo_threaded = "false"\n',
             )
 
     def test_helper_failure_is_not_silently_accepted(self):

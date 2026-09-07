@@ -70,9 +70,12 @@ def replace_setting(text: str, key: str, value: str) -> str:
 
 
 def native_options(prefix: Path) -> tuple[Path, str]:
-    """Return the fixed controller-device override required by the custom core."""
+    """Return native input and video pacing overrides, isolated from other cores."""
     path = prefix / "configs/nes/powerglove-native.cfg"
-    return path, 'input_libretro_device_p1 = "' + str(POWER_GLOVE_DEVICE) + '"\n'
+    return path, (
+        'input_libretro_device_p1 = "' + str(POWER_GLOVE_DEVICE) + '"\n'
+        'video_threaded = "false"\n'
+    )
 
 
 def native_registration(prefix: Path) -> tuple[Path, str, Path, str]:

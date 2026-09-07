@@ -187,7 +187,9 @@ def install_unoq(peer):
         raise ValueError("A pending shutdown request exists; remove it deliberately before setup")
     run("apt-get", "update")
     run("apt-get", "install", "-y", "avahi-daemon", "libnss-mdns")
+    run("python3", str(app / "scripts/configure-uno-q-avahi.py"))
     run("systemctl", "enable", "--now", "avahi-daemon")
+    run("systemctl", "restart", "avahi-daemon")
     for suffix, directory in (("path", "/etc/systemd/system"), ("service", "/etc/systemd/system"), ("conf", "/etc/tmpfiles.d")):
         name = "powerglove-system-shutdown." + suffix
         write_file(Path(directory) / name, (app / "uno-q" / name).read_bytes())

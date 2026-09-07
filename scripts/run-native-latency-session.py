@@ -22,7 +22,7 @@ measurement = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(measurement)
 
 
-def collect_window(url, output, label, phase, seconds):
+def collect_window(url, output, label, phase, seconds, test='native'):
     """Keep operator cues separate from telemetry and from the video's clock."""
     print('\n%s: %d seconds. Start external recording before continuing.' % (label, seconds))
     input('Press Enter when framed and ready (Ctrl-C cancels): ')
@@ -44,6 +44,7 @@ def collect_window(url, output, label, phase, seconds):
     thread.join()
     report = result[0]
     report['window_label'] = label
+    report['test'] = test
     report['cue_clock'] = 'Mac local pacing only; not synchronized to video or device clocks'
     with output.open('x') as stream:
         json.dump(report, stream, indent=2, allow_nan=False)
@@ -60,16 +61,24 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--status-url', type=measurement.status_url, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--test', choices=('native', 'dot'), default='native',
+                        help='Label evidence and show the matching preflight; does not launch an emulator')
     args = parser.parse_args()
     args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
-    print('Preflight: native core/device 517; active player and calibration; Robo-Glove follows hand;')
+    if args.test == 'dot':
+        print('Preflight: launch Super Glove Ball with lr-powerglove-dot for this launch;')
+        print('UNO Q MediaPipe baseline; active player and calibration; yellow dot and TRACKING;')
+        print('The inset canvas is x=16..239, y=24..207. NO INPUT must remove the dot.')
+        print('The installed wrapper traces for 300 seconds from launch; relaunch for later trace windows.')
+    else:
+        print('Preflight: native core/device 517; active player and calibration; Robo-Glove follows hand;')
     print('preview CLOSED; stable lighting; same game conditions; original hand+screen video framing checked.')
     print('Verify software identities and effective per-game video overrides separately. No configuration is changed.')
     for index in range(1, 4):
         label = 'neutral-%d' % index
-        collect_window(args.status_url, args.output_dir / (label+'.json'), label, 'neutral', 20)
+        collect_window(args.status_url, args.output_dir / (label+'.json'), label, 'neutral', 20, args.test)
     for direction in ('left', 'right', 'up', 'down'):
-        collect_window(args.status_url, args.output_dir / (direction+'.json'), direction, 'movement', 60)
+        collect_window(args.status_url, args.output_dir / (direction+'.json'), direction, 'movement', 60, args.test)
     return 0
 
 

@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
+#   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-05 - Published native fist and index-point poses for Super Glove Ball.
 #   2026-09-05 - Added motion-confirmed depth gestures and a faster deliberate Start hold.
 #   2026-09-05 - Eased Menu Guard entry without loosening general finger recognition.
@@ -41,10 +43,11 @@ def load_calibration(path: Path) -> Calibration | None:
             palm_x=neutral["palm_x"], palm_y=neutral["palm_y"],
             palm_scale=neutral["palm_scale"], roll=neutral["roll"],
             noise_x=neutral.get("noise_x", 0.0), noise_y=neutral.get("noise_y", 0.0),
+            **{k: neutral.get(k, 0.0) for k in ("reach_left", "reach_right", "reach_up", "reach_down")},
         )
         if not all(type(v) in (int, float) and math.isfinite(v) for v in asdict(value).values()):
             return None
-        if (value.palm_scale <= 0 or not 0 <= value.noise_x <= 1
+        if (not value.valid_reach() or value.palm_scale <= 0 or not 0 <= value.noise_x <= 1
                 or not 0 <= value.noise_y <= 1):
             return None
         return value
@@ -86,6 +89,10 @@ class GestureConfig:
     coordinate_smoothing_min: float = 0.70
     coordinate_smoothing_max: float = 1.00
     coordinate_motion_boost: float = 4.00
+    # Optional override only for experimental native X/Y; None preserves baseline.
+    motion_coordinate_boost: float | None = None
+    # Experimental native X/Y only; values above 1 intentionally extrapolate.
+    motion_coordinate_max: float | None = None
     curl_on: float = 0.50
     curl_off: float = 0.35
     thumb_on: float = 0.38
@@ -169,8 +176,11 @@ def _axis(value: float) -> int:
     return round(_clamp(value, -1.0, 1.0) * AXIS_MAX)
 
 
-def _field_axis(position: float, center: float, margin: float) -> int:
-    """Map either side of a calibrated center to the usable camera boundary."""
+def _field_axis(position: float, center: float, margin: float,
+                negative_span: float = 0.0, positive_span: float = 0.0) -> int:
+    """Map comfortable reach to full range, or use legacy camera boundaries."""
+    if negative_span >= 0.05 and positive_span >= 0.05:
+        return _axis((position - center) / (negative_span if position < center else positive_span))
     edge = _clamp(margin, 0.0, 0.45)
     span = center - edge if position < center else 1.0 - edge - center
     return _axis((position - center) / max(0.05, span))
@@ -464,8 +474,77 @@ class GestureEngine:
             "menu_guard": self._menu_guard_active,
         }
 
+    def update_native_motion(
+        self, observation: HandObservation, gesture: HandObservation | None = None
+    ) -> ControllerState:
+        """Update native X/Y without replaying gestures or extending their lifetime.
+
+        The motion tracker bounds gesture age against its source camera frame.
+        Only a newly completed recognition may update gesture/depth state. Loss
+        releases immediately in this experimental path, including held poses.
+        """
+        if self.profile != "super_glove_ball" or not self.calibrated:
+            raise ValueError("native motion requires calibrated Super Glove Ball")
+        previous_time = getattr(self, "_motion_time", None)
+        previous_x, previous_y = self._filtered_palm_x, self._filtered_palm_y
+        if not observation.detected:
+            self._last_seen = observation.timestamp - self.config.loss_release_ms / 1000 - 1
+            self._motion_time = None
+            return self.update(observation)
+        if gesture is not None:
+            self.update(gesture)
+            # A delayed recognition must not rewind the movement filter.
+            self._filtered_palm_x, self._filtered_palm_y = previous_x, previous_y
+        else:
+            self._sequence += 1
+        if self._last_state is None or not self._last_state.detected:
+            return ControllerState.released(
+                self._sequence, observation.timestamp, self.profile, self.calibrated
+            )
+        cfg, reference = self.config, self.calibration
+        # Preserve roughly the existing damping per unit of time, independent
+        # of whether the camera delivers 30 or 60 fresh frames per second.
+        dt = .09 if previous_time is None else max(0.0, observation.timestamp - previous_time)
+        for name, value in (("_filtered_palm_x", observation.palm_x),
+                            ("_filtered_palm_y", observation.palm_y)):
+            previous = getattr(self, name)
+            if previous is None:
+                setattr(self, name, value)
+                continue
+            boost = (cfg.coordinate_motion_boost if cfg.motion_coordinate_boost is None
+                     else cfg.motion_coordinate_boost)
+            cap = (cfg.coordinate_smoothing_max if cfg.motion_coordinate_max is None
+                   else cfg.motion_coordinate_max)
+            alpha = _clamp(cfg.coordinate_smoothing_min + abs(value - previous) * boost,
+                           cfg.coordinate_smoothing_min, cap)
+            if alpha <= 1.0:
+                alpha = 1 - (1 - alpha) ** (min(dt, .25) / .09)
+            else:
+                # Above one is an explicit experimental extrapolation. Applying
+                # the normal fractional-power easing to a negative base would
+                # produce complex/NaN values, so preserve the requested gain.
+                pass
+            setattr(self, name, previous + alpha * (value - previous))
+        self._motion_time = observation.timestamp
+        axes = dict(self._last_state.axes)
+        axes.update(
+            x=_field_axis(self._filtered_palm_x, reference.palm_x, cfg.coordinate_edge_margin,
+                          reference.reach_left, reference.reach_right),
+            y=_field_axis(self._filtered_palm_y, reference.palm_y, cfg.coordinate_edge_margin,
+                          reference.reach_up, reference.reach_down),
+        )
+        buttons = dict(self._last_state.buttons)
+        if gesture is None:
+            buttons["start"] = buttons["select"] = False
+        self._last_state = replace(
+            self._last_state, sequence=self._sequence, timestamp=observation.timestamp,
+            axes=axes, buttons=buttons, events=[] if gesture is None else self._last_state.events,
+        )
+        return self._last_state
+
     def update(self, observation: HandObservation) -> ControllerState:
         """Map one observation to a debounced controller state with safe tracking-loss release."""
+        self._motion_time = None
         self._sequence += 1
         if self._calibrating:
             self._collect_calibration(observation)
@@ -682,10 +761,12 @@ class GestureEngine:
                 # Native coordinates span the usable camera field on each side
                 # of neutral. Direction switches retain hand-relative thresholds.
                 "x": _field_axis(
-                    self._filtered_palm_x, reference.palm_x, cfg.coordinate_edge_margin
+                    self._filtered_palm_x, reference.palm_x, cfg.coordinate_edge_margin,
+                    reference.reach_left, reference.reach_right
                 ),
                 "y": _field_axis(
-                    self._filtered_palm_y, reference.palm_y, cfg.coordinate_edge_margin
+                    self._filtered_palm_y, reference.palm_y, cfg.coordinate_edge_margin,
+                    reference.reach_up, reference.reach_down
                 ),
                 "z": _axis(depth / 0.75),
                 "roll": _axis(roll),

@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Add atomic player presets and credential-free hand backups.
@@ -32,13 +33,13 @@ def calibration_value(data):
         raise ValueError("Invalid hand calibration format.")
     values = data["neutral"]
     required = {"palm_x", "palm_y", "palm_scale", "roll"}
-    if not isinstance(values, dict) or not required <= set(values) or set(values) - required - {"noise_x", "noise_y"}:
+    if not isinstance(values, dict) or not required <= set(values) or set(values) - required - {"noise_x", "noise_y", "reach_left", "reach_right", "reach_up", "reach_down"}:
         raise ValueError("Invalid hand calibration fields.")
     value = Calibration(**values)
     fields = asdict(value)
     if any(type(v) not in (int, float) or not math.isfinite(v) for v in fields.values()):
         raise ValueError("Calibration must contain finite numbers.")
-    if (not 0 <= value.palm_x <= 1 or not 0 <= value.palm_y <= 1
+    if (not value.valid_reach() or not 0 <= value.palm_x <= 1 or not 0 <= value.palm_y <= 1
             or not 0 < value.palm_scale <= 2 or not -math.pi <= value.roll <= math.pi
             or not 0 <= value.noise_x <= 1 or not 0 <= value.noise_y <= 1):
         raise ValueError("Calibration values are outside the camera range.")
@@ -200,7 +201,16 @@ class PlayerSettings:
         item = data["players"][data["active"]]
         if action in ("create", "select", "delete", "restore"):
             data["calibration_restore"] = None
-        if action == "progress":
+        if action == "joystick_deadzone":
+            value = request.get("value")
+            if type(value) not in (int, float) or not 0.14 <= value <= 1.0:
+                raise ValueError("Choose a joystick dead zone between 0.14 and 1.00.")
+            item["thresholds"].update(self.validate({
+                direction: {"on": value, "off": value / 2}
+                for direction in ("left", "right", "up", "down")
+            }))
+            data["generation"] += 1
+        elif action == "progress":
             incoming = progress(request.get("progress"))
             incoming["completed"] = sorted(set(item["progress"]["completed"]) | set(incoming["completed"]))
             item["progress"] = incoming
@@ -220,10 +230,11 @@ class PlayerSettings:
             key = request.get("id")
             if not isinstance(key, str) or key not in data["players"]:
                 raise ValueError("Choose an existing player.")
-            if key == data["active"]:
+            if key == data["active"] and not (item["needs_center"] and item["calibration"] is not None):
                 return self.snapshot()
             data["active"] = key
             data["players"][key]["needs_center"] = True
+            data["calibration_restore"] = copy.deepcopy(data["players"][key]["calibration"])
             data["generation"] += 1
         elif action == "reuse_calibration":
             if request.get("confirmed") is not True or item["calibration"] is None:
@@ -239,6 +250,7 @@ class PlayerSettings:
             del data["players"][data["active"]]
             data["active"] = next(iter(data["players"]))
             data["players"][data["active"]]["needs_center"] = True
+            data["calibration_restore"] = copy.deepcopy(data["players"][data["active"]]["calibration"])
             data["generation"] += 1
         elif action == "restore":
             backup = request.get("backup")

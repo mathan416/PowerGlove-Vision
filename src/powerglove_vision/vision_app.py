@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-06 - Support measured opt-in Kiyo Pro capture controls and buffer count.
+#   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
@@ -127,12 +129,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=int, default=60)
+    parser.add_argument("--camera-buffers", type=int, choices=(1, 2), default=1,
+                        help="V4L2 capture buffers; measured UNO Q candidate uses two")
+    parser.add_argument("--kiyo-hdr-off", action="store_true",
+                        help="Kiyo Pro only: volatile HDR-off and automatic fixed-rate exposure")
     parser.add_argument(
         "--camera-format", choices=("MJPG", "YUYV"), default="MJPG",
         help="requested V4L2 pixel format for controlled capture benchmarks",
     )
     parser.add_argument(
-        "--inference-threads", type=int, default=4,
+        "--inference-threads", type=int, default=2,
         help="CPU threads for the legacy MediaPipe inference calculators",
     )
     parser.add_argument(
@@ -144,6 +150,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--preview-fps", type=float, default=5.0,
         help="maximum diagnostic camera-preview rate",
     )
+    parser.add_argument("--motion-tracking", action="store_true",
+                        help="experimental asynchronous palm flow for native Super Glove Ball X/Y")
     parser.add_argument("--glove-color", choices=("none", "white", "black"), default="none")
     parser.add_argument("--no-mirror", action="store_true")
     parser.add_argument("--config", type=Path)
@@ -173,6 +181,15 @@ def _open_camera(args: argparse.Namespace):
     for camera_device in candidates:
         backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
         started = time.monotonic()
+        kiyo_applied = False
+        camera_control_error = None
+        if getattr(args, "kiyo_hdr_off", False):
+            from .kiyo_camera import configure_kiyo
+            try:
+                kiyo_applied = configure_kiyo(camera_device)
+            except (OSError, ValueError, RuntimeError) as exc:
+                camera_control_error = str(exc)
+                print(f"Camera controls unavailable: {exc}", file=sys.stderr, flush=True)
         candidate = cv2.VideoCapture(camera_device, backend)
         log_startup_stage("camera open", started)
         started = time.monotonic()
@@ -182,7 +199,8 @@ def _open_camera(args: argparse.Namespace):
         candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
         candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
         candidate.set(cv2.CAP_PROP_FPS, args.fps)
-        candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        requested_buffers = getattr(args, "camera_buffers", 1)
+        buffers_accepted = candidate.set(cv2.CAP_PROP_BUFFERSIZE, requested_buffers)
         log_startup_stage("camera settings", started)
         started = time.monotonic()
         warmup_deadline = time.monotonic() + 5.0
@@ -199,6 +217,12 @@ def _open_camera(args: argparse.Namespace):
                     "camera_width": round(candidate.get(cv2.CAP_PROP_FRAME_WIDTH)),
                     "camera_height": round(candidate.get(cv2.CAP_PROP_FRAME_HEIGHT)),
                     "camera_fps": round(candidate.get(cv2.CAP_PROP_FPS), 1),
+                    "camera_buffers_requested": requested_buffers,
+                    "camera_buffers": candidate.get(cv2.CAP_PROP_BUFFERSIZE),
+                    "camera_buffers_accepted": buffers_accepted,
+                    "camera_hdr_off_requested": getattr(args, "kiyo_hdr_off", False),
+                    "camera_hdr_off_command_sent": kiyo_applied,
+                    "camera_control_error": camera_control_error,
                 }
                 return cv2, LatestFrameCapture(candidate, _frame, metadata=metadata)
             time.sleep(0.1)
@@ -275,6 +299,9 @@ def _prepare_vision(args):
             inference_threads=args.inference_threads,
             backend=args.tracker_backend,
         )
+        if getattr(args, "motion_tracking", False):
+            from .motion import MotionTracker
+            tracker = MotionTracker(tracker)
         log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
     except Exception:
@@ -369,6 +396,7 @@ def main() -> int:
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
     preview_encoder = LatestPreviewEncoder(shared.update_frame)
     performance = RollingPerformance()
+    last_motion_mode = None
     server = start_debug_server(shared, args.web_host, args.web_port)
     capture = tracker = engine = cv2 = None
     vision_job = _background_call(_preload_vision_libraries)
@@ -388,6 +416,7 @@ def main() -> int:
     vision_error: str | None = None
     launch_guard_until = 0.0
     active_game_lease = ActiveGameLease()
+    last_launch_session = None
 
     matrix.set_status(MatrixStatus.GESTURES_IDLE if current_profile is None else MatrixStatus.LOADING)
     matrix.set_profile(current_profile)
@@ -408,6 +437,16 @@ def main() -> int:
             )
             profile_requested = request is not None or dashboard_request is not None or lease_expired
             practice_request = shared.take_practice_request()
+            if request is not None and request.session_id and request.profile is not None:
+                if request.session_id != last_launch_session:
+                    last_launch_session = request.session_id
+                    shared.game_controller_transition(
+                        last_launch_session, True,
+                        not (practice_mode if practice_request is None else practice_request)
+                        and not shared.tuning.active(),
+                    )
+            elif lease_expired or (request is not None and request.profile is None):
+                shared.game_controller_transition(last_launch_session, False)
             transition_requested = profile_requested or practice_request is not None
             if transition_requested:
                 last_controller_signature = None
@@ -423,9 +462,8 @@ def main() -> int:
                         current_game = request.rom or request.system or "No game"
                         profile_source = "RetroPie launch hook"
                         # runcommand-onstart fires before RetroArch owns the
-                        # display. Keep an already-enabled glove from driving
-                        # the launch/configuration menu, then resume without
-                        # changing the user's explicit Start/Stop choice.
+                        # display. Keep newly started or already-enabled output
+                        # from driving the launch/configuration menu.
                         if request.profile is not None:
                             # A leased request is not sent until RetroArch is
                             # actually running, so it needs only a short input
@@ -618,14 +656,30 @@ def main() -> int:
             preview_due = preview_watched and inference_started >= preview_at
             tracker.preview_enabled = preview_due
             tracker.diagnostics_enabled = preview_due or shared.tuning.active()
-            result = tracker.process(frame)
+            if getattr(args, "motion_tracking", False):
+                result = tracker.process(
+                    frame, timestamp=captured_frame.captured_at,
+                    fast=(engine.profile == "super_glove_ball" and engine.calibrated
+                          and not practice_mode and not shared.tuning.active()
+                          and not shared.tuning.needs_center()),
+                )
+            else:
+                result = tracker.process(frame)
+            motion_mode = getattr(result, "motion_only", False)
+            if motion_mode != last_motion_mode:
+                performance = RollingPerformance()
+                latest_diagnostics = {}
+                inference_interval_ms = None
+                last_controller_signature = None
+                last_motion_mode = motion_mode
             tracking_finished_ns = time.monotonic_ns() if trace and trace.enabled else None
             if preview_due:
                 latest_diagnostics = result.diagnostics
             if startup_timer is not None:
                 log_startup_stage("first inference", inference_started)
             engine.config = shared.tuning.configuration(engine_base_config)
-            state = engine.update(result.observation)
+            state = (engine.update_native_motion(result.observation, result.gesture_observation)
+                     if motion_mode else engine.update(result.observation))
             if engine.calibrated and engine.calibration is not retained_calibration:
                 retained_calibration = engine.calibration
                 try:
@@ -654,6 +708,13 @@ def main() -> int:
                     start_ns=int(inference_started * 1e9), tracking_end_ns=tracking_finished_ns,
                     end_ns=int(inference_finished * 1e9),
                     sent=receiver_available, detected=state.detected, calibrated=state.calibrated,
+                    motion=result.motion_trace if motion_mode else None,
+                    filtered_xy=[engine._filtered_palm_x, engine._filtered_palm_y] if state.detected else None,
+                    smoothing={"minimum": engine.config.coordinate_smoothing_min,
+                               "maximum": engine.config.coordinate_smoothing_max,
+                               "motion_boost": engine.config.coordinate_motion_boost,
+                               "experimental_motion_boost": engine.config.motion_coordinate_boost,
+                               "experimental_motion_max": engine.config.motion_coordinate_max},
                     x=state.axes.get("x", 0), y=state.axes.get("y", 0),
                     buttons=sum(1 << i for i, name in enumerate(("a", "b", "start", "select",
                         "glove_zap", "menu_guard", "closed_hand", "index_point")) if state.buttons.get(name))))
@@ -703,6 +764,11 @@ def main() -> int:
                 )
             )
             status = state.to_dict()
+            # Raw camera coordinates let reach calibration avoid filtered/clipped axes.
+            status["palm_position"] = (
+                {"x": result.observation.palm_x, "y": result.observation.palm_y}
+                if result.observation.detected else None
+            )
             status["inference_ms"] = round(inference_ms, 1)
             status["send_ms"] = round(send_ms, 1)
             status["sample_age_ms"] = round(sample_age_ms, 1)
@@ -763,6 +829,10 @@ def main() -> int:
             status["curl_threshold"] = engine.config.pair("index")[0]
             status["tuning"] = shared.tuning.snapshot()
             status.update(latest_diagnostics)
+            status["motion_tracking"] = motion_mode
+            if motion_mode:
+                status.update(result.diagnostics)
+                status["processing_timing_scope"] = "motion loop; recognition_inference_ms is separate"
             # Publish control feedback every inference; encode previews asynchronously.
             shared.update_status(status)
             if startup_timer is not None:

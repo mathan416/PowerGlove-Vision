@@ -50,6 +50,7 @@ async def main():
                 if flags[flag]:flags[flag]=False;return await r.fulfill(status=400,json={'error':'Approval PIN rejected' if flag=='pair_error' else 'Matrix unavailable'})
                 if path.endswith('/begin'):return await r.fulfill(json={'certificate_id':'1234ABCD','expires_in':flags['expiry']})
                 return await r.fulfill(json={'paired':True})
+            if path=='/api/players':return await r.fulfill(json=dict(active='default',generation=1,players=[dict(id='default',name='Player One')],progress=dict(course=1,completed=[],lesson=0),needs_center=False,has_saved_calibration=True))
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
             if path=='/status':return await r.fulfill(json=dict(worker_running=True,vision_state='idle',controller_enabled=False,version='0.3.2-dev'))

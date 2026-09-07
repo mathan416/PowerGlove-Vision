@@ -245,8 +245,8 @@ Check insufficient samples, tracking loss, overlapping ranges, and calibration
 changes. Verify preview expiry, save/reload, selected-component reset, existing
 internal version-1 store migration with a retained backup, isolated player settings and progress,
 stale-tab rejection after player changes or progress resets, and controller
-suppression throughout tuning. Check that player switches and hand-setting
-restores require fresh centering unless calibration reuse is explicitly confirmed;
+suppression throughout tuning. Check that player selection automatically restores that player’s saved center,
+missing centers require centering, and hand-setting imports retain explicit calibration reuse;
 Start controller remains required. Verify complete and earlier version-2 backup round trips,
 portable version-1 rejection,
 invalid calibration rejection, and restart recovery between both restore writes. Automatic

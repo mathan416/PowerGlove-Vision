@@ -206,7 +206,11 @@ class TuningManager:
     def player_snapshot(self):
         """Read player state under the same lock as recognition settings."""
         with self.lock:
-            return self.players.snapshot()
+            result = self.players.snapshot()
+            config = replace(self.base_config, thresholds=copy.deepcopy(self.saved))
+            result["joystick"] = {d: dict(zip(("on", "off"), config.pair(d)))
+                                  for d in ("left", "right", "up", "down")}
+            return result
 
     def player_command(self, data):
         """Change presets without overlapping an active tuning session."""
@@ -214,6 +218,9 @@ class TuningManager:
             self._expire()
             if self.session and data.get("action") not in ("read", "progress", "export"):
                 raise ValueError("Finish tuning and switch Tune gestures off before changing players or restoring settings.")
+            if data.get("action") == "joystick_deadzone" and (
+                    self.center_generation is not None or self.players.data["calibration_restore"] is not None):
+                raise ValueError("Wait for hand centering or calibration restore to finish before saving the dead zone.")
             if data.get("action") == "export":
                 result = self.players.command(data)
                 if self.players.data["calibration_restore"] is not None:
@@ -236,6 +243,12 @@ class TuningManager:
                     source={"version":str(identity.get("version", "unknown")) + ("+modified" if identity.get("dirty") else ""), "commit":identity.get("commit") or "unknown"})
                 return result
             result = self.players.command(data)
+            if data.get("action") == "joystick_deadzone":
+                self.saved = copy.deepcopy(self.players.active["thresholds"])
+                self.revision += 1
+                return self.player_snapshot()
+            if data.get("action") == "read":
+                return self.player_snapshot()
             if data.get("action") in ("create", "select", "delete", "restore", "reuse_calibration"):
                 self.saved = copy.deepcopy(self.players.active["thresholds"])
                 self.error = self.players.error

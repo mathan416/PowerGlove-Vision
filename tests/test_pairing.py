@@ -58,8 +58,9 @@ class PairingTests(unittest.TestCase):
             self.assertEqual(token_file.read_text(), "a-secure-controller-token\n")
             self.assertEqual(token_file.stat().st_mode & 0o777, 0o640)
 
+    @mock.patch("powerglove_vision.pairing.verify_controller_pairing")
     @mock.patch("powerglove_vision.pairing.subprocess.run")
-    def test_password_pairing_uses_python_ssh_without_command_line_secrets(self, run):
+    def test_password_pairing_uses_python_ssh_without_command_line_secrets(self, run, verify):
         run.return_value.returncode = 0
         run.return_value.stderr = b""
         with tempfile.TemporaryDirectory() as temporary_name:
@@ -79,8 +80,10 @@ class PairingTests(unittest.TestCase):
         payload = json.loads(keywords["input"])
         self.assertEqual(payload["password"], "private-password")
         self.assertEqual(payload["token"], "paired-controller-token")
+        verify.assert_called_once_with("retropie.local", 55355, "paired-controller-token")
 
-    def test_one_time_code_pairs_over_pinned_https(self):
+    @mock.patch("powerglove_vision.pairing.verify_controller_pairing")
+    def test_one_time_code_pairs_over_pinned_https(self, verify):
         with tempfile.TemporaryDirectory() as temporary_name:
             token_file = Path(temporary_name) / "token"
             ready = threading.Event()
@@ -103,6 +106,7 @@ class PairingTests(unittest.TestCase):
             self.assertFalse(worker.is_alive())
             self.assertEqual(token_file.read_text(), "paired-controller-token\n")
             self.assertEqual(paired, [True])
+            verify.assert_called_once_with("127.0.0.1", 55355, "paired-controller-token")
 
     def test_silent_tls_client_cannot_hold_pairing_past_deadline(self):
         with tempfile.TemporaryDirectory() as temporary_name:

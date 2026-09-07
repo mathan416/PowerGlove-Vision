@@ -44,6 +44,75 @@ from powerglove_vision.help_content import cabinet_reference_content, request_br
 from powerglove_vision.vision_app import _base_status, _effective_profile
 
 
+class AutomaticGameControllerTests(unittest.TestCase):
+    """Check automatic launches without overriding explicit player actions."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        path = Path(self.directory.name) / "device.json"
+        path.write_text(json.dumps({"receiver":"console.local", "token":"test-pairing-token"}))
+        self.state = ControlState(path)
+
+    def publish(self, session="game-one", enabled=True, **status):
+        event = {"session":session,"enabled":enabled,"eligible":True,"at":time.monotonic()}
+        self.state.update_worker(dict(_game_controller_event=event, **status))
+        return event
+
+    def test_launch_starts_once_and_heartbeat_keeps_stop(self):
+        self.publish()
+        self.assertTrue(self.state.controller_enabled())
+        self.state.set_controller_enabled(False)
+        self.publish()
+        self.assertFalse(self.state.controller_enabled())
+        self.publish("game-two")
+        self.assertTrue(self.state.controller_enabled())
+        self.assertNotIn("_game_controller_event",self.state.snapshot())
+
+    def test_stop_after_launch_wins_over_delayed_status(self):
+        event = {"session":"game-one","enabled":True,"eligible":True,"at":time.monotonic()}
+        self.state.set_controller_enabled(False)
+        self.state.update_worker({"_game_controller_event":event})
+        self.assertFalse(self.state.controller_enabled())
+
+    def test_exit_stops_and_same_session_recovery_does_not_restart(self):
+        self.publish()
+        self.publish(enabled=False)
+        self.assertFalse(self.state.controller_enabled())
+        self.publish()
+        self.assertFalse(self.state.controller_enabled())
+
+    def test_controller_restart_preserves_stop_for_current_game(self):
+        self.publish()
+        self.state.set_controller_enabled(False)
+        self.state = ControlState(self.state.config_path)
+        self.publish()
+        self.assertFalse(self.state.controller_enabled())
+        self.publish("new-game")
+        self.assertTrue(self.state.controller_enabled())
+
+    def test_practice_and_tuning_block_automatic_start(self):
+        for index,status in enumerate(({"practice_mode":True},{"tuning":{"active":True}})):
+            self.publish(str(index), **status)
+            self.assertFalse(self.state.controller_enabled())
+        self.publish("next-game")
+        self.assertTrue(self.state.controller_enabled())
+
+    def test_missing_center_reports_reason_without_starting(self):
+        self.publish(player={"needs_center":True})
+        self.assertFalse(self.state.controller_enabled())
+        self.assertIn("Center hand",self.state.snapshot()["receiver_error"])
+
+    def test_manual_profile_status_does_not_start(self):
+        self.state.update_worker({"profile_source":"Dashboard","active_profile":"program_a"})
+        self.assertFalse(self.state.controller_enabled())
+
+    def test_practice_at_launch_stays_blocked_after_page_closes(self):
+        event={"session":"game-one","enabled":True,"eligible":False,"at":time.monotonic()}
+        self.state.update_worker({"_game_controller_event":event,"practice_mode":False})
+        self.assertFalse(self.state.controller_enabled())
+
+
 class ControlStateTests(unittest.TestCase):
     def test_players_route_requires_same_origin_and_action_header(self):
         servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
@@ -81,7 +150,7 @@ class ControlStateTests(unittest.TestCase):
                 self.assertEqual(response.status, 400)
             connection.close()
             state.worker_status["player"] = {"needs_center": True}
-            with self.assertRaisesRegex(ValueError, "Set your center"):
+            with self.assertRaisesRegex(ValueError, "Center hand"):
                 state.set_controller_enabled(True)
         finally:
             servers.shutdown()
@@ -208,7 +277,8 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b'capture_skipped_total', DASHBOARD)
         self.assertIn(b'tracker_backend_label||s.tracker_backend', DASHBOARD)
         self.assertIn(b'Controller delivery', DASHBOARD)
-        self.assertIn(b'Game session', DASHBOARD)
+        self.assertIn(b'id=game-session', DASHBOARD)
+        self.assertIn(b'id=player-select', DASHBOARD)
         self.assertNotIn(b'<div class=label>RetroPie receiver</div>', DASHBOARD)
 
     def test_help_index_lists_the_public_guides(self):
