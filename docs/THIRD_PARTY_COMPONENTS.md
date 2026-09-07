@@ -44,6 +44,16 @@ on the PowerGlove Vision Controller. The repacked wheel retains MediaPipe's Apac
 `mediapipe-0.10.18.dist-info/LICENSE`. Do not substitute the upstream wheel
 without retesting dependency resolution, camera startup, and hand tracking.
 
+The released wheel and production Controller path are CPU-only. An isolated
+research build from the exact MediaPipe 0.10.18 source successfully initialized
+the UNO Q Adreno 702 through EGL/OpenGL ES and created a TensorFlow Lite GPU
+delegate. The first MediaPipe Tasks graph was substantially slower than the
+proven MediaPipe Hands path, so that custom wheel, its temporary Mesa alignment,
+and its build environment are not distributed. This confirms device access, not
+a production-quality GPU tracker. Any future lean GPU palm/landmark path must
+retain upstream Apache notices and pass the documented latency, continuity,
+recognition, jitter, and thermal gates before packaging.
+
 ## Google Hand Landmarker model
 
 PowerGlove Vision uses Google's float16 Hand Landmarker task bundle.

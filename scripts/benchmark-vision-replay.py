@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Retained temporary palm-anchor candidates for aggregate comparison.
 #   2026-09-05 - Kept aggregate means compatible with Python 3.7.
 #   2026-09-05 - Added repeatable MediaPipe backend, thread, size, and preview comparisons.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -38,12 +39,14 @@ def percentile(values: list[float], fraction: float) -> float | None:
 
 def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
              preview: bool, model: Path | None, cues: list[dict],
+             tracking_confidence: float = .55,
              frame_times: list[float] | None = None,
              effective_fps: float | None = None) -> dict:
     """Replay one clip through a single tracker configuration and summarize it."""
     import cv2
     tracker = MediaPipeTracker(
         backend=backend, inference_threads=threads, model_path=model, mirror=True,
+        tracking_confidence=tracking_confidence,
     )
     tracker.preview_enabled = preview
     tracker.diagnostics_enabled = preview
@@ -52,6 +55,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
     inference = []
     detected = []
     observations = []
+    motion_samples = []
     encoded_ms = []
     frame_index = 0
     engine = GestureEngine("practice")
@@ -79,6 +83,16 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
             inference.append((finished - started) * 1000)
             detected.append(result.observation.detected)
             state = engine.update(result.observation)
+            item = result.observation
+            motion_samples.append({
+                "frame": frame_index, "elapsed": elapsed,
+                "detected": item.detected, "confidence": item.confidence,
+                "confidence_source": item.confidence_source,
+                "x": item.palm_x if item.detected else None,
+                "y": item.palm_y if item.detected else None,
+                "scale": item.palm_scale if item.detected else None,
+                "palm_anchors": result.palm_anchors if item.detected else {},
+            })
             cue = next((item for item in cues if item["start"] <= elapsed < item["end"]), None)
             feedback = engine.recognition_feedback()
             curls = engine.curl_feedback(result.observation)
@@ -113,11 +127,15 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
             if result.observation.detected:
                 item = result.observation
                 observations.append({
-                    "frame": frame_index, "x": item.palm_x, "y": item.palm_y,
+                    "frame": frame_index, "elapsed": elapsed,
+                    "confidence": item.confidence,
+                    "confidence_source": item.confidence_source,
+                    "x": item.palm_x, "y": item.palm_y,
                     "scale": item.palm_scale, "roll": item.roll,
                     "thumb": item.thumb_curl, "index": item.index_curl,
                     "middle": item.middle_curl, "ring": item.ring_curl,
                     "pinky": item.pinky_curl,
+                    "palm_anchors": result.palm_anchors,
                 })
             if preview and frame_index % max(1, round(source_fps / 5)) == 0:
                 encode_started = time.monotonic()
@@ -141,7 +159,8 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         )
     }
     return {
-        "backend": backend, "threads": threads, "resize": list(size),
+        "backend": backend, "threads": threads,
+        "tracking_confidence": tracking_confidence, "resize": list(size),
         "preview": "open" if preview else "closed", "frames": frame_index,
         "inference_ms": {"p50": percentile(inference, .50),
                          "p95": percentile(inference, .95),
@@ -153,6 +172,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         "neutral_false_activation_frames": neutral_false_frames,
         "neutral_coordinate_jitter_span": jitter_span,
         "observation_samples": observations,
+        "motion_samples": motion_samples,
     }
 
 
@@ -166,6 +186,10 @@ def parser() -> argparse.ArgumentParser:
         "--quick", action="store_true",
         help="Run only the proven 640x480, two-thread lane for clip validation",
     )
+    result.add_argument("--threads", nargs="+", type=int, choices=(1, 2, 4))
+    result.add_argument("--tracking-confidences", nargs="+", type=float,
+                        choices=(.45, .50, .55, .60))
+    result.add_argument("--preview", choices=("closed", "open", "both"))
     return result
 
 
@@ -182,23 +206,30 @@ def main() -> int:
     frame_times = cue_document.get("frame_times_seconds")
     effective_fps = cue_document.get("effective_fps")
     lanes = []
-    sizes = ((640, 480),) if args.quick else ((640, 480), (512, 384))
-    previews = (False,) if args.quick else (False, True)
-    threads_to_test = (2,) if args.quick else (1, 2, 4)
+    focused = bool(args.threads or args.tracking_confidences or args.preview)
+    sizes = ((640, 480),) if args.quick or focused else ((640, 480), (512, 384))
+    previews = ((False,) if args.preview in (None, "closed") else
+                (True,) if args.preview == "open" else (False, True))
+    if not args.quick and not focused:
+        previews = (False, True)
+    threads_to_test = tuple(args.threads or ((2,) if args.quick or focused else (1, 2, 4)))
+    confidences = tuple(args.tracking_confidences or (.55,))
     for size in sizes:
         for preview in previews:
             for threads in threads_to_test:
-                lanes.append(run_lane(
-                    args.clip, "legacy", threads, size, preview, None, cues,
-                    frame_times, effective_fps,
-                ))
+                for confidence in confidences:
+                    lanes.append(run_lane(
+                        args.clip, "legacy", threads, size, preview, None, cues,
+                        confidence, frame_times, effective_fps,
+                    ))
             if args.model is not None and not args.quick:
                 lanes.append(run_lane(
                     args.clip, "tasks-video", 1, size, preview, args.model, cues,
-                    frame_times, effective_fps,
+                    .55, frame_times, effective_fps,
                 ))
     result = {
-        "version": 1, "clip": str(args.clip), "full_frame_resize_only": True,
+        "version": 2, "clip": str(args.clip), "full_frame_resize_only": True,
+        "cues": cues,
         "lanes": lanes,
         "note": ("Observation samples support cue-by-cue recognition review. Live Dashboard "
                  "telemetry remains authoritative for latest-frame age and camera-to-send latency."),

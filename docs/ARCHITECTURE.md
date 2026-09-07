@@ -76,29 +76,46 @@ sockets. These functions are kept separate from camera inference.
 1. The camera layer opens a UVC capture source. A dedicated OpenCV capture
      thread drains it continuously and publishes only the newest frame; older
      unprocessed frames are superseded rather than queued.
-2. MediaPipe identifies the hand landmarks. The tracker produces a `HandObservation`: detection, confidence, timestamp, palm position and scale, wrist roll, and normalized finger curls.
+2. MediaPipe identifies the hand landmarks. The tracker validates finite,
+   non-collapsed palm geometry and produces a `HandObservation` using the
+   selected frame's capture timestamp. MediaPipe's score is labelled as
+   handedness certainty rather than position confidence.
 3. The gesture engine compares that observation with the saved neutral calibration and effective thresholds. Directions are relative to the calibrated palm; apparent hand-size change supplies forward/backward movement.
 4. Shared activation/release states and held menu poses feed the selected profile's mapping. The result is a `ControllerState`, including buttons, D-pad, axes, finger values, events, sequence, and tracking/calibration metadata.
 5. The worker sends the state only if controller delivery is armed, a live
    registered-game lease or intentional manual Dashboard context exists, and neither
    practice nor tuning is active.
 6. The sender establishes a receiver-issued challenge, then sends bounded HMAC-SHA256 controller datagrams over UDP 55355. Packets contain session and sequence identifiers, never the shared token.
-7. The receiver checks the message HMAC, live challenge, peer, and increasing sequence. It creates the real virtual controller when the first accepted packet arrives.
+7. The receiver checks the message HMAC, live challenge, peer, and increasing
+   sequence. For Super Glove Ball it publishes native state before updating the
+   unrelated virtual gamepad; other profiles preserve virtual-gamepad behavior.
+   It creates the real virtual controller when the first accepted packet arrives.
 8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
-The default path performs landmark recognition synchronously and uses the newest
-completed observation directly. An opt-in Super Glove Ball experiment separates
-native X/Y movement from that cadence: one bounded worker processes the latest
-camera frame, while palm optical flow carries the last accepted position toward
-the current frame. It never queues recognition results or replays coordinate
-samples. Each correction is source-to-current, limited to 320-pixel flow images,
-a 25 ms work budget, and a 250 ms recognition-age limit. A failed or over-budget
-correction falls back to fresh, confident MediaPipe coordinates; stale, lost, or
-uncalibrated input neutralizes movement and clears flow history. Gesture and
-button recognition still comes from completed MediaPipe observations.
+Native Super Glove Ball performs MediaPipe landmark recognition synchronously.
+The Dashboard retains the normal hand skeleton and landmark annotation. Each
+fresh, geometry-valid palm observation is clamped to player reach and follows
+one of two response modes: **latest coordinate** passes it through directly,
+while **bounded speed curve** suppresses measured
+resting noise and progressively reduces damping as raw hand speed rises. Neither
+mode queues, predicts, extrapolates, or filters inside the emulator core. The
+former optical-flow experiment remains in `motion.py` as inactive research code
+and is not routed by the supervisor or exposed as a live configuration.
 
 Native coordinates use each player's calibrated center and optional asymmetric
-comfortable-reach spans. Digital FCEUmm directions instead use the player's
+comfortable-reach spans. Bounded native X/Y stabilization measures velocity
+between consecutive MediaPipe coordinates using capture timestamps and units
+of calibrated reach per second. An elliptical per-player X/Y noise region holds
+resting jitter; one vector follow weight progressively becomes one-to-one as
+speed rises. Follow weighting uses a 100 ms reference interval, matching the
+Controller's measured MediaPipe cadence; a saturated calibration jitter value
+falls back to the fixed safe floor. Meaningful reversals adopt the newest
+coordinate immediately; stops settle inside the noise region on one result and
+exactly on the next. Output never extrapolates beyond a measurement. In either mode,
+a missed observation shorter than `loss_release_ms` holds only the last X/Y
+position; buttons, fingers, depth, roll, and digital directions release at once.
+Longer tracking loss or stale input neutralizes the native sample and clears the
+coordinate history. Digital FCEUmm directions instead use the player's
 shared activation thresholds; Setup's **Joystick dead zone** changes all four
 direction thresholds together and sets release to half of activation. It does
 not alter native reach, finger gestures, or game mappings. Re-centering clears
@@ -213,12 +230,12 @@ hysteresis and profile-specific output semantics.
 | Direction or wrist roll | Starting position and wrist angle | Selected movement held steadily | Return to starting position and angle |
 
 Pose, direction, and roll recordings last two seconds; the repeated depth-motion
-step lasts six. Recording is enabled after a calibrated hand at 70% confidence
+step lasts six. Recording is enabled after a calibrated, geometry-valid hand
 has remained completely inside the image for one second. A user-controlled
 two-second countdown precedes every sample.
 
 Each step needs at least twelve accepted samples. The manager accepts calibrated,
-detected hands with confidence at least 0.7, rejects repeated frames and
+geometry-valid detected hands, rejects repeated frames and
 non-finite measurements, and caps samples per recording. Tracking gaps contribute
 no samples; too few samples require a retry. Neutral calibration changes invalidate
 recordings and previews.
@@ -269,7 +286,7 @@ that use that finger; it does not change the button assignments in a game profil
 | `data/models/hand_landmarker.task` | PowerGlove Vision Controller, verified cache | Reusable pretrained hand-landmark model |
 
 Neutral calibration is distinct from hand setup. It accepts 24 detected hand
-observations at 70% confidence or better, centers position, depth, and roll,
+observations with finite, non-collapsed landmark geometry, centers position, depth, and roll,
 records 95th-percentile X/Y jitter, and lets movement thresholds rise only
 when needed to remain safely above that noise; hand setup establishes finger thresholds. The app reuses valid neutral
 calibration across Glove Academy, profile changes, camera reconnects, and worker restarts.

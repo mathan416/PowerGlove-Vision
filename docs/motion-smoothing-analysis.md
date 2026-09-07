@@ -1,5 +1,54 @@
 # Existing sample review and smoothing model
 
+## Bounded speed-sensitive replacement — 7 September 2026
+
+The bounded native motion mode uses completed MediaPipe palm observations and
+separates resting noise from intentional velocity. It measures consecutive
+MediaPipe coordinates using capture timestamps and
+normalizes velocity by the player's directional reach. Calibration noise creates
+an elliptical X/Y resting region with hysteresis. Above it, one coherent
+two-dimensional newest-coordinate weight rises smoothly from `0.70` to `1.00`
+at 1.50 calibrated reach spans per second. Large travel and meaningful reversals
+are therefore direct. A stop settles inside the measured noise region on its
+first fresh result and exactly on the next, avoiding independent per-axis snaps.
+
+The runtime cap is unconditionally `1.00`. Historical
+`motion_coordinate_boost` and `motion_coordinate_max` fields remain loadable,
+but cannot create extrapolation. No moving-average window, queue, replay,
+prediction, or core-side filter was added.
+
+MediaPipe is the only live coordinate source because optical-flow movement was
+reported as jerky and unreliable even though the underlying MediaPipe tracking
+remained usable. The optical-flow implementation is retained as inactive source
+and historical trace support, but `motion_tracking` no longer enables it. The
+Dashboard instead compares the bounded curve with direct latest coordinates.
+
+The initial MediaPipe-first deployment exposed two calibration mistakes in the
+bounded curve. Its `0.70` slow-follow weight was referenced to 60 Hz even though
+the Controller measured roughly 9–10 completed inferences per second; temporal
+normalization therefore raised most real samples to nearly one-to-one. The
+saved test calibration also contained saturated `1.0` jitter values, which the
+curve interpreted as a large image-space dead zone. Follow weighting now uses a
+100 ms reference interval, and saturated jitter falls back to the small fixed
+floor while preserving the saved center, scale, and wrist.
+
+`benchmark-vision-replay.py` version 2 retains timestamps and cue definitions in
+its aggregate local report. `benchmark-native-motion-curve.py` consumes that
+report, compares the former `.70 / 15 / 1.30` experiment, a capped error-driven
+reference, the actual speed curve, and direct latest coordinates, then evaluates
+27 bounded candidates. It reports neutral span, selected-to-filtered error,
+medium 90% response, large first-sample misses, reversals, overshoot, continuity,
+and recognition age when present. The temporary physical clip is not currently
+available on the development Mac, so recorded-clip and synchronized live
+camera-to-display validation remain pending.
+
+The runtime now rejects malformed/non-finite landmark geometry, retains the
+calibration-compatible five-point wrist/knuckle average as the production
+anchor, and exports three alternative anchors for comparison. It clamps the
+selected point to player reach before both Latest and Bounded processing, clears
+history on stale/lost input, and uses the frame capture timestamp rather than
+inference-start time for velocity and freshness.
+
 The gameplay and dot recordings contain aggregate timings and sampled validity;
 they do not retain recognized, flow, selected, and filtered coordinates for each
 individual move. They cannot establish how many camera images or presented game
@@ -14,6 +63,11 @@ necessarily new measurements or different coordinates.
 | Recognition fallback, fast dot movement | 447/589 (75.9%) | 34 |
 | Recognition fallback, actual gameplay | 568/590 (96.3%) | 3 |
 
+A later MediaPipe-only, Dashboard-closed status run measured 96.5% detected
+samples, 65.4 ms median and 76.2 ms p95 source age, 52.2 ms median and 58.3 ms
+p95 inference, 2 ms p95 send work, and about 16 distinct native updates per
+second. This is a software-stage sample, not physical hand-to-display latency.
+
 These were different physical movements, not controlled before/after trials.
 In gameplay, 395/590 polls reported `flow_unavailable`, 61 reported
 `flow_seed_unavailable`, and one reported `correction_budget`. Fallback therefore
@@ -22,14 +76,31 @@ These are sampled frame counts, not distinct recognition-result counts.
 The receiver observed 1,367 distinct valid publications in 30 seconds, not 1,367
 new recognized positions or displayed images.
 
-## Smoothing-only experiment
+## Isolated GPU feasibility result
 
-`scripts/analyze-motion-samples.py` exercises the actual native movement engine
-with an ideal instantaneous measured-position step. It assumes 60 updates/second,
-no input noise or loss, and the code defaults (minimum .70, maximum 1.00, motion
-boost 4.00). Read-only verification found those same values in the Controller profile
-configuration and no custom worker `--config` argument. Personal tuning overlays
-change gesture thresholds, not these smoothing settings.
+The UNO Q exposes an Adreno 702 OpenGL ES 3.1 renderer. A custom ARM64 MediaPipe
+0.10.18 research wheel initialized EGL and created the TensorFlow Lite GPU
+delegate, proving that the application container can reach the GPU when supplied
+with a compatible runtime. The synchronous Tasks Image graph measured roughly
+664 ms warm p50 on GPU and 207 ms on CPU, compared with roughly 52 ms for the
+deployed MediaPipe Hands graph on live input. Repeated single-write tensor
+synchronization warnings accompanied the GPU run.
+
+No gesture, reach, or smoothing threshold can remove hundreds of milliseconds
+inside the inference graph. The custom wheel and temporary runtime changes were
+removed from the Controller and are not release artifacts. The remaining useful
+experiment is a lean GPU palm-detection/landmark graph that keeps preprocessing
+on the GPU, prewarms once, returns only landmarks, and uses one newest result in
+flight. It must beat the proven CPU path by at least 20% without reducing
+recognition by more than one percentage point or worsening jitter or thermals.
+
+## Historical smoothing-only experiment
+
+Before the speed-curve replacement, `scripts/analyze-motion-samples.py` exercised
+the error-driven native movement engine with an ideal instantaneous measured-position
+step. It assumed 60 updates/second, no input noise or loss, and the former code
+defaults (minimum .70, maximum 1.00, motion boost 4.00). The following table is
+retained as historical evidence for that implementation.
 
 | Step in normalized camera X | Time from first step sample to 95% of target |
 | --- | ---: |
@@ -46,13 +117,14 @@ display. They must not be added to independent timing percentiles. The final
 five-percent criterion includes a small settling tail; it is not a delay before
 movement begins.
 
-The speed-dependent behavior deserves attention: the current coefficient uses
-position error, then adjusts for elapsed time. It is adaptive, but is not a One
+The speed-dependent behavior explained the problem: the former coefficient used
+position error, then adjusted for elapsed time. It was adaptive, but was not a One
 Euro velocity-based filter. Large errors can bypass damping while small aiming
 corrections retain it. This is a plausible contributor to the reported difficulty
 catching and directing the ball, not proof of the complete cause.
 
-Prediction accuracy cannot be tested from these aggregate reports. A predictor
+The script now exercises the bounded speed curve and labels its parameters in new
+reports. Prediction accuracy cannot be tested from these aggregate reports. A predictor
 can extrapolate an old measurement, but abrupt stops and reversals can cause
 overshoot. Do not fit or enable prediction using these reports as ground truth.
 
@@ -112,21 +184,21 @@ hand-to-screen latency.
 
 ## Medium-jump and bounded extrapolation trial
 
-The optional `motion_coordinate_boost` overrides the boost only in experimental
-`update_native_motion`; null preserves the baseline value. The Controller experiment
-uses boost 15.0 instead of the baseline 4.0, with minimum .70. An additional
-experimental `motion_coordinate_max` cap is currently 1.30, allowing bounded
-extrapolation beyond the newest measured position. This is an error relative to
+This historical experiment let `motion_coordinate_boost` override the boost in
+`update_native_motion`; null preserved the baseline value. The Controller trial
+used boost 15.0 instead of the baseline 4.0, with minimum .70. An additional
+experimental `motion_coordinate_max` cap of 1.30 allowed bounded extrapolation
+beyond the newest measured position. This was an error relative to
 the filtered position, not a speed threshold or a percentage of the game screen.
 It does not remove recognition age.
 
 The actual-engine 60 Hz step model gives 0 ms additional settling time for .04
 and .05 steps with boost 8, compared with 183 and 167 ms respectively at boost 4.
 A .005 step remains damped (200 ms to 95%, previously 217 ms). Noise and physical
-response still require the paired recording. Baseline synchronous tracking is
-unchanged. Both experimental overrides are reversible by removing them from the
-UNO recognition configuration; values above 1.00 can overshoot on stops and
-reversals. Trace collection must be explicitly enabled for a physical test.
+response still require the paired recording. Baseline synchronous tracking was
+unchanged. The bounded speed-sensitive replacement now ignores these legacy
+overrides during native movement while continuing to load them. Trace collection
+must be explicitly enabled for a physical test.
 
 ## Six-configuration trace matrix
 

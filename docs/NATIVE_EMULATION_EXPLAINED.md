@@ -47,6 +47,15 @@ and a validation terminator. Moving your hand changes a coordinate instead of
 only switching a direction on or off. That is why this path can offer more
 natural Robo-Glove positioning.
 
+MediaPipe Hands supplies every live coordinate. Geometry is validated and the
+point is clamped to the saved reach before either mode sees it. **Latest
+coordinate** uses each newest point directly; **Bounded speed curve** uses one
+two-dimensional noise-aware weight to stabilize rest and follow faster movement
+more directly. Both use the selected frame's capture time, saved center, and
+per-player reach. A short missed observation may hold only X/Y for up to 120 ms
+while actions release; recovery starts from the first new point instead of
+travelling through an old or off-screen position.
+
 | What you do | Native Super Glove Ball behavior confirmed in live play |
 | --- | --- |
 | Move the hand horizontally or vertically | Continuous Robo-Glove X/Y positioning |
@@ -109,9 +118,10 @@ available for setup and recovery.
 
 Deterministic headless comparisons establish input handling in the emulator and
 game. They do not include exposure time, inference, the real network, or cabinet
-display latency. Live native movement is playable and substantially improved,
-but noticeable latency remains; a physical latency and stationary-jitter
-baseline is still pending.
+display latency. Live native movement is playable and substantially improved. A
+recent Dashboard-closed sample measured about 52 ms median MediaPipe work and
+about 16 new native coordinates per second, but noticeable end-to-end latency
+remains; the synchronized physical hand/display baseline is still pending.
 
 The planned measurement uses one recording containing both the real hand and
 screen, plus separate software timings. Only after identifying the dominant

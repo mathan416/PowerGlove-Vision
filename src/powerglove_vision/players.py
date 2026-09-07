@@ -174,6 +174,14 @@ class PlayerSettings:
         data["players"][data["active"]]["thresholds"] = self.validate(values)
         self.commit(data)
 
+    def stage_calibration(self, reference):
+        """Queue one validated calibration without changing any player metadata."""
+        value = calibration_value({"version": 2, "neutral": asdict(reference)})
+        data = copy.deepcopy(self.data)
+        data["players"][data["active"]]["needs_center"] = True
+        data["calibration_restore"] = value
+        self.commit(data)
+
     def centered(self, generation, reference=None):
         """Only acknowledge calibration started for the still-active player."""
         if generation == self.data["generation"]:

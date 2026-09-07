@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Kept trace-name parsing compatible with RetroPie Python 3.7.
 #   2026-09-06 - Added controlled smoothing-matrix comparison.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -30,10 +31,10 @@ def compare(directory):
     rows = []
     for path in sorted(Path(directory).glob("min*.trace.json")):
         result = MODULE.analyze(path)
-        name = path.name.removesuffix(".trace.json")
+        name = path.name[:-len(".trace.json")]
         try:
             minimum, boost = name.split("-boost")
-            minimum = float(minimum.removeprefix("min"))
+            minimum = float(minimum[len("min"):])
             boost = int(boost)
         except ValueError:
             minimum = boost = None

@@ -4,9 +4,10 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
-# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Verify native Super Glove Ball publication precedes uinput.
 #   2026-09-06 - Exercise version-two sessions over deterministic and real UDP paths.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Protect live input admission without relying on clocks shared by the two hosts."""
 import json
@@ -161,6 +162,27 @@ class SignedControllerTests(unittest.TestCase):
         self.assertEqual(device.write_state.call_count,1)
         self.assertLessEqual(released[0],.4)
         native.release.assert_any_call(2)
+
+    def test_native_profile_is_published_before_virtual_gamepad(self):
+        events = []
+        state = dict(protocol='powerglove-vision/1', token=TOKEN, session='legacy',
+                     sequence=1, profile='super_glove_ball')
+        sock, device, native = Mock(), Mock(), Mock()
+        sock.recvfrom.side_effect = [
+            (json.dumps(state).encode(), PEER), KeyboardInterrupt(),
+        ]
+        sock.recvmsg.side_effect = lambda size, space: (
+            lambda pair: (pair[0], [], 0, pair[1])
+        )(sock.recvfrom(size))
+        native.write.side_effect = lambda _state: events.append('native')
+        device.write_state.side_effect = lambda _state: events.append('gamepad')
+        with patch.object(receiver.socket, 'socket', return_value=sock), \
+                patch.object(receiver, 'UInputDevice', return_value=device), \
+                patch.object(receiver, 'NativeStateWriter', return_value=native), \
+                patch('sys.argv', ['receiver', '--token', TOKEN,
+                                   '--allow-legacy-controller']):
+            self.assertEqual(receiver.main(), 0)
+        self.assertEqual(events, ['native', 'gamepad'])
 
     def test_multihomed_reply_requires_port_signature_and_fresh_request(self):
         for mode in ('valid','wrong-port','wrong-request','wrong-key'):

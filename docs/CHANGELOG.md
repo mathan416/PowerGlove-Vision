@@ -7,7 +7,30 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+## [0.3.2-rc.8] - 2026-09-07
+
+Changes since rc.7: per-player movement reach, selectable latest/bounded native
+X/Y, corrected capture timing and landmark validity, edge-safe recovery, lower
+native publication latency, and isolated acceleration research tools. The
+project base version remains 0.3.2. This is a prerelease.
+
 ### Added
+
+- Added a separate Glove Academy **Movement reach** editor for the active player.
+  It exposes left, right, up, and down normalized spans, reports tracking-area
+  dimensions and aspect ratio, saves only those four fields, and can restore the
+  full-camera mapping without changing center, gestures, or lesson progress.
+
+- Added Dashboard selection between **Bounded speed curve** and **Latest
+  coordinate** for native Super Glove Ball X/Y. Both modes use the same MediaPipe
+  observations, calibration, reach mapping, and safety behavior.
+
+- Added a four-lane native movement comparison for version-2 vision replay reports. It compares the former overshooting experiment, a safely capped error-driven reference, the bounded speed curve, and direct latest coordinates; a deterministic 27-candidate sweep reports jitter, lag, medium response, fast pickup, reversals, overshoot, continuity, and source age when available.
+
+- Added output-paused benchmarks for palm-anchor stability, mirrored-frame
+  preprocessing, one/two/four inference threads, tracking confidence, two
+  staggered trackers, and MediaPipe Tasks live-stream CPU/GPU experiments.
+  These tools do not create a production GPU mode or change gameplay output.
 
 - Prepared optional per-frame motion traces separating recognized, flow, selected and filtered coordinates, including source freshness and fallback reasons. Added an offline saved-sample review and an actual-engine smoothing step model; the model is not a physical latency measurement.
 
@@ -19,11 +42,50 @@ authoritative record for line-level and file-level history.
 
 - Benchmarked Kiyo Pro capture on UNO Q and added an opt-in 640×480 MJPEG/two-buffer/volatile-HDR-off candidate, which delivered 59.7–59.8 fps in isolated capture repeats. Higher 720p decoding costs ruled out copying the Pi resolution. Inference threads are unchanged; recognition-under-load and physical latency validation remain pending.
 
-- Ported optional per-player comfortable reach spans from the Raspberry Pi version. Both native movement paths map asymmetric reach to the screen edges, player backups preserve spans, and re-centering clears them. Added a guided, output-paused calibration helper using raw palm measurements in practice mode. Camera defaults and inference threads are unchanged pending UNO Q measurements.
+- Ported optional per-player comfortable reach spans from the Raspberry Pi version. Both MediaPipe response modes map asymmetric reach to the screen edges, player backups preserve spans, and re-centering clears them. Added a guided, output-paused calibration helper using raw palm measurements in practice mode. Camera defaults and inference threads are unchanged pending UNO Q measurements.
 
-- Added an opt-in experimental Super Glove Ball movement path: asynchronous hand recognition, palm optical flow between results, source-frame correction, bounded gesture freshness, and immediate release on tracking failure. Calibration, practice, tuning, and other games retain synchronous recognition. Hardware latency and gameplay validation are still required.
+- Added and evaluated an experimental Super Glove Ball optical-flow path. Live
+  testing found it jerky and unreliable, so it is now archived as research code
+  and historical trace support rather than offered as a runtime option.
 
 ### Fixed
+
+- Restored Python 3.7 compatibility in historical trace and browser-support
+  tools and the optional capture trace's thread identifier. The capture-thread
+  test also allows heavily loaded CI runners more scheduling time. These changes
+  do not affect production capture timing or controller output.
+
+- Native speed and freshness calculations now use the selected camera frame's
+  capture timestamp instead of inference-start time. Invalid or non-finite
+  landmark geometry is rejected before mapping, while MediaPipe's handedness
+  score is no longer misrepresented as a position-confidence score.
+
+- Both native X/Y modes clamp their input to the active player's calibrated
+  reach before response processing. Leaving an edge pins the Robo-Glove there
+  without building hidden off-screen filter state; tracking recovery starts
+  from the first fresh clamped coordinate.
+
+- Reworked bounded X/Y as one coherent vector response with an elliptical
+  calibrated-noise region. Small axis noise no longer causes independent snaps;
+  meaningful reversals are immediate, and stops settle inside the noise region
+  on the first fresh result and exactly by the next.
+
+- For native Super Glove Ball packets, the RetroPie receiver now publishes the
+  native state before updating the unrelated virtual gamepad. Correlated traces
+  report socket-return-to-native-publication and native-write time separately.
+
+- Made MediaPipe Hands the sole live coordinate authority for native Super Glove
+  Ball X/Y. The bounded curve and direct-latest mode affect only coordinate
+  response; FCEUmm and gesture recognition are unchanged.
+
+- Prevented brief MediaPipe dropouts from making the native glove jump through
+  neutral and back. The last X/Y can be held for up to 120 ms while action,
+  finger, depth, roll, and D-pad state releases immediately; sustained loss still
+  neutralizes the complete native sample.
+
+- Corrected the experimental optical-flow Dashboard marker to use the full preview dimensions instead of the downscaled 320-pixel work image, eliminating its upper-left visual offset.
+
+- Replaced native Super Glove Ball's error-driven catch-up and optional extrapolation with a calibrated-reach speed curve. Resting jitter uses a per-player noise floor, deliberate movement becomes progressively more direct, and stops or reversals accept the newest measurement immediately. Compatibility settings above `1.00` can no longer overshoot.
 
 - Pairing now reports success only after RetroPie answers a signed controller handshake with the newly installed token. This catches a copied-but-unusable token while keeping controller arming and actual emulator input as separate checks.
 
@@ -37,11 +99,33 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Kept the calibration-compatible five-point palm average as the production
+  anchor while exposing four candidate anchors to replay analysis. A different
+  anchor must prove at least 25% less pose-induced movement, retain at least 99%
+  of deliberate travel, and preserve continuity before it can replace the
+  existing coordinate contract.
+
+- Cached expensive percentile telemetry at 2 Hz while preserving per-inference
+  recognition state and controller publication. The Controller supervisor now
+  passes its validated one, two, or four-thread choice explicitly; the tested
+  default remains two.
+
+- Corrected the bounded native curve for the proven MediaPipe backend's measured
+  9–10 Hz cadence. The previous 60 Hz follow reference converted the configured
+  `0.70` slow-follow weight to nearly `1.00` at runtime, making ordinary native
+  X/Y visibly step between raw landmarks. Saturated `1.0` jitter measurements in
+  otherwise reusable calibration files now fall back to the small fixed noise
+  floor instead of producing a large dead zone and jump.
+
+- Added explicit `native_xy_source` diagnostics for `mediapipe` and `inactive`,
+  plus `native_xy_mode` diagnostics for `bounded` and `latest`. Both modes retain
+  the normal MediaPipe landmark preview.
+
 - Synchronized the architecture, installation, security, troubleshooting, command reference, built-in Help, README and PDF editions with the asynchronous movement path, comfortable reach, Kiyo capture candidate, per-player joystick dead zone, motion-analysis tools and post-pairing token verification. Standardized new user-facing diagnostic titles on **PowerGlove Vision Controller** while retaining literal UNO Q filenames and hardware references.
 
 - Added an optional experimental-only X/Y smoothing boost override. The UNO medium-jump trial uses 8 instead of 4, lowering the per-axis immediate-response threshold from roughly .075 to .0375 camera units without changing synchronous tracking or reach calibration.
 
-- Added an experimental-only `motion_coordinate_max` cap for controlled extrapolation tests. Values above 1.00 intentionally overshoot the latest coordinate; the current exploratory UNO setting uses cap 1.30 with boost 15 and minimum smoothing 0.70. The normal path remains capped at 1.00.
+- Previously added an experimental-only `motion_coordinate_max` cap for controlled extrapolation tests. The exploratory UNO setting used cap 1.30 with boost 15 and minimum smoothing 0.70. That experiment established the stop/reversal risk and is superseded by the bounded speed curve above; retained configuration fields no longer permit overshoot.
 
 - Moved player creation, renaming, deletion, and hand-setup backup/restore into Setup → Players. Academy and Dashboard offer compact selectors for the same Controller-wide active player. Dashboard places Player before Active profile and combines game name and session status in one Game card.
 
@@ -51,9 +135,25 @@ authoritative record for line-level and file-level history.
 
 ### Validation
 
+- A live Super Glove Ball status run with the Dashboard closed measured 96.5%
+  detected samples, 65.4 ms median and 76.2 ms p95 sample age, 52.2 ms median
+  and 58.3 ms p95 MediaPipe inference, 2 ms p95 send work, and about 16 distinct
+  native updates per second. The player reported that control was improving;
+  this is not yet the synchronized physical hand-to-display acceptance test.
+
+- The UNO Q's Adreno 702 was reached through EGL/OpenGL ES and a custom isolated
+  MediaPipe Tasks build created a TensorFlow Lite GPU delegate. That first heavy
+  Tasks graph measured about 664 ms warm p50 versus about 207 ms for the same
+  Tasks path on CPU, far slower than the proven MediaPipe Hands path. The wheel
+  and temporary runtime changes are not in this release; the Controller was
+  restored to its clean CPU image. GPU capability is confirmed, while a lean
+  GPU palm/landmark path remains untested.
+
 - Confirmed the tested cabinet accepted the newly paired token and subsequently delivered Controller input to a running game. The pairing-complete signal remains deliberately scoped to receiver authentication; the follow-on game test establishes the rest of this installation's path.
 
-Version **0.3.5** is planned for camera-to-game latency fixes. Tuning will follow measured stage timings and repeated stationary-jitter and recognition checks; these fixes are not included in rc.7.
+The remaining release gate is a synchronized high-frame-rate recording of the
+physical hand and display. Software-stage measurements cannot establish camera
+exposure, emulator/display delay, or the complete hand-to-screen result.
 
 ## [0.3.2-rc.7] - 2026-09-06
 

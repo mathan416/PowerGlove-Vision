@@ -148,9 +148,17 @@ curling fingers, a travelling spark, and a soft grayscale glow. See the
 matrix firmware.
 
 The tested shared baseline includes responsive `0.28` activation and `0.14`
-release thresholds, full-camera-field native X/Y mapping with an 8% edge margin,
-and low-lag adaptive coordinate stabilization. These are suitable starting
-values for every installation. A neutral calibration is different: it records
+release thresholds, calibrated native X/Y reach with an 8% edge margin, and two
+MediaPipe coordinate-response modes. **Latest coordinate** sends each newest
+valid, reach-clamped palm position directly. **Bounded speed curve** uses one
+two-dimensional, calibrated-noise response to hold measured resting jitter,
+follow medium movement progressively faster, and handle large movement, stops,
+and reversals without prediction or overshoot. Both modes use the selected
+camera frame's capture time and MediaPipe Hands as the authoritative source for
+palm landmarks, finger curls, and gestures.
+The earlier optical-flow experiment is archived in the source tree for research
+and is no longer a live movement option. These are suitable starting values for
+every installation. A neutral calibration is different: it records
 the palm center, apparent hand size, wrist angle, and resting jitter for one
 camera and playing position, so the installer never substitutes another
 person’s recorded coordinates for yours.
@@ -177,7 +185,10 @@ all FCEUmm profiles and automatically rise above measured resting-hand jitter;
 you do not normally calibrate each direction. Some profiles replace ordinary hand movement
 with wrist steering or other controls, as shown below.
 
-Calibration accepts 24 clear hand observations at 70% confidence or better.
+Calibration accepts 24 geometrically valid hand observations. MediaPipe Hands'
+reported score identifies handedness certainty, not landmark or position
+confidence, so it is shown diagnostically but is not used as a false quality
+gate. The whole hand must still be detected with usable palm geometry.
 Holding the same neutral pose at the same distance should reproduce a very
 similar reference, but ordinary tracking variation means the saved numbers will
 not be identical. A completed calibration is saved atomically and reused across
@@ -244,11 +255,11 @@ direction by frame 3. Their semantics differ: FCEUmm supplies held digital
 directions, while the native core supplies an absolute target position. The
 native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
 open/fist/index packet, and safe-neutralization tests. Live full-game play
-confirms grab/throw, index fire, and fist-plus-forward Power Punch. The optional
-experimental movement path uses bounded palm-flow correction and per-player
-reach calibration; it remains limited to calibrated Super Glove Ball while
-recognition age and long movements are being tuned. Wrist rotation and remaining
-unused native packet fields stay neutral. See the
+confirms grab/throw, index fire, and fist-plus-forward Power Punch. Native
+movement uses per-player reach calibration and the selected MediaPipe response
+mode. A brief missed observation holds only the last X/Y coordinate for up to
+120 ms, while actions release immediately; a longer loss neutralizes the native
+sample. Wrist rotation and remaining unused native packet fields stay neutral. See the
 [native compatibility record](docs/super-glove-ball-native.md).
 
 The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that the
@@ -265,9 +276,16 @@ game movement logic, with read-only input-range and validity measurements.
 The [native latency session tools](docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
 guide stationary/movement windows, optionally correlate software traces, and
 extract annotated evidence from an original hand-and-screen recording. They are
-disabled during normal play. Trace tools can compare recognized, optical-flow,
-selected, and filtered coordinates without recording video; physical
-hand-to-screen latency still requires synchronized recording.
+disabled during normal play. Historical trace tools can compare recognized,
+optical-flow, selected, and filtered coordinates without recording video; the
+current live path reports MediaPipe coordinates and the chosen response mode.
+Physical hand-to-screen latency still requires synchronized recording.
+
+The production Controller continues to run the proven CPU MediaPipe Hands path
+with two explicitly selected inference threads. An isolated Adreno GPU probe
+successfully created a delegate but the first MediaPipe Tasks graph was much
+slower than production, so no GPU wheel or runtime change ships in this
+candidate. A lean, output-paused GPU palm/landmark experiment remains research.
 
 ## Use the web interface
 
@@ -361,6 +379,13 @@ settings apply across profiles. Numerical thresholds, selective reset, manual
 preview, and the private diagnostic capture live under **Advanced**. Diagnostic
 video remains on the Controller, is deleted after analysis or cancellation, and its
 downloadable aggregate report contains no pictures or per-frame hand data.
+
+The separate **Movement reach** section exposes the selected player's left,
+right, up, and down spans. These are normalized distances from the saved center;
+smaller values require less physical travel. Its summary shows the resulting
+tracking-area dimensions and aspect ratio. **Save reach values** changes only
+those four spans, while **Restore full camera field** returns all four to the
+camera-boundary default without changing center or gesture thresholds.
 
 ![Games editor in the lower part of Setup](docs/images/games-section.png)
 

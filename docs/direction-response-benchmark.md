@@ -83,9 +83,13 @@ coherent state immediately before every emulated frame; the custom core's packet
 trace is the separate evidence that this state is sampled once per frame. The shared recognition check proves
 all four directions activate at `0.29` normalized displacement and release at
 `0.13`, on the responsive side of the configured `0.28`/`0.14` boundaries.
-It also drives the adaptive native coordinate filter directly. A large X/Y
-change must use the strongest follow rate immediately, reach at least 90% of
-its target within 150 ms, and preserve the bounded neutral-jitter check.
+It also drives the bounded native coordinate curve directly. Motion speed is
+calculated from consecutive raw selected coordinates and capture timestamps,
+normalized by directional calibrated reach and combined into one vector follow
+weight. An elliptical jitter region separates rest from intent. A large X/Y
+change must follow the newest sample immediately, medium travel must reach at
+least 90% within 150 ms, resting jitter must remain bounded, and stops or
+reversals must leave no catch-up tail or overshoot.
 
 ## Results
 
@@ -123,6 +127,12 @@ separate stages: the coherent native record timestamps publication on RetroPie
 after packet validation and virtual-gamepad writes, rather than socket arrival,
 and the headless core benchmark publishes the changed record immediately before
 an emulated frame.
+
+The live native path now uses completed MediaPipe palm coordinates exclusively.
+The Dashboard can compare the bounded speed curve with direct latest coordinates;
+both use the same reach mapping and safety behavior. The optical-flow lane was
+reported as jerky and unreliable and is archived for source-level and historical
+trace comparison rather than exposed as a runtime option.
 
 ## Repeatable camera comparison
 
@@ -193,8 +203,10 @@ inference time and exceeded the gameplay latency target decisively. The
 512×384 resize did not improve p95 by the required 15%; it increased neutral
 false activations and weakened roll recognition. Thread count did not change
 recognition, and no alternative produced a consistent qualifying latency gain.
-The deployed choice therefore remains **MediaPipe Hands** at 640×480
-with four inference threads. Preview encoding at that size measured about 9.6 ms
+No replay alternative met the 15% promotion threshold. The deployed choice
+therefore remains **MediaPipe Hands** at 640×480 with two explicitly selected
+inference threads; the four-thread replay result remains comparative evidence,
+not a promoted default. Preview encoding at that size measured about 9.6 ms
 p95 and did not materially increase inference p95.
 
 The replay deliberately saturates inference and produced higher tail latency

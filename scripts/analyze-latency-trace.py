@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Measure socket-return to native publication independently.
 #   2026-09-06 - Separate processing, publication, and first native consumption evidence.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -33,7 +34,8 @@ def analyze(controller, receiver, core):
             raise ValueError('Wrong diagnostic format or role')
     metrics = {key: [] for key in ('capture_read_to_processing', 'processing', 'tracking', 'gesture_and_calibration', 'encode_and_send',
         'capture_read_to_send', 'processing_to_send_start', 'receipt_to_validation', 'validation_to_publication_start',
-        'publication', 'publication_record_to_first_core_consumption')}
+        'publication', 'receiver_to_native_publication', 'native_write',
+        'publication_record_to_first_core_consumption')}
     invalid = 0
 
     def interval(name, start, end):
@@ -68,6 +70,11 @@ def analyze(controller, receiver, core):
         interval('validation_to_publication_start', event['validated_ns'], event['publication_start_ns'])
         if event['published_ns'] is not None:
             interval('publication', event['publication_start_ns'], event['end_ns'])
+            if event.get('native_end_ns'):
+                interval('receiver_to_native_publication', event['received_ns'],
+                         event['native_end_ns'])
+                interval('native_write', event.get('native_start_ns'),
+                         event['native_end_ns'])
             publications[(event['sequence'], event['guard'], event['published_ns'])] = event
     consumed, unmatched, invalid_core = set(), 0, 0
     for event in core:

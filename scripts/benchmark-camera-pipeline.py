@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Added inference-thread and tracking-confidence comparison controls.
 #   2026-09-06 - Added exclusive, output-paused camera pipeline measurements.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -308,13 +309,15 @@ def native_profile_summary(folder):
     return {name: stats(values) for name, values in groups.items()}
 
 
-def replay_lane(frame, profiled, tracker_class, engine_class, calibration_class):
+def replay_lane(frame, profiled, tracker_class, engine_class, calibration_class,
+                inference_threads=2, tracking_confidence=.55):
     """Replay one in-memory frame with optional native graph profiling."""
     from google.protobuf import text_format
     from mediapipe.framework import calculator_pb2
     from mediapipe.python.solution_base import SolutionBase
     with tempfile.TemporaryDirectory(prefix='pgv-native-profile-') as folder:
-        tracker = tracker_class(inference_threads=2)
+        tracker = tracker_class(inference_threads=inference_threads,
+                                tracking_confidence=tracking_confidence)
         if profiled:
             config = calculator_pb2.CalculatorGraphConfig()
             text_format.Parse(tracker.hands._graph.text_config, config)
@@ -351,6 +354,9 @@ def main():
     parser.add_argument('--camera', required=True)
     parser.add_argument('--source-root', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--seconds', type=int, choices=range(5, 31), default=10)
+    parser.add_argument('--inference-threads', type=int, choices=(1, 2, 4), default=2)
+    parser.add_argument('--tracking-confidence', type=float, choices=(.45, .50, .55, .60),
+                        default=.55)
     parser.add_argument('--worker-stopped', action='store_true', required=True,
                         help='Acknowledge exclusive camera ownership; caller restores the worker')
     args = parser.parse_args()
@@ -360,12 +366,14 @@ def main():
     from powerglove_vision.model import Calibration
     import cv2
     import mediapipe as mp
-    tracker = MediaPipeTracker(inference_threads=2)
+    tracker = MediaPipeTracker(inference_threads=args.inference_threads,
+                               tracking_confidence=args.tracking_confidence)
     wrap_tracker(tracker)
     # Synthetic center for cost measurement only. Never reads or changes player setup.
     engine = GestureEngine('super_glove_ball', calibration=Calibration(.5, .5, .2, 0))
-    report = dict(format='powerglove-camera-pipeline/1', opencv=cv2.__version__,
-        mediapipe=mp.__version__, lanes=[], replay=[], limitations=[
+    report = dict(format='powerglove-camera-pipeline/2', opencv=cv2.__version__,
+        mediapipe=mp.__version__, inference_threads=args.inference_threads,
+        tracking_confidence=args.tracking_confidence, lanes=[], replay=[], limitations=[
             'Isolated capture/recognition; no gameplay transmission or supervisor workload.',
             'Driver timestamps are not validated physical exposure timestamps.',
             'Coordinates use a synthetic calibration solely for computation cost.',
@@ -387,7 +395,9 @@ def main():
     if replay_frame is not None:
         for profiled in (False, True, False):
             report['replay'].append(replay_lane(replay_frame, profiled, MediaPipeTracker,
-                                                GestureEngine, Calibration))
+                                                GestureEngine, Calibration,
+                                                args.inference_threads,
+                                                args.tracking_confidence))
             print(json.dumps({'completed_profiled_replay': profiled}), flush=True)
     else:
         report['recognition_profile_error'] = 'No detected-hand frame; repeat with visible hand'

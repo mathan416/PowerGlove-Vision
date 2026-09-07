@@ -354,6 +354,7 @@ class ControlState:
             "glove_color": config.get("glove_color", "none"),
             "camera": str(config.get("camera", "auto")),
             "matrix_attract": config.get("matrix_attract", "on"),
+            "native_xy_mode": config.get("native_xy_mode", "bounded"),
             "paired": bool(config.get("receiver") and config.get("token")),
             "connection_configured": bool(str(config.get("receiver", "")).strip() and config.get("token")),
             "controller_enabled": self.controller_enabled(),
@@ -363,6 +364,21 @@ class ControlState:
         """Serialize preference updates with connection saves."""
         with self.config_lock:
             return self._save_attract(incoming)
+
+    def save_native_xy_mode(self, incoming: dict[str, Any]) -> dict[str, str]:
+        """Persist one explicit MediaPipe comparison lane and restart the worker."""
+        mode = incoming.get("mode")
+        if mode not in ("bounded", "latest"):
+            raise ValueError("Choose Bounded speed curve or Latest coordinate.")
+        with self.config_lock:
+            from .game_registry import atomic_write
+            current = self.load_config()
+            current["native_xy_mode"] = mode
+            current.pop("motion_tracking", None)
+            atomic_write(self.config_path, json.dumps(current, indent=2) + "\n")
+            with self.lock:
+                self.revision += 1
+        return {"mode": mode}
 
     def _save_attract(self, incoming):
         """Persist an idle display preference without restarting or arming the worker."""
@@ -407,7 +423,7 @@ class ControlState:
         token = secrets.token_urlsafe(24) if incoming.get("rotate_token") else current.get("token")
         if not token:
             token = secrets.token_urlsafe(24)
-        saved = {"receiver": receiver, "port": port, "token": token, "profile": profile, "glove_color": glove_color, "camera": camera, "matrix_attract": current.get("matrix_attract", "on")}
+        saved = {"receiver": receiver, "port": port, "token": token, "profile": profile, "glove_color": glove_color, "camera": camera, "matrix_attract": current.get("matrix_attract", "on"), "native_xy_mode": current.get("native_xy_mode", "bounded")}
         from .game_registry import atomic_write
         atomic_write(self.config_path, json.dumps(saved, indent=2) + "\n")
         if not receiver or incoming.get("rotate_token"):
@@ -442,6 +458,7 @@ class ControlState:
         status["wifi_status"] = read_wifi_status()
         status["connection_configured"] = config["connection_configured"]
         status.setdefault("configured_profile", config["profile"])
+        status.setdefault("native_xy_mode", config["native_xy_mode"])
         return status
 
     def connection_status(self):
@@ -660,6 +677,11 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/config":
                     result = state.save_config(self.json_body(require_json=True))
+                    _send(self, 200, json.dumps(result).encode(), "application/json")
+                elif path == "/api/native-xy":
+                    if self.headers.get("X-PowerGlove-Action") != "native-xy":
+                        raise ForbiddenActionError("Open this control from the Controller website.")
+                    result = state.save_native_xy_mode(self.json_body(require_json=True))
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/test-connection":
                     receiver = str(self.json_body().get("receiver", "")).strip()

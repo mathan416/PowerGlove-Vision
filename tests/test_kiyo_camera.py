@@ -69,4 +69,4 @@ class KiyoTests(unittest.TestCase):
         candidate=command({'camera_buffers':2,'kiyo_hdr_off':True},Path('/tmp/model'))
         self.assertEqual(candidate[candidate.index('--camera-buffers')+1],'2')
         self.assertIn('--kiyo-hdr-off',candidate)
-        self.assertNotIn('--inference-threads',candidate)
+        self.assertEqual(candidate[candidate.index('--inference-threads')+1], '2')

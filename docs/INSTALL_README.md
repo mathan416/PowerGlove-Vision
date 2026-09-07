@@ -209,17 +209,24 @@ standard gamepad path. The RetroPie installer checks the game-specific FCEUmm op
 remaining ACTION message and rerun the installer after resolving it. See [Glove Zap setup](CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
 No extra-trigger assignment or receiver change is required.
 
-A calibration uses 24 clear observations with at least 70% tracking confidence.
-Repeating it from the same position should give closely comparable center,
-scale, wrist, and jitter values, but natural landmark variation prevents an
-exact numeric match. Calibration is shared by every profile. Closing Dashboard
+A calibration uses 24 geometrically valid hand observations. MediaPipe's
+displayed score describes handedness certainty rather than position confidence,
+so it is not used as a false quality gate. Repeating calibration from the same
+position should give closely comparable center, scale, wrist, and jitter values,
+but natural landmark variation prevents an exact numeric match. Calibration is
+shared by every profile. Closing Dashboard
 after this check stops its 5 fps diagnostic preview work without stopping hand
 tracking or controller delivery.
 
 For Super Glove Ball testing, enter RetroPie's launch menu while starting the
 ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the
 ordinary D-pad and buttons for the whole session. The native core uses absolute
-X/Y/Z plus open-hand, fist, and index-point packets. Full-game cabinet play has
+X/Y/Z plus open-hand, fist, and index-point packets. On Dashboard, compare
+**Latest coordinate** with **Bounded speed curve**; both use MediaPipe Hands and
+the same saved center and reach. Both validate the palm geometry and clamp it to
+that reach before mapping, so movement beyond an edge stays at the edge and a
+recovered hand starts from its first fresh coordinate. Adjust native travel separately under **Glove
+Academy → Tune gestures → Movement reach**. Full-game cabinet play has
 confirmed grab/throw, index fire, and fist-plus-forward Power Punch. Continuous
 movement is playable, with further latency refinement still planned. Wrist
 rotation and remaining unused native packet fields stay neutral. Shared recognition remains

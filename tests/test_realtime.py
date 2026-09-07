@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Allowed slower CI runners to schedule the capture thread.
 #   2026-09-05 - Added low-latency camera and preview pipeline coverage.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -83,13 +84,13 @@ class RealtimePipelineTests(unittest.TestCase):
             with patch.object(DiagnosticTrace, "from_environment", return_value=trace):
                 capture = LatestFrameCapture(source)
             try:
-                self.assertTrue(entered.wait(1))
+                self.assertTrue(entered.wait(3))
                 with trace.lock:
                     pending = list(trace.events)
                 self.assertEqual([event["event"] for event in pending], ["capture_read_begin"])
                 self.assertIsNone(capture.latest_after(0))
                 source.frames.put((True, "private-camera-content"))
-                deadline = time.monotonic() + 1
+                deadline = time.monotonic() + 3
                 while capture.latest_after(0) is None and time.monotonic() < deadline:
                     time.sleep(.005)
                 self.assertEqual(capture.latest_after(0).frame, "private-camera-content")

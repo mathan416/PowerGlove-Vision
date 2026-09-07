@@ -321,8 +321,9 @@ See [backup file locations](CONFIGURATION_REFERENCE.md#where-player-settings-and
 ![Tune mode with Pixel Pal guiding the personalization choices](images/tune-page.png)
 
 The matrix shows **T** while tuning. Pixel Pal's instruction and primary action sit
-beside the camera on a wide screen; numerical values and diagnostics are collapsed
-under **Advanced**.
+beside the camera on a wide screen. **Movement reach** separately adjusts the
+active player's left, right, up, and down native spans; smaller values need less
+hand travel. Numerical values and diagnostics remain collapsed under **Advanced**.
 
 ### Setup
 
@@ -420,7 +421,7 @@ the games use standard NES controller input through FCEUmm.
 Open RetroPie's launch menu while starting Super Glove Ball and choose the
 emulator for that ROM. RetroPie remembers the per-ROM choice.
 
-- **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the usable camera field. Exact-ROM tests confirm controller detection, native Start, X/Y, signed Z, and open/fist/index packet values. Full-game cabinet play confirms grab/throw, index fire, and fist-plus-forward Power Punch. Movement is playable, with more latency tuning planned. Wrist rotation and remaining unused native packet fields stay neutral.
+- **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the saved reach. The Dashboard can select **Latest coordinate** or **Bounded speed curve**; both use MediaPipe Hands. Exact-ROM tests confirm controller detection, native Start, X/Y, signed Z, and open/fist/index packet values. Full-game cabinet play confirms grab/throw, index fire, and fist-plus-forward Power Punch. Movement is playable, with more latency tuning planned. Wrist rotation and remaining unused native packet fields stay neutral.
 - **`lr-fceumm`** remains the complete fallback. It stays in standard joystick mode for the whole session and uses the same responsive movement, finger gestures, and buttons as other FCEUmm games.
 
 Choose FCEUmm again from the same launch menu whenever you want to compare the
@@ -566,8 +567,9 @@ Calibration records your resting hand position, apparent size, and wrist angle
 in the PowerGlove Vision Controller's `data/calibration.json`. It survives profile changes, Learn
 sessions, and restarts. Include it in private backups. Recalibrate when your
 physical setup changes or the resting hand position produces unwanted movement.
-The app uses 24 clear observations at 70% confidence or better. Returning to the
-same center, distance, and wrist pose produces a similar reference, although
+The app uses 24 geometrically valid observations. MediaPipe's displayed score
+describes handedness certainty, not position confidence, so it is not used as a
+false calibration-quality gate. Returning to the same center, distance, and wrist pose produces a similar reference, although
 normal camera variation means the saved values will not be exactly equal.
 Installers preserve this private reference while replacing the shared tested
 recognition baseline in `config/profiles.json`.

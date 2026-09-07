@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Updated ideal steps for the bounded native speed curve.
 #   2026-09-06 - Added offline motion-sample analysis for latency tuning.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -20,12 +21,12 @@ from powerglove_vision.gesture import GestureConfig, GestureEngine
 from powerglove_vision.model import Calibration, HandObservation
 
 
-def step_response(distance, hz=60, unsmoothed=False, motion_boost=None):
+def step_response(distance, hz=60, unsmoothed=False):
     """Exercise the actual engine with an ideal instantaneous measured-position step."""
     config = GestureConfig()
-    config = replace(config, motion_coordinate_boost=motion_boost)
     if unsmoothed:
-        config = replace(config, coordinate_smoothing_min=1., coordinate_smoothing_max=1.)
+        config = replace(config, motion_noise_multiplier=0., motion_noise_floor=0.,
+                         motion_slow_follow=1.)
     engine = GestureEngine('super_glove_ball', config=config,
                            calibration=Calibration(.5, .5, .2, 0))
     initial = HandObservation(10., True, .95, .5, .5, .2)
@@ -39,7 +40,9 @@ def step_response(distance, hz=60, unsmoothed=False, motion_boost=None):
     settled = next((r['ms_after_first_step_sample'] for r in rows
                     if abs(r['filtered_x']-(.5+distance)) <= .05*abs(distance)), None)
     return {'distance_camera_units': distance, 'hz': hz, 'unsmoothed': unsmoothed,
-            'motion_boost': motion_boost,
+            'noise_multiplier': config.motion_noise_multiplier,
+            'slow_follow': config.motion_slow_follow,
+            'full_speed': config.motion_full_speed,
             'time_to_95_percent_ms': settled, 'samples': rows}
 
 
@@ -87,7 +90,7 @@ def main():
         stream.write('\n')
     for row in report['simulation']:
         if not row['unsmoothed']:
-            print('Step %.3f: %.1f ms to 95%% (smoothing-only model)' %
+            print('Step %.3f: %.1f ms to 95%% (bounded speed-curve model)' %
                   (row['distance_camera_units'], row['time_to_95_percent_ms']))
 
 

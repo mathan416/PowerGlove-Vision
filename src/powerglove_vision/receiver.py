@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Publish native Super Glove Ball state before virtual-gamepad output.
 #   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
@@ -210,12 +211,20 @@ def main() -> int:
                 validated_ns = time.monotonic_ns() if received_ns else 0
                 sequence = state["sequence"]
                 last_sequence = sequence
+                publication_started_ns = time.monotonic_ns() if received_ns else 0
+                native_first = native is not None and state.get("profile") == "super_glove_ball"
+                native_started_ns = native_completed_ns = 0
+                if native_first:
+                    native_started_ns = time.monotonic_ns() if received_ns else 0
+                    native.write(state)
+                    native_completed_ns = time.monotonic_ns() if received_ns else 0
                 if device is None:
                     device = UInputDevice()
                 device.write_state(state)
-                publication_started_ns = time.monotonic_ns() if received_ns else 0
-                if native is not None:
+                if native is not None and not native_first:
+                    native_started_ns = time.monotonic_ns() if received_ns else 0
                     native.write(state)
+                    native_completed_ns = time.monotonic_ns() if received_ns else 0
                 released = False
                 last_valid_at = time.monotonic()
                 if received_ns:
@@ -224,6 +233,8 @@ def main() -> int:
                     trace.record(dict(event="receive", session=session_key(identity),
                         sequence=sequence, received_ns=received_ns, validated_ns=validated_ns,
                         publication_start_ns=publication_started_ns, end_ns=completed_ns,
+                        native_start_ns=native_started_ns or None,
+                        native_end_ns=native_completed_ns or None,
                         published_ns=native.published_ns if native else None,
                         guard=native.guard if native else None))
             except socket.timeout:

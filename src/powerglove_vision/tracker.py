@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Added geometry validation and benchmarkable pose-stable palm anchors.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-05 - Added clear proven and experimental backend display names.
 #   2026-09-05 - Made legacy and Tasks tracker selection explicit for benchmarks.
@@ -32,6 +33,9 @@ TRACKER_BACKEND_LABELS = {
     "legacy": "MediaPipe Hands",
     "tasks-video": "MediaPipe Tasks Video (experimental)",
 }
+# Existing calibration centres and reach spans were recorded from this anchor.
+# Benchmark alternatives without silently changing that coordinate contract.
+PALM_ANCHOR = "five_point_average"
 
 
 def log_startup_stage(label: str, started: float) -> None:
@@ -78,6 +82,7 @@ class TrackingResult:
     frame: Any
     diagnostics: dict = field(default_factory=dict)
     palm_points: list = field(default_factory=list)
+    palm_anchors: dict = field(default_factory=dict)
     motion_only: bool = False
     gesture_observation: HandObservation | None = None
     motion_trace: dict = field(default_factory=dict)
@@ -101,6 +106,62 @@ def _camera_curl_points(result: Any, landmarks: list, tasks: bool,
             return points
     # MediaPipe normalized z uses approximately the same scale as normalized x.
     return [_Point(p.x, p.y * height / width, p.z) for p in landmarks]
+
+
+def _landmarks_valid(landmarks: list) -> bool:
+    """Reject malformed landmark sets without inventing a confidence score."""
+    if len(landmarks) != 21:
+        return False
+    finite = all(
+        math.isfinite(value)
+        for point in landmarks
+        for value in (point.x, point.y, point.z)
+    )
+    if not finite:
+        return False
+    # These two independent palm dimensions must have measurable area. This
+    # rejects collapsed/corrupt results while allowing hands near image edges.
+    return _distance(landmarks[0], landmarks[9]) > .005 \
+        and _distance(landmarks[5], landmarks[17]) > .005
+
+
+def _polygon_centroid(points: list[tuple[float, float]]) -> tuple[float, float]:
+    """Return the area-weighted centre of a simple polygon, with a safe fallback."""
+    twice_area = 0.0
+    x_total = y_total = 0.0
+    for first, second in zip(points, points[1:] + points[:1]):
+        cross = first[0] * second[1] - second[0] * first[1]
+        twice_area += cross
+        x_total += (first[0] + second[0]) * cross
+        y_total += (first[1] + second[1]) * cross
+    if abs(twice_area) < 1e-9:
+        return (
+            sum(point[0] for point in points) / len(points),
+            sum(point[1] for point in points) / len(points),
+        )
+    return x_total / (3.0 * twice_area), y_total / (3.0 * twice_area)
+
+
+def _palm_anchor_candidates(landmarks: list) -> dict[str, tuple[float, float]]:
+    """Calculate comparable palm anchors from one coherent landmark result."""
+    ids = (0, 5, 9, 13, 17)
+    points = [(float(landmarks[index].x), float(landmarks[index].y)) for index in ids]
+    knuckles = points[1:]
+    return {
+        "five_point_average": (
+            sum(point[0] for point in points) / len(points),
+            sum(point[1] for point in points) / len(points),
+        ),
+        "four_knuckle_centroid": (
+            sum(point[0] for point in knuckles) / len(knuckles),
+            sum(point[1] for point in knuckles) / len(knuckles),
+        ),
+        "palm_polygon": _polygon_centroid(points),
+        "weighted_wrist_knuckles": (
+            (2 * points[0][0] + sum(point[0] for point in knuckles)) / 6,
+            (2 * points[0][1] + sum(point[1] for point in knuckles)) / 6,
+        ),
+    }
 
 
 def _finger_bends(points: list) -> dict:
@@ -129,14 +190,14 @@ def _finger_curls_from_bends(bends: dict) -> dict:
     return {name + "_curl": max(values) for name, values in bends.items()}
 
 
-def _legacy_hands(mp, cpu_threads: int):
+def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55):
     """Build the lite legacy graph, enabling safe CPU parallelism when supported."""
     settings = {
         "static_image_mode": False,
         "max_num_hands": 1,
         "model_complexity": 0,
         "min_detection_confidence": 0.55,
-        "min_tracking_confidence": 0.55,
+        "min_tracking_confidence": tracking_confidence,
     }
     base = mp.solutions.hands.Hands(**settings)
     if cpu_threads <= 1:
@@ -195,6 +256,7 @@ class MediaPipeTracker:
         mirror: bool = True,
         model_path: Path | str | None = None,
         inference_threads: int = 2,
+        tracking_confidence: float = .55,
         backend: str = "legacy",
     ) -> None:
         try:
@@ -214,6 +276,8 @@ class MediaPipeTracker:
         self.mirror = mirror
         self.preview_enabled = True
         self.diagnostics_enabled = True
+        self.inference_threads = max(1, int(inference_threads))
+        self.tracking_confidence = max(0.0, min(1.0, float(tracking_confidence)))
         self._last_timestamp_ms = -1
         if backend not in TRACKER_BACKEND_LABELS:
             raise ValueError(f"unsupported tracker backend: {backend}")
@@ -241,7 +305,9 @@ class MediaPipeTracker:
             )
             self.hands = mp.tasks.vision.HandLandmarker.create_from_options(options)
         else:
-            self.hands = _legacy_hands(mp, max(1, int(inference_threads)))
+            self.hands = _legacy_hands(
+                mp, self.inference_threads, self.tracking_confidence,
+            )
 
         log_startup_stage("tracker construction", started)
 
@@ -286,9 +352,12 @@ class MediaPipeTracker:
             handedness = result.multi_handedness[0].classification[0]
             hand_label = handedness.label
             hand_score = float(handedness.score)
+        if not _landmarks_valid(landmarks):
+            return TrackingResult(HandObservation(now, False), frame,
+                                  {"landmark_validation": "invalid"})
         palm_ids = (0, 5, 9, 13, 17)
-        palm_x = sum(landmarks[i].x for i in palm_ids) / len(palm_ids)
-        palm_y = sum(landmarks[i].y for i in palm_ids) / len(palm_ids)
+        palm_anchors = _palm_anchor_candidates(landmarks)
+        palm_x, palm_y = palm_anchors[PALM_ANCHOR]
         palm_scale = (_distance(landmarks[0], landmarks[9]) + _distance(landmarks[5], landmarks[17])) / 2
         roll = math.atan2(
             landmarks[5].y - landmarks[17].y,
@@ -303,6 +372,7 @@ class MediaPipeTracker:
             timestamp=now,
             detected=True,
             confidence=hand_score,
+            confidence_source="handedness",
             palm_x=palm_x,
             palm_y=palm_y,
             palm_scale=palm_scale,
@@ -324,8 +394,11 @@ class MediaPipeTracker:
             diagnostics = {
                 "tracker_backend": self.backend,
                 "tracker_backend_label": self.backend_label,
+                "palm_anchor": PALM_ANCHOR,
+                "confidence_source": "handedness",
                 "finger_bends": bends,
                 "hand_landmarks": [[p.x, p.y] for p in landmarks],
             }
         return TrackingResult(observation, frame, diagnostics,
-                              palm_points=[(landmarks[i].x, landmarks[i].y) for i in palm_ids])
+                              palm_points=[(landmarks[i].x, landmarks[i].y) for i in palm_ids],
+                              palm_anchors=palm_anchors)

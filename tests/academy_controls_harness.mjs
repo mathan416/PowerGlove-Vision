@@ -129,6 +129,11 @@ const tuningState = {
     index: "Index", middle: "Middle", ring: "Ring", pinky: "Pinky", push: "Push", pull: "Pull",
     left: "Left", right: "Right", up: "Up", down: "Down", roll_left: "Roll left", roll_right: "Roll right"},
   effective: {index: {on: .5, off: .35}}, preview: null,
+  reach: {available: true, pending: false, custom: true,
+    values: {left: .46, right: .21, up: .44, down: .39},
+    limits: {left: {min: .05, max: .475}, right: {min: .05, max: .475}, up: {min: .05, max: .475}, down: {min: .05, max: .475}},
+    camera_width: 640, camera_height: 480,
+    dimensions: {width: 428.8, height: 398.4, aspect: 1.076}},
 };
 const response = data => ({ok: true, async json() { return structuredClone(data); }});
 let playerData={active:'default',generation:0,players:[{id:'default',name:'Player 1'}],progress:{course:1,completed:[],lesson:0},needs_center:false,error:null};
@@ -289,6 +294,13 @@ for (const id of ["problem-setup", "problem-difficult", "problem-accidental", "p
   byId(id).onclick();
   await settle();
 }
+byId("reach-left").value = ".45";
+byId("reach-left").oninput();
+assert.match(byId("reach-summary").textContent, /pixels/);
+byId("reach-save").onclick();
+await settle();
+byId("reach-reset").onclick();
+await settle();
 const recordPromise = byId("tune-record").onclick();
 await advance(1100);
 await advance(1100);
@@ -307,7 +319,7 @@ byId("tune-switch").checked = false;
 await byId("tune-switch").onchange();
 await settle();
 const tuningActions = requests.filter(item => item.url === "/api/tuning").map(item => item.body.action);
-for (const action of ["begin", "choose_problem", "select", "wizard_record", "suggest", "start_test", "wizard_save", "preview", "wizard_back", "reset", "diagnostic_begin", "diagnostic_record", "diagnostic_cancel", "end"])
+for (const action of ["begin", "choose_problem", "select", "wizard_record", "suggest", "start_test", "wizard_save", "preview", "wizard_back", "reset", "reach_save", "reach_reset", "diagnostic_begin", "diagnostic_record", "diagnostic_cancel", "end"])
   assert.ok(tuningActions.includes(action), `missing tuning action: ${action}`);
 
 console.log("Glove Academy control harness passed");

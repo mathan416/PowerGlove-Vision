@@ -190,7 +190,7 @@ The launch hook sends an authenticated profile request. The PowerGlove Vision Co
 controls, changes the mapping, reuses the saved calibration, and acknowledges
 the new profile on its blue matrix. If no valid calibration is saved, it collects
 an initial reference while you hold your open hand still in a comfortable
-resting position. It uses 24 observations at 70% confidence or better; repeating
+resting position. It uses 24 geometrically valid observations; repeating
 the same center, distance, and wrist pose produces a similar rather than
 bit-for-bit identical reference.
 
