@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# Project: PowerGlove Vision
+# File: scripts/analyze-motion-trace.py
+# Purpose: Analyze finite per-frame native-motion traces without replaying input.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added trace freshness, error, class, and settling analysis.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Analyze per-frame motion trace coordinates without replaying controller input."""
 
 from __future__ import annotations
@@ -17,6 +27,7 @@ SETTLE_FRACTION = 0.05
 
 
 def percentile(values, fraction):
+    """Return the bounded percentile used by trace reports."""
     values = sorted(values)
     if not values:
         return None
@@ -24,6 +35,7 @@ def percentile(values, fraction):
 
 
 def summary(values):
+    """Summarize finite numeric values for a stable JSON report."""
     values = [float(v) for v in values if v is not None and math.isfinite(float(v))]
     return {"samples": len(values),
             "median": round(statistics.median(values), 4) if values else None,
@@ -32,6 +44,7 @@ def summary(values):
 
 
 def classify(delta):
+    """Classify one normalized coordinate delta by movement size."""
     if delta < SMALL_DELTA:
         return "small"
     if delta < MEDIUM_DELTA:
@@ -40,6 +53,7 @@ def classify(delta):
 
 
 def analyze(path):
+    """Analyze one saved motion trace without modifying or replaying it."""
     report = json.loads(Path(path).read_text())
     events = [e for e in report.get("events", []) if e.get("event") == "vision"]
     valid = [e for e in events if e.get("detected") and e.get("motion", {}).get("selected_xy")
@@ -98,6 +112,7 @@ def analyze(path):
 
 
 def main():
+    """Parse arguments and print or create one trace report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("trace", type=Path)
     parser.add_argument("--output", type=Path)

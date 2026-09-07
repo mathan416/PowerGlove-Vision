@@ -4,7 +4,7 @@
 
 # PowerGlove Vision
 
-**Release candidate:** [v0.3.2-rc.7](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.7). Update both computers together using the [candidate installation commands](docs/INSTALL_README.md#install-this-release-candidate). The default installer commands select the latest stable release, not this candidate. Live gameplay and latency validation remain pending. Version **0.3.5** is planned for measured latency improvements, with stationary jitter and recognition reliability checked against repeated baselines.
+**Release candidate:** [v0.3.2-rc.7](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.7). Update both computers together using the [candidate installation commands](docs/INSTALL_README.md#install-this-release-candidate). The default installer commands select the latest stable release, not this candidate. Post-pairing controller gameplay is confirmed on the tested cabinet; measured latency and repeated stationary-jitter validation remain pending. Version **0.3.5** is planned for measured latency improvements, with stationary jitter and recognition reliability checked against repeated baselines.
 
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
 a camera connected to the **PowerGlove Vision Controller**, built on an Arduino
@@ -91,8 +91,12 @@ On Dashboard, **Center hand** saves the resting reference for the selected playe
 | --- | --- |
 | Get the complete project at a glance | [Project overview PDF](output/pdf/PowerGlove-Vision-Overview.pdf) |
 | Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
+| Understand joystick versus native glove input | [Native emulation explained](docs/NATIVE_EMULATION_EXPLAINED.md) |
+| Review Super Glove Ball packet and gameplay evidence | [Native compatibility record](docs/super-glove-ball-native.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
+| Review movement-filter evidence and experiments | [Motion smoothing analysis](docs/motion-smoothing-analysis.md) |
+| Isolate native X/Y from Super Glove Ball behavior | [Controller dot test](docs/uno-q-dot-test.md) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
 | Check dependency provenance or release history | [Third-party components](docs/THIRD_PARTY_COMPONENTS.md) and [Changelog](docs/CHANGELOG.md) |
@@ -254,7 +258,7 @@ FCEUmm and the same global recognition settings.
 For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
 collects fresh timing observations without changing camera settings or controls.
 It keeps Controller software timing separate from network, emulator, and display delay.
-The optional [UNO Q dot test](docs/uno-q-dot-test.md) reuses the cabinet's installed
+The optional [PowerGlove Vision Controller dot test](docs/uno-q-dot-test.md) reuses the cabinet's installed
 `lr-powerglove-dot` core to display the same receiver X/Y publication without
 game movement logic, with read-only input-range and validity measurements.
 

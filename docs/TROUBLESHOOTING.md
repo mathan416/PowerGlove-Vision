@@ -103,6 +103,13 @@ Ball and joystick-style mappings behave differently, so verify the selected core
 If ordinary movement is correct but a gesture is unreliable, use **Glove Academy
 → Tune gestures** and describe that symptom to Pixel Pal.
 
+For FCEUmm digital directions, Setup's **Joystick dead zone** adjusts how far
+the selected player moves before all four directions activate; release remains
+half that distance. Start with **Use standard size**, then save one small change
+at a time while watching the live direction indicators. This setting does not
+change native Super Glove Ball X/Y travel or cure processing latency. Use reach
+calibration for native screen coverage and the latency procedure below for delay.
+
 ## Start triggers accidentally, or a gesture stays active
 
 Practise the V sign and its release in Glove Academy. Keep your fingers clearly

@@ -1,5 +1,12 @@
+# Project: PowerGlove Vision
+# File: tests/test_dot_input.py
+# Purpose: Verify read-only native-state measurement for the diagnostic dot core.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added dot-input diagnostic regression coverage.
+# Full history: docs/CHANGELOG.md and Git history.
 """Validate diagnostic rejection, recovery and receiver-to-dot range reporting."""
 import importlib.util
 from pathlib import Path

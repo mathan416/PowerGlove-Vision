@@ -86,6 +86,24 @@ sockets. These functions are kept separate from camera inference.
 7. The receiver checks the message HMAC, live challenge, peer, and increasing sequence. It creates the real virtual controller when the first accepted packet arrives.
 8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
 
+The default path performs landmark recognition synchronously and uses the newest
+completed observation directly. An opt-in Super Glove Ball experiment separates
+native X/Y movement from that cadence: one bounded worker processes the latest
+camera frame, while palm optical flow carries the last accepted position toward
+the current frame. It never queues recognition results or replays coordinate
+samples. Each correction is source-to-current, limited to 320-pixel flow images,
+a 25 ms work budget, and a 250 ms recognition-age limit. A failed or over-budget
+correction falls back to fresh, confident MediaPipe coordinates; stale, lost, or
+uncalibrated input neutralizes movement and clears flow history. Gesture and
+button recognition still comes from completed MediaPipe observations.
+
+Native coordinates use each player's calibrated center and optional asymmetric
+comfortable-reach spans. Digital FCEUmm directions instead use the player's
+shared activation thresholds; Setup's **Joystick dead zone** changes all four
+direction thresholds together and sets release to half of activation. It does
+not alter native reach, finger gestures, or game mappings. Re-centering clears
+saved reach spans because they belong to the old center.
+
 The worker also publishes diagnostic state after inference. Browser video is
 submitted at most five times per second and only while a stream consumer is
 connected. A separate single-slot worker performs JPEG encoding and discards a
@@ -434,8 +452,9 @@ it does not claim every path has been independently security-audited.
 | Responsibility | Start reading here |
 | --- | --- |
 | Supervisor, worker launch, matrix ownership | `python/main.py` |
-| Camera lifecycle and frame-to-send loop | `src/powerglove_vision/vision_app.py` |
-| Capture selection and landmark measurements | `src/powerglove_vision/camera.py`, `tracker.py` |
+| Camera lifecycle and frame-to-send loop | `src/powerglove_vision/vision_app.py`, `realtime.py` |
+| Capture selection, Kiyo controls, and landmark measurements | `src/powerglove_vision/camera.py`, `kiyo_camera.py`, `tracker.py` |
+| Experimental native movement tracking | `src/powerglove_vision/motion.py` |
 | Observation/state data objects | `src/powerglove_vision/model.py` |
 | Calibration, thresholds, held gestures, mappings | `src/powerglove_vision/gesture.py` |
 | Recording, suggestions, previews, persistence | `src/powerglove_vision/tuning.py` |
@@ -497,6 +516,12 @@ The supervisor publishes cached indicator bits; capture, recognition, transport,
 T/L displays, and game-state paths are unchanged.
 
 ## Signed controller session lifecycle
+
+After either supported pairing method installs the shared token, the Controller
+sends a new signed hello to UDP 55355 and requires a matching receiver challenge
+before reporting success. This verifies that RetroPie is running the receiver
+and accepts the token just written. It does not arm controller delivery or prove
+that RetroArch, an emulator, or a game consumed input.
 
 The nonblocking sender emits a signed hello with random session and request identifiers. RetroPie replies with a fresh random 128-bit challenge; only a signed reply matching the sender's current request, session, and configured receiver port is accepted. On Linux, receiver replies preserve the destination address and receiving interface using IP_PKTINFO, so Ethernet/Wi-Fi multihoming works through container NAT. The sender also permits a different source address when HMAC, request, session, and port match. A valid state activates that challenge. Activation invalidates every older active and pending challenge; subsequent states require increasing sequence numbers. A replayed hello can obtain a new challenge but cannot supply an authenticated state for it. Receiver restarts discard all challenges, so recorded traffic from a previous process cannot activate input.
 

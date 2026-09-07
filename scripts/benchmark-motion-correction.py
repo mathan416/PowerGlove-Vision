@@ -1,5 +1,12 @@
+# Project: PowerGlove Vision
+# File: scripts/benchmark-motion-correction.py
+# Purpose: Compare native-motion correction revisions with synthetic frames.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added a deterministic before/after correction benchmark.
+# Full history: docs/CHANGELOG.md and Git history.
 """Synthetic frames and delayed recognition only: no camera, packets or game input."""
 import argparse,hashlib,importlib.util,json,time,math,sys
 from pathlib import Path
@@ -19,24 +26,31 @@ base=np.zeros((480,640),dtype=np.uint8);base[195:285,275:365]=rng.integers(40,24
 frames=[cv2.cvtColor(cv2.warpAffine(base,np.float32([[1,0,x],[0,1,0]]),(640,480)),cv2.COLOR_GRAY2BGR) for x in range(-16,17)]
 
 def summary(values):
+ """Return compact percentiles for a non-empty timing sequence."""
  s=sorted(values)
  return {'count':len(s),'p50':s[math.ceil(.5*len(s))-1],'p95':s[math.ceil(.95*len(s))-1],'max':s[-1]} if s else {}
 
 def run(lane, seconds=4):
+ """Run one imported motion implementation against deterministic frames."""
  spec=importlib.util.spec_from_file_location('powerglove_vision.bench_'+lane,files[lane]);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
  class Recognizer:
+  """Provide deterministic observations after a simulated inference delay."""
   cv2=cv2;mirror=False;backend='synthetic';backend_label='synthetic 60ms'
   def process(self,frame,timestamp=None):
+   """Return a synthetic tracked palm encoded by the supplied frame."""
    time.sleep(.060)
    x=int(frame[0,0,0])-16
    pose=HandObservation(timestamp,True,.95,.5+x/640,.5,.068)
    points=[(.43+x/640,.4),(.57+x/640,.4),(.57+x/640,.59),(.5+x/640,.60),(.43+x/640,.59)]
    return TrackingResult(pose,frame,palm_points=points)
-  def close(self):pass
+  def close(self):
+   """Release no resources; the synthetic recognizer owns none."""
+   pass
  tracker=m.MotionTracker(Recognizer());times=[];flow_times=[];valid_times=[];ages=[];failures={};valid=total=0
  original_advance=tracker.flow.advance
  # Count time inside the actual optical-flow routine, including replay calls.
  def measured(gray):
+  """Time one call to the selected implementation's optical-flow routine."""
   start=time.monotonic();result=original_advance(gray);flow_times.append((time.monotonic()-start)*1000);return result
  tracker.flow.advance=measured
  start=time.monotonic();deadline=start+seconds;next_frame=start

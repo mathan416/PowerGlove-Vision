@@ -25,6 +25,8 @@ authoritative record for line-level and file-level history.
 
 ### Fixed
 
+- Pairing now reports success only after RetroPie answers a signed controller handshake with the newly installed token. This catches a copied-but-unusable token while keeping controller arming and actual emulator input as separate checks.
+
 - Experimental X/Y now falls back directly to fresh, confident MediaPipe coordinates when source-to-current flow correction fails or exceeds its budget. Failed flow is cleared, fallback reasons are reported separately, and the original 250 ms recognition freshness limit remains enforced.
 
 - Bound experimental X/Y correction to one checked source-to-current flow step on smaller images, and dispatch the next recognition job before correction. Added correction/pickup/failure diagnostics and a synthetic before/after benchmark. The original MediaPipe path remains the default; live recognition and physical latency validation are pending.
@@ -35,6 +37,8 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Synchronized the architecture, installation, security, troubleshooting, command reference, built-in Help, README and PDF editions with the asynchronous movement path, comfortable reach, Kiyo capture candidate, per-player joystick dead zone, motion-analysis tools and post-pairing token verification. Standardized new user-facing diagnostic titles on **PowerGlove Vision Controller** while retaining literal UNO Q filenames and hardware references.
+
 - Added an optional experimental-only X/Y smoothing boost override. The UNO medium-jump trial uses 8 instead of 4, lowering the per-axis immediate-response threshold from roughly .075 to .0375 camera units without changing synchronous tracking or reach calibration.
 
 - Added an experimental-only `motion_coordinate_max` cap for controlled extrapolation tests. Values above 1.00 intentionally overshoot the latest coordinate; the current exploratory UNO setting uses cap 1.30 with boost 15 and minimum smoothing 0.70. The normal path remains capped at 1.00.
@@ -44,6 +48,10 @@ authoritative record for line-level and file-level history.
 - Glove Academy player selection now immediately loads sensitivity, lesson progress, and the player’s saved center. Removed the separate Use player and Reuse my saved center buttons. Players without a saved center still need Center hand; switching keeps controller output paused, and backup-import calibration reuse remains an explicit choice.
 
 - Renamed the explicit centering action to **Center hand** throughout Dashboard, Glove Academy, player settings, personalization, and maintained instructions. Centering continues to save only to the selected player; switching players during a sample prevents it being saved to the new player.
+
+### Validation
+
+- Confirmed the tested cabinet accepted the newly paired token and subsequently delivered Controller input to a running game. The pairing-complete signal remains deliberately scoped to receiver authentication; the follow-on game test establishes the rest of this installation's path.
 
 Version **0.3.5** is planned for camera-to-game latency fixes. Tuning will follow measured stage timings and repeated stationary-jitter and recognition checks; these fixes are not included in rc.7.
 

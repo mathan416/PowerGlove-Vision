@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
+# Project: PowerGlove Vision
+# File: scripts/configure-uno-q-avahi.py
+# Purpose: Restrict Controller mDNS advertisement to physical interfaces.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added physical-interface allowlisting for host Avahi.
+# Full history: docs/CHANGELOG.md and Git history.
 """Keep host mDNS advertisements off Docker bridges and virtual interfaces."""
 import argparse
 import os
@@ -11,10 +18,12 @@ import tempfile
 
 
 def physical_interfaces(root=Path('/sys/class/net')):
+    """Return physical Linux interfaces beneath the supplied sysfs root."""
     return sorted(p.name for p in root.iterdir() if (p / 'device').exists())
 
 
 def configure_text(text, interfaces):
+    """Return Avahi configuration with one validated physical allowlist."""
     if not interfaces or any(not re.fullmatch(r'[A-Za-z0-9_.:-]{1,15}', n) for n in interfaces):
         raise ValueError('At least one valid physical interface is required')
     lines = text.splitlines()
@@ -41,6 +50,7 @@ def configure_text(text, interfaces):
 
 
 def configure(path, interfaces):
+    """Back up and atomically replace Avahi configuration when it changes."""
     if path.is_symlink():
         raise ValueError('Refusing a symbolic Avahi configuration path')
     original = path.read_text()

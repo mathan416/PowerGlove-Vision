@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# Project: PowerGlove Vision
+# File: scripts/compare-motion-matrix.py
+# Purpose: Compare controlled native-motion trace configurations.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added controlled smoothing-matrix comparison.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Compare a directory of motion traces using the shared trace analyzer."""
 
 from __future__ import annotations
@@ -16,6 +26,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 def compare(directory):
+    """Return aggregate rows for conventionally named trace files."""
     rows = []
     for path in sorted(Path(directory).glob("min*.trace.json")):
         result = MODULE.analyze(path)
@@ -45,6 +56,7 @@ def compare(directory):
 
 
 def main():
+    """Create a JSON comparison and print its compact table."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--output", type=Path, required=True)

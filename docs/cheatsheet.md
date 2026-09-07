@@ -174,7 +174,7 @@ Complete both machine installations above, then use the one-time-code method:
 2. In **Pair with RetroPie**, choose **One-time code (recommended)** and select **Continue**. Pairing uses the saved console address.
 3. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint. If they match, check the confirmation box, enter the six-digit **Controller approval PIN**, and select **Continue**.
 4. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character **RetroPie one-time code**, then select **Pair with RetroPie**. This is not the Controller PIN.
-5. Wait for **Pairing complete**. Check `sudo systemctl status powerglove-receiver.service` on RetroPie; open Dashboard for controller Start/Stop and shutdown.
+5. Wait for **Pairing complete**. This includes a signed receiver-token check. Check `sudo systemctl status powerglove-receiver.service` on RetroPie; open Dashboard for controller Start/Stop and shutdown.
 
 For SSH, choose **SSH password** in the first step, complete the same Controller
 confirmation, then enter the RetroPie username and password in the final step.

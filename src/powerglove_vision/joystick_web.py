@@ -1,5 +1,12 @@
+# Project: PowerGlove Vision
+# File: src/powerglove_vision/joystick_web.py
+# Purpose: Render per-player digital joystick dead-zone controls and status.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added Setup dead-zone controls with per-player persistence.
+# Full history: docs/CHANGELOG.md and Git history.
 """Per-player Setup controls for the existing digital direction thresholds."""
 
 JOYSTICK_CONTENT = """<section class=card id=joystick-settings style="margin-top:14px" aria-labelledby=joystick-title>

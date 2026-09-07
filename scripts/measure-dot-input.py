@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # Project: PowerGlove Vision
+# File: scripts/measure-dot-input.py
+# Purpose: Measure read-only native-state validity and range for the dot core.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added bounded cabinet-side dot-input measurement.
+# Full history: docs/CHANGELOG.md and Git history.
 """Read-only cabinet-side observations of the installed dot core's input record."""
 
 from __future__ import annotations
@@ -45,6 +50,7 @@ def inspect(payload, now_ns):
 
 
 class Window:
+    """Accumulate bounded native-state observations for one diagnostic window."""
     def __init__(self):
         self.counts = Counter()
         self.previous_valid = None
@@ -54,6 +60,7 @@ class Window:
         self.max_age = None
 
     def observe(self, reason, state):
+        """Add one classified native-state observation to this window."""
         self.counts[reason] += 1
         valid = state is not None
         self.losses += int(self.previous_valid is True and not valid)
@@ -74,6 +81,7 @@ class Window:
                 self.ranges[key] = [value, value] if old is None else [min(old[0], value), max(old[1], value)]
 
     def report(self):
+        """Return aggregate validity, recovery, publication, and range evidence."""
         return {"polls_by_state": dict(self.counts), "observed_input_losses": self.losses,
                 "observed_recoveries": self.recoveries,
                 "observed_valid_publications": self.publications,
@@ -81,6 +89,7 @@ class Window:
 
 
 def main():
+    """Collect a bounded observation window and create a new JSON report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", type=Path, default=DEFAULT_PATH)
     parser.add_argument("--seconds", type=float, default=30)

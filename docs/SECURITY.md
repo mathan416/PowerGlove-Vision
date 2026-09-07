@@ -80,6 +80,11 @@ browser certificate identity with the identifier on the PowerGlove Vision Contro
 enter the single-use PIN shown on the matrix before the token is released. This is a local certificate-pinning ceremony, not
 validation by a public certificate authority.
 
+After installing the token, the Controller sends a signed controller hello and
+reports success only after RetroPie returns a valid matching challenge. This
+post-write check confirms that the receiver accepts the newly shared token; it
+does not arm output or establish that an emulator consumed controller input.
+
 Pairing sessions limit how long a connection handshake can take and how long
 the pairing service remains available. Reusing a PIN, removing
 the physical display requirement, accepting pairing credentials over ordinary

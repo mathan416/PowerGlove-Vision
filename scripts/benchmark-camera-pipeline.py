@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# Project: PowerGlove Vision
+# File: scripts/benchmark-camera-pipeline.py
+# Purpose: Measure an isolated Linux camera and recognition pipeline safely.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added exclusive, output-paused camera pipeline measurements.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Opt-in Linux camera/recognition experiment; never sends controller output.
 
 Run only with the normal camera worker stopped, using its Python environment.
@@ -25,18 +35,22 @@ import time
 
 
 class Timeval(C.Structure):
+    """Represent the V4L2 timeval fields used in buffer metadata."""
     _fields_ = [('sec', C.c_long), ('usec', C.c_long)]
 
 
 class Timecode(C.Structure):
+    """Represent the fixed-size V4L2 timecode payload."""
     _fields_ = [('type', C.c_uint32), ('flags', C.c_uint32), ('rest', C.c_ubyte * 8)]
 
 
 class BufferMemory(C.Union):
+    """Represent the V4L2 buffer memory offset or pointer union."""
     _fields_ = [('offset', C.c_uint32), ('ptr', C.c_ulong)]
 
 
 class Buffer(C.Structure):
+    """Represent one Linux 64-bit V4L2 capture buffer."""
     _fields_ = [('index', C.c_uint32), ('type', C.c_uint32),
                 ('bytesused', C.c_uint32), ('flags', C.c_uint32),
                 ('field', C.c_uint32), ('ts', Timeval), ('tc', Timecode),
@@ -46,6 +60,7 @@ class Buffer(C.Structure):
 
 
 class RequestBuffers(C.Structure):
+    """Represent one V4L2 streaming-buffer allocation request."""
     _fields_ = [('count', C.c_uint32), ('type', C.c_uint32),
                 ('memory', C.c_uint32), ('capabilities', C.c_uint32),
                 ('flags', C.c_uint32)]
@@ -56,6 +71,7 @@ STREAMON, STREAMOFF = 0x40045612, 0x40045613
 
 
 def stats(values):
+    """Return compact distribution statistics for one numeric sequence."""
     values = sorted(values)
     if not values:
         return {'samples': 0}
@@ -112,11 +128,13 @@ class RawCamera:
 
     @staticmethod
     def buffer():
+        """Create a zeroed MMAP capture-buffer descriptor."""
         b = Buffer()
         b.type, b.memory = 1, 1
         return b
 
     def read(self):
+        """Return the newest available decoded frame and bounded metadata."""
         try:
             if not self.running or not select.select([self.fd], [], [], 2)[0]:
                 self.failed_reads += 1
@@ -163,11 +181,13 @@ class RawCamera:
             return False, None
 
     def release(self):
+        """Leave teardown to close after the capture thread has joined."""
         # LatestFrameCapture first signals its stop event, then calls this.
         # Do not unmap memory concurrently with read/decode; close after join.
         pass
 
     def close(self):
+        """Stop streaming and release every mapped driver resource."""
         if self.running:
             fcntl.ioctl(self.fd, STREAMOFF, C.c_uint32(1))
             self.running = False
@@ -186,11 +206,13 @@ class TimedCalls:
         self.target, self.names, self.times = target, names, {}
 
     def __getattr__(self, name):
+        """Wrap selected callables and accumulate their execution time."""
         value = getattr(self.target, name)
         if name not in self.names:
             return value
 
         def call(*args, **kwargs):
+            """Invoke one wrapped callable and record elapsed monotonic time."""
             started = time.monotonic_ns()
             try:
                 return value(*args, **kwargs)
@@ -200,6 +222,7 @@ class TimedCalls:
 
 
 def measure_frame(tracker, engine, frame):
+    """Measure recognition, conversion, and gesture work for one frame."""
     tracker.cv2.times.clear()
     tracker.hands.times.clear()
     begin = time.monotonic_ns()
@@ -217,12 +240,14 @@ def measure_frame(tracker, engine, frame):
 
 
 def wrap_tracker(tracker):
+    """Disable preview work and time selected tracker calls in place."""
     tracker.preview_enabled = tracker.diagnostics_enabled = False
     tracker.cv2 = TimedCalls(tracker.cv2, {'flip', 'cvtColor'})
     tracker.hands = TimedCalls(tracker.hands, {'process'})
 
 
 def camera_lane(path, buffers, seconds, tracker, engine):
+    """Measure one exclusive live-camera lane with a requested buffer count."""
     from powerglove_vision.realtime import LatestFrameCapture
     import cv2
     import numpy as np
@@ -262,6 +287,7 @@ def camera_lane(path, buffers, seconds, tracker, engine):
 
 
 def native_profile_summary(folder):
+    """Summarize selected calculator durations from a native profiler trace."""
     from mediapipe.framework import calculator_profile_pb2
     groups = {}
     for path in Path(folder).glob('*.binarypb'):
@@ -283,6 +309,7 @@ def native_profile_summary(folder):
 
 
 def replay_lane(frame, profiled, tracker_class, engine_class, calibration_class):
+    """Replay one in-memory frame with optional native graph profiling."""
     from google.protobuf import text_format
     from mediapipe.framework import calculator_pb2
     from mediapipe.python.solution_base import SolutionBase
@@ -319,6 +346,7 @@ def replay_lane(frame, profiled, tracker_class, engine_class, calibration_class)
 
 
 def main():
+    """Run bounded camera lanes and print a numeric report without images."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--camera', required=True)
     parser.add_argument('--source-root', type=Path, default=Path(__file__).resolve().parents[1])

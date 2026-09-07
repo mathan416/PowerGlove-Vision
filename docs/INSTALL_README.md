@@ -133,7 +133,12 @@ one-time-code method after both installers finish.
 3. In **Confirm your Controller**, compare the `ID` on the physical matrix with the beginning of the browser certificate's SHA-256 fingerprint. Expand **How to compare the certificate** for guidance. If they differ, stop pairing.
 4. If they match, check the confirmation box, enter the six-digit **Controller approval PIN** shown after `PN` on the matrix, and select **Continue**.
 5. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character code in **RetroPie one-time code**, then select **Pair with RetroPie**. This code is separate from the Controller approval PIN.
-6. Selecting **Pair with RetroPie** brings **Pairing in progress** into view while the request runs, followed by **Pairing complete** or an error with retry instructions. On success, the receiver was restarted; you can open Dashboard when ready. On RetroPie, `sudo systemctl status powerglove-receiver.service` should report active. Pairing does not arm controller output or prove that a game received input.
+6. Selecting **Pair with RetroPie** brings **Pairing in progress** into view while the request runs, followed by **Pairing complete** or an error with retry instructions. On success, the receiver was restarted and answered an authenticated controller handshake using the newly installed token; you can open Dashboard when ready. On RetroPie, `sudo systemctl status powerglove-receiver.service` should report active. Pairing does not arm controller output or prove that a game received input.
+
+The tested cabinet subsequently launched a game and responded to Controller
+input after this pairing flow, confirming the complete path in that installation.
+Repeat the game check after pairing a different system or changing its emulator
+configuration; the **Pairing complete** message itself remains a receiver-token check.
 
 ![Guided pairing starts with the saved console and a choice of one-time code or SSH password.](images/setup-pairing-method.png)
 
@@ -162,7 +167,7 @@ can run `sudo` with that password.
 2. In **Choose a pairing method**, select **SSH password**, then **Continue**.
 3. Complete the same certificate comparison and Controller approval PIN step.
 4. In **Pair with RetroPie**, enter your RetroPie username and password, then select **Pair with RetroPie**.
-5. **Pairing in progress** stays visible while the request runs; SSH pairing can take a few minutes. Wait for **Pairing complete**, then check the receiver service or open Dashboard. Errors are brought into view with retry instructions.
+5. **Pairing in progress** stays visible while the request runs; SSH pairing can take a few minutes. Wait for **Pairing complete**, which includes an authenticated receiver-token check, then check the receiver service or open Dashboard. Errors are brought into view with retry instructions.
 
 The password field is unavailable until certificate confirmation is complete.
 The password is used for pairing and is not saved by the Controller. Returning

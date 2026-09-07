@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+# Project: PowerGlove Vision
+# File: scripts/analyze-motion-samples.py
+# Purpose: Analyze saved native-motion samples and smoothing step response.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added offline motion-sample analysis for latency tuning.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Summarize saved telemetry and model smoothing only; never replay controller input."""
 import argparse
 from dataclasses import replace
@@ -34,6 +44,7 @@ def step_response(distance, hz=60, unsmoothed=False, motion_boost=None):
 
 
 def summarize(directory):
+    """Return aggregate evidence for saved status samples in one directory."""
     result = {}
     for name in ('game1-uno.json', 'xy2-movement-uno.json', 'xy3-movement-uno.json'):
         p = directory/name
@@ -57,6 +68,7 @@ def summarize(directory):
 
 
 def main():
+    """Parse arguments and create a new aggregate motion-analysis report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--samples-dir', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)

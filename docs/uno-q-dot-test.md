@@ -1,4 +1,4 @@
-# UNO Q direct-output dot test
+# PowerGlove Vision Controller direct-output dot test
 
 Use the existing `lr-powerglove-dot` core on `retropieconsole.local` as an
 optional diagnostic. No second tracker or UNO camera process is needed:
@@ -39,7 +39,7 @@ one-launch choice to avoid relying on those older selection backups. Relaunch
 for a new trace window. Forced termination may leave unfinished traces or the
 temporary receiver override; do not treat those files as complete evidence.
 
-## UNO-specific measurement tools
+## Controller measurement tools
 
 The existing guided session runner now supports dot-labeled status reports:
 
@@ -49,7 +49,7 @@ python3 scripts/run-native-latency-session.py --test dot \
   --output-dir /tmp/uno-dot-session-01
 ```
 
-It waits for Enter before each physical window and collects read-only UNO
+It waits for Enter before each physical window and collects read-only Controller
 telemetry. It does not launch the game or start camera/output. The full guided
 sequence plus preparation exceeds the wrapper's five-minute trace window; start
 a new launch when further correlated trace evidence is needed.
@@ -85,7 +85,7 @@ native append config. Check additional live overrides when comparing games.
 
 Limited raw X/Y travel suggests upstream tracking or reach mapping. Use measured
 `reach_left`, `reach_right`, `reach_up`, `reach_down` for that player and camera
-position. Do not copy Pi spans or camera settings: the recorded UNO capture
+position. Do not copy Pi spans or camera settings: the recorded Controller capture
 comparison favored 640×480 MJPEG with two buffers and HDR off; it did not prove
 recognition-under-load or physical latency.
 
@@ -102,8 +102,8 @@ computers or add independent stage percentiles.
 ## Setup review — September 6, 2026
 
 The live cabinet has the dot menu entry, active receiver, native append config
-and UNO launch hook. The launcher now targets `arduiain.local`, replacing the
-obsolete `10.0.2.94` address. UNO status
+and Controller launch hook. The launcher now targets `arduiain.local`, replacing the
+obsolete `10.0.2.94` address. Controller status
 was idle with controller output paused, so physical movement validation remains
 pending. The installed core SHA-256 was
 `bb6b6f209232f668604b9ed03173ed310040760f772b0a5981d3e3af06eacce1`.

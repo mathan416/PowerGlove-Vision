@@ -8,7 +8,7 @@ necessarily new measurements or different coordinates.
 
 ## Observed evidence
 
-| 30-second window | Valid UNO samples | Observed tracking losses |
+| 30-second window | Valid Controller samples | Observed tracking losses |
 | --- | ---: | ---: |
 | Earlier flow revision, dot movement | 579/591 (98.0%) | 6 |
 | Recognition fallback, fast dot movement | 447/589 (75.9%) | 34 |
@@ -27,7 +27,7 @@ new recognized positions or displayed images.
 `scripts/analyze-motion-samples.py` exercises the actual native movement engine
 with an ideal instantaneous measured-position step. It assumes 60 updates/second,
 no input noise or loss, and the code defaults (minimum .70, maximum 1.00, motion
-boost 4.00). Read-only verification found those same values in the UNO profile
+boost 4.00). Read-only verification found those same values in the Controller profile
 configuration and no custom worker `--config` argument. Personal tuning overlays
 change gesture thresholds, not these smoothing settings.
 
@@ -91,10 +91,29 @@ python3 scripts/analyze-motion-samples.py \
   --output /tmp/new-motion-analysis.json
 ```
 
+Analyze one finite per-frame trace without replaying controller input:
+
+```sh
+python3 scripts/analyze-motion-trace.py /tmp/controller.trace.json \
+  --output /tmp/controller-motion-analysis.json
+```
+
+For a controlled directory whose filenames follow
+`min0.70-boost8.trace.json`, compare every configuration with:
+
+```sh
+python3 scripts/compare-motion-matrix.py /tmp/controller-motion-matrix \
+  --output /tmp/controller-motion-matrix.json
+```
+
+Both tools create new reports rather than overwriting existing evidence. Their
+settling estimates describe normalized software coordinates, not physical
+hand-to-screen latency.
+
 ## Medium-jump and bounded extrapolation trial
 
 The optional `motion_coordinate_boost` overrides the boost only in experimental
-`update_native_motion`; null preserves the baseline value. The UNO experiment
+`update_native_motion`; null preserves the baseline value. The Controller experiment
 uses boost 15.0 instead of the baseline 4.0, with minimum .70. An additional
 experimental `motion_coordinate_max` cap is currently 1.30, allowing bounded
 extrapolation beyond the newest measured position. This is an error relative to

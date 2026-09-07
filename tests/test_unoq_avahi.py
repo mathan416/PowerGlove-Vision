@@ -1,5 +1,14 @@
+# Project: PowerGlove Vision
+# File: tests/test_unoq_avahi.py
+# Purpose: Verify Controller mDNS is restricted to physical interfaces.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added physical-interface Avahi configuration coverage.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify Controller mDNS is restricted to physical interfaces."""
 import importlib.util
 from pathlib import Path
 import tempfile

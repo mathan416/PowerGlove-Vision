@@ -1,3 +1,13 @@
+# Project: PowerGlove Vision
+# File: tests/test_camera_pipeline_benchmark.py
+# Purpose: Verify the isolated camera benchmark's timing and buffer safety.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added camera pipeline benchmark regression coverage.
+# Full history: docs/CHANGELOG.md and Git history.
+
 """Check timestamp validity, newest driver-buffer selection, and safe release."""
 import importlib.util
 from pathlib import Path

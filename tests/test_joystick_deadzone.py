@@ -1,5 +1,12 @@
+# Project: PowerGlove Vision
+# File: tests/test_joystick_deadzone.py
+# Purpose: Verify per-player digital direction threshold persistence.
+# Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added per-player joystick dead-zone regression coverage.
+# Full history: docs/CHANGELOG.md and Git history.
 """Verify player-isolated dead-zone persistence without resetting hand setup."""
 import copy
 import tempfile

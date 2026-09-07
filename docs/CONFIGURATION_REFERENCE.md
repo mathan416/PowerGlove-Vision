@@ -206,9 +206,9 @@ Compare actual hand/display video, source gesture age, update cadence, neutral
 jitter, reversals, and tracking recovery before promoting this mode. No faster
 frame rate or lower end-to-end latency is claimed until measured on the Controller.
 
-### Measured UNO Q Kiyo Pro capture candidate
+### Measured PowerGlove Vision Controller Kiyo Pro capture candidate
 
-For the Kiyo Pro connected to this UNO Q, the measured candidate keeps MJPEG
+For the Kiyo Pro connected to the tested PowerGlove Vision Controller, the measured candidate keeps MJPEG
 640×480 at requested 60 fps, sets `"camera_buffers": 2`, and sets
 `"kiyo_hdr_off": true` in `data/device.json`. Restart the app after changing these
 settings. Direct worker equivalents are `--camera-buffers 2 --kiyo-hdr-off`.
@@ -1554,6 +1554,14 @@ they may still perform their normal work.
 | `scripts/record-vision-benchmark.py` | Optional camera, output, size, and frame-rate flags | Records a fixed 30-second, local-only cue sequence for near/far recognition, X/Y travel, jitter, depth, and recovery comparisons. It is never run by installation or used for training. |
 | `scripts/guided-vision-benchmark.py` | Optional camera, output, bind address, port, size, and frame-rate flags | Serves a temporary live-preview page for user-paced, per-step benchmark recording. Each selected step has a two-second countdown; pauses between steps are not recorded. The camera is released when capture completes. Output stays local and is not training data. |
 | `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, and optional Tasks model path | Replays the same full frames through MediaPipe Hands at 1, 2, and 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, and preview cost. |
+| `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH` and `--seconds 5..30` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership, compares one/two/one V4L2 buffers, performs fixed-frame profiling, keeps images in memory, and prints progress plus the final numeric report to standard output. It does not change camera controls or player settings. |
+| `scripts/analyze-motion-trace.py` | Required trace path; optional `--output NEW-PATH` | Reads one finite controller motion trace and reports recognition source age, selected-versus-filtered error, movement-class settling, fallback reasons, and tracking losses. Without `--output`, JSON is printed; an existing output file is never overwritten. |
+| `scripts/compare-motion-matrix.py` | Required directory and `--output NEW-PATH` | Compares `min*-boost*.trace.json` files using the shared analyzer. Use only for windows with the same movement sequence and camera conditions; the output file must not already exist. |
+| `scripts/benchmark-motion-correction.py` | Required `--before PATH` and `--output NEW-PATH`; optional `--after PATH` | Synthetic before/after benchmark for the motion-correction implementation. It uses generated frames and simulated recognition delay, never a camera or game, and cannot establish physical latency. |
+| `scripts/analyze-motion-samples.py` | Required `--samples-dir PATH` and `--output NEW-PATH` | Summarizes saved aggregate status samples and models ideal native-coordinate steps through the actual smoothing engine. It does not replay input or measure physical latency; the output file must not already exist. |
+| `scripts/calibrate-reach.py` | One required step: `begin`, `center`, `left`, `right`, `up`, `down`, `apply`, or `cancel` | Internal operator helper for the guided comfortable-reach procedure. Run one step at a time inside the Controller container as described above; it pauses output and preserves a private backup. |
+| `scripts/measure-dot-input.py` | Optional `--state PATH`, `--seconds NUMBER`, and `--interval NUMBER`; required `--output NEW-PATH` | Reads the cabinet's native-state record without changing it and reports dot validity, loss/recovery, distinct publications, and coordinate range. Defaults are the installed state path, 30 seconds, and 60 polls per second. |
+| `scripts/configure-uno-q-avahi.py` | Optional `--config PATH` and `--interfaces NAME...` | Internal host-installer helper. It restricts Avahi to validated physical interfaces, preserves a backup, and defaults to detecting interfaces from Linux sysfs; ordinary users should rerun installation instead. |
 | `scripts/build-gesture-crops.py` | No flags or positional arguments | Regenerates action illustrations from the gesture sheets; requires Pillow. |
 | `scripts/fetch-runtime-assets.sh` | No flags or positional arguments | Installs and verifies the bundled model into project `data/models/`; downloads only if absent. Requires Python 3, plus curl for fallback downloads. |
 | `scripts/configure-uno-q-mdns.py` | Required positional path to the generated Compose file; no flags | Internal installer/deployment helper that edits that file. Prefer the supported setup command. |

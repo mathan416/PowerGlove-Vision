@@ -1,3 +1,15 @@
+# Project: PowerGlove Vision
+# File: tests/test_motion_trace.py
+# Purpose: Verify native-motion trace classification and summary calculations.
+# Author: Iain Bennett
+# Copyright (c) 2026 Iain Bennett
+# SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-06 - Added per-frame motion-trace analysis coverage.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify native-motion trace classification and summary calculations."""
+
 import importlib.util
 import json
 from pathlib import Path
