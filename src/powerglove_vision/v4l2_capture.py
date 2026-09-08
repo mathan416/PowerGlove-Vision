@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Restore temporary active-stream controls before camera close.
 #   2026-09-07 - Promoted the measured direct-V4L2 experiment as an optional backend.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -24,19 +25,27 @@ import time
 
 
 class Timeval(C.Structure):
+    """Mirror the Linux timeval structure used in V4L2 buffers."""
+
     _fields_ = [("sec", C.c_long), ("usec", C.c_long)]
 
 
 class Timecode(C.Structure):
+    """Mirror the fixed-size V4L2 timecode structure."""
+
     _fields_ = [("type", C.c_uint32), ("flags", C.c_uint32),
                 ("rest", C.c_ubyte * 8)]
 
 
 class BufferMemory(C.Union):
+    """Represent the V4L2 buffer memory offset or pointer union."""
+
     _fields_ = [("offset", C.c_uint32), ("ptr", C.c_ulong)]
 
 
 class Buffer(C.Structure):
+    """Mirror the Linux 64-bit V4L2 buffer ABI."""
+
     _fields_ = [("index", C.c_uint32), ("type", C.c_uint32),
                 ("bytesused", C.c_uint32), ("flags", C.c_uint32),
                 ("field", C.c_uint32), ("ts", Timeval), ("tc", Timecode),
@@ -46,6 +55,8 @@ class Buffer(C.Structure):
 
 
 class RequestBuffers(C.Structure):
+    """Mirror the V4L2 buffer-allocation request structure."""
+
     _fields_ = [("count", C.c_uint32), ("type", C.c_uint32),
                 ("memory", C.c_uint32), ("capabilities", C.c_uint32),
                 ("flags", C.c_uint32)]
@@ -71,6 +82,7 @@ class DirectV4L2Capture:
         self.maps = []
         self.running = False
         self.last_metadata = {}
+        self.before_close = None
         try:
             fmt = bytearray(208)
             struct.pack_into("I", fmt, 0, 1)
@@ -100,11 +112,13 @@ class DirectV4L2Capture:
 
     @staticmethod
     def _buffer():
+        """Create an MMAP video-capture buffer descriptor."""
         buffer = Buffer()
         buffer.type, buffer.memory = 1, 1
         return buffer
 
     def isOpened(self):
+        """Return whether streaming is active, matching OpenCV's interface."""
         return self.running
 
     def read_with_timestamp(self):
@@ -161,6 +175,7 @@ class DirectV4L2Capture:
         return True, frame, captured_at
 
     def read(self):
+        """Return an OpenCV-compatible frame tuple without its timestamp."""
         ok, frame, _timestamp = self.read_with_timestamp()
         return ok, frame
 
@@ -169,6 +184,15 @@ class DirectV4L2Capture:
         return None
 
     def close(self):
+        """Restore controls and release streaming, mappings, and the device."""
+        callback, self.before_close = self.before_close, None
+        if callback is not None and self.fd >= 0:
+            try:
+                callback(self.fd)
+            except Exception:
+                # Camera teardown must continue even when a disconnected device
+                # can no longer acknowledge restoration.
+                pass
         if self.running:
             try:
                 fcntl.ioctl(self.fd, STREAMOFF, C.c_uint32(1))

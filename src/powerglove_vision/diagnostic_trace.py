@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Start bounded trace duration at the first gameplay event.
 #   2026-09-06 - Add opt-in finite diagnostic windows with private asynchronous export.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -29,15 +30,18 @@ class DiagnosticTrace:
         if not 1 <= seconds <= 600 or not 1 <= capacity <= 20000:
             raise ValueError('Trace requires 1-600 seconds and 1-20000 events')
         self.role, self.capacity = role, capacity
+        self.duration_ns = int(seconds * 1e9)
         self.events = []
         self.dropped = 0
-        self.started_ns = time.monotonic_ns()
-        self.deadline_ns = self.started_ns + int(seconds * 1e9)
+        self.armed_ns = time.monotonic_ns()
+        self.started_ns = None
+        self.deadline_ns = None
         self.enabled = True
         self.error = None
         self.stop_reason = "duration"
         self.lock = threading.Lock()
         self.stop = threading.Event()
+        self.first_event = threading.Event()
         # Reserve privately at startup, never overwrite or follow an existing link.
         self.fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         self.thread = threading.Thread(target=self._export, name='pgv-diagnostic', daemon=True)
@@ -71,7 +75,12 @@ class DiagnosticTrace:
         try:
             if not self.enabled:
                 return
-            if time.monotonic_ns() >= self.deadline_ns or len(self.events) >= self.capacity:
+            now = time.monotonic_ns()
+            if self.started_ns is None:
+                self.started_ns = now
+                self.deadline_ns = now + self.duration_ns
+                self.first_event.set()
+            if now >= self.deadline_ns or len(self.events) >= self.capacity:
                 self.dropped += 1
                 self.stop_reason = "capacity" if len(self.events) >= self.capacity else "duration"
                 self.enabled = False
@@ -83,13 +92,17 @@ class DiagnosticTrace:
 
     def _export(self):
         """Freeze one window and serialize off the input-processing thread."""
-        self.stop.wait(max(0, (self.deadline_ns - time.monotonic_ns()) / 1e9))
+        while not self.stop.is_set() and not self.first_event.wait(.25):
+            pass
+        if not self.stop.is_set() and self.deadline_ns is not None:
+            self.stop.wait(max(0, (self.deadline_ns - time.monotonic_ns()) / 1e9))
         with self.lock:
             self.enabled = False
             events, self.events = self.events, []
         report = dict(format='powerglove-diagnostic/1', role=self.role,
                       clock='local CLOCK_MONOTONIC; never subtract across hosts',
-                      started_ns=self.started_ns, ended_ns=time.monotonic_ns(),
+                      armed_ns=self.armed_ns, started_ns=self.started_ns,
+                      ended_ns=time.monotonic_ns(),
                       capacity=self.capacity, dropped=self.dropped, stop_reason=self.stop_reason, events=events)
         try:
             with os.fdopen(self.fd, 'w') as stream:

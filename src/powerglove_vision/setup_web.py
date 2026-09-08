@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-08 - Replaced free-form camera entry with a live discovered-camera list.
+#   2026-09-08 - Added capability-checked manual exposure and gain controls.
 #   2026-09-07 - Added advanced camera reader and exposure choices.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Organize Setup and keep failed requests and unsaved fields recoverable.
@@ -26,7 +28,7 @@ SETUP_CONTENT = """<style>main a{color:var(--cyan)}#players{margin-bottom:14px}#
 <label>RetroPie hostname or IP address<input id=receiver name=receiver placeholder=RETROPIE-NAME.local autocomplete=off></label>
 <label>Startup game profile<select id=profile name=profile>{{PROFILE_OPTIONS}}</select></label>
 <label>Hand or glove (diagnostic label)<select id=glove_color name=glove_color><option value=none>Bare hand</option><option value=white>White glove</option><option value=black>Black glove</option></select></label>
-</div><details><summary>Advanced connection and camera settings</summary><div class=formgrid><label>Receiver UDP port<input id=port name=port type=number min=1 max=65535 required></label><label>Camera<input id=camera name=camera placeholder=auto></label><label>Camera frame rate<select id=camera_fps name=camera_fps><option value=auto>Automatic — prefer 30 fps</option><option value=30>30 fps</option><option value=60>60 fps</option></select></label><label>Camera reader<select id=camera_backend name=camera_backend><option value=opencv>Compatible — OpenCV</option><option value=direct-v4l2>Low latency — Direct V4L2</option></select></label><label>Exposure behavior<select id=camera_exposure name=camera_exposure><option value=auto>Automatic — no camera changes</option><option value=low-latency>Low latency — standard UVC</option><option value=kiyo-low-latency>Razer Kiyo Pro — tested low latency</option></select></label></div><p>Keep port 55355 and camera auto unless your installation needs different values. Direct V4L2 uses the newest Linux camera buffer and automatically falls back to OpenCV if the camera or format is unsupported. Low latency keeps automatic exposure but disables variable frame-rate exposure only when the camera advertises that standard control. The Kiyo Pro choice also requests the tested volatile HDR-off mode; repower the camera to restore its hardware defaults.</p><p class=setup-status-note id=camera-rate-status role=status>Actual camera behavior appears while tracking is active.</p><label class=check><input id=rotate_token type=checkbox> Replace the pairing key when saving</label><p>Replacing the key stops controller output. Pair with RetroPie again afterward.</p></details>
+</div><details><summary>Advanced connection and camera settings</summary><div class=formgrid><label>Receiver UDP port<input id=port name=port type=number min=1 max=65535 required></label><label>Camera<select id=camera name=camera><option value=auto>Automatic — choose the connected camera</option></select></label><label>Camera frame rate<select id=camera_fps name=camera_fps><option value=auto>Automatic — prefer 30 fps</option><option value=30>30 fps</option><option value=60>60 fps</option></select></label><label>Camera reader<select id=camera_backend name=camera_backend><option value=opencv>Compatible — OpenCV</option><option value=direct-v4l2>Low latency — Direct V4L2</option></select></label><label>Exposure behavior<select id=camera_exposure name=camera_exposure><option value=auto>Automatic — portable default</option><option value=low-latency>Automatic — fixed frame rate</option><option value=kiyo-low-latency>Automatic — Razer Kiyo Pro tested</option><option value=manual>Manual exposure and gain</option></select></label></div><div id=camera-manual-settings class=formgrid hidden><label>Manual exposure<input id=camera_manual_exposure name=camera_manual_exposure type=number min=1 max=10000 step=1 inputmode=numeric></label><label>Manual gain<input id=camera_manual_gain name=camera_manual_gain type=number min=0 max=10000 step=1 inputmode=numeric></label></div><p>Automatic discovers a usable connected camera and remains safe when the camera is attached later. The list refreshes while Setup is open; a saved camera that is temporarily disconnected remains available as an unavailable choice. Direct V4L2 uses the newest Linux camera buffer and automatically falls back to OpenCV if the camera or format is unsupported. Automatic fixed-frame-rate exposure prevents long exposures from silently reducing camera cadence when the camera advertises that control. Manual values require Direct V4L2 and are checked against the camera’s advertised limits when tracking starts. Unsupported manual settings fall back to automatic exposure and are reported below. The Kiyo Pro choice also requests the tested volatile HDR-off mode; repower the camera to restore its hardware defaults.</p><p class=setup-status-note id=camera-rate-status role=status>Actual camera behavior appears while tracking is active.</p><label class=check><input id=rotate_token type=checkbox> Replace the pairing key when saving</label><p>Replacing the key stops controller output. Pair with RetroPie again afterward.</p></details>
 <div class=controls><button type=submit>Save settings</button><button class=secondary type=button id=test>Check console address</button></div></fieldset><p>Saving connection settings restarts tracking. Checking an address only confirms name resolution; it does not prove controller delivery.</p><p class=notice id=notice role=status aria-live=polite></p></form><button id=setup-retry type=button hidden>Reload saved settings</button></section>
 <section id=pairing-section class=card style="margin-bottom:14px" aria-labelledby=pair-title><h2 id=pair-title>Pair with RetroPie</h2>
 <p id=secure-note></p>
@@ -59,7 +61,9 @@ SETUP_SCRIPT = r"""(()=>{
 const $=id=>document.getElementById(id), secure=location.protocol==='https:';
 let prepared=null, savedConfig=null, settingsBusy=false, pairingBusy=false;
 let pairStep=1, lockedUntil=0, retryConfirmation=false;
-const settingsFields=['receiver','port','profile','glove_color','camera','camera_fps','camera_backend','camera_exposure'];
+const settingsFields=['receiver','port','profile','glove_color','camera','camera_fps','camera_backend','camera_exposure','camera_manual_exposure','camera_manual_gain'];
+function syncCameraOptions(options,selected){const menu=$('camera'),wanted=String(selected??menu.value??'auto'),items=Array.isArray(options)?options:[];menu.replaceChildren();for(const item of items){if(!item||typeof item.value!=='string'||typeof item.label!=='string')continue;const option=document.createElement('option');option.value=item.value;option.textContent=item.label;menu.append(option)}if(!menu.options.length){const option=document.createElement('option');option.value='auto';option.textContent='Automatic — choose the connected camera';menu.append(option)}if(!Array.from(menu.options).some(option=>option.value===wanted)){const option=document.createElement('option');option.value=wanted;option.textContent=`Saved camera ${wanted} — currently unavailable`;menu.append(option)}menu.value=wanted}
+function syncExposureFields(){const manual=$('camera_exposure').value==='manual';$('camera-manual-settings').hidden=!manual;$('camera_manual_exposure').required=manual;$('camera_manual_gain').required=manual}
 async function api(path,payload,timeoutMs=0){
   const options=payload===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)};
   if(path==='/api/attract')options.headers['X-PowerGlove-Action']='attract';
@@ -77,7 +81,8 @@ async function action(button,notice,work){
 }
 async function load(updateFields=false){
   const c=await api('/api/config');
-  if(updateFields){for(const k of settingsFields)$(k).value=String(c[k]??'');$('matrix-attract').value=c.matrix_attract||'on';$('connection-fields').disabled=false;}
+  if(c.camera_manual_exposure==null)c.camera_manual_exposure=78;if(c.camera_manual_gain==null)c.camera_manual_gain=96;
+  if(updateFields){syncCameraOptions(c.camera_options,c.camera);for(const k of settingsFields)$(k).value=String(c[k]??'');syncExposureFields();$('matrix-attract').value=c.matrix_attract||'on';$('connection-fields').disabled=false;}
   $('paired').textContent=c.connection_configured?'Connection and pairing key saved. Use pairing below if RetroPie has not received this key.':'Enter your console address and pair with RetroPie. Local play and Glove Academy work without pairing.';
   $('status-destination').textContent=c.receiver||'Not configured';
   savedConfig=c;
@@ -89,7 +94,8 @@ $('setup-retry').onclick=initialLoad;initialLoad();
 function indicator(id,state,label){const item=$(id);item.dataset.state=state;item.querySelector('strong').textContent=label}
 async function refreshStatus(){
   if(document.hidden)return;
-  const [connections,worker]=await Promise.allSettled([api('/api/connection-status',undefined,3500),api('/status',undefined,3500)]);
+  const [connections,worker,cameras]=await Promise.allSettled([api('/api/connection-status',undefined,3500),api('/status',undefined,3500),api('/api/config',undefined,3500)]);
+  if(cameras.status==='fulfilled')syncCameraOptions(cameras.value.camera_options,$('camera').value);
   if(connections.status==='fulfilled'){
     const c=connections.value,unknown=c.console_configured?'Checking…':'Not configured';
     indicator('status-app','good','Running');
@@ -108,7 +114,7 @@ async function refreshStatus(){
     $('status-output').textContent=w.controller_request_pending?'Request pending':w.practice_mode?'Paused for practice':w.controller_enabled?'Armed':'Stopped';
     const actual=Number(w.camera_fps),requested=w.camera_fps_requested;
     const backend=w.capture_backend==='direct-v4l2'?'Direct V4L2':w.capture_backend==='opencv'?'OpenCV':'—',fallback=w.capture_backend_fallback?` Direct mode fell back safely: ${w.capture_backend_fallback}.`:'';
-    const exposure=w.camera_exposure_mode==='auto'?'automatic exposure':w.camera_exposure_applied?'low-latency exposure applied':'low-latency exposure unavailable';
+    let exposure;if(w.camera_exposure_mode==='manual'||w.camera_exposure_mode==='manual-test')exposure=w.camera_exposure_applied?`manual exposure ${w.camera_manual_exposure}, gain ${w.camera_manual_gain} applied`:`manual settings unavailable; automatic fallback${w.camera_control_error?` (${w.camera_control_error})`:''}`;else exposure=w.camera_exposure_mode==='auto'?'automatic exposure':w.camera_exposure_applied?'automatic fixed-rate exposure applied':'automatic fixed-rate exposure unavailable';
     $('camera-rate-status').textContent=(Number.isFinite(actual)&&actual>0?(requested!=='auto'&&Number(requested)!==actual?`Requested ${requested} fps; this camera is delivering ${actual} fps.`:`Camera is delivering ${actual} fps.`):'Camera rate is unavailable.')+` Reader: ${backend}; ${exposure}.`+fallback;
   }else{$('status-tracking').textContent='Unavailable';$('status-output').textContent='Unavailable'}
 }
@@ -176,7 +182,7 @@ $('secure-note').textContent=secure?'Pair this Controller with your saved RetroP
 $('pair-wizard').hidden=!secure;
 if(!secure){const a=document.createElement('a');a.href='https://'+location.hostname+':8443/setup';a.textContent='Open secure Setup';a.className='button';$('secure-note').append(' ',a)}
 $('pair-change').onclick=()=>{$('receiver').focus()};
-for(const id of settingsFields.concat('rotate_token'))$(id).addEventListener('input',()=>{if(pairStep===4){pairStep=1;clearSecrets()}renderPairing()});
+for(const id of settingsFields.concat('rotate_token'))$(id).addEventListener('input',()=>{if(id==='camera_exposure')syncExposureFields();if(pairStep===4){pairStep=1;clearSecrets()}renderPairing()});
 for(const el of document.querySelectorAll('input[name="pair-method"]'))el.onchange=()=>{clearSecrets();renderPairing()};
 $('pair-begin').onclick=beginPairing;$('pair-restart').onclick=beginPairing;
 $('pair-method-back').onclick=()=>{if(!windowActive()&&!pairingBusy){retryConfirmation=false;clearSecrets();moveTo(1)}};
@@ -200,7 +206,7 @@ window.addEventListener('pagehide',()=>{clearSecrets();prepared=null;retryConfir
 window.addEventListener('pageshow',()=>{expirePairing()});
 setInterval(expirePairing,500);
 $('form').onsubmit=e=>{e.preventDefault();if(settingsBusy||pairingBusy||windowActive())return;if($('rotate_token').checked&&!confirm('Replace the pairing key and stop controller output? You must pair with RetroPie again.'))return;settingsBusy=true;action(e.submitter,'notice',async()=>{
- try{const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),camera_fps:$('camera_fps').value,camera_backend:$('camera_backend').value,camera_exposure:$('camera_exposure').value,rotate_token:$('rotate_token').checked};
+ try{const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),camera_fps:$('camera_fps').value,camera_backend:$('camera_backend').value,camera_exposure:$('camera_exposure').value,camera_manual_exposure:Number($('camera_manual_exposure').value),camera_manual_gain:Number($('camera_manual_gain').value),rotate_token:$('rotate_token').checked};
  renderPairing();await api('/api/config',payload);$('rotate_token').checked=false;$('notice').textContent='Settings saved. Tracking is restarting.';await load(true);
  }finally{settingsBusy=false;renderPairing()}
 })};

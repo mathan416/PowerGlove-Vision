@@ -198,6 +198,7 @@ def inspect_remote(target: str, identity: Path | None, role: str,
 def git_identity() -> dict:
     """Identify the source checkout without changing it."""
     def git(*args):
+        """Run one read-only Git query in the project checkout."""
         return subprocess.check_output(["git", *args], cwd=ROOT, text=True,
                                        stderr=subprocess.DEVNULL, timeout=5).strip()
     commit = git("rev-parse", "HEAD")
@@ -213,6 +214,7 @@ def evaluate(status: dict, controller: dict, retropie: dict, source: dict,
     """Apply fixed readiness checks while keeping warnings distinct from failures."""
     checks = []
     def add(name, passed, severity="error", detail=None):
+        """Append one normalized readiness result to the manifest."""
         checks.append({"name": name, "passed": bool(passed), "severity": severity,
                        "detail": detail})
     add("source checkout is clean", not source["dirty"],

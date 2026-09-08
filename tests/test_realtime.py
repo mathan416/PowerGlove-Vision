@@ -28,6 +28,7 @@ from powerglove_vision.realtime import (
     LatestFrameCapture, LatestPreviewEncoder, LatestStatusPublisher,
     RollingPerformance,
 )
+from powerglove_vision.v4l2_capture import DirectV4L2Capture
 
 
 class QueuedCapture:
@@ -81,6 +82,19 @@ class FakeCv2:
 
 
 class RealtimePipelineTests(unittest.TestCase):
+    def test_direct_camera_restores_controls_before_stream_close(self):
+        source=DirectV4L2Capture.__new__(DirectV4L2Capture)
+        source.fd=7;source.running=True;source.maps=[];events=[]
+        source.before_close=lambda fd:events.append(('restore',fd))
+        with patch('powerglove_vision.v4l2_capture.fcntl.ioctl',
+                   side_effect=lambda fd,op,data:events.append(('ioctl',op))), \
+             patch('powerglove_vision.v4l2_capture.os.close',
+                   side_effect=lambda fd:events.append(('close',fd))):
+            source.close();source.close()
+        self.assertEqual(events[0],('restore',7))
+        self.assertEqual(events[-1],('close',7))
+        self.assertEqual(sum(item[0]=='restore' for item in events),1)
+
     def test_driver_timestamp_and_close_are_preserved(self):
         class TimedCapture:
             def __init__(self):self.closed=False;self.calls=0;self.stop=threading.Event()

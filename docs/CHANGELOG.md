@@ -5,9 +5,34 @@ This file records user-visible PowerGlove Vision changes. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
-## [Unreleased]
+## [0.4.0-rc.1] - 2026-09-08
+
+The first public 0.4.0 release candidate combines the validated Latest-coordinate
+native movement path with lower-overhead capture, clearer camera selection,
+portable exposure defaults, and guarded recovery. It is suitable for interested
+users to install and test, while remaining a prerelease rather than the final
+0.4.0 release.
 
 ### Changed
+
+- Replaced Setup's free-form camera number with a live dropdown containing
+  Automatic and the currently discovered usable cameras. The list refreshes
+  while Setup is open, excludes codec-only video devices, and keeps a saved but
+  temporarily disconnected selection visible instead of silently changing it.
+
+- Added an optional capability-checked Manual exposure and gain setting for the
+  Direct V4L2 camera path. Automatic remains the portable default. The worker
+  applies controls through the active stream, reports requested and actual
+  values and supported ranges, falls back explicitly when unsupported, and
+  restores automatic exposure when vision closes. A matched Kiyo Pro play test
+  selected exposure `78` and gain `96` for this Controller because continuity
+  was slightly better than Automatic while measured latency was unchanged.
+
+- Hardened camera recovery by distinguishing a healthy-camera enrollment from
+  a sustained stream-recovery request. The allowlisted hub can now receive one
+  guarded reset when video is wedged even if the camera still appears in USB
+  enumeration; ordinary reconnects continue to update the saved camera-to-hub
+  association.
 
 - Promoted MediaPipe's `2.25` next-frame hand search area and `0.35` tracking
   confidence as the reproducible defaults. The larger search area recovered five
@@ -69,6 +94,12 @@ authoritative record for line-level and file-level history.
 
 ### Validation
 
+- The final release-candidate suite passes 535 tests with one expected
+  Linux-specific `IP_PKTINFO` integration skip on macOS. Documentation audits
+  cover all 19 Markdown guides and matching PDFs, and browser interaction tests
+  cover live camera discovery, camera selection, exposure choices, and saved
+  Setup behavior.
+
 - A live Razer Kiyo Pro test accepted the direct V4L2 path at 640×480 MJPEG
   and 30 fps. The driver supplied monotonic timestamps and advancing sequence
   numbers; a representative fresh sample measured about 1.25 ms from the
@@ -81,9 +112,10 @@ authoritative record for line-level and file-level history.
   43.9 ms to 43.2 ms, while p95 sample age increased from about 108.5 ms to
   114.6 ms. The complete graph therefore remains the default.
 
-## [0.4.0] - 2026-09-07
+## 0.4.0 development baseline — September 7, 2026
 
-Version 0.4.0 promotes the native-movement efficiency work validated after the
+This unpublished development baseline is included in `v0.4.0-rc.1`. It promotes
+the native-movement efficiency work validated after the
 0.3.2 release candidates. The shared gesture mappings and FCEUmm behavior remain
 compatible; the principal change is a lower-latency, more precise MediaPipe path
 for native Super Glove Ball X/Y.

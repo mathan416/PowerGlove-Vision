@@ -4,11 +4,11 @@
 
 # PowerGlove Vision
 
-**Current project version: 0.4.0.** This release promotes the tested
+**Current project version: 0.4.0; public candidate: v0.4.0-rc.1.** This candidate promotes the tested
 MediaPipe efficiency work: newest-frame capture, four inference threads,
 30-fps-first camera negotiation, off-thread lightweight preview rendering, and
 Latest-coordinate native movement with guarded reacquisition. Optional,
-capability-checked camera latency experiments are available without changing
+capability-checked camera latency and exposure choices are available without changing
 the compatible defaults. Update the
 Controller and RetroPie together using the [installation guide](docs/INSTALL_README.md).
 
@@ -331,7 +331,7 @@ and saved home-screen shortcuts.
 | Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
 | Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Select the same active player used for gameplay; manage players and hand-setting backups in Setup. |
 | Help, `/help` | Opens the local manuals and PDFs; **This console** shows current connection details. |
-| Setup, `/setup` | Saves connection, camera, and startup settings; the Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
+| Setup, `/setup` | Saves connection, camera, and startup settings; its camera dropdown lists Automatic and discovered usable cameras. The Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
 
 With **Gestures off** selected, the camera stays closed. Choose an active profile,
 open Play, or open Glove Academy to begin. Wait for the camera view before
@@ -355,17 +355,20 @@ controller delivery continue.
 Strong light behind the player can leave the hand dark even when the room looks
 bright. Prefer light from the camera side or move bright windows out of the
 background. The project does not force hardware backlight compensation: on the
-tested Razer Kiyo Pro it made the measured backlit scene darker, and aggressive
-manual exposure can trade brightness for motion blur and reduced frame rate.
+tested Razer Kiyo Pro it made the measured backlit scene darker.
 
-Setup also offers two opt-in camera experiments. **Low latency — Direct V4L2**
+Setup also offers opt-in camera controls. **Low latency — Direct V4L2**
 reads the newest Linux MJPEG driver buffer and automatically falls back to
 OpenCV if the camera or negotiated format is incompatible. **Razer Kiyo Pro —
 tested low latency** keeps automatic exposure, requests a fixed frame rate using
 advertised standard UVC controls, and also requests the Kiyo's volatile HDR-off
-mode. For this project's Kiyo Pro, that is the recommended exposure experiment:
-640×480 MJPEG, automatic exposure, fixed frame rate, and HDR off. Repowering the
-camera restores its hardware defaults.
+mode. **Manual exposure and gain** is available only with Direct V4L2. The
+Controller first checks the camera's advertised controls and reports the values
+actually applied. Unsupported settings fall back visibly to automatic exposure.
+Automatic remains the portable installation default; this project's Kiyo Pro
+tested slightly more reliably at exposure `78` and gain `96`, without a measured
+latency difference. Manual controls are restored to automatic when the camera is
+closed, while the saved preference is reused the next time vision starts.
 
 The direct reader passed a live compatibility check on this project's Kiyo Pro
 and exposed valid driver sequence numbers and monotonic timestamps. It remains

@@ -92,11 +92,13 @@ from camera frames and controller packets, which remain newest-state-only.
 | Receiver UDP port | `55355` | PowerGlove Vision Controller to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
 | Startup game profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
 | Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
-| Camera | `auto` | Prefer `auto`. Use a number from `0` through `99` only when automatic selection chooses the wrong capture device. |
+| Camera | Automatic | Setup lists the currently discovered usable cameras. Prefer **Automatic — choose the connected camera**; choose a named camera only when more than one is attached or automatic selection is wrong. A saved disconnected camera remains visible as unavailable, and the list refreshes while Setup is open. |
 | Camera frame rate | Automatic | Tries 30 fps first, then accepts the camera driver's usable rate if necessary. Explicit 30- and 60-fps requests are available for comparison and fall back safely when unsupported. The live negotiated rate appears below the setting while tracking is active. |
 | Camera reader | Compatible — OpenCV | The normal portable capture path. **Low latency — Direct V4L2** is an opt-in Linux 64-bit, 640×480 MJPEG experiment that drains to the newest driver buffer and falls back to OpenCV if its requirements are not met. |
-| Exposure behavior | Automatic — no camera changes | Leave cameras untouched by default. **Low latency — standard UVC** keeps automatic exposure and requests fixed frame rate only when those controls are advertised. **Razer Kiyo Pro — tested low latency** adds the Kiyo's volatile HDR-off request. |
+| Exposure behavior | Automatic — no camera changes | Leave cameras untouched by default. **Low latency — standard UVC** keeps automatic exposure and requests fixed frame rate only when those controls are advertised. **Razer Kiyo Pro — tested low latency** adds the Kiyo's volatile HDR-off request. **Manual exposure and gain** is available with Direct V4L2 after capability and range checks. |
 | Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
+
+![Advanced camera settings showing the discovered-camera dropdown and exposure controls](images/setup-camera.png)
 
 Selecting **Save settings** validates the fields, writes them atomically with private
 permissions, and restarts the vision worker using the saved calibration.
@@ -246,23 +248,36 @@ forced rate if it cannot produce frames. Setup can explicitly request 30 or 60
 fps for comparison and reports the negotiated rate while tracking is active.
 An unsupported explicit rate also falls back to the driver's usable choice.
 
-The capture and exposure choices are independent. `camera_backend` is `opencv`
-or `direct-v4l2`; `camera_exposure` is `auto`, `low-latency`, or
-`kiyo-low-latency`. Direct V4L2 requires Linux's 64-bit V4L2 ABI and an already
+The capture and exposure choices are mostly independent. `camera_backend` is
+`opencv` or `direct-v4l2`; `camera_exposure` is `auto`, `low-latency`,
+`kiyo-low-latency`, or `manual`. Manual mode requires Direct V4L2 because its
+controls are applied to the already-streaming camera descriptor; it never opens
+a competing second camera connection. `camera_manual_exposure` and
+`camera_manual_gain` store the requested whole-number values. Direct V4L2
+requires Linux's 64-bit V4L2 ABI and an already
 negotiated 640×480 MJPEG stream. It exposes the camera sequence and monotonic
 driver timestamp when the driver supplies them. Any initialization or format
 failure is reported as `capture_backend_fallback`, then the camera is reopened
 through OpenCV. No game, gesture, reach, or calibration setting is changed.
 
-Low-latency exposure first queries the standard V4L2 controls. Unsupported or
-disabled controls are never written. On a compatible camera, exposure remains
-automatic while exposure auto-priority is disabled so long exposures cannot
-silently reduce frame cadence. The Kiyo mode additionally verifies USB identity
-before sending the existing HDR-off request. These changes are volatile. For
-the project's Razer Kiyo Pro, start comparisons at 640×480 MJPEG, Automatic
-30-fps-first rate, `kiyo-low-latency`, and either OpenCV or Direct V4L2. Do not
-force a manual exposure ceiling unless the camera advertises a suitable standard
-control and a measured test proves the darker image still recognizes the hand.
+Every exposure mode first queries the standard V4L2 controls. Unsupported or
+disabled controls are never written. Low-latency mode leaves exposure automatic
+while disabling exposure auto-priority so long exposures cannot silently reduce
+frame cadence. The Kiyo mode additionally verifies USB identity before sending
+the existing HDR-off request. Manual mode requires both exposure and gain
+controls, validates the camera's advertised minimum, maximum, and step, switches
+exposure to manual, and reads back the applied values. If the request is
+unsupported, the worker reports an explicit automatic fallback; if a partial
+write cannot be safely restored, startup fails instead of leaving an unknown
+camera state. Closing vision restores automatic exposure. These changes are
+volatile and do not rewrite settings inside the camera.
+
+Automatic remains the portable default. In the September 8 matched live test,
+this project's Razer Kiyo Pro at manual exposure `78` and gain `96` had slightly
+better detection continuity than automatic exposure, with indistinguishable
+latency. Those values are a saved setting for that Controller, not a universal
+camera preset. Other cameras should begin on Automatic and use Manual only after
+checking the reported supported range and live hand image.
 
 The earlier Kiyo Pro capture experiment used two buffers and a volatile HDR-off
 command while requesting 60 fps. It remains useful historical evidence, but it
@@ -538,9 +553,10 @@ known codec-only video nodes, and then considers ordinary `/dev/video*` capture
 devices. This is the most reliable choice when USB enumeration changes after a
 reboot.
 
-Use an explicit camera number only for troubleshooting. For example, `0`
-selects `/dev/video0`, but Linux may assign that number to a different device
-after hardware is reconnected. Keep the camera on a powered USB hub when the PowerGlove Vision Controller cannot supply
+Choose a named camera from Setup only for troubleshooting or when more than one
+camera is connected. The saved value remains the device's numeric V4L2 index for
+compatibility, but ordinary users do not need to type or discover that number.
+Linux may assign a different number after hardware is reconnected. Keep the camera on a powered USB hub when the PowerGlove Vision Controller cannot supply
 stable power by itself.
 
 ### Supported startup profiles
@@ -1264,7 +1280,7 @@ not automatically migrate active configuration.
 | Game launches slowly while PowerGlove Vision Controller is offline | Confirm `timeout` remains near `0.4`; the hook retries but must never block game launch indefinitely. |
 | Profile command is not acknowledged | Check the PowerGlove Vision Controller name, UDP `55356`, pairing token, and the PowerGlove Vision Controller application status. |
 | Gestures off shows a blinking X | Update PowerGlove Vision; Gestures off should show the glove attract animation and must not open the camera. |
-| Camera disappears after reboot | Check `lsusb` and `/dev/v4l/by-id/`, reconnect the camera or hub if absent, and keep Camera set to `auto` unless selecting a specific device. See [startup diagnostics](#vision-startup-and-timing). |
+| Camera disappears after reboot | Check `lsusb` and `/dev/v4l/by-id/`, reconnect the camera or hub if absent, and keep Camera set to **Automatic** unless selecting a specific listed device. See [startup diagnostics](#vision-startup-and-timing). |
 | First activation is slow | Allow background preloading to finish and inspect the startup stage logs before attributing the delay to the camera. |
 | Movement triggers too late | Recalibrate neutral first and verify the hand is steady; all profiles share the responsive movement thresholds. |
 | Direction remains stuck | Recalibrate neutral, verify return toward center and tracking-loss release, then review the shared `move_off` value. |
@@ -1572,7 +1588,9 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--kiyo-hdr-off` | Off | Identity-checked volatile Kiyo Pro HDR-off with automatic fixed-rate exposure. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
 | `--capture-backend VALUE` | `opencv` | `opencv` is the compatible reader. `direct-v4l2` is the optional newest-driver-buffer experiment and falls back to OpenCV when unsupported. |
-| `--camera-exposure VALUE` | `auto` | `auto` makes no exposure changes; `low-latency` uses only advertised standard V4L2 controls; `kiyo-low-latency` adds the USB-identity-checked Kiyo HDR-off request. |
+| `--camera-exposure VALUE` | `auto` | `auto` makes no exposure changes; `low-latency` uses only advertised standard V4L2 controls; `kiyo-low-latency` adds the USB-identity-checked Kiyo HDR-off request; `manual` applies capability-checked exposure and gain through Direct V4L2. |
+| `--camera-manual-exposure NUMBER` | `78` | Requested manual exposure. Used only with `--camera-exposure manual`; the active camera's advertised range and step remain authoritative. |
+| `--camera-manual-gain NUMBER` | `96` | Requested manual gain. Used only with `--camera-exposure manual`; the active camera's advertised range and step remain authoritative. |
 | `--inference-threads NUMBER` | `4` | CPU threads requested for each MediaPipe Hands inference calculator; accepted values are 1, 2, and 4. The Controller supervisor passes its validated setting explicitly. Benchmark before changing. |
 | `--tracking-confidence NUMBER` | `0.35` | Minimum MediaPipe landmark-tracking confidence. This threshold matched or slightly improved the saved-clip result without changing the fast-sweep loss pattern; do not treat it as position confidence. |
 | `--tracking-roi-scale NUMBER` | `2.25` | Scale of MediaPipe's next-frame hand search area. The prior `2.0` remains accepted for comparison; `2.25` recovered five of nine previously missed fast-sweep frames without a material latency or false-activation cost. |
@@ -2098,7 +2116,7 @@ ls -l /dev/v4l/by-id/
 Look for your camera in both outputs. If it is absent from the USB list, check
 its cable and hub connection, then disconnect and reconnect it. Waiting for
 MediaPipe will not fix a camera that the operating system cannot detect.
-Keep Camera set to `auto` unless you intentionally selected a particular device.
+Keep Camera set to **Automatic — choose the connected camera** unless you intentionally selected a particular listed device.
 For stage timings and further checks, see
 [Vision startup and timing](CONFIGURATION_REFERENCE.md#vision-startup-and-timing).
 

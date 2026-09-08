@@ -271,7 +271,13 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b'Automatic \xe2\x80\x94 prefer 30 fps', SETUP)
         self.assertIn(b'id=camera-rate-status', SETUP)
         self.assertIn(b'id=camera_backend', SETUP)
+        self.assertIn(b'<select id=camera name=camera>', SETUP)
+        self.assertIn(b'Automatic \xe2\x80\x94 choose the connected camera', SETUP)
+        self.assertIn(b'syncCameraOptions', SETUP)
         self.assertIn(b'id=camera_exposure', SETUP)
+        self.assertIn(b'id=camera_manual_exposure', SETUP)
+        self.assertIn(b'id=camera_manual_gain', SETUP)
+        self.assertIn(b'Manual exposure and gain', SETUP)
         self.state.save_config({
             "receiver": "arcade.local", "port": 55357,
             "profile": "program_i", "glove_color": "white", "camera": "2",
@@ -285,9 +291,34 @@ class ControlStateTests(unittest.TestCase):
         self.assertEqual(saved["camera_fps"], 60)
         self.assertEqual(saved["camera_backend"], "direct-v4l2")
         self.assertEqual(saved["camera_exposure"], "low-latency")
+        self.assertEqual(saved["camera_manual_exposure"], 78)
+        self.assertEqual(saved["camera_manual_gain"], 96)
         self.assertEqual(saved["camera_buffers"], 2)
         self.assertEqual(saved["tracking_confidence"], 0.45)
         self.assertEqual(self.state.revision, 1)
+
+    def test_manual_camera_values_are_private_safe_and_require_direct_reader(self):
+        settings=self.state.public_config()
+        self.assertEqual(settings["camera_options"][0], {
+            "value": "auto", "label": "Automatic — choose the connected camera",
+        })
+        settings.update({"camera_backend":"direct-v4l2","camera_exposure":"manual",
+                         "camera_manual_exposure":78,"camera_manual_gain":96})
+        saved=self.state.save_config(settings)
+        self.assertEqual(saved["camera_exposure"],"manual")
+        self.assertEqual(saved["camera_manual_exposure"],78)
+        self.assertEqual(saved["camera_manual_gain"],96)
+        before=self.path.read_bytes()
+        for changes,message in (
+            ({"camera_backend":"opencv"},"Direct V4L2"),
+            ({"camera_manual_exposure":0},"exposure"),
+            ({"camera_manual_gain":10001},"gain"),
+            ({"camera_manual_exposure":78.5},"whole numbers"),
+        ):
+            invalid=dict(saved,**changes)
+            with self.assertRaisesRegex(ValueError,message):
+                self.state.save_config(invalid)
+            self.assertEqual(self.path.read_bytes(),before)
 
     def test_invalid_camera_rate_is_rejected_without_changing_settings(self):
         before = self.path.read_bytes()

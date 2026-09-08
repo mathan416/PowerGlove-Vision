@@ -15,7 +15,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from powerglove_vision.camera import camera_candidates, discover_camera_devices
+from powerglove_vision.camera import (
+    camera_candidates, camera_device_options, discover_camera_devices,
+)
 
 
 def _video_device(dev: Path, sys: Path, index: int, name: str, interface_index: str = "0") -> Path:
@@ -60,6 +62,17 @@ class CameraDiscoveryTests(unittest.TestCase):
         stable.symlink_to(camera)
 
         self.assertEqual(discover_camera_devices(self.dev, self.sys), [stable])
+
+    def test_browser_options_are_labelled_numeric_devices_with_auto_first(self) -> None:
+        camera = _video_device(self.dev, self.sys, 4, "  Razer   Kiyo Pro  ")
+        by_id = self.dev / "v4l" / "by-id"
+        by_id.mkdir(parents=True)
+        (by_id / "usb-Razer_Kiyo_Pro-video-index0").symlink_to(camera)
+
+        self.assertEqual(camera_device_options(self.dev, self.sys), [
+            {"value": "auto", "label": "Automatic — choose the connected camera"},
+            {"value": "4", "label": "Razer Kiyo Pro — camera 4"},
+        ])
 
     def test_explicit_camera_index_is_preserved(self) -> None:
         self.assertEqual(camera_candidates("7", self.root, self.root), [7])

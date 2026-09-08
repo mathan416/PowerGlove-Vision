@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Capture and verify the discovered-camera Setup controls.
 #   2026-09-07 - Kept help-asset fixtures compatible with Python 3.7.
 #   2026-09-06 - Cover guided pairing, expiry, retries, responsive layouts, and screenshots.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -26,6 +27,11 @@ async def main():
     config = dict(receiver='RETROPIE-NAME.local', port=55355, profile='off',
                   glove_color='none', camera='auto', camera_fps='auto', matrix_attract='on',
                   camera_backend='opencv', camera_exposure='auto',
+                  camera_manual_exposure=78, camera_manual_gain=96,
+                  camera_options=[
+                      dict(value='auto', label='Automatic — choose the connected camera'),
+                      dict(value='2', label='Razer Kiyo Pro — camera 2'),
+                  ],
                   connection_configured=True, controller_enabled=False)
     calls = []
     flags = dict(load_error=False, save_error=False, begin_error=False,
@@ -89,6 +95,8 @@ async def main():
                 assert await page.evaluate('document.documentElement.scrollWidth')<=width,width
         await open_page()
         await expect(page.locator('#camera-rate-status')).to_contain_text('30')
+        await expect(page.locator('#camera option')).to_have_count(2)
+        await expect(page.locator('#camera')).to_have_value('auto')
         assert not await page.locator('#controller-toggle, #shutdown-system, #pair-host').count()
         await expect(page.locator('#pair-password')).to_be_disabled()
         await page.locator('#receiver').fill('draft.local')
@@ -104,6 +112,9 @@ async def main():
         if '--screenshots' in sys.argv:
             await page.evaluate('window.scrollTo(0,0)')
             await page.screenshot(path=str(ROOT/'docs/images/setup-page.png'))
+            await page.get_by_text('Advanced connection and camera settings',exact=True).click()
+            await page.locator('#connection-section').screenshot(path=str(ROOT/'docs/images/setup-camera.png'))
+            await page.get_by_text('Advanced connection and camera settings',exact=True).click()
             await page.locator('#pairing-section').screenshot(path=str(ROOT/'docs/images/setup-pairing-method.png'))
             await page.get_by_role('heading',name='Matrix attract mode',exact=True).locator('..').screenshot(path=str(ROOT/'docs/images/matrix/attract-settings.png'))
         flags['begin_error']=True

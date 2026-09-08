@@ -444,6 +444,13 @@ prefers the tested 30-fps path and falls back safely to a camera-supported rate;
 the active rate is shown while tracking runs. Leave it on Automatic unless a
 specific camera comparison is needed.
 
+Exposure is also Automatic by default. If a compatible Linux UVC camera looks
+too dark or loses the hand during fast movement, Setup can use Direct V4L2 with
+Manual exposure and gain. The page shows whether manual control was supported
+and which values were actually applied. The project's Kiyo Pro tested well at
+exposure `78` and gain `96`, but lighting and camera models differ. Manual mode
+returns the camera to automatic exposure when tracking closes.
+
 Leave **Advanced thresholds and diagnostics** closed unless you need numerical
 controls or a diagnostic run. The [Configuration Reference](CONFIGURATION_REFERENCE.md)
 explains the threshold checks and targeted restore options.

@@ -339,6 +339,8 @@ class LatestPreviewEncoder:
 
 @dataclass(frozen=True)
 class _StatusJob:
+    """Hold one replaceable Dashboard status publication."""
+
     status: dict
     clear_frame: bool
 
@@ -379,6 +381,7 @@ class LatestStatusPublisher:
                 return False
 
     def _run(self) -> None:
+        """Publish newest-only status work outside the inference thread."""
         while True:
             job = self._jobs.get()
             if job is None:
@@ -399,6 +402,7 @@ class LatestStatusPublisher:
             raise failure
 
     def close(self) -> None:
+        """Discard pending housekeeping and stop the publisher thread."""
         with self._lock:
             self._closed = True
         try:

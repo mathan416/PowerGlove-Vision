@@ -223,10 +223,23 @@ class DiagnosticTests(unittest.TestCase):
             finally:
                 trace.lock.release()
             self.assertEqual(trace.dropped, 1)
+            trace.record({'event':'first'})
             trace.deadline_ns = 0
             trace.record({'event':'expired'})
             trace.close()
             self.assertFalse(trace.enabled)
+
+    def test_duration_begins_with_first_event_not_trace_preparation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch('powerglove_vision.diagnostic_trace.time.monotonic_ns',
+                       side_effect=(100, 10_000, 10_001, 10_002)):
+                trace = DiagnosticTrace(Path(folder)/'trace', 'controller', seconds=2)
+                self.assertIsNone(trace.started_ns)
+                self.assertIsNone(trace.deadline_ns)
+                trace.record({'event':'first'})
+                self.assertEqual(trace.started_ns,10_000)
+                self.assertEqual(trace.deadline_ns,2_000_010_000)
+                trace.close()
 
     def test_session_hash_is_stable_but_not_raw_identifier(self):
         self.assertEqual(session_key('a'*32), session_key('a'*32))

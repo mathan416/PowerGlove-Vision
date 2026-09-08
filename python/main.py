@@ -65,6 +65,8 @@ def load_device_config() -> dict:
         "camera_fps": "auto",
         "camera_backend": "opencv",
         "camera_exposure": "auto",
+        "camera_manual_exposure": 78,
+        "camera_manual_gain": 96,
     }
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     from powerglove_vision.game_registry import atomic_write
@@ -124,9 +126,32 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
     camera_exposure = settings.get("camera_exposure", "auto")
     if settings.get("kiyo_hdr_off") is True:
         camera_exposure = "kiyo-low-latency"
-    if camera_exposure not in ("auto", "low-latency", "kiyo-low-latency"):
+    if camera_exposure not in ("auto", "low-latency", "kiyo-low-latency", "manual"):
+        camera_exposure = "auto"
+    manual_exposure = settings.get("camera_manual_exposure")
+    manual_gain = settings.get("camera_manual_gain")
+    manual_valid = (
+        camera_backend == "direct-v4l2"
+        and type(manual_exposure) is int and 1 <= manual_exposure <= 10_000
+        and type(manual_gain) is int and 0 <= manual_gain <= 10_000
+    )
+    if camera_exposure == "manual" and not manual_valid:
         camera_exposure = "auto"
     command.extend(["--camera-exposure", camera_exposure])
+    if camera_exposure == "manual":
+        command.extend([
+            "--camera-manual-exposure", str(manual_exposure),
+            "--camera-manual-gain", str(manual_gain),
+        ])
+    test_exposure = settings.get("camera_manual_exposure_test")
+    test_gain = settings.get("camera_manual_gain_test")
+    if (camera_backend == "direct-v4l2"
+            and type(test_exposure) is int and 1 <= test_exposure <= 10_000
+            and type(test_gain) is int and 0 <= test_gain <= 10_000):
+        command.extend([
+            "--camera-manual-exposure-test", str(test_exposure),
+            "--camera-manual-gain-test", str(test_gain),
+        ])
     if settings.get("camera_buffers") == 2:
         command.extend(["--camera-buffers", "2"])
     native_xy_mode = settings.get("native_xy_mode", "latest")

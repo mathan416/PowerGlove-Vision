@@ -147,6 +147,13 @@ fields. Capture
 age, inference cadence, skipped frames, preview cost, and send time expose the
 local stages; none alone is an end-to-end camera-to-game latency measurement.
 
+Optional manual exposure and gain are applied through the Direct V4L2 stream's
+existing file descriptor after the camera advertises compatible controls. This
+avoids a second camera opener racing the capture worker. Requested and read-back
+values, supported ranges, fallback, and error state are published separately.
+Closing the stream restores automatic exposure; the saved preference remains
+available for the next vision session.
+
 ### Shared front end and emulator paths
 
 ![End-to-end flow from camera and MediaPipe through authenticated delivery to the FCEUmm and Nestopia game paths](images/architecture/end-to-end.png)
@@ -451,7 +458,7 @@ checks. See the [Security policy](SECURITY.md) for the full trust model.
 | Hand tracking lost | Engine clears held states after its loss delay | Stops stale recognized actions; camera recovery is separate |
 | Controller packets stop | Receiver releases controls on socket timeout, default 250 ms | A receive timeout, not a measured end-to-end acknowledgement |
 | Hostname or UDP send failure | Sender reports error and throttles retries | Vision and local practice can continue |
-| Camera open/read failure | Worker reports starting/error and retries asynchronously | Healthy website can coexist with unavailable vision |
+| Camera open/read failure | Worker reports starting/error and retries asynchronously; a sustained failure requests one classified hub recovery even when USB enumeration remains present | Healthy website can coexist with unavailable vision; `lsusb` alone does not prove the video stream is usable |
 | Worker exits | Supervisor reports failure and retries | Temporary in-memory Tune state is lost |
 | Tune browser disappears | Six-second lease expires | Preview and recordings discarded; saved pairs retained |
 | Calibration changes | Current Tune recordings/preview invalidated | Record new measurements against the new reference |

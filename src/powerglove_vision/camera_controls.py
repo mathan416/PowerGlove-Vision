@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Promote capability-reported manual exposure and gain to runtime use.
+#   2026-09-08 - Added active-stream manual exposure helpers for isolated testing.
 #   2026-09-07 - Added portable low-latency exposure negotiation.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -23,7 +25,9 @@ VIDIOC_G_CTRL = 0xC008561B
 VIDIOC_S_CTRL = 0xC008561C
 V4L2_CTRL_FLAG_DISABLED = 0x0001
 EXPOSURE_AUTO = 0x009A0901
+EXPOSURE_ABSOLUTE = 0x009A0902
 EXPOSURE_AUTO_PRIORITY = 0x009A0903
+GAIN = 0x00980913
 
 
 def _query(fd: int, control: int, ioctl: Callable) -> dict | None:
@@ -95,3 +99,72 @@ def configure_low_latency(device: str, ioctl: Callable | None = None) -> dict:
         return report
     finally:
         os.close(fd)
+
+
+def configure_manual_on_fd(
+    fd: int, exposure: int, gain: int, ioctl: Callable | None = None,
+) -> dict:
+    """Apply capability-checked manual settings to an already-streaming fd.
+
+    This helper intentionally does not open the camera. A second descriptor can
+    disrupt an active UVC stream on otherwise standards-compliant cameras.
+    """
+    if ioctl is None:
+        from fcntl import ioctl as system_ioctl
+        ioctl = system_ioctl
+    controls = {
+        "automatic": _query(fd, EXPOSURE_AUTO, ioctl),
+        "priority": _query(fd, EXPOSURE_AUTO_PRIORITY, ioctl),
+        "exposure": _query(fd, EXPOSURE_ABSOLUTE, ioctl),
+        "gain": _query(fd, GAIN, ioctl),
+    }
+    limits = {
+        name: {
+            key: int(control[key])
+            for key in ("minimum", "maximum", "step", "default")
+        }
+        for name, control in (("exposure", controls["exposure"]),
+                              ("gain", controls["gain"]))
+        if control is not None
+    }
+    report = {
+        "requested": "manual", "supported": all(controls.values()),
+        "applied": False, "exposure": int(exposure), "gain": int(gain),
+        "limits": limits,
+    }
+    if not report["supported"]:
+        report["reason"] = "camera exposes an incomplete manual-control set"
+        return report
+    try:
+        writes = (
+            (controls["priority"], 0),
+            (controls["automatic"], 1),
+            (controls["exposure"], int(exposure)),
+            (controls["gain"], int(gain)),
+        )
+        report["applied"] = all(
+            _set_verified(fd, control, value, ioctl) for control, value in writes
+        )
+    except OSError as exc:
+        report["reason"] = str(exc)
+    if not report["applied"] and "reason" not in report:
+        report["reason"] = "camera rejected one or more manual settings"
+    return report
+
+
+def restore_automatic_on_fd(fd: int, ioctl: Callable | None = None) -> bool:
+    """Restore automatic, fixed-rate exposure through an owned stream fd."""
+    if ioctl is None:
+        from fcntl import ioctl as system_ioctl
+        ioctl = system_ioctl
+    automatic = _query(fd, EXPOSURE_AUTO, ioctl)
+    priority = _query(fd, EXPOSURE_AUTO_PRIORITY, ioctl)
+    if not automatic or not priority:
+        return False
+    try:
+        return (
+            _set_verified(fd, automatic, 3, ioctl)
+            and _set_verified(fd, priority, 0, ioctl)
+        )
+    except OSError:
+        return False

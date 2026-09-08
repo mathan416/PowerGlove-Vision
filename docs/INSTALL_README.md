@@ -11,25 +11,27 @@ displays, T, L, or gesture recognition. The setting saves without a tracker rest
 
 For an existing installation, this update changes controller transport on both computers. Stop controller output, update both to matching software, then start and test input. Mixed old/new versions do not deliver input with the default settings. See [signed controller transport and upgrades](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) for staged upgrades and rollback.
 
-## Install version 0.4.0
+## Try release candidate v0.4.0-rc.1
 
-After **v0.4.0** is published, close games and stop controller output, then run
-the matching command on each device. These explicit commands select 0.4.0; the
-normal commands later in this guide select the latest stable release.
+Release candidate **v0.4.0-rc.1** is intended for users who want to try the new
+low-latency camera and native movement work before the final release. Close games
+and stop controller output, then run the matching command on each device. These
+explicit commands select the prerelease; the normal commands later in this guide
+continue to select the latest stable release.
 
 On the PowerGlove Vision Controller:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0/install-uno-q.sh && bash install-uno-q.sh --version v0.4.0
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0-rc.1/install-uno-q.sh && bash install-uno-q.sh --development v0.4.0-rc.1
 ```
 
 On RetroPie:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0/install-retropie.sh && bash install-retropie.sh --version v0.4.0
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0-rc.1/install-retropie.sh && bash install-retropie.sh --development v0.4.0-rc.1
 ```
 
-Verify both report `v0.4.0`, then follow the pairing/first-game checks below.
+Verify both report `v0.4.0-rc.1`, then follow the pairing/first-game checks below.
 Existing hand settings and pairing files are preserved. The Controller installer
 also updates the matrix firmware. Review [coordinated transport upgrades and
 rollback](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades)
@@ -93,12 +95,21 @@ Dashboard should load. With gestures off, a closed camera is normal. Open
 appear, then return to Dashboard with controller transmission stopped.
 
 New installations keep **Compatible — OpenCV** and **Automatic — no camera
-changes** as the safe camera defaults. Under Setup's advanced camera settings,
-Direct V4L2 and low-latency exposure are optional measured comparisons. Direct
-V4L2 falls back automatically when a camera cannot supply its required 640×480
-MJPEG stream. Standard exposure changes are sent only when the camera advertises
-them; the Kiyo Pro choice also sends an identity-checked, volatile HDR-off
-request. These settings do not alter calibration or gesture thresholds.
+changes** as the portable camera defaults. Under Setup's advanced camera
+settings, Direct V4L2 and low-latency exposure are optional measured choices.
+The Camera dropdown lists Automatic plus currently connected usable cameras and
+refreshes while Setup remains open. Keep Automatic when the camera may be added
+later; selecting a specific camera is useful mainly when more than one is present.
+Direct V4L2 falls back automatically when a camera cannot supply its required
+640×480 MJPEG stream. With Direct V4L2 selected, Manual exposure and gain are
+also available. The Controller checks the attached camera's advertised controls,
+reports the values actually applied, and visibly falls back to automatic when
+manual control is unsupported. The tested Kiyo Pro setting is exposure `78`,
+gain `96`; do not assume those values fit another camera or room. Closing vision
+restores camera automation. These settings do not alter calibration or gesture
+thresholds.
+
+![Advanced camera settings with Automatic, a discovered camera, and optional manual exposure](images/setup-camera.png)
 
 ## 3. Run the RetroPie installer
 

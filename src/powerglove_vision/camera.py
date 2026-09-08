@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Added browser-safe labels for selectable camera devices.
+#   2026-09-08 - Distinguish healthy enrollment from present-but-wedged stream recovery.
 #   2026-09-05 - Added guarded host USB-recovery requests for sustained camera outages.
 #   2026-09-05 - Re-enroll the camera after each unavailable-to-healthy transition.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -46,10 +48,12 @@ class CameraRecoveryRequester:
         self._requested = False
         self._was_available = False
 
-    def _create_request(self) -> None:
-        """Atomically signal the fixed host-side recovery watcher."""
+    def _create_request(self, reason: str) -> None:
+        """Atomically signal one narrowly classified host-side camera action."""
         self.request.parent.mkdir(parents=True, exist_ok=True)
-        self.request.touch(exist_ok=True)
+        temporary = self.request.with_name(self.request.name + ".tmp")
+        temporary.write_text(reason + "\n")
+        temporary.replace(self.request)
 
     def observe(self, status: Mapping[str, object]) -> bool:
         """Create one request after a sustained camera error; return when created."""
@@ -59,7 +63,7 @@ class CameraRecoveryRequester:
             newly_available = not self._was_available
             self._was_available = True
             if self.marker.is_file() and newly_available:
-                self._create_request()
+                self._create_request("enroll")
                 return True
             return False
 
@@ -82,7 +86,7 @@ class CameraRecoveryRequester:
         if not self.marker.is_file():
             return False
 
-        self._create_request()
+        self._create_request("recover")
         self._requested = True
         return True
 
@@ -132,6 +136,34 @@ def discover_camera_devices(
             devices.append(node)
             resolved.add(target)
     return devices
+
+
+def camera_device_options(
+    dev_root: Path = Path("/dev"),
+    sys_root: Path = Path("/sys/class/video4linux"),
+) -> list[dict[str, str]]:
+    """Return browser-safe camera choices using the existing numeric setting format."""
+    options = [{"value": "auto", "label": "Automatic — choose the connected camera"}]
+    seen: set[str] = set()
+    for device in discover_camera_devices(dev_root, sys_root):
+        try:
+            node = device.resolve(strict=True)
+        except OSError:
+            continue
+        name = node.name
+        if not name.startswith("video") or not name[5:].isdigit():
+            continue
+        value = name[5:]
+        if value in seen or not 0 <= int(value) <= 99:
+            continue
+        seen.add(value)
+        try:
+            description = (sys_root / name / "name").read_text().strip()
+        except OSError:
+            description = "Camera"
+        description = " ".join(description.split()) or "Camera"
+        options.append({"value": value, "label": f"{description} — camera {value}"})
+    return options
 
 
 def camera_candidates(

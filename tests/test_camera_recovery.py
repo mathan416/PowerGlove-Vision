@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Verify classified enrollment and stream-recovery requests.
 #   2026-09-05 - Added sustained-outage, single-request, idle, and recovery tests.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -45,6 +46,7 @@ class CameraRecoveryRequesterTests(unittest.TestCase):
         self.now += 0.1
         self.assertTrue(self.monitor.observe(self.missing()))
         self.assertTrue(self.request.exists())
+        self.assertEqual(self.request.read_text(), "recover\n")
         self.request.unlink()
         self.now += 60
         self.assertFalse(self.monitor.observe(self.missing()))
@@ -74,6 +76,7 @@ class CameraRecoveryRequesterTests(unittest.TestCase):
         healthy = {"camera_available": True, "vision_state": "active"}
         self.assertTrue(self.monitor.observe(healthy))
         self.assertTrue(self.request.exists())
+        self.assertEqual(self.request.read_text(), "enroll\n")
         self.request.unlink()
         self.assertFalse(self.monitor.observe(healthy))
         self.assertFalse(self.request.exists())
@@ -86,6 +89,7 @@ class CameraRecoveryRequesterTests(unittest.TestCase):
         self.assertFalse(self.monitor.observe(self.missing()))
         self.assertTrue(self.monitor.observe(healthy))
         self.assertTrue(self.request.exists())
+        self.assertEqual(self.request.read_text(), "enroll\n")
 
     def test_idle_resets_outage_timer(self):
         self.marker.touch()

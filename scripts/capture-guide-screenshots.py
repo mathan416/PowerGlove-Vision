@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Added discovered-camera settings to isolated Setup fixtures.
 #   2026-09-07 - Kept help-asset fixtures compatible with Python 3.7.
 #   2026-09-06 - Capture all documented application panels without live device data.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -81,7 +82,7 @@ async def capture():
                     except ValueError as error:
                         return await request.fulfill(status=400, json={'error':str(error)})
                 if path == '/api/config':
-                    return await request.fulfill(json=dict(receiver='RETROPIE-NAME.local',port=55355,profile='off',glove_color='none',camera='auto',camera_fps='auto',camera_backend='opencv',camera_exposure='auto',matrix_attract='on',connection_configured=True))
+                    return await request.fulfill(json=dict(receiver='RETROPIE-NAME.local',port=55355,profile='off',glove_color='none',camera='auto',camera_fps='auto',camera_backend='opencv',camera_exposure='auto',camera_manual_exposure=78,camera_manual_gain=96,camera_options=[dict(value='auto',label='Automatic — choose the connected camera'),dict(value='2',label='Razer Kiyo Pro — camera 2')],matrix_attract='on',connection_configured=True))
                 if path == '/api/connection-status':
                     return await request.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
                 if path == '/api/games':

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Verify present-but-wedged camera recovery and request validation.
 #   2026-09-05 - Added isolated helper enrollment, hub-move and reset tests.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -120,7 +121,7 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
     def test_first_healthy_camera_is_enrolled_and_kept_awake(self):
         camera = self.device("2-1.4")
         hub = self.device("2-1")
-        self.request.touch()
+        self.request.write_text("enroll\n")
         with patch.object(helper, "_discover_cameras", return_value=[self.discovery(camera, hub)]):
             self.assertEqual(helper.main([]), 0)
         saved = json.loads(self.config.read_text())
@@ -136,7 +137,7 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         helper._write_config(self.discovery(old_camera, old_hub))
         new_camera = self.device("4-2.3")
         new_hub = self.device("4-2")
-        self.request.touch()
+        self.request.write_text("enroll\n")
         with patch.object(helper, "_discover_cameras", return_value=[self.discovery(new_camera, new_hub)]):
             self.assertEqual(helper.main([]), 0)
         self.assertEqual(json.loads(self.config.read_text())["hub"]["sysfs_name"], "4-2")
@@ -147,19 +148,46 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         self.install_hub_link(hub)
         discovery = self.discovery(camera, hub)
         helper._write_config(discovery)
-        self.request.touch()
+        self.request.write_text("recover\n")
         with patch.object(helper, "_discover_cameras", side_effect=[[], [discovery]]):
             self.assertEqual(helper.main([]), 0)
         self.assertEqual((self.driver / "unbind").read_text(), "2-1")
         self.assertEqual((self.driver / "bind").read_text(), "2-1")
         self.assertEqual((camera / "power" / "control").read_text(), "on")
 
+    def test_enumerated_camera_with_failed_stream_resets_its_hub(self):
+        hub = self.device("2-1")
+        camera = self.device("2-1.4")
+        self.install_hub_link(hub)
+        discovery = self.discovery(camera, hub)
+        helper._write_config(discovery)
+        self.request.write_text("recover\n")
+        with patch.object(helper, "_discover_cameras", side_effect=[[discovery], [discovery]]):
+            self.assertEqual(helper.main([]), 0)
+        self.assertEqual((self.driver / "unbind").read_text(), "2-1")
+        self.assertEqual((self.driver / "bind").read_text(), "2-1")
+
+    def test_enumerated_camera_for_enrollment_is_not_reset(self):
+        hub = self.device("2-1")
+        camera = self.device("2-1.4")
+        discovery = self.discovery(camera, hub)
+        self.request.write_text("enroll\n")
+        with patch.object(helper, "_discover_cameras", return_value=[discovery]):
+            self.assertEqual(helper.main([]), 0)
+        self.assertEqual((self.driver / "unbind").read_text(), "")
+
+    def test_unknown_request_action_is_rejected_after_consumption(self):
+        self.request.write_text("reset-everything\n")
+        with self.assertRaisesRegex(RuntimeError, "unknown action"):
+            helper.main([])
+        self.assertFalse(self.request.exists())
+
     def test_refuses_hub_when_identity_at_saved_path_has_changed(self):
         hub = self.device("2-1")
         camera = self.device("2-1.4")
         self.install_hub_link(hub, ("1234", "5678"))
         helper._write_config(self.discovery(camera, hub))
-        self.request.touch()
+        self.request.write_text("recover\n")
         with patch.object(helper, "_discover_cameras", return_value=[]):
             with self.assertRaisesRegex(RuntimeError, "absent or has changed identity"):
                 helper.main([])
@@ -168,7 +196,7 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
     def test_refuses_ambiguous_first_use(self):
         camera = self.device("2-1.4")
         hub = self.device("2-1")
-        self.request.touch()
+        self.request.write_text("enroll\n")
         discovery = self.discovery(camera, hub)
         with patch.object(helper, "_discover_cameras", return_value=[discovery, discovery]):
             with self.assertRaisesRegex(RuntimeError, "expected one UVC camera"):

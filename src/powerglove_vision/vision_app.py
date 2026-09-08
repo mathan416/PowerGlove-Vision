@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-08 - Added a same-descriptor manual-exposure full-pipeline test lane.
 #   2026-09-07 - Added optional direct V4L2 capture and portable exposure negotiation.
 #   2026-09-07 - Use capture timestamps and throttle derived performance summaries.
 #   2026-09-07 - Made MediaPipe plus the bounded curve the default native X/Y path.
@@ -152,9 +153,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="camera reader; direct V4L2 falls back safely to OpenCV",
     )
     parser.add_argument(
-        "--camera-exposure", choices=("auto", "low-latency", "kiyo-low-latency"),
+        "--camera-exposure", choices=("auto", "low-latency", "kiyo-low-latency", "manual"),
         default="auto", help="volatile capability-checked exposure behavior",
     )
+    parser.add_argument("--camera-manual-exposure", type=int, default=None,
+                        help="manual V4L2 exposure value; requires Direct V4L2")
+    parser.add_argument("--camera-manual-gain", type=int, default=None,
+                        help="manual V4L2 gain value; requires Direct V4L2")
+    parser.add_argument("--camera-manual-exposure-test", type=int,
+                        default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--camera-manual-gain-test", type=int,
+                        default=None, help=argparse.SUPPRESS)
     parser.add_argument(
         "--inference-threads", type=int, choices=(1, 2, 4), default=4,
         help="CPU threads for the legacy MediaPipe inference calculators",
@@ -224,11 +233,40 @@ def _open_camera(args: argparse.Namespace):
     candidates = camera_candidates(args.camera)
     log_startup_stage("camera discovery", started)
 
+    test_values = (
+        getattr(args, "camera_manual_exposure_test", None),
+        getattr(args, "camera_manual_gain_test", None),
+    )
+    configured_values = (
+        getattr(args, "camera_manual_exposure", None),
+        getattr(args, "camera_manual_gain", None),
+    )
+    manual_test = all(value is not None for value in test_values)
+    manual_mode = getattr(args, "camera_exposure", "auto") == "manual"
+    if any(value is not None for value in test_values) and not manual_test:
+        raise ValueError("manual exposure testing requires both exposure and gain")
+    if manual_mode and not all(value is not None for value in configured_values):
+        raise ValueError("manual exposure requires both exposure and gain")
+    if manual_test and any(value is not None for value in configured_values):
+        raise ValueError("manual exposure test and saved manual exposure cannot be combined")
+    manual_values = test_values if manual_test else configured_values
+    manual_enabled = manual_test or manual_mode
+    if manual_enabled and getattr(args, "capture_backend", "opencv") != "direct-v4l2":
+        raise ValueError("manual exposure requires direct V4L2 capture")
+    if manual_enabled and (not sys.platform.startswith("linux")
+                           or args.camera_format != "MJPG"
+                           or (args.width, args.height) != (640, 480)):
+        raise ValueError("manual exposure requires Linux MJPG 640x480")
+
     for camera_device in candidates:
         backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
         exposure_mode = getattr(args, "camera_exposure", "auto")
         if getattr(args, "kiyo_hdr_off", False):
             exposure_mode = "kiyo-low-latency"
+        if manual_enabled:
+            # Manual exposure owns all changes through Direct V4L2's
+            # streaming descriptor. Do not open a second control descriptor.
+            exposure_mode = "manual-test" if manual_test else "manual"
         exposure_report = {"requested": exposure_mode, "supported": False, "applied": False}
         camera_control_error = None
         if exposure_mode in ("low-latency", "kiyo-low-latency"):
@@ -302,6 +340,7 @@ def _open_camera(args: argparse.Namespace):
                             and args.camera_format == "MJPG"
                             and args.width == 640 and args.height == 480):
                         candidate.release()
+                        direct = None
                         try:
                             import numpy as np
                             from .v4l2_capture import DirectV4L2Capture
@@ -311,21 +350,66 @@ def _open_camera(args: argparse.Namespace):
                             ok, direct_frame, direct_at = direct.read_with_timestamp()
                             if not ok:
                                 raise RuntimeError("direct V4L2 produced no first frame")
+                            if manual_enabled:
+                                from .camera_controls import (
+                                    configure_manual_on_fd, restore_automatic_on_fd,
+                                )
+                                manual_report = configure_manual_on_fd(
+                                    direct.fd, manual_values[0], manual_values[1],
+                                )
+                                if not manual_report.get("applied"):
+                                    untouched = not manual_report.get("supported")
+                                    restored = restore_automatic_on_fd(direct.fd)
+                                    manual_report["automatic_fallback"] = untouched or restored
+                                    if not (untouched or restored):
+                                        raise RuntimeError(
+                                            "camera rejected manual settings and automatic exposure could not be restored"
+                                        )
+                                    if manual_test:
+                                        raise RuntimeError(manual_report.get(
+                                            "reason", "manual exposure test was not applied"
+                                        ))
+                                else:
+                                    direct.before_close = restore_automatic_on_fd
+                                exposure_report = manual_report
                             metadata.update({
                                 "capture_backend_requested": "direct-v4l2",
                                 "capture_backend": "direct-v4l2",
                                 "capture_backend_fallback": None,
                                 **direct.last_metadata,
                             })
+                            if manual_enabled:
+                                manual_applied = bool(exposure_report.get("applied"))
+                                metadata.update({
+                                    "camera_exposure_mode": "manual-test" if manual_test else "manual",
+                                    "camera_exposure_supported": bool(exposure_report.get("supported")),
+                                    "camera_exposure_applied": manual_applied,
+                                    "camera_exposure_fallback": bool(
+                                        exposure_report.get("automatic_fallback")
+                                    ),
+                                    "camera_manual_exposure_requested": manual_values[0],
+                                    "camera_manual_gain_requested": manual_values[1],
+                                    "camera_manual_exposure": manual_values[0] if manual_applied else None,
+                                    "camera_manual_gain": manual_values[1] if manual_applied else None,
+                                    "camera_manual_limits": exposure_report.get("limits", {}),
+                                    "camera_control_error": exposure_report.get("reason"),
+                                })
                             return cv2, LatestFrameCapture(
                                 direct, direct_frame, first_captured_at=direct_at,
                                 metadata=metadata,
                             )
                         except Exception as exc:
+                            if direct is not None:
+                                direct.close()
+                            if manual_test:
+                                raise RuntimeError(
+                                    f"manual exposure test could not start safely: {exc}"
+                                ) from exc
                             metadata.update({
                                 "capture_backend_requested": "direct-v4l2",
                                 "capture_backend": "opencv",
                                 "capture_backend_fallback": str(exc),
+                                "camera_exposure_fallback": manual_mode,
                             })
                             candidate = cv2.VideoCapture(camera_device, backend)
                             candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*args.camera_format))

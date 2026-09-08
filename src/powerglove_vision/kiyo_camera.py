@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Separated device identity checks from control-descriptor opening.
 #   2026-09-06 - Add identity-checked HDR-off and automatic fixed-rate exposure.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -66,20 +67,28 @@ def apply_controls(fd, unit, ioctl):
             raise RuntimeError('Camera exposure setting did not take effect')
 
 
-def configure_kiyo(device, sysfs=Path('/sys/class/video4linux')):
-    """Check physical USB identity before opening a device for control writes."""
+def kiyo_extension_unit(device, sysfs=Path('/sys/class/video4linux')):
+    """Return the Kiyo extension unit after a read-only physical identity check."""
     if sys.platform != 'linux':
-        return False
-    from fcntl import ioctl
+        return None
     name = 'video' + str(device) if str(device).isdigit() else Path(device).resolve().name
     if not name.startswith('video') or not name[5:].isdigit():
-        return False
+        return None
     path = (sysfs / name).resolve()
     usb = next((p for p in path.parents if (p / 'idVendor').is_file()), None)
     if (usb is None or (usb / 'idVendor').read_text().strip() != '1532'
             or (usb / 'idProduct').read_text().strip() != '0e05'):
+        return None
+    return extension_unit((usb / 'descriptors').read_bytes())
+
+
+def configure_kiyo(device, sysfs=Path('/sys/class/video4linux')):
+    """Check physical USB identity before opening a device for control writes."""
+    unit = kiyo_extension_unit(device, sysfs)
+    if unit is None:
         return False
-    unit = extension_unit((usb / 'descriptors').read_bytes())
+    from fcntl import ioctl
+    name = 'video' + str(device) if str(device).isdigit() else Path(device).resolve().name
     fd = os.open('/dev/' + name, os.O_RDWR)
     try:
         apply_controls(fd, unit, ioctl)

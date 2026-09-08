@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Reset an enrolled hub when UVC streaming fails despite USB enumeration.
 #   2026-09-05 - Added guarded camera USB recovery and autosuspend prevention.
 #   2026-09-05 - Added first-use camera enrollment and automatic parent-hub updates.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -213,13 +214,19 @@ def _keep_awake(device: Path) -> None:
         control.write_text("on")
 
 
-def _consume_request() -> bool:
-    """Atomically consume the unprivileged application's recovery marker."""
+def _consume_request() -> str | None:
+    """Consume and validate one unprivileged, narrowly classified request."""
     try:
+        reason = REQUEST.read_text().strip()
         REQUEST.unlink()
-        return True
+        # Empty files were written by versions before request classification.
+        if reason == "":
+            return "legacy"
+        if reason not in ("enroll", "recover"):
+            raise RuntimeError("camera recovery request has an unknown action")
+        return reason
     except FileNotFoundError:
-        return False
+        return None
 
 
 def _within_cooldown(now: float) -> bool:
@@ -235,13 +242,15 @@ def _recover() -> int:
     APP_DATA.mkdir(parents=True, exist_ok=True)
     with LOCK.open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        if not _consume_request():
+        reason = _consume_request()
+        if reason is None:
             return 0
         if os.geteuid() != 0:
             raise PermissionError("camera recovery must run as root")
 
-        # A healthy sighting is authoritative: enroll a new camera on first use,
-        # or update the remembered hub if the one camera has been moved.
+        # A healthy sighting is authoritative for enrollment. A stream-failure
+        # request remains a recovery request even when sysfs/lsusb can still see
+        # the device: UVC negotiation can wedge without USB disconnection.
         cameras = _discover_cameras()
         if len(cameras) > 1:
             raise RuntimeError(f"expected one UVC camera; found {len(cameras)}")
@@ -254,8 +263,9 @@ def _recover() -> int:
                 print("PowerGlove camera recovery: camera and parent hub enrollment updated")
             _keep_awake(discovery["camera_path"])
             _keep_awake(discovery["hub_path"])
-            print("PowerGlove camera recovery: camera present; autosuspend disabled")
-            return 0
+            if reason != "recover":
+                print("PowerGlove camera recovery: camera present; autosuspend disabled")
+                return 0
 
         config = _load_config(optional=True)
         if config is None:

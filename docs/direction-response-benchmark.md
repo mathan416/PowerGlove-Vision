@@ -832,3 +832,30 @@ The complete graph was restored; direct V4L2 remains available as the selected
 camera-specific test option. A later complete-graph confirmation contained a
 single 215 ms tail, reinforcing that short status windows should guide rather
 than replace longer gameplay and physical latency validation.
+
+## Automatic versus manual exposure — September 8, 2026
+
+A final live Super Glove Ball comparison used the production Direct V4L2 path,
+30-fps camera request, complete MediaPipe Hands graph, Latest-coordinate native
+movement, and the same Controller and Kiyo Pro. The manual lane used exposure
+`78` and gain `96`; the other lane restored automatic exposure. Both completed
+without a camera failure. The traces measure the Controller camera-to-send
+portion only, not network, emulator, display, or physical hand-to-screen delay.
+
+| Exposure | Valid observations | Tracking loss | Observation loss | Driver timestamp to send p50 / p95 (ms) | Read complete to send p50 / p95 (ms) |
+| --- | ---: | ---: | ---: | --- | --- |
+| Manual 78 / gain 96 | 99.03% | 0.309% | 0.970% | 114.820 / 137.821 | 72.435 / 96.640 |
+| Automatic | 98.61% | 0.584% | 1.387% | 113.308 / 137.838 | 72.127 / 98.233 |
+
+Latency was effectively indistinguishable. Manual 78/96 retained slightly more
+valid observations, lost tracking less often, and felt slightly better in live
+play, so it was saved for this Controller. Automatic remains the installation
+default because exposure scales and useful values are camera- and room-specific.
+The production setting therefore capability-checks manual control, publishes the
+actual applied values, and restores Automatic when vision closes.
+
+An earlier Automatic run encountered a video-stream failure while the Kiyo Pro
+still appeared in `lsusb`. That run is excluded from the A/B table because it did
+not complete the comparison. It motivated the classified recovery request: a
+sustained stream failure can now request one guarded reset of the enrolled hub
+without interpreting USB enumeration alone as camera health.

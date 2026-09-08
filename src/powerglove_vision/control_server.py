@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-08 - Listed discovered cameras in Setup while preserving Automatic selection.
+#   2026-09-08 - Added portable automatic/manual exposure and gain settings.
 #   2026-09-07 - Added portable camera backend and exposure settings.
 #   2026-09-06 - Separate maintained browser pages from HTTP routing.
 #   2026-09-06 - Implement approved player and connectivity refinements.
@@ -56,6 +58,7 @@ from .academy_web import LEARN
 from . import __version__
 from .versioning import current_identity
 from .resolver import resolve_ipv4
+from .camera import camera_device_options
 
 from .help_content import (
     cabinet_reference_content, help_asset, help_document_content,
@@ -94,6 +97,27 @@ def _choice(value: Any, choices: tuple[str, ...], fallback: str, message: str,
     if strict:
         raise ValueError(message)
     return fallback
+
+
+def _manual_camera_value(value: Any, *, gain: bool = False,
+                         strict: bool = False) -> int:
+    """Normalize a saved manual control before the camera checks exact limits."""
+    fallback = 96 if gain else 78
+    try:
+        if isinstance(value, bool) or isinstance(value, float):
+            raise ValueError
+        result = int(value)
+    except (TypeError, ValueError):
+        if strict:
+            raise ValueError("Manual camera values must be whole numbers.") from None
+        return fallback
+    minimum = 0 if gain else 1
+    if not minimum <= result <= 10_000:
+        if strict:
+            label = "gain" if gain else "exposure"
+            raise ValueError(f"Manual {label} is outside the safe configuration range.")
+        return fallback
+    return result
 
 
 class ForbiddenActionError(Exception):
@@ -391,6 +415,7 @@ class ControlState:
             "profile": config.get("profile", "bad_street_brawler"),
             "glove_color": config.get("glove_color", "none"),
             "camera": str(config.get("camera", "auto")),
+            "camera_options": camera_device_options(),
             "camera_fps": _camera_fps(config.get("camera_fps", "auto")),
             "camera_backend": _choice(
                 config.get("camera_backend", "opencv"),
@@ -399,8 +424,14 @@ class ControlState:
             "camera_exposure": _choice(
                 "kiyo-low-latency" if config.get("kiyo_hdr_off") is True else
                     config.get("camera_exposure", "auto"),
-                ("auto", "low-latency", "kiyo-low-latency"), "auto",
+                ("auto", "low-latency", "kiyo-low-latency", "manual"), "auto",
                 "Choose an exposure mode.",
+            ),
+            "camera_manual_exposure": _manual_camera_value(
+                config.get("camera_manual_exposure", 78)
+            ),
+            "camera_manual_gain": _manual_camera_value(
+                config.get("camera_manual_gain", 96), gain=True
             ),
             "matrix_attract": config.get("matrix_attract", "on"),
             "native_xy_mode": config.get("native_xy_mode", "latest"),
@@ -480,9 +511,19 @@ class ControlState:
         )
         camera_exposure = _choice(
             incoming.get("camera_exposure", current.get("camera_exposure", "auto")),
-            ("auto", "low-latency", "kiyo-low-latency"), "auto",
-            "Choose Automatic, Low latency, or Kiyo Pro tested exposure.", strict=True,
+            ("auto", "low-latency", "kiyo-low-latency", "manual"), "auto",
+            "Choose Automatic, Low latency, Kiyo Pro tested, or Manual exposure.", strict=True,
         )
+        manual_exposure = _manual_camera_value(
+            incoming.get("camera_manual_exposure",
+                         current.get("camera_manual_exposure", 78)), strict=True,
+        )
+        manual_gain = _manual_camera_value(
+            incoming.get("camera_manual_gain", current.get("camera_manual_gain", 96)),
+            gain=True, strict=True,
+        )
+        if camera_exposure == "manual" and camera_backend != "direct-v4l2":
+            raise ValueError("Manual exposure requires the Direct V4L2 camera reader.")
         token = secrets.token_urlsafe(24) if incoming.get("rotate_token") else current.get("token")
         if not token:
             token = secrets.token_urlsafe(24)
@@ -492,6 +533,8 @@ class ControlState:
             "profile": profile, "glove_color": glove_color,
             "camera": camera, "camera_fps": camera_fps,
             "camera_backend": camera_backend, "camera_exposure": camera_exposure,
+            "camera_manual_exposure": manual_exposure,
+            "camera_manual_gain": manual_gain,
             "matrix_attract": current.get("matrix_attract", "on"),
             "native_xy_mode": current.get("native_xy_mode", "latest"),
         })

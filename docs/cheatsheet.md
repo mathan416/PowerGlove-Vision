@@ -19,7 +19,7 @@ on which to run it. Keep passwords and pairing tokens out of this document.
 | RetroPie network address | `RETROPIE-NAME.local` |
 | PowerGlove Vision Controller App Lab application | PowerGlove Vision |
 | PowerGlove Vision Controller application directory | `/home/arduino/ArduinoApps/powerglove-vision` |
-| Camera | UVC-compatible USB camera; select `auto` in Setup |
+| Camera | UVC-compatible USB camera; select **Automatic — choose the connected camera** in Setup |
 | Startup profile | Choose in Setup |
 
 Prefer `.local` names in bookmarks and settings. If a name does not resolve,
