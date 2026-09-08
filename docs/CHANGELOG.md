@@ -5,6 +5,27 @@ This file records user-visible PowerGlove Vision changes. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
+## [Unreleased]
+
+### Changed
+
+- Made Latest coordinate the only live Super Glove Ball native X/Y behavior.
+  Removed the Dashboard movement selector and its restart endpoint; older saved
+  bounded-mode values are ignored, while historical benchmark tooling remains
+  available for engineering comparison.
+- Reorganized Setup into shorter, action-first sections. Tracking and controller
+  output now use the same red, grey, and green status flags as connection checks;
+  the console-check age and gameplay caveat remain visible without the redundant
+  color legend.
+- Put player naming controls before their explanation, summarized what each
+  player and hand-setup backup contains, and named downloaded backups after the
+  player, such as `iain-powerglove-hand-setup.json`.
+- Separated Camera from Connection and startup, moved pairing-key and live camera
+  status text beside their related controls, and moved joystick dead-zone help
+  below its controls.
+- Added a focused Camera guide covering automatic selection, frame rate, capture
+  reader, exposure, lighting, reconnection, and troubleshooting.
+
 ## [0.4.0-rc.1] - 2026-09-08
 
 The first public 0.4.0 release candidate combines the validated Latest-coordinate

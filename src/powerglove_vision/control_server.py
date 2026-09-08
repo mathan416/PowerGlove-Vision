@@ -434,7 +434,6 @@ class ControlState:
                 config.get("camera_manual_gain", 96), gain=True
             ),
             "matrix_attract": config.get("matrix_attract", "on"),
-            "native_xy_mode": config.get("native_xy_mode", "latest"),
             "paired": bool(config.get("receiver") and config.get("token")),
             "connection_configured": bool(str(config.get("receiver", "")).strip() and config.get("token")),
             "controller_enabled": self.controller_enabled(),
@@ -444,21 +443,6 @@ class ControlState:
         """Serialize preference updates with connection saves."""
         with self.config_lock:
             return self._save_attract(incoming)
-
-    def save_native_xy_mode(self, incoming: dict[str, Any]) -> dict[str, str]:
-        """Persist one explicit MediaPipe comparison lane and restart the worker."""
-        mode = incoming.get("mode")
-        if mode not in ("bounded", "latest"):
-            raise ValueError("Choose Bounded speed curve or Latest coordinate.")
-        with self.config_lock:
-            from .game_registry import atomic_write
-            current = self.load_config()
-            current["native_xy_mode"] = mode
-            current.pop("motion_tracking", None)
-            atomic_write(self.config_path, json.dumps(current, indent=2) + "\n")
-            with self.lock:
-                self.revision += 1
-        return {"mode": mode}
 
     def _save_attract(self, incoming):
         """Persist an idle display preference without restarting or arming the worker."""
@@ -536,7 +520,6 @@ class ControlState:
             "camera_manual_exposure": manual_exposure,
             "camera_manual_gain": manual_gain,
             "matrix_attract": current.get("matrix_attract", "on"),
-            "native_xy_mode": current.get("native_xy_mode", "latest"),
         })
         saved.pop("kiyo_hdr_off", None)
         from .game_registry import atomic_write
@@ -573,7 +556,7 @@ class ControlState:
         status["wifi_status"] = read_wifi_status()
         status["connection_configured"] = config["connection_configured"]
         status.setdefault("configured_profile", config["profile"])
-        status.setdefault("native_xy_mode", config["native_xy_mode"])
+        status.setdefault("native_xy_mode", "latest")
         return status
 
     def connection_status(self):
@@ -795,11 +778,6 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/config":
                     result = state.save_config(self.json_body(require_json=True))
-                    _send(self, 200, json.dumps(result).encode(), "application/json")
-                elif path == "/api/native-xy":
-                    if self.headers.get("X-PowerGlove-Action") != "native-xy":
-                        raise ForbiddenActionError("Open this control from the Controller website.")
-                    result = state.save_native_xy_mode(self.json_body(require_json=True))
                     _send(self, 200, json.dumps(result).encode(), "application/json")
                 elif path == "/api/test-connection":
                     receiver = str(self.json_body().get("receiver", "")).strip()

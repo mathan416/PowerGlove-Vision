@@ -309,9 +309,8 @@ for each player. Complete every lesson to earn **Glove Master**. Learning shows
 **L** on the matrix; optional personalization shows **T**. Both pause cabinet input.
 
 Use **Setup → Players → Players and hand-setup backups** to export the selected player. Your browser
-saves `powerglove-hand-setup.json` on the computer, phone, or tablet you are using,
-usually in Downloads. Export each player separately and rename copies with their
-name and date. Restore selects a file from that device and updates the selected
+saves a named file such as `iain-powerglove-hand-setup.json` on the computer,
+phone, or tablet you are using, usually in Downloads. Restore selects a file from that device and updates the selected
 player after review. Downloads exclude Academy progress; all players' live
 settings and progress remain on the Controller in `data/gesture-tuning.json`.
 See [backup file locations](CONFIGURATION_REFERENCE.md#where-player-settings-and-backup-files-live).
@@ -421,7 +420,7 @@ the games use standard NES controller input through FCEUmm.
 Open RetroPie's launch menu while starting Super Glove Ball and choose the
 emulator for that ROM. RetroPie remembers the per-ROM choice.
 
-- **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the saved reach. **Latest coordinate** is the tested default; **Bounded speed curve** remains available for comparison. Both use MediaPipe Hands. Latest is direct during continuous tracking and holds only one contradictory or unusually distant non-forward reacquisition for confirmation. Exact-ROM tests confirm controller detection, native Start, X/Y, signed Z, and open/fist/index packet values. Full-game cabinet play confirms grab/throw, index fire, and fist-plus-forward Power Punch. Wrist rotation and remaining unused native packet fields stay neutral.
+- **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the saved reach. **Latest coordinate** uses MediaPipe Hands directly during continuous tracking and holds only one contradictory or unusually distant non-forward reacquisition for confirmation. Exact-ROM tests confirm controller detection, native Start, X/Y, signed Z, and open/fist/index packet values. Full-game cabinet play confirms grab/throw, index fire, and fist-plus-forward Power Punch. Wrist rotation and remaining unused native packet fields stay neutral.
 - **`lr-fceumm`** remains the complete fallback. It stays in standard joystick mode for the whole session and uses the same responsive movement, finger gestures, and buttons as other FCEUmm games.
 
 Choose FCEUmm again from the same launch menu whenever you want to compare the

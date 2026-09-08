@@ -155,10 +155,10 @@ and the headless core benchmark publishes the changed record immediately before
 an emulated frame.
 
 The live native path now uses completed MediaPipe palm coordinates exclusively.
-The Dashboard can compare the bounded speed curve with direct latest coordinates;
-both use the same reach mapping and safety behavior. The optical-flow lane was
-reported as jerky and unreliable and is archived for source-level and historical
-trace comparison rather than exposed as a runtime option.
+The live path uses direct Latest coordinates with the established reach mapping
+and safety behavior. The bounded speed curve and optical-flow lane are archived
+for source-level and historical trace comparison rather than exposed as runtime
+options.
 
 ## Repeatable camera comparison
 

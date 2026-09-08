@@ -1,8 +1,8 @@
 # Existing sample review and smoothing model
 
-## Bounded speed-sensitive replacement — 7 September 2026
+## Historical bounded speed-sensitive replacement — 7 September 2026
 
-The optional bounded native motion mode uses completed MediaPipe palm observations and
+The former bounded native motion experiment used completed MediaPipe palm observations and
 separates resting noise from intentional velocity. It measures consecutive
 MediaPipe coordinates using capture timestamps and
 normalizes velocity by the player's directional reach. Calibration noise creates
@@ -21,7 +21,8 @@ MediaPipe is the only live coordinate source because optical-flow movement was
 reported as jerky and unreliable even though the underlying MediaPipe tracking
 remained usable. The optical-flow implementation is retained as inactive source
 and historical trace support, but `motion_tracking` no longer enables it. The
-Dashboard instead compares the bounded curve with direct latest coordinates.
+Dashboard no longer exposes the bounded curve; live movement uses direct Latest
+coordinates.
 
 The initial MediaPipe-first deployment exposed two calibration mistakes in the
 bounded curve. Its `0.70` slow-follow weight was referenced to 60 Hz even though
@@ -54,9 +55,10 @@ prediction.
 The runtime now rejects malformed/non-finite landmark geometry, retains the
 calibration-compatible five-point wrist/knuckle average as the production
 anchor, and exports three alternative anchors for comparison. It clamps the
-selected point to player reach before both Latest and Bounded processing, clears
-history on stale/lost input, and uses the frame capture timestamp rather than
-inference-start time for velocity and freshness.
+selected point to player reach before processing. The historical comparison
+applied the same clamp to both Latest and Bounded lanes. Runtime clears history
+on stale/lost input and uses the frame capture timestamp rather than
+inference-start time for freshness.
 
 The gameplay and dot recordings contain aggregate timings and sampled validity;
 they do not retain recognized, flow, selected, and filtered coordinates for each

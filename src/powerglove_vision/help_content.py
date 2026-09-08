@@ -41,6 +41,7 @@ HELP_GUIDES = (
     {'slug': 'matrix', 'title': 'Matrix display guide', 'file': 'MATRIX_GUIDE.md', 'description': 'Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.', 'group': 'User manuals'},
     {'slug': 'build-your-own', 'title': 'Build your own: parts, cost, and difficulty', 'file': 'BUILD_YOUR_OWN.md', 'description': 'Parts, planning costs, tested hardware, and a staged first build.', 'group': 'User manuals'},
     {'slug': 'installation', 'title': 'Installation and setup', 'file': 'INSTALL_README.md', 'description': 'Installation, secure pairing, the Play Checklist, updates, and troubleshooting.', 'group': 'User manuals'},
+    {'slug': 'camera', 'title': 'Camera setup', 'file': 'CAMERA_GUIDE.md', 'description': 'Camera selection, frame rate, exposure, lighting, reconnection, and troubleshooting.', 'group': 'User manuals'},
     {'slug': 'troubleshooting', 'title': 'Troubleshooting by symptom', 'file': 'TROUBLESHOOTING.md', 'description': 'Find the first failing stage, from the camera to the displayed game.', 'group': 'User manuals'},
     {'slug': 'overview', 'title': 'Project overview', 'file': None, 'description': 'The complete project at a glance: architecture, controls, security, deployment, and current status.', 'group': 'Technical documentation', 'href': '/help-pdf/overview.pdf'},
     {'slug': 'architecture', 'title': 'Architecture and flows', 'file': 'ARCHITECTURE.md', 'description': 'System boundaries, recognition, tuning, game input, and deployment diagrams.', 'group': 'Technical documentation'},
@@ -66,6 +67,7 @@ HELP_PDFS = {
     "build-your-own": "PowerGlove-Vision-Build-Your-Own.pdf",
     "native-emulation": "PowerGlove-Vision-Native-Emulation.pdf",
     "troubleshooting": "PowerGlove-Vision-Troubleshooting.pdf",
+    "camera": "PowerGlove-Vision-Camera-Guide.pdf",
 
     "matrix": "PowerGlove-Vision-Matrix-Guide.pdf",
     "architecture": "PowerGlove-Vision-Architecture.pdf",

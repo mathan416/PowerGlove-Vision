@@ -228,41 +228,26 @@ class ControlStateTests(unittest.TestCase):
         self.state.save_config(original)
         self.assertEqual(self.state.public_config()['matrix_attract'],'dim')
 
-    def test_native_xy_mode_is_validated_persisted_and_restarts_worker(self):
-        self.assertEqual(self.state.public_config()["native_xy_mode"], "latest")
-        revision = self.state.revision
-        self.assertEqual(self.state.save_native_xy_mode({"mode": "latest"}),
-                         {"mode": "latest"})
-        self.assertEqual(self.state.load_config()["native_xy_mode"], "latest")
-        self.assertEqual(self.state.revision, revision + 1)
-        with self.assertRaisesRegex(ValueError, "Bounded speed curve"):
-            self.state.save_native_xy_mode({"mode": "optical_flow"})
-        settings = self.state.public_config()
-        self.state.save_config(settings)
-        self.assertEqual(self.state.load_config()["native_xy_mode"], "latest")
-
-    def test_dashboard_exposes_both_mediapipe_native_xy_lanes(self):
-        self.assertIn(b"id=native-xy-mode", DASHBOARD)
-        self.assertIn(b"Bounded speed curve", DASHBOARD)
-        self.assertIn(b"Latest coordinate", DASHBOARD)
-        self.assertIn(b"/api/native-xy", DASHBOARD)
+    def test_dashboard_uses_latest_native_xy_without_a_mode_control(self):
+        self.assertNotIn(b"id=native-xy-mode", DASHBOARD)
+        self.assertNotIn(b"Bounded speed curve", DASHBOARD)
+        self.assertIn("MediaPipe — Latest coordinate".encode(), DASHBOARD)
+        self.assertNotIn(b"/api/native-xy", DASHBOARD)
         self.assertNotIn(b"Optical flow (experimental)", DASHBOARD)
 
-    def test_native_xy_route_requires_action_header_and_saves_mode(self):
+    def test_removed_native_xy_route_is_not_available(self):
         servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
         try:
             port = servers.servers[0].server_address[1]
-            for headers, expected in (({"Content-Type": "application/json"}, 403),
-                                      ({"Content-Type": "application/json",
-                                        "X-PowerGlove-Action": "native-xy"}, 200)):
-                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
-                connection.request("POST", "/api/native-xy",
-                                   json.dumps({"mode": "latest"}), headers)
-                response = connection.getresponse()
-                response.read()
-                self.assertEqual(response.status, expected)
-                connection.close()
-            self.assertEqual(state.public_config()["native_xy_mode"], "latest")
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+            connection.request("POST", "/api/native-xy",
+                               json.dumps({"mode": "bounded"}),
+                               {"Content-Type": "application/json",
+                                "X-PowerGlove-Action": "native-xy"})
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 404)
+            connection.close()
         finally:
             servers.shutdown()
 
@@ -585,6 +570,8 @@ class ControlStateTests(unittest.TestCase):
 
     def test_learn_page_is_offline_practice_mode(self):
         self.assertIn(b"Practice gesture recognition without a RetroPie connection", LEARN)
+        self.assertIn(b"Pixel Pal will guide you through 16 fun lessons", LEARN)
+        self.assertNotIn(b"General controls: index curl is A", LEARN)
         self.assertIn(b"/api/practice", LEARN)
         self.assertIn(b"pagehide", LEARN)
         self.assertIn(b"keepalive:true", LEARN)

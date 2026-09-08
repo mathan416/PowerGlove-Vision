@@ -55,6 +55,7 @@ PDF_EDITIONS = {
     "docs/BUILD_YOUR_OWN.md": "PowerGlove-Vision-Build-Your-Own.pdf",
     "docs/NATIVE_EMULATION_EXPLAINED.md": "PowerGlove-Vision-Native-Emulation.pdf",
     "docs/TROUBLESHOOTING.md": "PowerGlove-Vision-Troubleshooting.pdf",
+    "docs/CAMERA_GUIDE.md": "PowerGlove-Vision-Camera-Guide.pdf",
     "docs/motion-smoothing-analysis.md": "PowerGlove-Vision-Motion-Analysis.pdf",
 
     "docs/MATRIX_GUIDE.md": "PowerGlove-Vision-Matrix-Guide.pdf",

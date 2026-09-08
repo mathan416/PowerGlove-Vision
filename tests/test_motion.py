@@ -39,11 +39,7 @@ class NativeMotionTests(unittest.TestCase):
 
     def test_opt_in(self):
         args = ['--receiver', 'test', '--token', 'x' * 16]
-        self.assertEqual(build_parser().parse_args(args).native_xy_mode, 'latest')
-        self.assertEqual(
-            build_parser().parse_args(args + ['--native-xy-mode', 'latest']).native_xy_mode,
-            'latest',
-        )
+        self.assertFalse(hasattr(build_parser().parse_args(args), 'native_xy_mode'))
 
     def test_mediapipe_native_route_defaults_to_latest_coordinate(self):
         first = TrackingResult(self.pose, object())
@@ -85,7 +81,7 @@ class NativeMotionTests(unittest.TestCase):
         self.engine.update_native_motion(self.pose, self.pose, bounded=False)
         target = replace(self.pose, timestamp=10.1, palm_x=.507, palm_y=.492)
         state, source = _update_controller_state(
-            self.engine, TrackingResult(target, object()), True, 'latest'
+            self.engine, TrackingResult(target, object()), True
         )
         self.assertEqual(source, 'mediapipe')
         self.assertEqual(self.engine._filtered_palm_x, target.palm_x)
@@ -392,16 +388,14 @@ class NativeMotionTests(unittest.TestCase):
 
         self.assertAlmostEqual(run(30), run(60), delta=.0015)
 
-    def test_supervisor_passes_only_supported_native_xy_modes(self):
+    def test_supervisor_always_uses_latest_native_xy(self):
         import runpy
         from pathlib import Path
         root = Path(__file__).resolve().parents[1]
         worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']
-        for value, expected in ((None, 'latest'), ('bounded', 'bounded'),
-                                ('latest', 'latest'), ('invalid', 'latest')):
+        for value in (None, 'bounded', 'latest', 'invalid'):
             command = worker_command({'native_xy_mode': value}, Path('/tmp/model'))
-            index = command.index('--native-xy-mode')
-            self.assertEqual(command[index + 1], expected)
+            self.assertNotIn('--native-xy-mode', command)
             self.assertNotIn('--motion-tracking', command)
             thread_index = command.index('--inference-threads')
             self.assertEqual(command[thread_index + 1], '4')

@@ -145,8 +145,8 @@ conclusions from screenshots or timestamps on different computers.
 Check **Active player** first: player selection applies across browsers. Progress
 and settings live on the Controller, not in browser storage. Each downloaded
 backup contains only the selected player's hand setup and excludes Academy
-progress. Your browser usually puts it in Downloads as
-`powerglove-hand-setup.json`; keep a separate named copy for each player.
+progress. Your browser usually puts it in Downloads with a player-based name,
+such as `iain-powerglove-hand-setup.json`.
 
 Restore updates the selected player after review. An empty personal-threshold
 object can simply mean defaults are in use; version-2 backups also carry the

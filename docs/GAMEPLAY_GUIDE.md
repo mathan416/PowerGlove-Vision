@@ -403,10 +403,9 @@ centre. Backups do not include credentials or Academy progress. Version-2 backup
 are supported; older version-1 sensitivity-only files are rejected.
 
 Choose each player in turn and select **Back up hand setup** to download a
-separate `powerglove-hand-setup.json`. The file is saved by your browser on the
-computer, phone, or tablet you are using, usually in **Downloads** or the folder
-you choose. Rename each copy with the player name and date, for example
-`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+separate file named for that player, such as
+`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
 updates the selected player, rather than adding a new one.

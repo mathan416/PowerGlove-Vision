@@ -683,9 +683,11 @@ def main():
           "How native Power Glove emulation works", "Follow hand recognition through joystick and native game input.", "Community guide")
     build(docs / "TROUBLESHOOTING.md", OUTPUT / "PowerGlove-Vision-Troubleshooting.pdf",
           "Troubleshooting by symptom", "Find the first failing stage, from the camera to the displayed game.", "Community guide")
+    build(docs / "CAMERA_GUIDE.md", OUTPUT / "PowerGlove-Vision-Camera-Guide.pdf",
+          "PowerGlove Vision Camera Guide", "Choose, tune, and troubleshoot a camera without changing gesture recognition.", "User guide")
     build(docs / "motion-smoothing-analysis.md", OUTPUT / "PowerGlove-Vision-Motion-Analysis.pdf",
           "Native Movement Analysis", "Evidence and experiments behind Latest coordinate and bounded movement.", "Engineering analysis")
-    print(f"Built 19 PDF guides on {date.today().isoformat()}")
+    print(f"Built 20 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

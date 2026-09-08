@@ -246,10 +246,9 @@ tracking or controller delivery.
 For Super Glove Ball testing, enter RetroPie's launch menu while starting the
 ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the
 ordinary D-pad and buttons for the whole session. The native core uses absolute
-X/Y/Z plus open-hand, fist, and index-point packets. On Dashboard, compare
-**Latest coordinate** is the tested default; **Bounded speed curve** remains a
-comparison option. Both use MediaPipe Hands and
-the same saved center and reach. Both validate the palm geometry and clamp it to
+X/Y/Z plus open-hand, fist, and index-point packets. Native movement uses
+**Latest coordinate** with MediaPipe Hands and the same saved center and reach.
+It validates the palm geometry and clamps it to
 that reach before mapping, so movement beyond an edge stays at the edge and a
 recovered hand normally starts from its first fresh coordinate. Latest holds
 only a contradictory or unusually distant non-forward reacquisition for one
@@ -261,12 +260,13 @@ rotation and remaining unused native packet fields stay neutral. Shared recognit
 available to every FCEUmm profile. A per-ROM selection
 is remembered, so choose FCEUmm again whenever you want the complete fallback.
 
-Setup → **Advanced connection and camera settings** offers Automatic, 30 fps,
-and 60 fps. Automatic is the 0.4.0 default: it tries the tested 30-fps path and
-then accepts the camera driver's usable rate if necessary. The active rate is
-shown while tracking runs. Other UVC cameras do not need to support both explicit
-rates. Dashboard's optional **Show statistics** switch is off by default; leave
-it off for the lightest gameplay page and enable it only when reading diagnostics.
+Setup → **Camera** offers Automatic, 30 fps, and 60 fps. Automatic is the 0.4.0
+default: it tries the tested 30-fps path and then accepts the camera driver's
+usable rate if necessary. The active rate is shown while tracking runs. Other UVC
+cameras do not need to support both explicit rates. See the
+[Camera guide](CAMERA_GUIDE.md) before changing the reader, exposure, or gain.
+Dashboard's optional **Show statistics** switch is off by default; leave it off
+for the lightest gameplay page and enable it only when reading diagnostics.
 
 
 ## 6. Confirm startup and finish
@@ -385,10 +385,9 @@ name, personal and effective sensitivity, source software identity, and calibrat
 exact software and running firmware identities; older firmware may report unavailable.
 
 Choose each player in turn and select **Back up hand setup** to download a
-separate `powerglove-hand-setup.json`. The file is saved by your browser on the
-computer, phone, or tablet you are using, usually in **Downloads** or the folder
-you choose. Rename each copy with the player name and date, for example
-`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+separate file named for that player, such as
+`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
 updates the selected player, rather than adding a new one.

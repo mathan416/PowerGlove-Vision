@@ -58,7 +58,6 @@ def load_device_config() -> dict:
         "glove_color": "none",
         "camera": "auto",
         "matrix_attract": "on",
-        "native_xy_mode": "latest",
         "inference_threads": 4,
         "tracking_confidence": 0.35,
         "tracking_roi_scale": 2.25,
@@ -154,10 +153,6 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
         ])
     if settings.get("camera_buffers") == 2:
         command.extend(["--camera-buffers", "2"])
-    native_xy_mode = settings.get("native_xy_mode", "latest")
-    if native_xy_mode not in ("bounded", "latest"):
-        native_xy_mode = "latest"
-    command.extend(["--native-xy-mode", native_xy_mode])
     if controller_enabled:
         command.append("--controller-enabled")
     return command

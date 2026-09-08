@@ -97,26 +97,16 @@ sockets. These functions are kept separate from camera inference.
 
 Native Super Glove Ball performs MediaPipe landmark recognition synchronously.
 The Dashboard retains the normal hand skeleton and landmark annotation. Each
-fresh, geometry-valid palm observation is clamped to player reach and follows
-one of two response modes: **latest coordinate** is the production default and
-passes it through directly during continuous tracking,
-while **bounded speed curve** suppresses measured
-resting noise and progressively reduces damping as raw hand speed rises. Neither
-mode queues, predicts, extrapolates, or filters inside the emulator core. The
+fresh, geometry-valid palm observation is clamped to player reach and passed
+directly through **Latest coordinate** during continuous tracking. The live path
+does not queue, predict, extrapolate, or filter inside the emulator core. The
 former optical-flow experiment remains in `motion.py` as inactive research code
-and is not routed by the supervisor or exposed as a live configuration.
+and the former bounded speed curve remains in historical test tooling; neither
+is routed by the supervisor nor exposed as a live configuration.
 
 Native coordinates use each player's calibrated center and optional asymmetric
-comfortable-reach spans. Bounded native X/Y stabilization measures velocity
-between consecutive MediaPipe coordinates using capture timestamps and units
-of calibrated reach per second. An elliptical per-player X/Y noise region holds
-resting jitter; one vector follow weight progressively becomes one-to-one as
-speed rises. Follow weighting uses a 100 ms reference interval, matching the
-Controller's measured MediaPipe cadence; a saturated calibration jitter value
-falls back to the fixed safe floor. Meaningful reversals adopt the newest
-coordinate immediately; stops settle inside the noise region on one result and
-exactly on the next. Output never extrapolates beyond a measurement. In either mode,
-a missed observation shorter than `loss_release_ms` holds only the last X/Y
+comfortable-reach spans. A missed observation shorter than `loss_release_ms`
+holds only the last X/Y
 position; buttons, fingers, depth, roll, and digital directions release at once.
 After that brief gap, Latest immediately accepts a strongly aligned forward
 measurement. One contradictory or unusually distant non-forward result instead

@@ -58,7 +58,10 @@ async def main():
                 if flags[flag]:flags[flag]=False;return await r.fulfill(status=400,json={'error':'Approval PIN rejected' if flag=='pair_error' else 'Matrix unavailable'})
                 if path.endswith('/begin'):return await r.fulfill(json={'certificate_id':'1234ABCD','expires_in':flags['expiry']})
                 return await r.fulfill(json={'paired':True})
-            if path=='/api/players':return await r.fulfill(json=dict(active='default',generation=1,players=[dict(id='default',name='Player One')],progress=dict(course=1,completed=[],lesson=0),needs_center=False,has_saved_calibration=True))
+            if path=='/api/players':
+                state=dict(active='default',generation=1,players=[dict(id='default',name='Iain')],progress=dict(course=1,completed=[],lesson=0),needs_center=False,has_saved_calibration=True)
+                if r.request.post_data_json['action']=='export':state['backup']=dict(format='powerglove-hand-setup',version=2,name='Iain')
+                return await r.fulfill(json=state)
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
             if path=='/status':return await r.fulfill(json=dict(worker_running=True,vision_state='idle',controller_enabled=False,version='0.4.0',camera_fps=30.0,camera_fps_requested='auto'))
@@ -97,24 +100,36 @@ async def main():
         await expect(page.locator('#camera-rate-status')).to_contain_text('30')
         await expect(page.locator('#camera option')).to_have_count(2)
         await expect(page.locator('#camera')).to_have_value('auto')
+        await expect(page.locator('.connection-indicators li')).to_have_count(6)
+        await expect(page.locator('#connection-status-note')).to_contain_text('Console checked 1 seconds ago')
+        await expect(page.locator('#connection-status-note')).to_contain_text('do not confirm that a game received input')
+        await expect(page.locator('#connection-status-note')).not_to_contain_text('Green:')
+        await expect(page.locator('#status-tracking')).to_have_attribute('data-state','unknown')
+        await expect(page.locator('#status-output')).to_have_attribute('data-state','unknown')
+        await expect(page.locator('#connection-section')).to_be_visible()
+        await expect(page.locator('#camera-section')).to_be_visible()
+        await page.get_by_text('Players and hand-setup backups',exact=True).click()
+        await expect(page.locator('#player-name')).to_have_value('Iain')
+        async with page.expect_download() as download_info:
+            await page.locator('#player-export').click()
+        download=await download_info.value
+        assert download.suggested_filename=='iain-powerglove-hand-setup.json'
         assert not await page.locator('#controller-toggle, #shutdown-system, #pair-host').count()
         await expect(page.locator('#pair-password')).to_be_disabled()
         await page.locator('#receiver').fill('draft.local')
         await expect(page.locator('#pair-begin')).to_be_disabled()
         flags['save_error']=True
-        await page.get_by_role('button',name='Save settings',exact=True).click()
+        await page.get_by_role('button',name='Save connection and startup',exact=True).click()
         await expect(page.locator('#notice')).to_contain_text('Temporary settings failure')
         await expect(page.locator('#receiver')).to_have_value('draft.local')
-        await page.get_by_role('button',name='Save settings',exact=True).click()
+        await page.get_by_role('button',name='Save connection and startup',exact=True).click()
         await expect(page.locator('#pair-begin')).to_be_enabled()
         config['receiver']='RETROPIE-NAME.local';await open_page()
         await responsive()
         if '--screenshots' in sys.argv:
             await page.evaluate('window.scrollTo(0,0)')
             await page.screenshot(path=str(ROOT/'docs/images/setup-page.png'))
-            await page.get_by_text('Advanced connection and camera settings',exact=True).click()
-            await page.locator('#connection-section').screenshot(path=str(ROOT/'docs/images/setup-camera.png'))
-            await page.get_by_text('Advanced connection and camera settings',exact=True).click()
+            await page.locator('#camera-section').screenshot(path=str(ROOT/'docs/images/setup-camera.png'))
             await page.locator('#pairing-section').screenshot(path=str(ROOT/'docs/images/setup-pairing-method.png'))
             await page.get_by_role('heading',name='Matrix attract mode',exact=True).locator('..').screenshot(path=str(ROOT/'docs/images/matrix/attract-settings.png'))
         flags['begin_error']=True
@@ -185,19 +200,18 @@ async def main():
         flags['expiry']=120
         config['connection_configured']=False;await open_page()
         await expect(page.locator('#pair-begin')).to_be_disabled()
-        await expect(page.locator('#pair-prerequisite')).to_contain_text('Save settings')
+        await expect(page.locator('#pair-prerequisite')).to_contain_text('save Connection and startup')
         config['connection_configured']=True;flags['load_error']=True
         await page.reload();await expect(page.locator('#setup-retry')).to_be_visible()
         await page.locator('#setup-retry').click();await expect(page.locator('#pair-begin')).to_be_enabled()
-        await page.get_by_text('Advanced connection and camera settings',exact=True).click()
-        save_settings=page.get_by_role('button',name='Save settings',exact=True)
+        save_settings=page.get_by_role('button',name='Save camera settings',exact=True)
         await page.locator('#camera_fps').select_option('60')
-        await save_settings.click();await expect(page.locator('#notice')).to_contain_text('Settings saved')
+        await save_settings.click();await expect(page.locator('#camera-notice')).to_contain_text('Camera settings saved')
         await expect(save_settings).to_be_enabled()
         assert config['camera_fps']=='60'
-        await page.locator('#notice').evaluate("node=>node.textContent=''")
+        await page.locator('#camera-notice').evaluate("node=>node.textContent=''")
         await page.locator('#camera_fps').select_option('auto')
-        await save_settings.click();await expect(page.locator('#notice')).to_contain_text('Settings saved')
+        await save_settings.click();await expect(page.locator('#camera-notice')).to_contain_text('Camera settings saved')
         await expect(save_settings).to_be_enabled()
         assert config['camera_fps']=='auto'
         for mode in ('off','dim','on'):

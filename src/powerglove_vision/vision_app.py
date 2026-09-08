@@ -190,10 +190,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--preview-fps", type=float, default=5.0,
         help="maximum diagnostic camera-preview rate",
     )
-    parser.add_argument(
-        "--native-xy-mode", choices=("bounded", "latest"), default="latest",
-        help="native Super Glove Ball X/Y response: bounded curve or newest coordinate",
-    )
     parser.add_argument("--motion-tracking", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--glove-color", choices=("none", "white", "black"), default="none")
     parser.add_argument("--no-mirror", action="store_true")
@@ -522,7 +518,7 @@ def _effective_profile(profile: str | None, practice_mode: bool) -> str | None:
 
 def _native_xy_active(engine: GestureEngine, practice_mode: bool,
                       tuning_active: bool, needs_center: bool) -> bool:
-    """Use bounded native coordinates only in ready Super Glove Ball gameplay."""
+    """Use native coordinates only in ready Super Glove Ball gameplay."""
     return (
         engine.profile == "super_glove_ball"
         and engine.calibrated
@@ -541,15 +537,14 @@ def _native_xy_source(active: bool) -> str:
 
 def _update_controller_state(
     engine: GestureEngine, result, native_xy_active: bool,
-    native_xy_mode: str = "latest",
 ):
-    """Route native X/Y through the selected MediaPipe response lane."""
+    """Publish the latest valid MediaPipe coordinate for native X/Y."""
     if not native_xy_active:
         return engine.update(result.observation), _native_xy_source(False)
     return (
         engine.update_native_motion(
             result.observation, result.observation,
-            bounded=native_xy_mode != "latest",
+            bounded=False,
         ),
         _native_xy_source(True),
     )
@@ -950,7 +945,7 @@ def main() -> int:
                 log_startup_stage("first inference", inference_started)
             engine.config = shared.tuning.configuration(engine_base_config)
             state, native_source = _update_controller_state(
-                engine, result, native_xy_active, args.native_xy_mode
+                engine, result, native_xy_active
             )
             if engine.calibrated and engine.calibration is not retained_calibration:
                 retained_calibration = engine.calibration
@@ -982,7 +977,7 @@ def main() -> int:
                     end_ns=int(inference_finished * 1e9),
                     sent=receiver_available, detected=state.detected, calibrated=state.calibrated,
                     native_xy_source=native_source,
-                    native_xy_mode=args.native_xy_mode,
+                    native_xy_mode="latest",
                     **_native_trace_fields(engine, result, native_xy_active),
                     motion=result.motion_trace if motion_mode else None,
                     filtered_xy=[engine._filtered_palm_x, engine._filtered_palm_y] if state.detected else None,
@@ -1145,7 +1140,7 @@ def main() -> int:
                 status.update(detailed_status)
             status["motion_tracking"] = False
             status["native_xy_source"] = native_source
-            status["native_xy_mode"] = args.native_xy_mode
+            status["native_xy_mode"] = "latest"
             if motion_mode:
                 status.update(result.diagnostics)
                 status["processing_timing_scope"] = "motion loop; recognition_inference_ms is separate"

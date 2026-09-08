@@ -89,6 +89,7 @@ On Dashboard, **Center hand** saves the resting reference for the selected playe
 | You want to… | Read… |
 | --- | --- |
 | Install both devices and play your first game | [Installation Guide](docs/INSTALL_README.md) |
+| Choose a camera, frame rate, or exposure setting | [Camera Guide](docs/CAMERA_GUIDE.md) |
 | Find a command or connection reminder | [Quick Reference](docs/cheatsheet.md) |
 | Learn a game's gestures and try a short challenge | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) |
 | Choose or experiment with Programs A–I | [Programs A–I manual](docs/bad-street-brawler-programs.md) |
@@ -163,15 +164,12 @@ release thresholds, calibrated native X/Y reach with an 8% edge margin, and
 valid, reach-clamped palm position directly during continuous tracking. After a
 brief MediaPipe dropout, one contradictory or unusually distant reacquisition
 may be held for the next fresh result; strongly aligned forward movement remains
-immediate. This guard does not predict, smooth, or overshoot. **Bounded speed
-curve** remains available for comparison and uses one
-two-dimensional, calibrated-noise response to hold measured resting jitter,
-follow medium movement progressively faster, and handle large movement, stops,
-and reversals without prediction or overshoot. Both modes use the selected
-camera frame's capture time and MediaPipe Hands as the authoritative source for
-palm landmarks, finger curls, and gestures.
-The earlier optical-flow experiment is archived in the source tree for research
-and is no longer a live movement option. These are suitable starting values for
+immediate. This guard does not predict, smooth, or overshoot. Latest coordinate
+is the only live native X/Y behavior. The selected camera frame's capture time
+and MediaPipe Hands remain authoritative for palm landmarks, finger curls, and
+gestures. The earlier bounded and optical-flow experiments are archived in the
+source tree for research and are no longer live movement options. These are
+suitable starting values for
 every installation. A neutral calibration is different: it records
 the palm center, apparent hand size, wrist angle, and resting jitter for one
 camera and playing position, so the installer never substitutes another
@@ -298,7 +296,7 @@ test state without changing it; smoke mode checks framing before the full sessio
 and the reversible trace helper restores production services before exporting its
 bounded evidence. Historical trace tools can compare recognized,
 optical-flow, selected, and filtered coordinates without recording video; the
-current live path reports MediaPipe coordinates and the chosen response mode.
+current live path reports the newest valid MediaPipe coordinate directly.
 Physical hand-to-screen latency still requires synchronized recording.
 
 The production Controller runs the proven CPU MediaPipe Hands path at 640×480,
@@ -410,10 +408,9 @@ what those gestures do in each game. The Controller displays a scanning **L**
 during learning mode, with cabinet input paused.
 
 Choose each player in turn and select **Back up hand setup** to download a
-separate `powerglove-hand-setup.json`. The file is saved by your browser on the
-computer, phone, or tablet you are using, usually in **Downloads** or the folder
-you choose. Rename each copy with the player name and date, for example
-`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+separate file named for that player, such as
+`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
 updates the selected player, rather than adding a new one.

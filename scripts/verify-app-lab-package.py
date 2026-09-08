@@ -40,6 +40,7 @@ PUBLIC_PDF_NAMES = {
     "PowerGlove-Vision-Build-Your-Own.pdf",
     "PowerGlove-Vision-Native-Emulation.pdf",
     "PowerGlove-Vision-Troubleshooting.pdf",
+    "PowerGlove-Vision-Camera-Guide.pdf",
     "PowerGlove-Vision-Motion-Analysis.pdf",
 
     "PowerGlove-Vision-Matrix-Guide.pdf",
@@ -61,6 +62,7 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/BUILD_YOUR_OWN.md",
     "PowerGlove-Vision/docs/NATIVE_EMULATION_EXPLAINED.md",
     "PowerGlove-Vision/docs/TROUBLESHOOTING.md",
+    "PowerGlove-Vision/docs/CAMERA_GUIDE.md",
 
     "PowerGlove-Vision/src/powerglove_vision/diagnostic_trace.py",
     "PowerGlove-Vision/scripts/run-native-latency-session.py",

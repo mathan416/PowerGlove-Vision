@@ -72,11 +72,14 @@ the PowerGlove Vision Controller matrix before entering the one-time PIN.
 ### Settings shown in the browser
 
 Setup groups **Controller status**, **Players**, **Matrix attract mode**,
-**Connection and startup**, **Pair with RetroPie**, **Games**, and **Show
-statistics**. Port, camera, camera rate, and key replacement are under
-**Advanced connection and camera settings**. Key replacement stops output and
-requires pairing again. A saved destination and key are not proof that RetroPie
-has received that key. **Check console address** verifies name resolution only.
+**Connection and startup**, **Camera**, **Pair with RetroPie**, **Games**, and
+**Show statistics**. Receiver port and key replacement are under **Advanced
+connection**. Camera selection, rate, reader, exposure, and diagnostic hand label
+are in their own action-first Camera section. The concise
+[Camera guide](CAMERA_GUIDE.md) explains compatibility, lighting, and recovery.
+Key replacement stops output and requires pairing again. A saved destination and
+key are not proof that RetroPie has received that key. **Check console address**
+verifies name resolution only.
 
 A failed initial load offers **Reload saved settings**; connection fields remain
 disabled until loading succeeds. Failed actions can be retried. Start/Stop and
@@ -100,8 +103,9 @@ from camera frames and controller packets, which remain newest-state-only.
 
 ![Advanced camera settings showing the discovered-camera dropdown and exposure controls](images/setup-camera.png)
 
-Selecting **Save settings** validates the fields, writes them atomically with private
-permissions, and restarts the vision worker using the saved calibration.
+Selecting **Save connection and startup** or **Save camera settings** validates
+the complete configuration, writes it atomically with private permissions, and
+restarts the vision worker using the saved calibration.
 Recalibrate only if you have moved the camera, changed your playing position,
 or notice unwanted movement while your hand is at rest.
 
@@ -136,9 +140,9 @@ are not performed; camera tracking and controller transmission are unchanged.
 ### Comfortable movement range
 
 Native X/Y can map a player's comfortable left, right, up, and down positions to
-the screen edges. This applies to both MediaPipe response modes. It changes
-sensitivity and physical travel, not processing time. Gesture thresholds, D-pad
-behavior, depth, and the selected response mode stay unchanged.
+the screen edges. It changes sensitivity and physical travel, not processing
+time. Gesture thresholds, D-pad behavior, depth, and Latest-coordinate movement
+stay unchanged.
 
 The four optional `calibration.neutral` fields `reach_left`, `reach_right`,
 `reach_up`, and `reach_down` are normalized image distances from the saved center.
@@ -192,35 +196,30 @@ Worker status exposes raw `palm_position` (`x` and `y`, or `null` when undetecte
 for this calibration. Its coordinates follow the configured mirror convention.
 The helper accepts synchronous practice observations only.
 
-### Native X/Y response mode
+### Native X/Y movement
 
 The Controller always uses each newest completed MediaPipe palm observation as
-the native X/Y source. The Dashboard selector offers two response modes:
+the native X/Y source. **Latest coordinate** publishes the newest mapped
+MediaPipe coordinate without temporal smoothing during continuous tracking.
+There is no movement-mode control on the Dashboard.
 
-- **Bounded speed curve** (`"native_xy_mode": "bounded"`) uses calibrated jitter
-  and raw MediaPipe velocity to damp slow noise while progressively following
-  deliberate movement. It never predicts or overshoots the measurement.
-- **Latest coordinate** (`"native_xy_mode": "latest"`) is the production
-  default. It publishes the newest mapped MediaPipe coordinate without
-  coordinate smoothing during continuous tracking.
-
-Both modes validate landmark geometry and clamp the selected point to the
+The live path validates landmark geometry and clamps the selected point to the
 active player's reach rectangle before mapping. Movement beyond an edge stays
 pinned to that edge and cannot build hidden off-screen state. The selected
-frame's capture timestamp drives velocity and freshness; inference-start time
-is not substituted for it. The production anchor remains the five-point average
+frame's capture timestamp drives freshness; inference-start time is not
+substituted for it. The production anchor remains the five-point average
 of wrist and four knuckles so existing centers and reach spans remain valid.
 
-The selected mode is stored in `data/device.json` and restarts the vision worker.
-It changes continuous native X/Y only. MediaPipe still supplies fingers, depth,
-roll, and gestures; FCEUmm directions and every game mapping are unchanged.
+MediaPipe still supplies fingers, depth, roll, and gestures; FCEUmm directions
+and every game mapping are unchanged.
 Worker status reports `native_xy_source` as `mediapipe` while the native path is
-active or `inactive` otherwise, plus `native_xy_mode` as `bounded` or `latest`.
+active or `inactive` otherwise. It reports `native_xy_mode` as `latest` for
+compatibility with existing diagnostics.
 
 The former optical-flow prototype remains in `src/powerglove_vision/motion.py`
 for historical comparison but is not connected to the live supervisor. Older
-`motion_tracking` values are removed when the response mode is saved and are
-otherwise ignored. The hidden `--motion-tracking` command-line spelling remains
+`motion_tracking` and `native_xy_mode` configuration values are ignored. The
+hidden `--motion-tracking` command-line spelling remains
 accepted only so older launch scripts do not fail; it does not enable optical
 flow. Historical flow diagnostics and trace readers remain useful for analyzing
 already-recorded experiments.
@@ -229,7 +228,7 @@ When MediaPipe misses the hand briefly, the engine holds the last native X/Y for
 up to the configured `loss_release_ms` (120 ms by default) to avoid an edge
 departure/re-entry jump. Buttons, fingers, Z, roll, and D-pad state release
 immediately during that hold. Continued loss, stale data, calibration changes,
-or profile changes neutralize native X/Y and clear both response modes' history.
+or profile changes neutralize native X/Y and clear retained coordinate history.
 On recovery, Latest normally accepts the first fresh coordinate. If established
 motion is followed by one contradictory result, or the new point is unusually
 distant without being strongly aligned forward, it holds the last reliable X/Y
@@ -511,7 +510,6 @@ A typical device configuration file contains the following fields:
   "inference_threads": 4,
   "tracking_confidence": 0.35,
   "tracking_roi_scale": 2.25,
-  "native_xy_mode": "latest",
   "matrix_attract": "on"
 }
 ```
@@ -519,9 +517,8 @@ A typical device configuration file contains the following fields:
 `camera_fps` is `auto`, `30`, or `60`; Automatic prefers 30 and then accepts a
 usable driver rate. `inference_threads` accepts 1, 2, or 4. The 0.4.0 baseline
 uses four threads, `tracking_confidence` 0.35, and `tracking_roi_scale` 2.25.
-`native_xy_mode` is `latest`
-or `bounded`, with Latest as the production default. Setup preserves these
-measured fields when saving unrelated connection settings.
+Latest coordinate is the only live native X/Y behavior. Older
+`native_xy_mode` values are accepted in existing files but ignored.
 
 `matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
 or `off` (four faint app/console/paired-console/Networking indicators). Change it using
@@ -804,10 +801,9 @@ is also mirrored in `data/calibration.json` in the same application directory.
 Use Glove Academy to manage these settings.
 
 Choose each player in turn and select **Back up hand setup** to download a
-separate `powerglove-hand-setup.json`. The file is saved by your browser on the
-computer, phone, or tablet you are using, usually in **Downloads** or the folder
-you choose. Rename each copy with the player name and date, for example
-`Iain-hand-setup-2026-09-06.json`, so you can identify it later. To restore, select
+separate file named for that player, such as
+`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
 updates the selected player, rather than adding a new one.
@@ -819,7 +815,7 @@ repeated filenames. Keep a clearly named copy for every player you want to recov
 
 ### Backup contents and restore choices
 
-**Back up hand setup** downloads `powerglove-hand-setup.json` with format
+**Back up hand setup** downloads `<player>-powerglove-hand-setup.json` with format
 `powerglove-hand-setup` and version `2`. Fields are `name`, personal `thresholds`,
 `calibration`, `effective_thresholds`, and `source` (`version`, `commit`). Empty
 personal thresholds mean no personal overrides. Effective thresholds contain
@@ -1594,7 +1590,6 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--inference-threads NUMBER` | `4` | CPU threads requested for each MediaPipe Hands inference calculator; accepted values are 1, 2, and 4. The Controller supervisor passes its validated setting explicitly. Benchmark before changing. |
 | `--tracking-confidence NUMBER` | `0.35` | Minimum MediaPipe landmark-tracking confidence. This threshold matched or slightly improved the saved-clip result without changing the fast-sweep loss pattern; do not treat it as position confidence. |
 | `--tracking-roi-scale NUMBER` | `2.25` | Scale of MediaPipe's next-frame hand search area. The prior `2.0` remains accepted for comparison; `2.25` recovered five of nine previously missed fast-sweep frames without a material latency or false-activation cost. |
-| `--native-xy-mode VALUE` | `latest` | Native Super Glove Ball response: `latest` for direct newest coordinates or `bounded` for the speed-sensitive comparison curve. |
 | `--motion-tracking` | Ignored | Hidden compatibility spelling retained for old launch scripts; optical flow is archived and this flag does not enable it. |
 | `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
 | `--tracker-graph VALUE` | `full` | `full` retains the proven outputs. `lean-image` omits world-landmark and handedness output streams for an output-paused comparison. |
@@ -2475,10 +2470,10 @@ recordings, and position annotations remain temporary and local. Public status
 still samples inference; trace joins never estimate cross-host network delay by
 subtracting independent monotonic clocks.
 
-### Bounded native X/Y speed curve
+### Historical bounded native X/Y speed curve
 
-Native Super Glove Ball movement uses consecutive selected coordinates and their
-capture timestamps to measure hand speed in `bounded` mode. The selected point
+The former Super Glove Ball experiment used consecutive selected coordinates and
+their capture timestamps to measure hand speed. The selected point
 comes directly from validated MediaPipe geometry and is clamped to calibrated
 reach before filtering. Speed is normalized independently by directional X/Y
 reach, then combined into one vector magnitude and one follow weight. Calibrated
@@ -2488,8 +2483,9 @@ small fixed fallback for older calibrations. Above that region,
 `motion_full_speed`. A meaningful reversal adopts the newest real coordinate;
 a stop settles inside measured noise immediately and exactly by the next fresh
 result. The weight is always capped at `1.00`, so the filter cannot predict or
-overshoot. Select `latest` to bypass coordinate damping while retaining the
-same validation, edge clamp, calibration, reach mapping, gestures, and safety.
+overshoot. This curve is no longer selectable; the live path uses Latest
+coordinate with the same validation, edge clamp, calibration, reach mapping,
+gestures, and safety.
 
 Older configurations containing `motion_coordinate_boost` or
 `motion_coordinate_max` remain loadable. They are retained for historical

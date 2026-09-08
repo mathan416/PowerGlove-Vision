@@ -37,6 +37,7 @@ START HERE
 README.md and docs/ARCHITECTURE.md: system overview and process boundaries.
 docs/CONFIGURATION_REFERENCE.md: defaults, ownership, persistence, and commands.
 docs/INSTALL_README.md: installation, secure pairing, and verification.
+docs/CAMERA_GUIDE.md: camera selection, rate, exposure, lighting, and recovery.
 docs/GAMEPLAY_GUIDE.md and docs/MATRIX_GUIDE.md: gestures and visible feedback.
 docs/NATIVE_EMULATION_EXPLAINED.md: native input concepts.
 docs/super-glove-ball-native.md: exact-ROM evidence and current compatibility.
@@ -124,6 +125,7 @@ COMPLETE SOURCE INVENTORY
 |-- docs
 |   |-- ARCHITECTURE.md
 |   |-- BUILD_YOUR_OWN.md
+|   |-- CAMERA_GUIDE.md
 |   |-- CHANGELOG.md
 |   |-- CODE_REVIEW_MAP.txt
 |   |-- CONFIGURATION_REFERENCE.md

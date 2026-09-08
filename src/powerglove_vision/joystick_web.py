@@ -12,13 +12,12 @@
 JOYSTICK_CONTENT = """<section class=card id=joystick-settings style="margin-top:14px" aria-labelledby=joystick-title>
 <h2 id=joystick-title>Joystick dead zone</h2>
 <p id=joystick-player>Loading player…</p>
-<p>Choose how far your hand moves from center before a direction presses. A larger dead zone gives you more room to rest. Applies to digital joystick directions; native Super Glove Ball and dot X/Y reach stay separate.</p>
 <form id=joystick-form><label for=joystick-size>Small ↔ Large</label>
 <input id=joystick-size type=range min=0.14 max=1 step=0.01 value=0.28 disabled aria-describedby=joystick-value>
 <p id=joystick-value></p><div class=controls><button id=joystick-save type=submit disabled>Save dead zone</button><button id=joystick-default type=button disabled>Use standard size</button></div></form>
-<p>Release is set automatically at half the activation distance. Centering jitter can raise either threshold to keep directions steady. Saving applies equally to all four directions and preserves your center and reach calibration.</p>
 <div id=joystick-directions class=controls aria-label="Live direction states"><span class=bit data-direction=left>Left: off</span><span class=bit data-direction=up>Up: off</span><span class=bit data-direction=down>Down: off</span><span class=bit data-direction=right>Right: off</span></div>
 <p id=joystick-live>Waiting for tracking…</p><p id=joystick-notice role=status aria-live=polite></p>
+<p>Choose how far your hand moves from center before a direction presses. A larger dead zone gives you more room to rest.</p><ul><li>Applies equally to all four digital joystick directions.</li><li>Release is set automatically at half the activation distance.</li><li>Native Super Glove Ball X/Y reach stays separate.</li></ul>
 <details><summary>Advanced direction adjustments</summary><p>For separate left, right, up and down activation/release values, use <a href=/learn>Glove Academy → Tune gestures → Advanced thresholds and diagnostics</a>. This slider replaces those four directional pairs only when you save.</p></details></section>"""
 
 JOYSTICK_SCRIPT = r"""(()=>{
