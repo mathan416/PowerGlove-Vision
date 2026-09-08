@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import threading
 import time
@@ -116,6 +117,38 @@ class VisionBenchmarkToolTests(unittest.TestCase):
             self.assertTrue(capture.capture.released)
             self.assertIsNone(capture.writer)
             self.assertTrue((Path(directory) / "guided.avi.json").is_file())
+
+    def test_staggered_tracker_gate_requires_latency_continuity_and_precision(self) -> None:
+        """A faster result rate alone must not promote the experimental lane."""
+        staggered = load_script("benchmark-staggered-trackers.py")
+        baseline = {
+            "source_age_ms": {"p95": 100.0}, "accepted_hz": 16.0,
+            "detection_percent": 99.0, "coordinate_step": {"p95": .04},
+        }
+        candidate = {
+            "source_age_ms": {"p95": 75.0}, "accepted_hz": 22.0,
+            "detection_percent": 98.5, "coordinate_step": {"p95": .04},
+        }
+        self.assertTrue(staggered.evaluate(baseline, candidate)["passes_measured_gates"])
+        candidate["coordinate_step"]["p95"] = .05
+        result = staggered.evaluate(baseline, candidate)
+        self.assertFalse(result["passes_measured_gates"])
+        self.assertIn("gesture equivalence on labeled cues", result["still_required"])
+
+    def test_staggered_tracker_uses_guided_capture_timestamps(self) -> None:
+        """Irregular camera delivery must not be replayed at the AVI nominal rate."""
+        staggered = load_script("benchmark-staggered-trackers.py")
+        with tempfile.TemporaryDirectory() as directory:
+            clip = Path(directory) / "guided.avi"
+            clip.touch()
+            clip.with_suffix(".avi.json").write_text(json.dumps({
+                "frame_times_seconds": [3.2, 3.25, 3.34],
+            }))
+            schedule = staggered.frame_schedule(clip, 30.0)
+            self.assertEqual(len(schedule), 3)
+            self.assertAlmostEqual(schedule[0], 0.0)
+            self.assertAlmostEqual(schedule[1], 0.05)
+            self.assertAlmostEqual(schedule[2], 0.14)
 
 
 if __name__ == "__main__":

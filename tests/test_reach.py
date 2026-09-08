@@ -95,13 +95,16 @@ class ReachTests(unittest.TestCase):
         self.assertEqual(legacy.axes['z'],reach.axes['z'])
         self.assertNotEqual(legacy.axes['x'],reach.axes['x'])
 
-    def test_recentering_clears_spans(self):
+    def test_recentering_preserves_separately_tuned_spans(self):
         engine=GestureEngine('super_glove_ball',calibration=self.reference,calibration_frames=3)
         engine.begin_calibration()
         for i in range(3): engine.update(HandObservation(10+i,True,.95,.5,.5,.2))
         self.assertTrue(engine.calibrated)
         for direction in helper.DIRECTIONS:
-            self.assertEqual(getattr(engine.calibration,'reach_'+direction),0)
+            self.assertEqual(
+                getattr(engine.calibration,'reach_'+direction),
+                getattr(self.reference,'reach_'+direction),
+            )
 
 
 class ReachHelperTests(unittest.TestCase):

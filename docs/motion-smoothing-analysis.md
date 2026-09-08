@@ -2,7 +2,7 @@
 
 ## Bounded speed-sensitive replacement — 7 September 2026
 
-The bounded native motion mode uses completed MediaPipe palm observations and
+The optional bounded native motion mode uses completed MediaPipe palm observations and
 separates resting noise from intentional velocity. It measures consecutive
 MediaPipe coordinates using capture timestamps and
 normalizes velocity by the player's directional reach. Calibration noise creates
@@ -41,6 +41,15 @@ medium 90% response, large first-sample misses, reversals, overshoot, continuity
 and recognition age when present. The temporary physical clip is not currently
 available on the development Mac, so recorded-clip and synchronized live
 camera-to-display validation remain pending.
+
+The 0.4.0 production choice is Latest coordinate. It publishes every valid
+reach-clamped MediaPipe point directly during continuous tracking. After a brief
+dropout, one result that contradicts established motion—or is unusually distant
+without strong forward alignment—is held until the next fresh result. Live
+tracing showed that allowing strongly aligned forward recovery immediately
+avoided the earlier compound catch-up jump while inserting no unnecessary holds
+in the tested gameplay window. This is a reacquisition guard, not smoothing or
+prediction.
 
 The runtime now rejects malformed/non-finite landmark geometry, retains the
 calibration-compatible five-point wrist/knuckle average as the production

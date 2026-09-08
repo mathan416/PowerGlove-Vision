@@ -65,7 +65,9 @@ async def capture():
                     return await request.fulfill(json=dict(sequence=sequence, vision_state='active', practice_mode=True,
                         worker_running=True, camera_available=True, detected=False, calibrated=True,
                         active_profile='super_glove_ball', configured_profile='super_glove_ball', profile_source='Dashboard',
-                        connection_configured=True, controller_enabled=False, version='0.3.2-dev', build=identity,
+                        native_xy_mode='latest', native_xy_source='mediapipe',
+                        connection_configured=True, controller_enabled=False, version='0.4.0', build=identity,
+                        camera_fps=30.0, camera_fps_requested='auto',
                         player=manager.player_snapshot(), tuning=manager.snapshot(),
                         dpad={'up':False,'down':False,'left':False,'right':False}, buttons={'A':False,'B':False,'Start':False,'Select':False},
                         axes={'x':0,'y':0}, fingers={'index':0,'thumb':0,'middle':0,'ring':0,'pinky':0}))
@@ -76,7 +78,7 @@ async def capture():
                     except ValueError as error:
                         return await request.fulfill(status=400, json={'error':str(error)})
                 if path == '/api/config':
-                    return await request.fulfill(json=dict(receiver='RETROPIE-NAME.local',port=55355,profile='off',glove_color='none',camera='auto',matrix_attract='on',connection_configured=True))
+                    return await request.fulfill(json=dict(receiver='RETROPIE-NAME.local',port=55355,profile='off',glove_color='none',camera='auto',camera_fps='auto',matrix_attract='on',connection_configured=True))
                 if path == '/api/connection-status':
                     return await request.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
                 if path == '/api/games':

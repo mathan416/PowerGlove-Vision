@@ -33,7 +33,14 @@ and the GPLv2 license. Keep the FCEUmm fallback available.
 
 ## Controller transport compatibility
 
-PowerGlove Vision v0.3.2-rc.6 requires matching signed-controller software on the Controller and RetroPie. The receiver validates that transport before publishing the existing version-1 native-state record; this candidate does not change the core patch or require a native-core rebuild. Follow the [coordinated upgrade instructions](../../docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades). Native gameplay and full camera-to-display latency still need validation on the candidate; FCEUmm remains the explicit fallback.
+PowerGlove Vision 0.4.0 requires matching signed-controller software on the
+Controller and RetroPie. The receiver validates that transport before publishing
+the existing version-1 native-state record. The 0.4.0 movement-efficiency work
+changes the Controller's coordinate production and does not change this core
+patch or require a native-core rebuild. Follow the [coordinated upgrade
+instructions](../../docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
+Completed native gameplay confirms the implemented Super Glove Ball actions;
+FCEUmm remains the explicit fallback.
 
 ## Optional consumption-timing build
 

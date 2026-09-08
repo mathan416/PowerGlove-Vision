@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 async def main():
     """Test user-visible state transitions against controlled HTTP responses."""
     config = dict(receiver='RETROPIE-NAME.local', port=55355, profile='off',
-                  glove_color='none', camera='auto', matrix_attract='on',
+                  glove_color='none', camera='auto', camera_fps='auto', matrix_attract='on',
                   connection_configured=True, controller_enabled=False)
     calls = []
     flags = dict(load_error=False, save_error=False, begin_error=False,
@@ -54,7 +54,7 @@ async def main():
             if path=='/api/players':return await r.fulfill(json=dict(active='default',generation=1,players=[dict(id='default',name='Player One')],progress=dict(course=1,completed=[],lesson=0),needs_center=False,has_saved_calibration=True))
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
-            if path=='/status':return await r.fulfill(json=dict(worker_running=True,vision_state='idle',controller_enabled=False,version='0.3.2-dev'))
+            if path=='/status':return await r.fulfill(json=dict(worker_running=True,vision_state='idle',controller_enabled=False,version='0.4.0',camera_fps=30.0,camera_fps_requested='auto'))
             if path=='/api/games':return await r.fulfill(json={'document':'{"games": {}}','revision':'test','profiles':['off'],'has_backup':False})
             if path.startswith('/assets/'):
                 f=ROOT/path.lstrip('/')
@@ -87,6 +87,7 @@ async def main():
                 await page.set_viewport_size({'width':width,'height':1000})
                 assert await page.evaluate('document.documentElement.scrollWidth')<=width,width
         await open_page()
+        await expect(page.locator('#camera-rate-status')).to_contain_text('30')
         assert not await page.locator('#controller-toggle, #shutdown-system, #pair-host').count()
         await expect(page.locator('#pair-password')).to_be_disabled()
         await page.locator('#receiver').fill('draft.local')
@@ -176,6 +177,17 @@ async def main():
         config['connection_configured']=True;flags['load_error']=True
         await page.reload();await expect(page.locator('#setup-retry')).to_be_visible()
         await page.locator('#setup-retry').click();await expect(page.locator('#pair-begin')).to_be_enabled()
+        await page.get_by_text('Advanced connection and camera settings',exact=True).click()
+        save_settings=page.get_by_role('button',name='Save settings',exact=True)
+        await page.locator('#camera_fps').select_option('60')
+        await save_settings.click();await expect(page.locator('#notice')).to_contain_text('Settings saved')
+        await expect(save_settings).to_be_enabled()
+        assert config['camera_fps']=='60'
+        await page.locator('#notice').evaluate("node=>node.textContent=''")
+        await page.locator('#camera_fps').select_option('auto')
+        await save_settings.click();await expect(page.locator('#notice')).to_contain_text('Settings saved')
+        await expect(save_settings).to_be_enabled()
+        assert config['camera_fps']=='auto'
         for mode in ('off','dim','on'):
             await page.locator('#matrix-attract').select_option(mode)
             await page.get_by_role('button',name='Save attract mode',exact=True).click()

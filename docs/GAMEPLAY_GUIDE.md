@@ -198,8 +198,13 @@ The V sign sends Start in both modes.
 
 **Play smart:** Pick one wall and finish it, then follow the revealed arrow.
 With FCEUmm, use Select to take the exit. Do not rely on Select in
-Nestopia (PowerGlove); that action remains unconfirmed. Continuous native
-movement is playable, although noticeable latency remains. The
+Nestopia (PowerGlove); that action remains unconfirmed. **Latest coordinate** is
+the native movement default. It follows each newest valid palm point directly
+during continuous tracking and waits one fresh result only for a contradictory
+or unusually distant non-forward reacquisition. **Bounded speed curve** remains
+available for comparison. Continuous native movement is playable and has been
+substantially tightened, although synchronized physical latency measurement is
+still pending. The
 [native compatibility record](super-glove-ball-native.md) contains the test
 evidence and current limitations.
 
@@ -433,6 +438,11 @@ from the saved center; smaller values reach the corresponding screen edge sooner
 The summary shows the tracking area's width, height, and aspect ratio. Saving
 changes only those four reach spans. **Restore full camera field** returns to the
 camera-boundary mapping without changing the center or gesture sensitivity.
+
+Setup's advanced camera settings offer Automatic, 30 fps, and 60 fps. Automatic
+prefers the tested 30-fps path and falls back safely to a camera-supported rate;
+the active rate is shown while tracking runs. Leave it on Automatic unless a
+specific camera comparison is needed.
 
 Leave **Advanced thresholds and diagnostics** closed unless you need numerical
 controls or a diagnostic run. The [Configuration Reference](CONFIGURATION_REFERENCE.md)

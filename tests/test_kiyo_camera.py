@@ -19,7 +19,7 @@ import unittest
 from unittest.mock import patch
 
 from powerglove_vision import kiyo_camera as kiyo
-from powerglove_vision.vision_app import build_parser
+from powerglove_vision.vision_app import _camera_rate_attempts, build_parser
 
 
 class KiyoTests(unittest.TestCase):
@@ -69,4 +69,17 @@ class KiyoTests(unittest.TestCase):
         candidate=command({'camera_buffers':2,'kiyo_hdr_off':True},Path('/tmp/model'))
         self.assertEqual(candidate[candidate.index('--camera-buffers')+1],'2')
         self.assertIn('--kiyo-hdr-off',candidate)
-        self.assertEqual(candidate[candidate.index('--inference-threads')+1], '2')
+        self.assertEqual(candidate[candidate.index('--inference-threads')+1], '4')
+        self.assertEqual(candidate[candidate.index('--tracking-confidence')+1], '0.4')
+        self.assertEqual(candidate[candidate.index('--fps')+1], '0')
+        tuned=command({'tracking_confidence':.45},Path('/tmp/model'))
+        self.assertEqual(tuned[tuned.index('--tracking-confidence')+1], '0.45')
+        self.assertEqual(command({'camera_fps':30},Path('/tmp/model'))[
+            command({'camera_fps':30},Path('/tmp/model')).index('--fps')+1], '30')
+        self.assertEqual(command({'camera_fps':25},Path('/tmp/model'))[
+            command({'camera_fps':25},Path('/tmp/model')).index('--fps')+1], '0')
+
+    def test_every_camera_rate_falls_back_to_driver_negotiation(self):
+        self.assertEqual(_camera_rate_attempts(0), (30, None))
+        self.assertEqual(_camera_rate_attempts(30), (30, None))
+        self.assertEqual(_camera_rate_attempts(60), (60, None))

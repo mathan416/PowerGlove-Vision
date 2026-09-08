@@ -7,6 +7,91 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-07
+
+Version 0.4.0 promotes the native-movement efficiency work validated after the
+0.3.2 release candidates. The shared gesture mappings and FCEUmm behavior remain
+compatible; the principal change is a lower-latency, more precise MediaPipe path
+for native Super Glove Ball X/Y.
+
+### Added
+
+- Added Automatic, 30 fps, and 60 fps camera-rate choices under Setup's advanced
+  camera settings. Automatic tries the tested 30-fps path first, falls back to a
+  driver-selected usable rate, and reports the live negotiated rate.
+
+- Added an optional **Show statistics** preference to Dashboard and Setup. It is
+  off by default, stored only in the browser, and stops the page from reading,
+  rendering, or retaining detailed controller, axes, finger, performance, and
+  recent-event fields while disabled.
+
+- Added native trace evidence for raw MediaPipe observations, detection gaps,
+  recovery decisions, and one-result confirmations. The analyzer can now review
+  ordinary Latest-coordinate traces without enabling optical-flow diagnostics.
+
+### Changed
+
+- Made **Latest coordinate** the production native X/Y default. Continuous
+  tracking publishes each newest valid, reach-clamped MediaPipe coordinate
+  directly. **Bounded speed curve** remains available as an explicit comparison.
+
+- Changed the Controller baseline to four MediaPipe inference threads, a `0.40`
+  tracking-confidence threshold, and 30-fps-first camera negotiation after
+  matched live tests. New installations receive these values; saved device
+  settings remain preserved during updates.
+
+- Moved preview landmark drawing, status text, downscaling, and JPEG encoding off
+  the inference thread. Gameplay previews use a 320×240 latest-only copy while
+  Academy and tuning retain full-size visual feedback. Superseded preview work is
+  discarded instead of delaying controller delivery.
+
+- Avoided calculating unused experimental palm anchors during ordinary gameplay.
+  Diagnostic runs still expose the complete candidate set for comparison.
+
+- Preserved a player's valid comfortable-reach spans when **Center hand** updates
+  neutral pose and jitter. If a moved center makes the saved endpoints unsafe,
+  the mapping falls back to the full camera field instead of saving invalid reach.
+
+### Fixed
+
+- Prevented the backward-then-forward Robo-Glove jump seen after brief MediaPipe
+  reacquisition. Latest-coordinate mode now accepts strongly aligned forward
+  recovery immediately, but holds one contradictory or unusually distant
+  non-forward result until the next fresh measurement. It does not predict,
+  smooth, queue, or overshoot continuous movement.
+
+- Ensured the newest captured frame and its capture timestamp remain authoritative
+  through inference, freshness checks, native mapping, tracing, and transmission.
+
+- Corrected the staggered-tracker benchmark to compare matched one-by-four and
+  two-by-two CPU lanes using real sidecar capture timestamps. The staggered lane
+  was rejected because it increased source age, reduced continuity, and produced
+  a much larger coordinate jump.
+
+- Preserved advanced measured device settings when Setup saves ordinary connection
+  or camera fields instead of reconstructing a smaller configuration document.
+
+### Validation
+
+- The complete Python suite passes 496 tests with one expected Linux-specific
+  skip. Browser interaction coverage includes camera-rate persistence and the
+  statistics preference's default-off, safe-rendering, cross-tab, and no-work
+  behavior.
+
+- Live Super Glove Ball tracing measured about 65 ms median camera-to-coordinate
+  age. In the confirmation window, five strongly forward recoveries passed
+  immediately and the new guard inserted no unnecessary holds. The player
+  reported the tightest, most hand-attached response reached during testing.
+
+- The rejected staggered-tracker comparison measured 20.23 Hz and 45.64 ms p95
+  source age for the one-by-four baseline versus 21.13 Hz and 66.03 ms for the
+  two-by-two lane; detection continuity fell from 99.14% to 98.09% and maximum
+  coordinate step rose from 0.0407 to 0.3447.
+
+- An isolated Adreno GPU delegate experiment remains non-production: the tested
+  MediaPipe Tasks graph was substantially slower than the proven CPU MediaPipe
+  Hands path. Version 0.4.0 ships no custom GPU runtime.
+
 ## [0.3.2-rc.8] - 2026-09-07
 
 Changes since rc.7: per-player movement reach, selectable latest/bounded native

@@ -19,7 +19,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from math import ceil
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from .diagnostic_trace import DiagnosticTrace
 
@@ -162,6 +162,8 @@ class _PreviewJob:
     label: str
     color: tuple[int, int, int]
     cv2: Any
+    overlay: dict
+    max_width: Optional[int]
 
 
 class LatestPreviewEncoder:
@@ -188,13 +190,15 @@ class LatestPreviewEncoder:
         label: str,
         color: tuple[int, int, int],
         cv2: Any,
+        overlay: Optional[dict] = None,
+        max_width: Optional[int] = None,
     ) -> bool:
         """Queue a preview, replacing pending work rather than delaying gameplay."""
         with self._lock:
             if self._closed:
                 return False
             self._submitted += 1
-        job = _PreviewJob(frame, label, color, cv2)
+        job = _PreviewJob(frame, label, color, cv2, dict(overlay or {}), max_width)
         try:
             self._jobs.put_nowait(job)
             return True
@@ -221,17 +225,55 @@ class LatestPreviewEncoder:
                 return
             started = time.monotonic()
             try:
+                frame = job.frame
+                height, width = frame.shape[:2]
+                if job.max_width and width > job.max_width:
+                    output_height = max(1, round(height * job.max_width / width))
+                    frame = job.cv2.resize(
+                        frame, (job.max_width, output_height),
+                        interpolation=job.cv2.INTER_AREA,
+                    )
+                    height, width = frame.shape[:2]
+                landmarks = job.overlay.get("landmarks", ())
+                for start, end in job.overlay.get("connections", ()):
+                    if start >= len(landmarks) or end >= len(landmarks):
+                        continue
+                    a, b = landmarks[start], landmarks[end]
+                    job.cv2.line(
+                        frame,
+                        (int(a[0] * width), int(a[1] * height)),
+                        (int(b[0] * width), int(b[1] * height)),
+                        (255, 180, 30), 2,
+                    )
+                for point in landmarks:
+                    job.cv2.circle(
+                        frame,
+                        (int(point[0] * width), int(point[1] * height)),
+                        3, (20, 255, 120), -1,
+                    )
+                top_label = job.overlay.get("label")
+                if top_label:
+                    job.cv2.putText(
+                        frame, top_label, (20, 32),
+                        job.cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 240, 100), 2,
+                    )
+                message = job.overlay.get("message")
+                if message:
+                    job.cv2.putText(
+                        frame, message, (20, 36),
+                        job.cv2.FONT_HERSHEY_SIMPLEX, 0.75, (30, 80, 255), 2,
+                    )
                 job.cv2.putText(
-                    job.frame,
+                    frame,
                     job.label,
-                    (20, job.frame.shape[0] - 24),
+                    (20, frame.shape[0] - 24),
                     job.cv2.FONT_HERSHEY_SIMPLEX,
                     0.65,
                     job.color,
                     2,
                 )
                 encoded, jpeg = job.cv2.imencode(
-                    ".jpg", job.frame, [job.cv2.IMWRITE_JPEG_QUALITY, 78]
+                    ".jpg", frame, [job.cv2.IMWRITE_JPEG_QUALITY, 78]
                 )
                 if encoded:
                     self._publish(jpeg.tobytes())

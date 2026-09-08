@@ -1,18 +1,22 @@
 POWERGLOVE VISION - FILE HIERARCHY AND CODE REVIEW MAP
 ===================================================
-Updated: September 6, 2026 (America/Toronto)
+Updated: September 7, 2026 (America/Toronto)
 Source: /Users/mathan/Developer/PowerGlove
-Snapshot: dev, version 0.3.2-dev, including the September 6 documentation and
-Setup follow-ups. Git history is the exact record of commits and prior maps.
+Snapshot: dev, version 0.4.0, including the native-movement efficiency,
+camera-rate, lightweight-preview, and Dashboard-statistics work. Git history is
+the exact record of commits and prior maps.
 This is a reading aid, not a claim of a completed code/security audit.
 
 CURRENT SYSTEM
 --------------
 The PowerGlove Vision Controller (Arduino UNO Q) captures the newest camera
-frame, runs MediaPipe Hands, applies player calibration and gesture settings,
+frame, runs MediaPipe Hands with the selected four-thread CPU baseline, applies
+player calibration and gesture settings,
 and transmits authenticated controller state. RetroPie publishes a virtual
 PowerGlove Vision gamepad and the latest native state. Neither path queues old
-movement samples. FCEUmm handles standard mappings and remains the explicit
+movement samples. Latest coordinate is the native X/Y default and guards only
+one contradictory or unusually distant non-forward result after a brief loss;
+ordinary tracking and strongly aligned forward recovery remain direct. FCEUmm handles standard mappings and remains the explicit
 Super Glove Ball fallback. lr-nestopia-powerglove supports native Super Glove
 Ball; a completed live game confirmed Start, continuous X/Y, release/throw,
 grab/catch, index-point fire, and fist-plus-forward Power Punch. Unused fields
@@ -44,8 +48,9 @@ TRACE THE RUNTIME
 -----------------
 python/main.py supervises the application, matrix, and worker lifecycle.
 src/powerglove_vision/control_server.py owns the always-available HTTP/HTTPS API.
-web_common.py, setup_web.py, player_web.py, academy_web.py, and help_content.py
-provide the shared page shell, Setup, players, Academy, and built-in guides.
+web_common.py, setup_web.py, player_web.py, academy_web.py, statistics_web.py,
+and help_content.py provide the shared page shell, Setup, players, optional
+browser-local statistics, Academy, and built-in guides.
 tracker.py -> gesture.py -> vision_app.py connects capture to recognized input.
 transport.py -> receiver.py -> native_state.py connects authenticated input to
 RetroPie gamepad/native publication. native/nestopia-powerglove holds the core
@@ -70,8 +75,9 @@ The cabinet-specific quick reference and this review map are not public payloads
 
 VALIDATION
 ----------
-Latest runtime checks: 375 unit tests run, one skipped; Chrome and WebKit pairing
-checks passed. Coverage includes delayed clicks, progress/errors, both methods,
+Latest runtime checks: 496 unit tests run, one expected Linux-specific skip;
+browser interaction checks include pairing, Academy, camera-rate, and optional
+statistics behavior. Coverage includes delayed clicks, progress/errors, both methods,
 expiry/retry, duplicate requests, matrix completion cleanup, and plain/old Setup
 URLs. The user confirmed successful live pairing and the subsequent matrix/URL
 fix. This does not replace fresh-device installation or physical latency tests.
@@ -81,7 +87,7 @@ state, tokens, passwords, active pairing codes, or raw camera recordings.
 
 COMPLETE SOURCE INVENTORY
 -------------------------
-366 Git-visible files (including pending additions).
+404 Git-visible files (including pending additions and generated PDF editions).
 .
 |-- .gitattributes
 |-- .github
@@ -426,6 +432,7 @@ COMPLETE SOURCE INVENTORY
 |       |-- retropie_hook.py
 |       |-- runtime_assets.py
 |       |-- setup_web.py
+|       |-- statistics_web.py
 |       |-- tracker.py
 |       |-- transport.py
 |       |-- tuning.py
@@ -438,6 +445,7 @@ COMPLETE SOURCE INVENTORY
 |-- tests
 |   |-- academy_controls_harness.mjs
 |   |-- browser_setup_pairing.py
+|   |-- browser_dashboard_statistics.py
 |   |-- test_academy_controls.py
 |   |-- test_academy_diagnostics.py
 |   |-- test_audit_regressions.py

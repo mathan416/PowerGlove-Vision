@@ -71,9 +71,10 @@ the PowerGlove Vision Controller matrix before entering the one-time PIN.
 
 ### Settings shown in the browser
 
-Setup groups **Connection and startup**, **Pair with RetroPie**, **Matrix attract
-mode**, **Controller and power**, and **Games**. Port, camera, and key replacement
-are under **Advanced connection settings**. Key replacement stops output and
+Setup groups **Controller status**, **Players**, **Matrix attract mode**,
+**Connection and startup**, **Pair with RetroPie**, **Games**, and **Show
+statistics**. Port, camera, camera rate, and key replacement are under
+**Advanced connection and camera settings**. Key replacement stops output and
 requires pairing again. A saved destination and key are not proof that RetroPie
 has received that key. **Check console address** verifies name resolution only.
 
@@ -92,6 +93,7 @@ from camera frames and controller packets, which remain newest-state-only.
 | Startup game profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
 | Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
 | Camera | `auto` | Prefer `auto`. Use a number from `0` through `99` only when automatic selection chooses the wrong capture device. |
+| Camera frame rate | Automatic | Tries 30 fps first, then accepts the camera driver's usable rate if necessary. Explicit 30- and 60-fps requests are available for comparison and fall back safely when unsupported. The live negotiated rate appears below the setting while tracking is active. |
 | Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
 
 Selecting **Save settings** validates the fields, writes them atomically with private
@@ -116,6 +118,12 @@ The Dashboard profile selector changes only the current active profile. It does
 not rewrite `device.json` or change the Setup page's startup profile. RetroPie
 may replace a Dashboard selection when a game starts or ends.
 
+**Show statistics** is a browser-local Dashboard preference, also available at
+the bottom of Setup. It is off by default and is stored in browser local storage,
+not `device.json`. When disabled, the Dashboard still polls basic state needed
+for controls and connection feedback but does not read, render, or retain the
+optional controller, axes, finger, performance, and recent-event fields.
+
 ### Comfortable movement range
 
 Native X/Y can map a player's comfortable left, right, up, and down positions to
@@ -129,9 +137,11 @@ All four zero (or omitted in older backups) use the original camera-boundary
 mapping. Otherwise all four must be finite numbers at least `0.05` and fit inside
 the image around that center. Player presets and version-2 hand-setup backups
 preserve them. New reach-bearing backups require reach-aware software on import.
-**Center hand clears the reach spans**; repeat reach calibration after recentering
-or changing the camera/playing position. Never reuse another camera setup's spans
-as universal defaults.
+**Center hand preserves valid reach spans** because neutral centering and
+comfortable travel are separate adjustments. If a new center would place an
+existing endpoint outside the camera image, the software safely returns to the
+full-field mapping. Review reach after moving the camera or changing playing
+position. Never reuse another camera setup's spans as universal defaults.
 
 For normal adjustment, open **Glove Academy → Tune gestures → Movement reach**.
 The four fields load the active player's exact saved spans, and the read-only
@@ -181,8 +191,9 @@ the native X/Y source. The Dashboard selector offers two response modes:
 - **Bounded speed curve** (`"native_xy_mode": "bounded"`) uses calibrated jitter
   and raw MediaPipe velocity to damp slow noise while progressively following
   deliberate movement. It never predicts or overshoots the measurement.
-- **Latest coordinate** (`"native_xy_mode": "latest"`) publishes the newest
-  mapped MediaPipe coordinate without coordinate smoothing.
+- **Latest coordinate** (`"native_xy_mode": "latest"`) is the production
+  default. It publishes the newest mapped MediaPipe coordinate without
+  coordinate smoothing during continuous tracking.
 
 Both modes validate landmark geometry and clamp the selected point to the
 active player's reach rectangle before mapping. Movement beyond an edge stays
@@ -210,20 +221,28 @@ up to the configured `loss_release_ms` (120 ms by default) to avoid an edge
 departure/re-entry jump. Buttons, fingers, Z, roll, and D-pad state release
 immediately during that hold. Continued loss, stale data, calibration changes,
 or profile changes neutralize native X/Y and clear both response modes' history.
-The first fresh recovered coordinate is authoritative and does not travel
-through the old held position.
+On recovery, Latest normally accepts the first fresh coordinate. If established
+motion is followed by one contradictory result, or the new point is unusually
+distant without being strongly aligned forward, it holds the last reliable X/Y
+for one fresh result. The next measurement is authoritative. This guard never
+predicts a position, modifies continuous tracking, or delays strongly aligned
+forward recovery.
 
-### Measured PowerGlove Vision Controller Kiyo Pro capture candidate
+### Selected camera and inference settings
 
-For the Kiyo Pro connected to the tested PowerGlove Vision Controller, the measured candidate keeps MJPEG
-640×480 at requested 60 fps, sets `"camera_buffers": 2`, and sets
-`"kiyo_hdr_off": true` in `data/device.json`. Restart the app after changing these
-settings. Direct worker equivalents are `--camera-buffers 2 --kiyo-hdr-off`.
-The existing inference-thread setting is retained. See the
-[capture comparison](direction-response-benchmark.md#uno-q-kiyo-pro-capture-comparison--september-6-2026)
-for delivered-frame and decode measurements; these are not gameplay-latency figures.
+The 0.4.0 baseline uses the complete 640×480 MJPEG image, four MediaPipe
+inference threads, a `0.40` tracking-confidence threshold, and Automatic camera
+rate. Automatic tries 30 fps first because live play felt smoother and more
+attached to the hand than the 60-fps request, then reopens the camera without a
+forced rate if it cannot produce frames. Setup can explicitly request 30 or 60
+fps for comparison and reports the negotiated rate while tracking is active.
+An unsupported explicit rate also falls back to the driver's usable choice.
 
-General defaults remain one buffer and no vendor control command. The HDR option
+The earlier Kiyo Pro capture experiment used two buffers and a volatile HDR-off
+command while requesting 60 fps. It remains useful historical evidence, but it
+is not the 0.4.0 general default. See the [capture comparison](direction-response-benchmark.md#uno-q-kiyo-pro-capture-comparison--september-6-2026).
+
+The general default remains one buffer and no vendor control command. The HDR option
 checks USB identity `1532:0e05`, sends only the volatile HDR-off command, and sets
 and verifies automatic exposure with dynamic frame rate disabled. It does not
 save settings onboard. Other camera models are left untouched. Control failure
@@ -239,21 +258,24 @@ Camera configuration is separate from player calibration and reach backups.
 
 ### Vision startup and timing
 
-Camera capture uses the complete 640×480 field of view at 60 fps. A dedicated
+Camera capture uses the complete 640×480 field of view. Automatic rate prefers
+30 fps with safe driver fallback. A dedicated
 capture thread continuously drains the camera and retains only its newest frame,
 so inference skips superseded images instead of building an input queue. The
 deployed worker explicitly selects **MediaPipe Hands**, whose stable
-command identifier is `legacy`, and lets each of its two inference stages use up to four CPU threads
-(`--inference-threads 4`). Thread-count benchmarking remains part of the 0.3.2
-performance work; more threads are not assumed to be faster on every device.
+command identifier is `legacy`, and lets each of its two inference stages use up
+to four CPU threads (`--inference-threads 4`). Matched live testing promoted four
+threads for the PowerGlove Vision Controller; the saved setting remains explicit
+so a future platform can be re-measured rather than assuming the same result.
 **MediaPipe Tasks Video (experimental)** remains available under the stable
 `tasks-video` identifier for controlled comparison.
 
 Camera-preview drawing and JPEG encoding run only while a browser is actively
 watching the Dashboard or Glove Academy stream. JPEG encoding runs on a separate
 latest-preview worker and is allowed to drop superseded preview jobs rather than
-delay another controller sample. Closing those pages avoids even that optional
-work. When a preview is open, submissions are limited to 5 fps
+delay another controller sample. During gameplay, normalized landmark drawing
+and JPEG encoding use a 320×240 copy after inference; Academy and tuning retain
+the full-size preview. Closing those pages avoids even that optional work. When a preview is open, submissions are limited to 5 fps
 (`--preview-fps 5`).
 
 The worker preloads OpenCV and MediaPipe on its background vision thread as
@@ -434,9 +456,19 @@ A typical device configuration file contains the following fields:
   "profile": "bad_street_brawler",
   "glove_color": "none",
   "camera": "auto",
+  "camera_fps": "auto",
+  "inference_threads": 4,
+  "tracking_confidence": 0.4,
+  "native_xy_mode": "latest",
   "matrix_attract": "on"
 }
 ```
+
+`camera_fps` is `auto`, `30`, or `60`; Automatic prefers 30 and then accepts a
+usable driver rate. `inference_threads` accepts 1, 2, or 4. The 0.4.0 baseline
+uses four threads and `tracking_confidence` 0.40. `native_xy_mode` is `latest`
+or `bounded`, with Latest as the production default. Setup preserves these
+measured fields when saving unrelated connection settings.
 
 `matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
 or `off` (four faint app/console/paired-console/Networking indicators). Change it using
@@ -1497,12 +1529,13 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--camera VALUE` | `auto` | Camera selection; use `auto` or a camera index. |
 | `--width PIXELS` | `640` | Requested capture width; the camera may negotiate another size. |
 | `--height PIXELS` | `480` | Requested capture height. |
-| `--fps NUMBER` | `60` | Requested capture rate; not a guarantee of tracking or game frame rate. |
+| `--fps NUMBER` | `0` (Automatic) | `0` tries 30 fps first and then accepts the driver-selected rate if necessary; explicit choices are 30 or 60. A requested rate is not a guarantee of effective tracking or game frame rate. |
 | `--camera-buffers NUMBER` | `1` | One or two capture buffers; the measured UNO Q Kiyo candidate uses two. |
 | `--kiyo-hdr-off` | Off | Identity-checked volatile Kiyo Pro HDR-off with automatic fixed-rate exposure. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
-| `--inference-threads NUMBER` | `2` | CPU threads requested for each MediaPipe Hands inference calculator; accepted values are 1, 2, and 4. The Controller supervisor passes its validated setting explicitly. Benchmark before changing. |
-| `--native-xy-mode VALUE` | `bounded` | Native Super Glove Ball response: `bounded` for the speed-sensitive curve or `latest` for direct newest coordinates. |
+| `--inference-threads NUMBER` | `4` | CPU threads requested for each MediaPipe Hands inference calculator; accepted values are 1, 2, and 4. The Controller supervisor passes its validated setting explicitly. Benchmark before changing. |
+| `--tracking-confidence NUMBER` | `0.40` | Minimum MediaPipe landmark-tracking confidence. The selected value reduced reacquisition tails in live testing; do not treat it as position confidence. |
+| `--native-xy-mode VALUE` | `latest` | Native Super Glove Ball response: `latest` for direct newest coordinates or `bounded` for the speed-sensitive comparison curve. |
 | `--motion-tracking` | Ignored | Hidden compatibility spelling retained for old launch scripts; optical flow is archived and this flag does not enable it. |
 | `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
 | `--preview-fps NUMBER` | `5` | Maximum rate at which optional browser preview jobs are submitted. |

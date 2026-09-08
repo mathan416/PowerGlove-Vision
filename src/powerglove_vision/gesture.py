@@ -108,6 +108,14 @@ class GestureConfig:
     motion_slow_follow: float = 0.55
     motion_full_speed: float = 2.50
     motion_follow_reference_ms: float = 100.0
+    # Latest-coordinate mode normally publishes MediaPipe verbatim. Following
+    # a brief dropout only, one contradictory or unusually distant result is
+    # held for confirmation instead of exposing a reacquisition jump.
+    native_recovery_max_ms: float = 250.0
+    native_recovery_min_step: float = 0.015
+    native_recovery_alignment: float = 0.50
+    native_recovery_max_jump: float = 0.25
+    native_recovery_forward_alignment: float = 0.90
     curl_on: float = 0.50
     curl_off: float = 0.35
     thumb_on: float = 0.38
@@ -325,6 +333,9 @@ class GestureEngine:
         self._motion_direction_y = 0
         self._motion_moving_x = False
         self._motion_moving_y = False
+        self._latest_history: deque[tuple[float, float, float]] = deque(maxlen=3)
+        self._latest_recovery_pending = False
+        self._latest_confirmation_pending = False
         self._push_was_active = False
         self._pull_was_active = False
         self._depth_history: deque[tuple[float, float]] = deque(maxlen=32)
@@ -378,7 +389,7 @@ class GestureEngine:
         self._filtered_palm_y = None
         self._reset_native_motion()
 
-    def _reset_native_motion(self) -> None:
+    def _reset_native_motion(self, keep_latest_recovery: bool = False) -> None:
         """Discard native curve history without changing recognition state."""
         self._motion_time = None
         self._motion_raw_x = self._motion_raw_y = None
@@ -386,6 +397,95 @@ class GestureEngine:
         self._motion_direction_x = self._motion_direction_y = 0
         self._motion_moving_x = self._motion_moving_y = False
         self._motion_settle_pending = False
+        if not keep_latest_recovery:
+            self._latest_history.clear()
+            self._latest_recovery_pending = False
+            self._latest_confirmation_pending = False
+
+    def _latest_point(
+        self, x: float, y: float, timestamp: float, reference: Calibration
+    ) -> tuple[float, float]:
+        """Publish Latest verbatim except for one ambiguous reacquisition hold."""
+        cfg = self.config
+        if self._latest_confirmation_pending:
+            # Two consecutive recovered measurements are enough to confirm a
+            # real reversal or a new location. Accept the newest one verbatim.
+            self._latest_confirmation_pending = False
+            self._latest_history.clear()
+            self._latest_history.append((timestamp, x, y))
+            return x, y
+        if not self._latest_recovery_pending:
+            self._latest_history.append((timestamp, x, y))
+            return x, y
+
+        history = tuple(self._latest_history)
+        self._latest_recovery_pending = False
+        self._latest_history.clear()
+        if not history:
+            self._latest_history.append((timestamp, x, y))
+            return x, y
+
+        last = history[-1]
+        reach_x = self._native_axis_reach("x", x - last[1], reference)
+        reach_y = self._native_axis_reach("y", y - last[2], reference)
+        recovered = ((x - last[1]) / reach_x, (y - last[2]) / reach_y)
+        recovered_size = math.hypot(*recovered)
+        unusually_distant = recovered_size > cfg.native_recovery_max_jump
+        if len(history) < 3:
+            if unusually_distant:
+                self._latest_confirmation_pending = True
+                self._latest_history.append(last)
+                return last[1], last[2]
+            self._latest_history.append((timestamp, x, y))
+            return x, y
+
+        first, middle, last = history
+        dt_first = middle[0] - first[0]
+        dt_last = last[0] - middle[0]
+        gap_ms = (timestamp - last[0]) * 1000
+        if (dt_first <= 0 or dt_last <= 0 or gap_ms < 0
+                or gap_ms > cfg.native_recovery_max_ms):
+            self._latest_history.append((timestamp, x, y))
+            return x, y
+
+        reach_x = self._native_axis_reach("x", last[1] - middle[1], reference)
+        reach_y = self._native_axis_reach("y", last[2] - middle[2], reference)
+        first_step = ((middle[1] - first[1]) / reach_x,
+                      (middle[2] - first[2]) / reach_y)
+        last_step = ((last[1] - middle[1]) / reach_x,
+                     (last[2] - middle[2]) / reach_y)
+        first_size = math.hypot(*first_step)
+        last_size = math.hypot(*last_step)
+        alignment = (
+            (first_step[0] * last_step[0] + first_step[1] * last_step[1])
+            / max(1e-9, first_size * last_size)
+        )
+        established = (
+            min(first_size, last_size) >= cfg.native_recovery_min_step
+            and alignment >= cfg.native_recovery_alignment
+        )
+        contradictory = False
+        aligned_forward = False
+        if established:
+            direction = (last_step[0] / last_size, last_step[1] / last_size)
+            recovered_forward = (
+                recovered[0] * direction[0] + recovered[1] * direction[1]
+            )
+            contradictory = recovered_forward < -cfg.native_recovery_min_step
+            aligned_forward = (
+                recovered_forward / max(1e-9, recovered_size)
+                >= cfg.native_recovery_forward_alignment
+            )
+        if not contradictory and (not unusually_distant or aligned_forward):
+            self._latest_history.append((timestamp, x, y))
+            return x, y
+
+        # Do not invent a forward position or expose the questionable result.
+        # Hold the last reliable coordinate for one result; the next fresh
+        # measurement confirms either continued travel or a real reversal.
+        self._latest_confirmation_pending = True
+        self._latest_history.append(last)
+        return last[1], last[2]
 
     @staticmethod
     def _smoothstep(value: float) -> float:
@@ -520,13 +620,28 @@ class GestureEngine:
         percentile_index = max(0, math.ceil(count * .95) - 1)
         noise_x = sorted(abs(item.palm_x - palm_x) / palm_scale for item in self._samples)[percentile_index]
         noise_y = sorted(abs(item.palm_y - palm_y) / palm_scale for item in self._samples)[percentile_index]
-        self.calibration = Calibration(
+        prior_reach = (
+            {name: getattr(self.calibration, name) for name in (
+                "reach_left", "reach_right", "reach_up", "reach_down"
+            )}
+            if self.calibration is not None else {}
+        )
+        candidate = Calibration(
             palm_x=palm_x,
             palm_y=palm_y,
             palm_scale=palm_scale,
             roll=math.atan2(sin_roll, cos_roll),
             noise_x=min(1.0, noise_x),
             noise_y=min(1.0, noise_y),
+            **prior_reach,
+        )
+        # Re-centering measures neutral pose and jitter; it must not silently
+        # discard a separately tuned comfortable reach. If the new centre made
+        # an old endpoint geometrically unsafe, fall back to the full-field
+        # mapping rather than persisting an invalid calibration.
+        self.calibration = candidate if candidate.valid_reach() else replace(
+            candidate, reach_left=0.0, reach_right=0.0,
+            reach_up=0.0, reach_down=0.0,
         )
         self._calibrating = False
         # The completed neutral sample seeds the short motion window without
@@ -656,7 +771,9 @@ class GestureEngine:
         single brief landmark dropout holds the last X/Y while releasing every
         action; sustained loss returns the native controller to neutral.
         ``bounded=False`` publishes each newest MediaPipe coordinate unchanged
-        for controlled comparison.
+        during normal tracking. After a brief loss only, one contradictory or
+        unusually distant reacquisition may hold the last reliable coordinate
+        until the next fresh result confirms the new position.
         """
         if self.profile != "super_glove_ball" or not self.calibrated:
             raise ValueError("native motion requires calibrated Super Glove Ball")
@@ -669,7 +786,11 @@ class GestureEngine:
                 # Hold the visible edge coordinate for this brief dropout, but
                 # discard its history so reacquisition begins at the first new
                 # clamped measurement rather than travelling from the held edge.
-                self._reset_native_motion()
+                if not bounded and len(self._latest_history) >= 3:
+                    self._latest_recovery_pending = True
+                    self._reset_native_motion(keep_latest_recovery=True)
+                else:
+                    self._reset_native_motion()
                 self._sequence += 1
                 axes = dict(self._last_state.axes)
                 axes["z"] = axes["roll"] = 0
@@ -731,6 +852,9 @@ class GestureEngine:
                 selected_x, selected_y, dt, reference
             )
         else:
+            selected_x, selected_y = self._latest_point(
+                selected_x, selected_y, observation.timestamp, reference
+            )
             self._motion_raw_x, self._motion_raw_y = selected_x, selected_y
             self._motion_anchor_x, self._motion_anchor_y = selected_x, selected_y
             self._motion_moving_x = self._motion_moving_y = False

@@ -55,6 +55,7 @@ class FakeJpeg:
 class FakeCv2:
     FONT_HERSHEY_SIMPLEX = 0
     IMWRITE_JPEG_QUALITY = 1
+    INTER_AREA = 3
 
     def __init__(self, encoded=b"jpeg"):
         self.encoded = encoded
@@ -62,6 +63,17 @@ class FakeCv2:
 
     def putText(self, frame, label, *_args):
         self.drawn.append((frame, label))
+
+    def line(self, frame, start, end, *_args):
+        self.drawn.append((frame, "line", start, end))
+
+    def circle(self, frame, center, *_args):
+        self.drawn.append((frame, "circle", center))
+
+    def resize(self, _frame, size, **_kwargs):
+        resized = SimpleNamespace(shape=(size[1], size[0], 3))
+        self.drawn.append((resized, "resize", size))
+        return resized
 
     def imencode(self, _extension, _frame, _options):
         return True, FakeJpeg(self.encoded)
@@ -200,6 +212,45 @@ class RealtimePipelineTests(unittest.TestCase):
             while encoder.metrics()["preview_error"] is None and time.monotonic() < deadline:
                 time.sleep(0.005)
             self.assertEqual(encoder.metrics()["preview_error"], "encode failed")
+        finally:
+            encoder.close()
+
+    def test_preview_encoder_draws_landmarks_off_the_gameplay_thread(self):
+        published = threading.Event()
+        encoder = LatestPreviewEncoder(lambda _payload: published.set())
+        cv2 = FakeCv2()
+        frame = SimpleNamespace(shape=(480, 640, 3))
+        overlay = {
+            "landmarks": [(0.25, 0.5), (0.75, 0.5)],
+            "connections": ((0, 1),),
+            "label": "Right 0.99",
+        }
+        try:
+            self.assertTrue(encoder.submit(
+                frame, "SUPER GLOVE BALL", (255, 255, 255), cv2, overlay
+            ))
+            self.assertTrue(published.wait(1))
+            self.assertIn((frame, "line", (160, 240), (480, 240)), cv2.drawn)
+            self.assertIn((frame, "circle", (160, 240)), cv2.drawn)
+            self.assertIn((frame, "Right 0.99"), cv2.drawn)
+        finally:
+            encoder.close()
+
+    def test_gameplay_preview_can_downscale_without_changing_normalized_overlay(self):
+        published = threading.Event()
+        encoder = LatestPreviewEncoder(lambda _payload: published.set())
+        cv2 = FakeCv2()
+        source = SimpleNamespace(shape=(480, 640, 3))
+        overlay = {"landmarks": [(0.5, 0.5)], "connections": ()}
+        try:
+            self.assertTrue(encoder.submit(
+                source, "SUPER GLOVE BALL", (255, 255, 255), cv2, overlay,
+                max_width=320,
+            ))
+            self.assertTrue(published.wait(1))
+            resized = next(item[0] for item in cv2.drawn if item[1] == "resize")
+            self.assertEqual(resized.shape, (240, 320, 3))
+            self.assertIn((resized, "circle", (160, 120)), cv2.drawn)
         finally:
             encoder.close()
 

@@ -12,6 +12,7 @@
 
 """Render Dashboard controls and live controller status."""
 
+from .statistics_web import STATISTICS_SCRIPT, STATISTICS_SWITCH
 from .web_common import _page, _profile_options, VISION_STARTUP_SCRIPT
 
 DASHBOARD = _page(
@@ -26,16 +27,17 @@ DASHBOARD = _page(
  <div class=card><div class=label>Controller delivery</div><div class=value id=receiver>Starting</div></div>
  <div class=card><label class=label for=native-xy-mode>Super Glove Ball movement</label><select class=profile-select id=native-xy-mode><option value=bounded>Bounded speed curve</option><option value=latest>Latest coordinate</option></select><div class=label id=native-xy-note style='margin-top:6px'>MediaPipe Hands</div></div>
 </div>
-<div class=dashboard-workspace><div><div class=camera-stage><img class=camera id=camera data-src=/stream alt='Live camera view'><div class=camera-idle id=camera-idle role=status>POWER GLOVE VISION<small>Gestures are paused. Select a profile to resume.</small></div></div>
+<div class=controls>""" + STATISTICS_SWITCH + """</div><p id=statistics-help class=label>Optional live diagnostics. When off, these details and recent events are not updated or collected by this page. Saved in this browser.</p>
+<div class='dashboard-workspace statistics-off' id=dashboard-workspace><div><div class=camera-stage><img class=camera id=camera data-src=/stream alt='Live camera view'><div class=camera-idle id=camera-idle role=status>POWER GLOVE VISION<small>Gestures are paused. Select a profile to resume.</small></div></div>
 <div class='controls dashboard-controls'><button id=center>Center hand</button><button id=controller-toggle>Start controller</button><a class=button href=/setup>Connection</a><button class=danger id=shutdown-system>Shutdown</button></div><p id=center-guidance role=status></p><div class=notice id=dashboard-notice role=status aria-live=polite></div></div>
-<div class=diagnostic-grid>
+<div class=diagnostic-grid id=dashboard-statistics hidden>
  <section class=card><h2>Controller output</h2><div class=label>Directions</div><div class=bits id=dpad></div><div class=label style='margin-top:14px'>Buttons</div><div class=bits id=buttons></div></section>
  <section class=card><h2>Axes</h2><div id=axes></div></section>
  <section class=card><h2>Finger curl</h2><div id=fingers></div></section>
  <section class=card><h2>Performance</h2><div id=performance>Waiting for samples…</div></section>
  <section class='card events-card'><h2>Recent events</h2><div class=events id=events><div>Waiting for tracker…</div></div></section>
 </div></div>""",
-    VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
+    STATISTICS_SCRIPT + VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
 function buttonText(b,text){if(b.textContent!==text)b.textContent=text;}
 let controllerBusy=false;
 let calibrationPending=false,calibrationSeen=false,calibrationStarted=0,calibrationDoneUntil=0;
@@ -48,7 +50,10 @@ async function calibrate(){if(calibrationPending)return;calibrationPending=true;
 const bits=(id,obj)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<span class="bit ${v?'on':''}">${k.toUpperCase()}</span>`).join('')||'<span class=bit>None</span>'};
 const bars=(id,obj,max=32767)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<div class=label>${k}: ${v}</div><div class=meter><i style="width:${Math.min(100,Math.abs(v)/max*100)}%"></i></div>`).join('')||'—'};
 const performance=s=>{const p=s.performance||{},inference=p.inference_ms||{},age=p.capture_age_ms||{},sample=p.sample_age_ms||{},transition=p.controller_transition_age_ms||{},mode=s.native_xy_mode==='latest'?'Latest coordinate':'Bounded speed curve',source=s.native_xy_source==='mediapipe'?`MediaPipe — ${mode}`:'Inactive';return [`Model: ${s.tracker_backend_label||s.tracker_backend||'—'}`,`Native X/Y: ${source}`,`Inference: ${s.inference_hz??'—'} Hz`,`Inference p50 / p95: ${inference.p50??'—'} / ${inference.p95??'—'} ms`,`Camera read → send p50 / p95: ${sample.p50??'—'} / ${sample.p95??'—'} ms`,`Changed control → send p50 / p95: ${transition.p50??'—'} / ${transition.p95??'—'} ms`,`Frame waiting before inference p50 / p95: ${age.p50??'—'} / ${age.p95??'—'} ms`,`Superseded camera frames: ${s.capture_skipped_total??0}`,`Preview encode: ${s.preview_encode_ms??'—'} ms`].map(x=>`<div class=label style="margin:5px 0">${x}</div>`).join('')};
-let seen=[],switching=false,desiredProfile='',nativeSwitching=false; async function update(){try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
+let seen=[],switching=false,desiredProfile='',nativeSwitching=false;
+function displayStatistics(){const enabled=window.dashboardStatisticsEnabled();$('dashboard-statistics').hidden=!enabled;$('dashboard-workspace').classList.toggle('statistics-off',!enabled);if(!enabled){seen=[];for(const id of ['dpad','buttons','axes','fingers','performance','events'])$(id).textContent='';}}
+window.addEventListener('statisticschange',displayStatistics);displayStatistics();
+async function update(){if(document.hidden)return;try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
 $('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||ready?'good':'warn'));
 if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
 const nativeMode=s.native_xy_mode==='latest'?'latest':'bounded';if(nativeSwitching&&$('native-xy-mode').value===nativeMode){nativeSwitching=false;$('native-xy-mode').disabled=false}if(!nativeSwitching)$('native-xy-mode').value=nativeMode;$('native-xy-note').textContent=nativeMode==='latest'?'No coordinate smoothing':'Speed-sensitive smoothing';
@@ -58,8 +63,8 @@ $('receiver').textContent=!s.connection_configured?'Set up Connection':s.control
 buttonText($('controller-toggle'),controllerBusy?'Please wait…':s.controller_enabled?'Stop controller':'Start controller'); $('controller-toggle').className=s.controller_enabled?'danger':''; $('controller-toggle').dataset.enabled=s.controller_enabled?'true':'false'; $('controller-toggle').disabled=controllerBusy||!s.connection_configured; $('controller-toggle').title=s.connection_configured?'':'Configure your RetroPie destination in Connection first';
 const player=s.player||{},selected=(player.players||[]).find(p=>p.id===player.active);$('center-guidance').textContent=player.needs_center?`Center your hand for ${selected?selected.name:'the selected player'} before starting controls. Hold a relaxed open hand at your normal playing position and select the centering button.`:'';
 $('tracking').textContent=starting?'Starting…':idle?'Paused':(s.calibrating?'Centering — hold still':(s.detected?`${Math.round((s.confidence||0)*100)}% confidence`:'Show your hand')); $('confidence').style.width=`${Math.round((s.confidence||0)*100)}%`;
-bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);$('performance').innerHTML=performance(s);
-for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length)$('events').innerHTML=seen.map(x=>`<div>${x}</div>`).join('');
+if(window.dashboardStatisticsEnabled()&&!document.hidden){bits('dpad',s.dpad);bits('buttons',s.buttons);bars('axes',s.axes);bars('fingers',s.fingers,2);$('performance').innerHTML=performance(s);
+for(const event of (s.events||[])) seen.unshift(`${new Date().toLocaleTimeString()}  ${event}`);seen=seen.slice(0,30);if(seen.length){const rows=seen.map(text=>{const row=document.createElement('div');row.textContent=text;return row});$('events').replaceChildren(...rows);}}
 }catch(e){$('system').textContent='Dashboard disconnected';$('system').className='value bad'}}
 fetch('/api/practice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:false,reset:true})}).finally(update);setInterval(update,250);
 $('center').onclick=calibrate;

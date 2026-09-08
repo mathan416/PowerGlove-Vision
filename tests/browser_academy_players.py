@@ -25,7 +25,7 @@ async def main():
    """Serve isolated Academy requests with a delayed player selection."""
    path=r.request.url.split('test')[-1]
    if path in ('/learn','/dashboard','/setup'):return await r.fulfill(body={'/learn':LEARN,'/dashboard':DASHBOARD,'/setup':SETUP}[path],content_type='text/html')
-   if path=='/api/config':return await r.fulfill(json=dict(receiver='console.local',port=55355,profile='off',glove_color='none',camera='auto',matrix_attract='on'))
+   if path=='/api/config':return await r.fulfill(json=dict(receiver='console.local',port=55355,profile='off',glove_color='none',camera='auto',camera_fps='auto',matrix_attract='on'))
    if path=='/api/games':return await r.fulfill(json=dict(document='{"games":{}}',revision='test',profiles=[],has_backup=False))
    if path=='/api/connection-status':return await r.fulfill(json={})
    if path=='/api/players':

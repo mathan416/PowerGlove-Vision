@@ -11,23 +11,29 @@ displays, T, L, or gesture recognition. The setting saves without a tracker rest
 
 For an existing installation, this update changes controller transport on both computers. Stop controller output, update both to matching software, then start and test input. Mixed old/new versions do not deliver input with the default settings. See [signed controller transport and upgrades](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) for staged upgrades and rollback.
 
-## Install this release candidate
+## Install version 0.4.0
 
-To test **v0.3.2-rc.7**, close games and stop controller output, then run the matching command on each device. These explicit commands select the candidate; the normal commands later in this guide select the latest stable release.
+After **v0.4.0** is published, close games and stop controller output, then run
+the matching command on each device. These explicit commands select 0.4.0; the
+normal commands later in this guide select the latest stable release.
 
 On the PowerGlove Vision Controller:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.7/install-uno-q.sh && bash install-uno-q.sh --version v0.3.2-rc.7
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0/install-uno-q.sh && bash install-uno-q.sh --version v0.4.0
 ```
 
 On RetroPie:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.3.2-rc.7/install-retropie.sh && bash install-retropie.sh --version v0.3.2-rc.7
+curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0/install-retropie.sh && bash install-retropie.sh --version v0.4.0
 ```
 
-Verify both report the same candidate, then follow the pairing/first-game checks below. Existing hand settings and pairing files are preserved. The Controller installer also updates the matrix firmware. Review [coordinated transport upgrades and rollback](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) before replacing an older installation. Candidate testing still needs live gameplay, stationary-jitter, and camera-to-display latency checks; see the [changelog](CHANGELOG.md).
+Verify both report `v0.4.0`, then follow the pairing/first-game checks below.
+Existing hand settings and pairing files are preserved. The Controller installer
+also updates the matrix firmware. Review [coordinated transport upgrades and
+rollback](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades)
+before replacing an older installation.
 
 ## 1. Prepare your devices
 
@@ -222,16 +228,26 @@ For Super Glove Ball testing, enter RetroPie's launch menu while starting the
 ROM and choose either `lr-fceumm` or `lr-nestopia-powerglove`. FCEUmm uses the
 ordinary D-pad and buttons for the whole session. The native core uses absolute
 X/Y/Z plus open-hand, fist, and index-point packets. On Dashboard, compare
-**Latest coordinate** with **Bounded speed curve**; both use MediaPipe Hands and
+**Latest coordinate** is the tested default; **Bounded speed curve** remains a
+comparison option. Both use MediaPipe Hands and
 the same saved center and reach. Both validate the palm geometry and clamp it to
 that reach before mapping, so movement beyond an edge stays at the edge and a
-recovered hand starts from its first fresh coordinate. Adjust native travel separately under **Glove
+recovered hand normally starts from its first fresh coordinate. Latest holds
+only a contradictory or unusually distant non-forward reacquisition for one
+additional fresh result. Adjust native travel separately under **Glove
 Academy → Tune gestures → Movement reach**. Full-game cabinet play has
 confirmed grab/throw, index fire, and fist-plus-forward Power Punch. Continuous
 movement is playable, with further latency refinement still planned. Wrist
 rotation and remaining unused native packet fields stay neutral. Shared recognition remains
 available to every FCEUmm profile. A per-ROM selection
 is remembered, so choose FCEUmm again whenever you want the complete fallback.
+
+Setup → **Advanced connection and camera settings** offers Automatic, 30 fps,
+and 60 fps. Automatic is the 0.4.0 default: it tries the tested 30-fps path and
+then accepts the camera driver's usable rate if necessary. The active rate is
+shown while tracking runs. Other UVC cameras do not need to support both explicit
+rates. Dashboard's optional **Show statistics** switch is off by default; leave
+it off for the lightest gameplay page and enable it only when reading diagnostics.
 
 
 ## 6. Confirm startup and finish

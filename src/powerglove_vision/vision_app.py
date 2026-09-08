@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import math
 import signal
 import sys
 import time
@@ -130,7 +131,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--camera", default="auto", help="camera index, or 'auto'")
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
-    parser.add_argument("--fps", type=int, default=60)
+    parser.add_argument(
+        "--fps", type=int, choices=(0, 30, 60), default=0,
+        help="camera rate; 0 automatically prefers 30 fps with driver fallback",
+    )
     parser.add_argument("--camera-buffers", type=int, choices=(1, 2), default=1,
                         help="V4L2 capture buffers; measured UNO Q candidate uses two")
     parser.add_argument("--kiyo-hdr-off", action="store_true",
@@ -140,8 +144,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="requested V4L2 pixel format for controlled capture benchmarks",
     )
     parser.add_argument(
-        "--inference-threads", type=int, choices=(1, 2, 4), default=2,
+        "--inference-threads", type=int, choices=(1, 2, 4), default=4,
         help="CPU threads for the legacy MediaPipe inference calculators",
+    )
+    parser.add_argument(
+        "--tracking-confidence", type=float, default=.40,
+        help="minimum MediaPipe landmark-tracking confidence",
     )
     parser.add_argument(
         "--tracker-backend", choices=("legacy", "tasks-video"), default="legacy",
@@ -153,7 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="maximum diagnostic camera-preview rate",
     )
     parser.add_argument(
-        "--native-xy-mode", choices=("bounded", "latest"), default="bounded",
+        "--native-xy-mode", choices=("bounded", "latest"), default="latest",
         help="native Super Glove Ball X/Y response: bounded curve or newest coordinate",
     )
     parser.add_argument("--motion-tracking", action="store_true", help=argparse.SUPPRESS)
@@ -174,6 +182,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _camera_rate_attempts(fps: int) -> tuple[int | None, ...]:
+    """Try the preferred/requested rate, then allow the driver to choose."""
+    return (30 if fps == 0 else fps, None)
+
+
 def _open_camera(args: argparse.Namespace):
     """Open and warm the selected UVC camera only when gestures are active."""
     started = time.monotonic()
@@ -185,7 +198,6 @@ def _open_camera(args: argparse.Namespace):
 
     for camera_device in candidates:
         backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
-        started = time.monotonic()
         kiyo_applied = False
         camera_control_error = None
         if getattr(args, "kiyo_hdr_off", False):
@@ -195,43 +207,55 @@ def _open_camera(args: argparse.Namespace):
             except (OSError, ValueError, RuntimeError) as exc:
                 camera_control_error = str(exc)
                 print(f"Camera controls unavailable: {exc}", file=sys.stderr, flush=True)
-        candidate = cv2.VideoCapture(camera_device, backend)
-        log_startup_stage("camera open", started)
-        started = time.monotonic()
-        candidate.set(
-            cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*args.camera_format)
-        )
-        candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
-        candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
-        candidate.set(cv2.CAP_PROP_FPS, args.fps)
-        requested_buffers = getattr(args, "camera_buffers", 1)
-        buffers_accepted = candidate.set(cv2.CAP_PROP_BUFFERSIZE, requested_buffers)
-        log_startup_stage("camera settings", started)
-        started = time.monotonic()
-        warmup_deadline = time.monotonic() + 5.0
-        while candidate.isOpened() and time.monotonic() < warmup_deadline:
-            ok, _frame = candidate.read()
-            if ok:
-                log_startup_stage("first camera frame", started)
-                fourcc = int(candidate.get(cv2.CAP_PROP_FOURCC))
-                negotiated_format = "".join(
-                    chr((fourcc >> (8 * index)) & 0xFF) for index in range(4)
-                ).rstrip("\x00")
-                metadata = {
-                    "camera_format": negotiated_format or args.camera_format,
-                    "camera_width": round(candidate.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                    "camera_height": round(candidate.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-                    "camera_fps": round(candidate.get(cv2.CAP_PROP_FPS), 1),
-                    "camera_buffers_requested": requested_buffers,
-                    "camera_buffers": candidate.get(cv2.CAP_PROP_BUFFERSIZE),
-                    "camera_buffers_accepted": buffers_accepted,
-                    "camera_hdr_off_requested": getattr(args, "kiyo_hdr_off", False),
-                    "camera_hdr_off_command_sent": kiyo_applied,
-                    "camera_control_error": camera_control_error,
-                }
-                return cv2, LatestFrameCapture(candidate, _frame, metadata=metadata)
-            time.sleep(0.1)
-        candidate.release()
+        # Automatic mode prefers the measured 30 fps path. If that prevents a
+        # camera from producing frames, reopen it without forcing a rate and
+        # accept the driver's native choice.
+        rate_attempts = _camera_rate_attempts(args.fps)
+        for requested_rate in rate_attempts:
+            started = time.monotonic()
+            candidate = cv2.VideoCapture(camera_device, backend)
+            log_startup_stage("camera open", started)
+            started = time.monotonic()
+            candidate.set(
+                cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*args.camera_format)
+            )
+            candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+            candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+            rate_accepted = (
+                candidate.set(cv2.CAP_PROP_FPS, requested_rate)
+                if requested_rate is not None else None
+            )
+            requested_buffers = getattr(args, "camera_buffers", 1)
+            buffers_accepted = candidate.set(cv2.CAP_PROP_BUFFERSIZE, requested_buffers)
+            log_startup_stage("camera settings", started)
+            started = time.monotonic()
+            warmup_deadline = time.monotonic() + 5.0
+            while candidate.isOpened() and time.monotonic() < warmup_deadline:
+                ok, _frame = candidate.read()
+                if ok:
+                    log_startup_stage("first camera frame", started)
+                    fourcc = int(candidate.get(cv2.CAP_PROP_FOURCC))
+                    negotiated_format = "".join(
+                        chr((fourcc >> (8 * index)) & 0xFF) for index in range(4)
+                    ).rstrip("\x00")
+                    metadata = {
+                        "camera_format": negotiated_format or args.camera_format,
+                        "camera_width": round(candidate.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                        "camera_height": round(candidate.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                        "camera_fps_requested": "auto" if args.fps == 0 else args.fps,
+                        "camera_fps_preferred": requested_rate,
+                        "camera_fps_request_accepted": rate_accepted,
+                        "camera_fps": round(candidate.get(cv2.CAP_PROP_FPS), 1),
+                        "camera_buffers_requested": requested_buffers,
+                        "camera_buffers": candidate.get(cv2.CAP_PROP_BUFFERSIZE),
+                        "camera_buffers_accepted": buffers_accepted,
+                        "camera_hdr_off_requested": getattr(args, "kiyo_hdr_off", False),
+                        "camera_hdr_off_command_sent": kiyo_applied,
+                        "camera_control_error": camera_control_error,
+                    }
+                    return cv2, LatestFrameCapture(candidate, _frame, metadata=metadata)
+                time.sleep(0.1)
+            candidate.release()
     raise CameraUnavailableError(f"camera '{args.camera}' is unavailable; waiting for a USB camera")
 
 
@@ -302,6 +326,7 @@ def _prepare_vision(args):
             mirror=not args.no_mirror,
             model_path=model_path,
             inference_threads=args.inference_threads,
+            tracking_confidence=args.tracking_confidence,
             backend=args.tracker_backend,
         )
         log_startup_stage("preparation total", preparation_started)
@@ -337,7 +362,7 @@ def _native_xy_source(active: bool) -> str:
 
 def _update_controller_state(
     engine: GestureEngine, result, native_xy_active: bool,
-    native_xy_mode: str = "bounded",
+    native_xy_mode: str = "latest",
 ):
     """Route native X/Y through the selected MediaPipe response lane."""
     if not native_xy_active:
@@ -349,6 +374,23 @@ def _update_controller_state(
         ),
         _native_xy_source(True),
     )
+
+
+def _native_trace_fields(engine: GestureEngine, result, active: bool) -> dict:
+    """Expose finite, non-biometric evidence for native reacquisition analysis."""
+    observation = result.observation
+    observed_xy = None
+    if observation.detected and all(
+        math.isfinite(value) for value in (observation.palm_x, observation.palm_y)
+    ):
+        observed_xy = [observation.palm_x, observation.palm_y]
+    return {
+        "observation_detected": bool(observation.detected),
+        "observed_xy": observed_xy,
+        "native_xy_active": bool(active),
+        "latest_recovery_pending": bool(engine._latest_recovery_pending),
+        "latest_confirmation_pending": bool(engine._latest_confirmation_pending),
+    }
 
 
 def _launch_guard_active(deadline: float, now: float | None = None) -> bool:
@@ -750,6 +792,7 @@ def main() -> int:
                     sent=receiver_available, detected=state.detected, calibrated=state.calibrated,
                     native_xy_source=native_source,
                     native_xy_mode=args.native_xy_mode,
+                    **_native_trace_fields(engine, result, native_xy_active),
                     motion=result.motion_trace if motion_mode else None,
                     filtered_xy=[engine._filtered_palm_x, engine._filtered_palm_y] if state.detected else None,
                     smoothing={"minimum": engine.config.coordinate_smoothing_min,
@@ -905,6 +948,8 @@ def main() -> int:
                 ),
                 (0, 210, 255) if engine is not None and not engine.calibrated else (255, 255, 255),
                 cv2,
+                result.preview_overlay,
+                None if practice_mode or tuning_active else 320,
             )
     except KeyboardInterrupt:
         matrix.set_status(MatrixStatus.OFF)

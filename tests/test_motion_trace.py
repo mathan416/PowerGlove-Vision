@@ -54,6 +54,30 @@ class MotionTraceTests(unittest.TestCase):
         self.assertEqual(result["valid_events"], 1)
         self.assertEqual(result["tracking_losses"], 1)
 
+    def test_analyzes_mediapipe_latest_and_counts_recovery_hold(self):
+        events = [
+            {"event": "vision", "capture_ns": 1, "detected": True,
+             "observation_detected": True, "observed_xy": [.50, .50],
+             "filtered_xy": [.50, .50]},
+            {"event": "vision", "capture_ns": 2, "detected": True,
+             "observation_detected": False, "observed_xy": None,
+             "filtered_xy": [.50, .50], "latest_recovery_pending": True},
+            {"event": "vision", "capture_ns": 3, "detected": True,
+             "observation_detected": True, "observed_xy": [.70, .50],
+             "filtered_xy": [.50, .50], "latest_confirmation_pending": True},
+            {"event": "vision", "capture_ns": 4, "detected": True,
+             "observation_detected": True, "observed_xy": [.68, .50],
+             "filtered_xy": [.68, .50]},
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "trace.json"
+            path.write_text(json.dumps({"events": events, "dropped": 0}))
+            result = MODULE.analyze(path)
+        self.assertEqual(result["valid_events"], 3)
+        self.assertEqual(result["observation_losses"], 1)
+        self.assertEqual(result["latest_recovery_holds"], 1)
+        self.assertEqual(result["selected_filtered_error_x"]["max"], .2)
+
 
 if __name__ == "__main__":
     unittest.main()

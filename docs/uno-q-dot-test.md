@@ -11,9 +11,10 @@ UNO Q camera → existing MediaPipe / mapping / reach calibration
 
 The receiver's 64-byte PGV1 publication matches the installed core. The normal
 RetroPie hook selects Super Glove Ball by the content name, independently of
-emulator choice, and renews the UNO game session while RetroArch runs. The dot
-ignores the ROM. Keep the existing synchronous MediaPipe path as the baseline;
-do not enable experimental X/Y tracking for the initial comparison.
+emulator choice, and renews the Controller game session while RetroArch runs.
+The dot ignores the ROM. Keep the 0.4.0 MediaPipe **Latest coordinate** default
+for the initial comparison; use **Bounded speed curve** only for a separately
+labelled comparison run.
 
 ## Run the optional test
 

@@ -56,19 +56,25 @@ def analyze(path):
     """Analyze one saved motion trace without modifying or replaying it."""
     report = json.loads(Path(path).read_text())
     events = [e for e in report.get("events", []) if e.get("event") == "vision"]
-    valid = [e for e in events if e.get("detected") and e.get("motion", {}).get("selected_xy")
-             and e.get("filtered_xy")]
+
+    def selected_xy(event):
+        """Return the live or historical selected coordinate for one event."""
+        motion = event.get("motion") or {}
+        return motion.get("selected_xy") or event.get("observed_xy")
+
+    valid = [e for e in events if e.get("observation_detected", e.get("detected"))
+             and selected_xy(e) and e.get("filtered_xy")]
     changes = []
     for index, (previous, current) in enumerate(zip(valid, valid[1:]), 1):
-        old = previous["motion"]["selected_xy"]
-        new = current["motion"]["selected_xy"]
+        old = selected_xy(previous)
+        new = selected_xy(current)
         delta = math.hypot(new[0] - old[0], new[1] - old[1])
         if delta == 0:
             continue
         target = new
         settled = None
         for later in valid[index:]:
-            selected = later["motion"]["selected_xy"]
+            selected = selected_xy(later)
             filtered = later["filtered_xy"]
             if math.hypot(selected[0] - target[0], selected[1] - target[1]) > delta * .25:
                 break
@@ -77,8 +83,8 @@ def analyze(path):
                 break
         changes.append({"class": classify(delta), "delta": delta, "settled_ms": settled})
 
-    error_x = [abs(e["motion"]["selected_xy"][0] - e["filtered_xy"][0]) for e in valid]
-    error_y = [abs(e["motion"]["selected_xy"][1] - e["filtered_xy"][1]) for e in valid]
+    error_x = [abs(selected_xy(e)[0] - e["filtered_xy"][0]) for e in valid]
+    error_y = [abs(selected_xy(e)[1] - e["filtered_xy"][1]) for e in valid]
     source_ages = []
     for e in events:
         motion = e.get("motion") or {}
@@ -88,6 +94,16 @@ def analyze(path):
     fallback = Counter((e.get("motion") or {}).get("fallback_reason") for e in events)
     losses = sum(bool(a.get("detected")) and not bool(b.get("detected"))
                  for a, b in zip(events, events[1:]))
+    observation_losses = sum(
+        bool(a.get("observation_detected", a.get("detected")))
+        and not bool(b.get("observation_detected", b.get("detected")))
+        for a, b in zip(events, events[1:])
+    )
+    recovery_holds = sum(
+        bool(event.get("observation_detected"))
+        and bool(event.get("latest_confirmation_pending"))
+        for event in events
+    )
     classes = {}
     for name in ("small", "medium", "large"):
         rows = [r for r in changes if r["class"] == name]
@@ -97,7 +113,9 @@ def analyze(path):
     return {"path": str(path), "trace_dropped": report.get("dropped", 0),
             "vision_events": len(events), "valid_events": len(valid),
             "valid_percent": round(100 * len(valid) / len(events), 2) if events else None,
-            "tracking_losses": losses, "fallback_reasons": dict(fallback),
+            "tracking_losses": losses, "observation_losses": observation_losses,
+            "latest_recovery_holds": recovery_holds,
+            "fallback_reasons": dict(fallback),
             "recognition_source_age_ms": summary(source_ages),
             "selected_filtered_error_x": summary(error_x),
             "selected_filtered_error_y": summary(error_y),

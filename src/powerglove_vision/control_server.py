@@ -48,6 +48,7 @@ from .game_registry import registry_request, validate_document, MAX_REQUEST
 from .play_game import PLAY_CONTENT, PLAY_SCRIPT, PLAY_STYLE
 from .setup_web import SETUP_CONTENT, SETUP_SCRIPT
 from .games_web import GAMES_CONTENT, GAMES_SCRIPT
+from .statistics_web import STATISTICS_CONTENT, STATISTICS_SCRIPT
 from .web_common import _page, _profile_options, PROFILE_LABELS, VISION_STARTUP_SCRIPT
 from .dashboard_web import DASHBOARD
 from .academy_web import LEARN
@@ -69,6 +70,21 @@ PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
     *(f"program_{letter}" for letter in "abcdefghi"),
 }
+
+
+def _camera_fps(value: Any, *, strict: bool = False) -> str | int:
+    """Normalize the portable camera-rate preference without accepting booleans."""
+    if value == "auto":
+        return "auto"
+    if type(value) is int and value in (30, 60):
+        return value
+    if isinstance(value, str) and value in ("30", "60"):
+        return int(value)
+    if strict:
+        raise ValueError("Choose Automatic, 30 fps, or 60 fps for the camera rate.")
+    return "auto"
+
+
 class ForbiddenActionError(Exception):
     """Raised when a sensitive browser action lacks its CSRF safeguard."""
 
@@ -82,8 +98,8 @@ PLAY = _page(
 
 SETUP = _page("Setup", SETUP_CONTENT.replace("{{PROFILE_OPTIONS}}", _profile_options()), SETUP_SCRIPT)
 
-SETUP = SETUP.replace(b'</main>', GAMES_CONTENT.encode() + b'</main>', 1)
-SETUP = SETUP.replace(b'</body>', b'<script>' + GAMES_SCRIPT.encode() + b'</script></body>', 1)
+SETUP = SETUP.replace(b'</main>', (GAMES_CONTENT + STATISTICS_CONTENT).encode() + b'</main>', 1)
+SETUP = SETUP.replace(b'</body>', b'<script>' + (GAMES_SCRIPT + '\n' + STATISTICS_SCRIPT).encode() + b'</script></body>', 1)
 
 
 def help_index_page() -> bytes:
@@ -353,8 +369,9 @@ class ControlState:
             "profile": config.get("profile", "bad_street_brawler"),
             "glove_color": config.get("glove_color", "none"),
             "camera": str(config.get("camera", "auto")),
+            "camera_fps": _camera_fps(config.get("camera_fps", "auto")),
             "matrix_attract": config.get("matrix_attract", "on"),
-            "native_xy_mode": config.get("native_xy_mode", "bounded"),
+            "native_xy_mode": config.get("native_xy_mode", "latest"),
             "paired": bool(config.get("receiver") and config.get("token")),
             "connection_configured": bool(str(config.get("receiver", "")).strip() and config.get("token")),
             "controller_enabled": self.controller_enabled(),
@@ -420,10 +437,21 @@ class ControlState:
         if camera != "auto" and (not camera.isdigit() or int(camera) > 99):
             raise ValueError("Camera must be 'auto' or a camera number.")
         current = self.load_config()
+        camera_fps = _camera_fps(
+            incoming.get("camera_fps", current.get("camera_fps", "auto")),
+            strict=True,
+        )
         token = secrets.token_urlsafe(24) if incoming.get("rotate_token") else current.get("token")
         if not token:
             token = secrets.token_urlsafe(24)
-        saved = {"receiver": receiver, "port": port, "token": token, "profile": profile, "glove_color": glove_color, "camera": camera, "matrix_attract": current.get("matrix_attract", "on"), "native_xy_mode": current.get("native_xy_mode", "bounded")}
+        saved = dict(current)
+        saved.update({
+            "receiver": receiver, "port": port, "token": token,
+            "profile": profile, "glove_color": glove_color,
+            "camera": camera, "camera_fps": camera_fps,
+            "matrix_attract": current.get("matrix_attract", "on"),
+            "native_xy_mode": current.get("native_xy_mode", "latest"),
+        })
         from .game_registry import atomic_write
         atomic_write(self.config_path, json.dumps(saved, indent=2) + "\n")
         if not receiver or incoming.get("rotate_token"):

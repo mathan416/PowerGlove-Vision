@@ -4,5 +4,9 @@
   "profile": "bad_street_brawler",
   "glove_color": "none",
   "camera": "auto",
+  "camera_fps": "auto",
+  "inference_threads": 4,
+  "tracking_confidence": 0.4,
+  "native_xy_mode": "latest",
   "matrix_attract": "on"
 }

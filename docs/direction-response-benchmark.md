@@ -203,11 +203,12 @@ inference time and exceeded the gameplay latency target decisively. The
 512×384 resize did not improve p95 by the required 15%; it increased neutral
 false activations and weakened roll recognition. Thread count did not change
 recognition, and no alternative produced a consistent qualifying latency gain.
-No replay alternative met the 15% promotion threshold. The deployed choice
-therefore remains **MediaPipe Hands** at 640×480 with two explicitly selected
-inference threads; the four-thread replay result remains comparative evidence,
-not a promoted default. Preview encoding at that size measured about 9.6 ms
-p95 and did not materially increase inference p95.
+No replay alternative met the 15% promotion threshold in that early clip.
+Subsequent matched live gameplay did promote **MediaPipe Hands** at 640×480 with
+four explicitly selected inference threads for 0.4.0. That later selection also
+uses a `0.40` tracking-confidence threshold and a 30-fps-first camera policy.
+Preview encoding at full size measured about 9.6 ms p95 in this historical run;
+0.4.0 moves gameplay annotation and 320×240 encoding off the inference thread.
 
 The replay deliberately saturates inference and produced higher tail latency
 than real-time capture. The live steady-state p95 measurements above remain the
@@ -637,10 +638,12 @@ failed reads.
 
 The 480p/two-buffer/HDR-off candidate delivered 59.71 and 59.76 fps. Increasing
 to 720p cost more decoding time and produced 52.43 and 55.20 fps with longer tails.
-The selected UNO Q candidate therefore retains 640×480, requests two buffers,
+The selected experimental candidate therefore retained 640×480, requested two buffers,
 and explicitly requests volatile HDR-off, automatic exposure, and fixed frame
-rate. It retains the existing two inference threads and independent latest-frame
-capture. The settings are opt-in device settings; general defaults remain unchanged.
+rate. It used the then-current two inference threads and independent latest-frame
+capture. These remain historical experiment conditions. Version 0.4.0 uses four
+threads and Automatic camera rate, which prefers 30 fps with driver fallback;
+it does not make the vendor-specific HDR command a general default.
 
 Standard format/exposure controls were restored after the isolated experiment,
 and the worker was resumed. The original HDR state could not be read; HDR-off

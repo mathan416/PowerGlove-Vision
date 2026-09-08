@@ -4,7 +4,11 @@
 
 # PowerGlove Vision
 
-**Release candidate:** [v0.3.2-rc.7](https://github.com/mathan416/PowerGlove-Vision/releases/tag/v0.3.2-rc.7). Update both computers together using the [candidate installation commands](docs/INSTALL_README.md#install-this-release-candidate). The default installer commands select the latest stable release, not this candidate. Post-pairing controller gameplay is confirmed on the tested cabinet; measured latency and repeated stationary-jitter validation remain pending. Version **0.3.5** is planned for measured latency improvements, with stationary jitter and recognition reliability checked against repeated baselines.
+**Current project version: 0.4.0.** This release promotes the tested
+MediaPipe efficiency work: newest-frame capture, four inference threads,
+30-fps-first camera negotiation, off-thread lightweight preview rendering, and
+Latest-coordinate native movement with guarded reacquisition. Update the
+Controller and RetroPie together using the [installation guide](docs/INSTALL_README.md).
 
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
 a camera connected to the **PowerGlove Vision Controller**, built on an Arduino
@@ -53,8 +57,9 @@ displays, T, L, or gesture recognition. The setting saves without a tracker rest
 
 Setup starts with four labelled status markers matching the Off-mode pixels: Controller app, console service, authenticated response, and Networking. Green means confirmed, red means disconnected or not confirmed, and grey means unknown. Tracking, controller output, and the saved console appear alongside them. Both pairing methods require the approval PIN displayed on the Controller matrix.
 
-Setup places **Matrix attract mode** below Controller status, followed by
-**Connection and startup**, guided pairing, and Games. Select **Save settings**
+Setup places **Players** below Controller status, followed by **Matrix attract
+mode**, **Connection and startup**, guided pairing, Games, and the optional
+statistics preference. Select **Save settings**
 before pairing; the three steps use the saved console address: choose a method,
 confirm the Controller certificate and matrix PIN, then enter the RetroPie code
 or SSH credentials. Both methods remain available. After selecting **Pair with RetroPie**,
@@ -148,9 +153,13 @@ curling fingers, a travelling spark, and a soft grayscale glow. See the
 matrix firmware.
 
 The tested shared baseline includes responsive `0.28` activation and `0.14`
-release thresholds, calibrated native X/Y reach with an 8% edge margin, and two
-MediaPipe coordinate-response modes. **Latest coordinate** sends each newest
-valid, reach-clamped palm position directly. **Bounded speed curve** uses one
+release thresholds, calibrated native X/Y reach with an 8% edge margin, and
+**Latest coordinate** as the native movement default. It sends each newest
+valid, reach-clamped palm position directly during continuous tracking. After a
+brief MediaPipe dropout, one contradictory or unusually distant reacquisition
+may be held for the next fresh result; strongly aligned forward movement remains
+immediate. This guard does not predict, smooth, or overshoot. **Bounded speed
+curve** remains available for comparison and uses one
 two-dimensional, calibrated-noise response to hold measured resting jitter,
 follow medium movement progressively faster, and handle large movement, stops,
 and reversals without prediction or overshoot. Both modes use the selected
@@ -258,8 +267,11 @@ open/fist/index packet, and safe-neutralization tests. Live full-game play
 confirms grab/throw, index fire, and fist-plus-forward Power Punch. Native
 movement uses per-player reach calibration and the selected MediaPipe response
 mode. A brief missed observation holds only the last X/Y coordinate for up to
-120 ms, while actions release immediately; a longer loss neutralizes the native
-sample. Wrist rotation and remaining unused native packet fields stay neutral. See the
+120 ms, while actions release immediately. On recovery, Latest accepts the new
+measurement immediately unless it contradicts established motion or is an
+unusually distant non-forward jump; only that questionable result waits for one
+fresh confirmation. A longer loss neutralizes the native sample. Wrist rotation
+and remaining unused native packet fields stay neutral. See the
 [native compatibility record](docs/super-glove-ball-native.md).
 
 The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that the
@@ -281,8 +293,10 @@ optical-flow, selected, and filtered coordinates without recording video; the
 current live path reports MediaPipe coordinates and the chosen response mode.
 Physical hand-to-screen latency still requires synchronized recording.
 
-The production Controller continues to run the proven CPU MediaPipe Hands path
-with two explicitly selected inference threads. An isolated Adreno GPU probe
+The production Controller runs the proven CPU MediaPipe Hands path at 640×480,
+with four explicitly selected inference threads and a `0.40` tracking-confidence
+threshold. Camera rate defaults to Automatic, which tries the measured 30 fps
+path before safely accepting the driver's supported rate. An isolated Adreno GPU probe
 successfully created a delegate but the first MediaPipe Tasks graph was much
 slower than production, so no GPU wheel or runtime change ships in this
 candidate. A lean, output-paused GPU palm/landmark experiment remains research.
@@ -312,10 +326,15 @@ With **Gestures off** selected, the camera stays closed. Choose an active profil
 open Play, or open Glove Academy to begin. Wait for the camera view before
 practicing or playing; starting immediately after a reboot can take longer.
 
-The live camera is diagnostic rather than part of controller output. Camera
+The live camera is diagnostic rather than part of controller output. **Show
+statistics** is off by default and can be enabled on Dashboard or Setup; the
+browser remembers the choice. When it is off, the Dashboard does not render or
+retain the optional controller, axes, finger, performance, or event panels.
+Camera
 capture continuously keeps only the newest frame, and browser JPEG encoding
-runs on a separate latest-preview worker that may drop stale preview jobs. The
-preview remains capped at 5 fps. Closing Dashboard or Glove Academy while playing
+runs on a separate latest-preview worker that may drop stale preview jobs.
+Gameplay preview annotation and encoding use a 320×240 copy while Academy and
+tuning keep the full preview. The preview remains capped at 5 fps. Closing Dashboard or Glove Academy while playing
 a RetroPie game still avoids optional drawing and encoding work; tracking and
 controller delivery continue.
 

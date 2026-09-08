@@ -49,12 +49,15 @@ natural Robo-Glove positioning.
 
 MediaPipe Hands supplies every live coordinate. Geometry is validated and the
 point is clamped to the saved reach before either mode sees it. **Latest
-coordinate** uses each newest point directly; **Bounded speed curve** uses one
+coordinate** uses each newest point directly during continuous tracking and is
+the production default; **Bounded speed curve** uses one
 two-dimensional noise-aware weight to stabilize rest and follow faster movement
 more directly. Both use the selected frame's capture time, saved center, and
 per-player reach. A short missed observation may hold only X/Y for up to 120 ms
-while actions release; recovery starts from the first new point instead of
-travelling through an old or off-screen position.
+while actions release. On recovery, Latest accepts aligned forward movement at
+once but holds one contradictory or unusually distant non-forward measurement
+for the next fresh result. This one-result guard rejects reacquisition jumps
+without predicting a position or smoothing ordinary motion.
 
 | What you do | Native Super Glove Ball behavior confirmed in live play |
 | --- | --- |

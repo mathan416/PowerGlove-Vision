@@ -57,7 +57,10 @@ def load_device_config() -> dict:
         "glove_color": "none",
         "camera": "auto",
         "matrix_attract": "on",
-        "native_xy_mode": "bounded",
+        "native_xy_mode": "latest",
+        "inference_threads": 4,
+        "tracking_confidence": 0.40,
+        "camera_fps": "auto",
     }
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     from powerglove_vision.game_registry import atomic_write
@@ -84,17 +87,30 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
         "--tracker-backend", "legacy",
         "--web-host", "127.0.0.1", "--web-port", "8089", "--no-matrix",
     ]
-    inference_threads = settings.get("inference_threads", 2)
+    inference_threads = settings.get("inference_threads", 4)
     if type(inference_threads) is not int or inference_threads not in (1, 2, 4):
-        inference_threads = 2
+        inference_threads = 4
     command.extend(["--inference-threads", str(inference_threads)])
+    tracking_confidence = settings.get("tracking_confidence", 0.40)
+    if (type(tracking_confidence) not in (int, float)
+            or not 0.0 <= tracking_confidence <= 1.0):
+        tracking_confidence = 0.40
+    command.extend(["--tracking-confidence", str(tracking_confidence)])
+    camera_fps = settings.get("camera_fps", "auto")
+    if camera_fps == "auto":
+        requested_fps = 0
+    elif type(camera_fps) is int and camera_fps in (30, 60):
+        requested_fps = camera_fps
+    else:
+        requested_fps = 0
+    command.extend(["--fps", str(requested_fps)])
     if settings.get("camera_buffers") == 2:
         command.extend(["--camera-buffers", "2"])
     if settings.get("kiyo_hdr_off") is True:
         command.append("--kiyo-hdr-off")
-    native_xy_mode = settings.get("native_xy_mode", "bounded")
+    native_xy_mode = settings.get("native_xy_mode", "latest")
     if native_xy_mode not in ("bounded", "latest"):
-        native_xy_mode = "bounded"
+        native_xy_mode = "latest"
     command.extend(["--native-xy-mode", native_xy_mode])
     if controller_enabled:
         command.append("--controller-enabled")

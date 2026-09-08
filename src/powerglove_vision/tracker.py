@@ -86,6 +86,7 @@ class TrackingResult:
     motion_only: bool = False
     gesture_observation: HandObservation | None = None
     motion_trace: dict = field(default_factory=dict)
+    preview_overlay: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -255,8 +256,8 @@ class MediaPipeTracker:
         glove_color: str = "none",
         mirror: bool = True,
         model_path: Path | str | None = None,
-        inference_threads: int = 2,
-        tracking_confidence: float = .55,
+        inference_threads: int = 4,
+        tracking_confidence: float = .40,
         backend: str = "legacy",
     ) -> None:
         try:
@@ -336,11 +337,10 @@ class MediaPipeTracker:
         if not detected:
             if not annotate:
                 return TrackingResult(HandObservation(now, False), frame)
-            cv2.putText(
-                frame, "Show one hand to the camera", (20, 36),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.75, (30, 80, 255), 2,
+            return TrackingResult(
+                HandObservation(now, False), frame,
+                preview_overlay={"message": "Show one hand to the camera"},
             )
-            return TrackingResult(HandObservation(now, False), frame)
 
         if self._tasks:
             landmarks = result.hand_landmarks[0]
@@ -356,8 +356,17 @@ class MediaPipeTracker:
             return TrackingResult(HandObservation(now, False), frame,
                                   {"landmark_validation": "invalid"})
         palm_ids = (0, 5, 9, 13, 17)
-        palm_anchors = _palm_anchor_candidates(landmarks)
-        palm_x, palm_y = palm_anchors[PALM_ANCHOR]
+        if self.diagnostics_enabled:
+            palm_anchors = _palm_anchor_candidates(landmarks)
+            palm_x, palm_y = palm_anchors[PALM_ANCHOR]
+            palm_points = [(landmarks[i].x, landmarks[i].y) for i in palm_ids]
+        else:
+            # Gameplay needs only the calibration-compatible production anchor.
+            # Avoid calculating three experimental alternatives on every frame.
+            palm_x = sum(float(landmarks[i].x) for i in palm_ids) / len(palm_ids)
+            palm_y = sum(float(landmarks[i].y) for i in palm_ids) / len(palm_ids)
+            palm_anchors = {}
+            palm_points = []
         palm_scale = (_distance(landmarks[0], landmarks[9]) + _distance(landmarks[5], landmarks[17])) / 2
         roll = math.atan2(
             landmarks[5].y - landmarks[17].y,
@@ -379,16 +388,13 @@ class MediaPipeTracker:
             roll=roll,
             **curls,
         )
+        preview_overlay = {}
         if annotate:
-            height, width = frame.shape[:2]
-            for start, end in CONNECTIONS:
-                a, b = landmarks[start], landmarks[end]
-                cv2.line(frame, (int(a.x * width), int(a.y * height)),
-                         (int(b.x * width), int(b.y * height)), (255, 180, 30), 2)
-            for point in landmarks:
-                cv2.circle(frame, (int(point.x * width), int(point.y * height)), 3, (20, 255, 120), -1)
-            label = f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}"
-            cv2.putText(frame, label, (20, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 240, 100), 2)
+            preview_overlay = {
+                "connections": CONNECTIONS,
+                "landmarks": [(float(point.x), float(point.y)) for point in landmarks],
+                "label": f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}",
+            }
         diagnostics = {}
         if self.diagnostics_enabled:
             diagnostics = {
@@ -400,5 +406,6 @@ class MediaPipeTracker:
                 "hand_landmarks": [[p.x, p.y] for p in landmarks],
             }
         return TrackingResult(observation, frame, diagnostics,
-                              palm_points=[(landmarks[i].x, landmarks[i].y) for i in palm_ids],
-                              palm_anchors=palm_anchors)
+                              palm_points=palm_points,
+                              palm_anchors=palm_anchors,
+                              preview_overlay=preview_overlay)

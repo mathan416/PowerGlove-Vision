@@ -95,7 +95,8 @@ sockets. These functions are kept separate from camera inference.
 Native Super Glove Ball performs MediaPipe landmark recognition synchronously.
 The Dashboard retains the normal hand skeleton and landmark annotation. Each
 fresh, geometry-valid palm observation is clamped to player reach and follows
-one of two response modes: **latest coordinate** passes it through directly,
+one of two response modes: **latest coordinate** is the production default and
+passes it through directly during continuous tracking,
 while **bounded speed curve** suppresses measured
 resting noise and progressively reduces damping as raw hand speed rises. Neither
 mode queues, predicts, extrapolates, or filters inside the emulator core. The
@@ -114,6 +115,10 @@ coordinate immediately; stops settle inside the noise region on one result and
 exactly on the next. Output never extrapolates beyond a measurement. In either mode,
 a missed observation shorter than `loss_release_ms` holds only the last X/Y
 position; buttons, fingers, depth, roll, and digital directions release at once.
+After that brief gap, Latest immediately accepts a strongly aligned forward
+measurement. One contradictory or unusually distant non-forward result instead
+holds the last reliable point until the next fresh measurement confirms the
+location. The guard never invents a forward coordinate or smooths normal motion.
 Longer tracking loss or stale input neutralizes the native sample and clears the
 coordinate history. Digital FCEUmm directions instead use the player's
 shared activation thresholds; Setup's **Joystick dead zone** changes all four
@@ -123,11 +128,15 @@ saved reach spans because they belong to the old center.
 
 The worker also publishes diagnostic state after inference. Browser video is
 submitted at most five times per second and only while a stream consumer is
-connected. A separate single-slot worker performs JPEG encoding and discards a
+connected. A separate single-slot worker draws normalized landmarks, downsizes
+the gameplay preview to 320×240, performs JPEG encoding, and discards a
 superseded preview instead of delaying gameplay. Detailed joint and landmark
 diagnostics follow that preview cadence; finger geometry itself is calculated
 once for recognition. Controller sending occurs before optional preview work,
-so the browser refresh rate is not the controller state update rate. Capture
+so the browser refresh rate is not the controller state update rate. Optional
+Dashboard statistics are off by default and browser-local; when disabled, the
+page does not read, render, or retain detailed controller and event fields.
+Capture
 age, inference cadence, skipped frames, preview cost, and send time expose the
 local stages; none alone is an end-to-end camera-to-game latency measurement.
 
