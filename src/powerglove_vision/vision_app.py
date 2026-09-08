@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Added optional direct V4L2 capture and portable exposure negotiation.
 #   2026-09-07 - Use capture timestamps and throttle derived performance summaries.
 #   2026-09-07 - Made MediaPipe plus the bounded curve the default native X/Y path.
 #   2026-09-06 - Support measured opt-in Kiyo Pro capture controls and buffer count.
@@ -53,7 +54,10 @@ from .matrix import MatrixStatus, UnoQMatrix
 from .diagnostic_trace import session_key
 from .model import ControllerState
 from .profile_control import ActiveGameLease, ProfileCommandServer, ProfileRequest, read_token
-from .realtime import LatestFrameCapture, LatestPreviewEncoder, RollingPerformance
+from .realtime import (
+    LatestFrameCapture, LatestPreviewEncoder, LatestStatusPublisher,
+    RollingPerformance,
+)
 from .runtime_assets import ensure_hand_landmarker_model
 from .tracker import PALM_ANCHOR, MediaPipeTracker, log_startup_stage
 from .transport import UdpSender
@@ -144,6 +148,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="requested V4L2 pixel format for controlled capture benchmarks",
     )
     parser.add_argument(
+        "--capture-backend", choices=("opencv", "direct-v4l2"), default="opencv",
+        help="camera reader; direct V4L2 falls back safely to OpenCV",
+    )
+    parser.add_argument(
+        "--camera-exposure", choices=("auto", "low-latency", "kiyo-low-latency"),
+        default="auto", help="volatile capability-checked exposure behavior",
+    )
+    parser.add_argument(
         "--inference-threads", type=int, choices=(1, 2, 4), default=4,
         help="CPU threads for the legacy MediaPipe inference calculators",
     )
@@ -155,6 +167,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--tracker-backend", choices=("legacy", "tasks-video"), default="legacy",
         help=("MediaPipe Hands (legacy) or MediaPipe Tasks Video "
               "(experimental; tasks-video)"),
+    )
+    parser.add_argument(
+        "--tracker-graph", choices=("full", "lean-image"), default="full",
+        help="MediaPipe graph output set; lean-image is an output-paused experiment",
     )
     parser.add_argument(
         "--preview-fps", type=float, default=5.0,
@@ -187,6 +203,13 @@ def _camera_rate_attempts(fps: int) -> tuple[int | None, ...]:
     return (30 if fps == 0 else fps, None)
 
 
+def _v4l2_device_path(camera_device) -> str:
+    """Convert OpenCV's numeric device shorthand into its Linux node path."""
+    if isinstance(camera_device, int) or str(camera_device).isdigit():
+        return f"/dev/video{int(camera_device)}"
+    return str(camera_device)
+
+
 def _open_camera(args: argparse.Namespace):
     """Open and warm the selected UVC camera only when gestures are active."""
     started = time.monotonic()
@@ -198,9 +221,21 @@ def _open_camera(args: argparse.Namespace):
 
     for camera_device in candidates:
         backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
-        kiyo_applied = False
-        camera_control_error = None
+        exposure_mode = getattr(args, "camera_exposure", "auto")
         if getattr(args, "kiyo_hdr_off", False):
+            exposure_mode = "kiyo-low-latency"
+        exposure_report = {"requested": exposure_mode, "supported": False, "applied": False}
+        camera_control_error = None
+        if exposure_mode in ("low-latency", "kiyo-low-latency"):
+            from .camera_controls import configure_low_latency
+            try:
+                exposure_report = configure_low_latency(_v4l2_device_path(camera_device))
+            except (OSError, ValueError, RuntimeError) as exc:
+                camera_control_error = str(exc)
+                exposure_report["reason"] = camera_control_error
+                print(f"Camera controls unavailable: {exc}", file=sys.stderr, flush=True)
+        kiyo_applied = False
+        if exposure_mode == "kiyo-low-latency":
             from .kiyo_camera import configure_kiyo
             try:
                 kiyo_applied = configure_kiyo(camera_device)
@@ -249,10 +284,63 @@ def _open_camera(args: argparse.Namespace):
                         "camera_buffers_requested": requested_buffers,
                         "camera_buffers": candidate.get(cv2.CAP_PROP_BUFFERSIZE),
                         "camera_buffers_accepted": buffers_accepted,
-                        "camera_hdr_off_requested": getattr(args, "kiyo_hdr_off", False),
+                        "camera_hdr_off_requested": exposure_mode == "kiyo-low-latency",
                         "camera_hdr_off_command_sent": kiyo_applied,
+                        "camera_exposure_mode": exposure_mode,
+                        "camera_exposure_supported": exposure_report.get("supported", False),
+                        "camera_exposure_applied": bool(exposure_report.get("applied") or kiyo_applied),
+                        "camera_exposure_fixed_rate": exposure_report.get("fixed_frame_rate", False),
                         "camera_control_error": camera_control_error,
                     }
+                    if (getattr(args, "capture_backend", "opencv") == "direct-v4l2"
+                            and sys.platform.startswith("linux")
+                            and args.camera_format == "MJPG"
+                            and args.width == 640 and args.height == 480):
+                        candidate.release()
+                        try:
+                            import numpy as np
+                            from .v4l2_capture import DirectV4L2Capture
+                            direct = DirectV4L2Capture(
+                                _v4l2_device_path(camera_device), requested_buffers, cv2, np,
+                            )
+                            ok, direct_frame, direct_at = direct.read_with_timestamp()
+                            if not ok:
+                                raise RuntimeError("direct V4L2 produced no first frame")
+                            metadata.update({
+                                "capture_backend_requested": "direct-v4l2",
+                                "capture_backend": "direct-v4l2",
+                                "capture_backend_fallback": None,
+                                **direct.last_metadata,
+                            })
+                            return cv2, LatestFrameCapture(
+                                direct, direct_frame, first_captured_at=direct_at,
+                                metadata=metadata,
+                            )
+                        except Exception as exc:
+                            metadata.update({
+                                "capture_backend_requested": "direct-v4l2",
+                                "capture_backend": "opencv",
+                                "capture_backend_fallback": str(exc),
+                            })
+                            candidate = cv2.VideoCapture(camera_device, backend)
+                            candidate.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*args.camera_format))
+                            candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+                            candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+                            if requested_rate is not None:
+                                candidate.set(cv2.CAP_PROP_FPS, requested_rate)
+                            candidate.set(cv2.CAP_PROP_BUFFERSIZE, requested_buffers)
+                            ok, fallback_frame = candidate.read()
+                            if not ok:
+                                candidate.release()
+                                continue
+                            return cv2, LatestFrameCapture(
+                                candidate, fallback_frame, metadata=metadata,
+                            )
+                    metadata.update({
+                        "capture_backend_requested": getattr(args, "capture_backend", "opencv"),
+                        "capture_backend": "opencv",
+                        "capture_backend_fallback": None,
+                    })
                     return cv2, LatestFrameCapture(candidate, _frame, metadata=metadata)
                 time.sleep(0.1)
             candidate.release()
@@ -328,6 +416,7 @@ def _prepare_vision(args):
             inference_threads=args.inference_threads,
             tracking_confidence=args.tracking_confidence,
             backend=args.tracker_backend,
+            graph_mode=args.tracker_graph,
         )
         log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
@@ -475,9 +564,13 @@ def main() -> int:
     shared = SharedDebugState()
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))
     preview_encoder = LatestPreviewEncoder(shared.update_frame)
+    status_publisher = LatestStatusPublisher(shared.update_status)
     performance = RollingPerformance()
     performance_snapshot = {}
     performance_snapshot_at = 0.0
+    detailed_status = {}
+    detailed_status_at = 0.0
+    last_detail_signature = None
     last_motion_mode = None
     server = start_debug_server(shared, args.web_host, args.web_port)
     capture = tracker = engine = cv2 = None
@@ -494,7 +587,6 @@ def main() -> int:
     last_inference_started = None
     last_controller_signature = None
     preview_at = 0.0
-    latest_diagnostics = {}
     vision_error: str | None = None
     launch_guard_until = 0.0
     active_game_lease = ActiveGameLease()
@@ -569,7 +661,7 @@ def main() -> int:
                 if vision_profile != old_vision_profile:
                     # Reuse camera/tracker between active profiles; I/O cleanup is asynchronous.
                     engine = None
-                    shared.update_status(
+                    status_publisher.submit(
                         _base_status(
                             current_profile, current_game, profile_source,
                             controller_enabled, practice_mode=practice_mode,
@@ -653,7 +745,7 @@ def main() -> int:
                     active_game_lease, profile_source
                 )
                 status["vision_state"] = "idle"
-                shared.update_status(status, clear_frame=True)
+                status_publisher.submit(status, clear_frame=True)
                 matrix.set_status(MatrixStatus.GESTURES_IDLE)
                 time.sleep(0.1)
                 continue
@@ -674,7 +766,7 @@ def main() -> int:
                         vision_operation = "open"
                         vision_started_at = time.time()
                     status.update({"vision_state": "starting", "vision_started_at": vision_started_at})
-                shared.update_status(status, clear_frame=True)
+                status_publisher.submit(status, clear_frame=True)
                 matrix.set_status(MatrixStatus.ERROR if vision_error else (
                     (MatrixStatus.TUNING if shared.tuning.active() else MatrixStatus.LEARNING) if practice_mode else MatrixStatus.LOADING))
                 time.sleep(0.01)
@@ -712,7 +804,7 @@ def main() -> int:
                         active_game_lease, profile_source
                     )
                     status.update({"vision_state": "error", "vision_error": vision_error})
-                    shared.update_status(status, clear_frame=True)
+                    status_publisher.submit(status, clear_frame=True)
                     matrix.set_status(MatrixStatus.ERROR)
                 else:
                     time.sleep(0.005)
@@ -736,9 +828,11 @@ def main() -> int:
             last_inference_started = inference_started
             preview_watched = shared.has_stream_clients()
             preview_due = preview_watched and inference_started >= preview_at
-            tracker.preview_enabled = preview_due
-            tracker.diagnostics_enabled = preview_due or shared.tuning.active()
             tuning_active = shared.tuning.active()
+            tracker.preview_enabled = preview_due
+            # Landmark diagnostics are required by personalization, but the
+            # ordinary camera preview already draws directly from the tracker.
+            tracker.diagnostics_enabled = tuning_active
             needs_center = shared.tuning.needs_center()
             native_xy_active = _native_xy_active(
                 engine, practice_mode, tuning_active, needs_center
@@ -749,13 +843,13 @@ def main() -> int:
                 performance = RollingPerformance()
                 performance_snapshot = {}
                 performance_snapshot_at = 0.0
-                latest_diagnostics = {}
                 inference_interval_ms = None
                 last_controller_signature = None
+                detailed_status = {}
+                detailed_status_at = 0.0
+                last_detail_signature = None
                 last_motion_mode = motion_mode
             tracking_finished_ns = time.monotonic_ns() if trace and trace.enabled else None
-            if preview_due:
-                latest_diagnostics = result.diagnostics
             if startup_timer is not None:
                 log_startup_stage("first inference", inference_started)
             engine.config = shared.tuning.configuration(engine_base_config)
@@ -827,24 +921,47 @@ def main() -> int:
                 sample_age_ms=sample_age_ms,
                 controller_transition_age_ms=transition_age_ms,
             )
-            recognition = engine.recognition_feedback()
-            push_feedback = engine.push_feedback(result.observation)
-            pull_feedback = engine.pull_feedback(result.observation)
-            recognized = [name for name, active in state.dpad.items() if active]
-            recognized.extend(name for name, active in state.buttons.items() if active)
-            recognized.extend(name for name, active in recognition.items() if active)
-            if push_feedback["active"]:
-                recognized.append("push")
-            if pull_feedback["active"]:
-                recognized.append("pull")
-            image_quality = _academy_image_quality(result.frame, result.diagnostics, cv2) \
-                if shared.tuning.active() else {}
-            shared.tuning.observe(
-                result.observation, engine.calibration, engine.config, engine.calibrated,
-                frame=result.frame, image_quality=image_quality,
-                performance={"inference_ms": inference_ms, "sample_age_ms": sample_age_ms},
-                recognized=recognized,
+            statistics_requested = shared.statistics_requested()
+            detail_refresh = (
+                practice_mode or tuning_active or
+                (statistics_requested and (
+                    sent_at >= detailed_status_at or signature != last_detail_signature
+                ))
             )
+            if detail_refresh:
+                recognition = engine.recognition_feedback()
+                push_feedback = engine.push_feedback(result.observation)
+                pull_feedback = engine.pull_feedback(result.observation)
+                recognized = [name for name, active in state.dpad.items() if active]
+                recognized.extend(name for name, active in state.buttons.items() if active)
+                recognized.extend(name for name, active in recognition.items() if active)
+                if push_feedback["active"]:
+                    recognized.append("push")
+                if pull_feedback["active"]:
+                    recognized.append("pull")
+                detailed_status = {
+                    "menu_gesture": engine.menu_feedback(),
+                    "push_gesture": push_feedback,
+                    "pull_gesture": pull_feedback,
+                    "finger_active": engine.curl_feedback(result.observation),
+                    "recognition": recognition,
+                    "finger_curls": result.observation.fingers,
+                    "curl_threshold": engine.config.pair("index")[0],
+                }
+                detailed_status_at = sent_at + 0.1
+                last_detail_signature = signature
+                if practice_mode or tuning_active:
+                    image_quality = _academy_image_quality(
+                        result.frame, result.diagnostics, cv2
+                    ) if tuning_active else {}
+                    shared.tuning.observe(
+                        result.observation, engine.calibration, engine.config,
+                        engine.calibrated, frame=result.frame,
+                        image_quality=image_quality,
+                        performance={"inference_ms": inference_ms,
+                                     "sample_age_ms": sample_age_ms},
+                        recognized=recognized,
+                    )
             matrix.set_status(
                 (MatrixStatus.TUNING if shared.tuning.active() else MatrixStatus.LEARNING)
                 if practice_mode
@@ -855,11 +972,15 @@ def main() -> int:
                 )
             )
             status = state.to_dict()
+            if not (statistics_requested or practice_mode or tuning_active):
+                for optional in ("axes", "dpad", "buttons", "fingers", "events"):
+                    status.pop(optional, None)
             # Raw camera coordinates let reach calibration avoid filtered/clipped axes.
-            status["palm_position"] = (
-                {"x": result.observation.palm_x, "y": result.observation.palm_y}
-                if result.observation.detected else None
-            )
+            if practice_mode or tuning_active:
+                status["palm_position"] = (
+                    {"x": result.observation.palm_x, "y": result.observation.palm_y}
+                    if result.observation.detected else None
+                )
             status["inference_ms"] = round(inference_ms, 1)
             status["send_ms"] = round(send_ms, 1)
             status["sample_age_ms"] = round(sample_age_ms, 1)
@@ -868,6 +989,7 @@ def main() -> int:
             status["confidence_source"] = result.observation.confidence_source
             status["inference_threads"] = args.inference_threads
             status["tracking_confidence"] = tracker.tracking_confidence
+            status["tracker_graph"] = tracker.graph_mode
             status["palm_anchor"] = PALM_ANCHOR
             status.update(capture.metadata)
             status["capture_sequence"] = captured_frame.sequence
@@ -882,11 +1004,12 @@ def main() -> int:
             status["inference_hz"] = (
                 None if not inference_interval_ms else round(1000.0 / inference_interval_ms, 1)
             )
-            if sent_at >= performance_snapshot_at:
-                performance_snapshot = performance.snapshot()
-                performance_snapshot_at = sent_at + 0.5
-            status["performance"] = performance_snapshot
-            status.update(preview_encoder.metrics())
+            if statistics_requested:
+                if sent_at >= performance_snapshot_at:
+                    performance_snapshot = performance.snapshot()
+                    performance_snapshot_at = sent_at + 0.5
+                status["performance"] = performance_snapshot
+                status.update(preview_encoder.metrics())
             status["calibration_save_error"] = calibration_save_error
             status["calibration_retained"] = retained_calibration is not None
             status["calibrating"] = bool(engine is not None and not engine.calibrated)
@@ -918,15 +1041,8 @@ def main() -> int:
             status["controller_context_active"] = controller_context_active
             status["camera_available"] = True
             status["vision_state"] = "active"
-            status["menu_gesture"] = engine.menu_feedback()
-            status["push_gesture"] = push_feedback
-            status["pull_gesture"] = pull_feedback
-            status["finger_active"] = engine.curl_feedback(result.observation)
-            status["recognition"] = recognition
-            status["finger_curls"] = result.observation.fingers
-            status["curl_threshold"] = engine.config.pair("index")[0]
-            status["tuning"] = shared.tuning.snapshot()
-            status.update(latest_diagnostics)
+            if statistics_requested or practice_mode or tuning_active:
+                status.update(detailed_status)
             status["motion_tracking"] = False
             status["native_xy_source"] = native_source
             status["native_xy_mode"] = args.native_xy_mode
@@ -934,7 +1050,7 @@ def main() -> int:
                 status.update(result.diagnostics)
                 status["processing_timing_scope"] = "motion loop; recognition_inference_ms is separate"
             # Publish control feedback every inference; encode previews asynchronously.
-            shared.update_status(status)
+            status_publisher.submit(status)
             if startup_timer is not None:
                 log_startup_stage("activation to active status", startup_timer)
                 startup_timer = None
@@ -968,6 +1084,7 @@ def main() -> int:
             _close_vision(capture, tracker)
         sender.close()
         preview_encoder.close()
+        status_publisher.close()
         profile_server.close()
         server.shutdown()
 

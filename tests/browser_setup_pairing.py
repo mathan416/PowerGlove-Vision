@@ -25,6 +25,7 @@ async def main():
     """Test user-visible state transitions against controlled HTTP responses."""
     config = dict(receiver='RETROPIE-NAME.local', port=55355, profile='off',
                   glove_color='none', camera='auto', camera_fps='auto', matrix_attract='on',
+                  camera_backend='opencv', camera_exposure='auto',
                   connection_configured=True, controller_enabled=False)
     calls = []
     flags = dict(load_error=False, save_error=False, begin_error=False,

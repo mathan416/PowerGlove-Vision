@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Added an isolated image-landmark-only graph experiment.
 #   2026-09-07 - Added geometry validation and benchmarkable pose-stable palm anchors.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-05 - Added clear proven and experimental backend display names.
@@ -191,7 +192,8 @@ def _finger_curls_from_bends(bends: dict) -> dict:
     return {name + "_curl": max(values) for name, values in bends.items()}
 
 
-def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55):
+def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
+                  graph_mode: str = "full"):
     """Build the lite legacy graph, enabling safe CPU parallelism when supported."""
     settings = {
         "static_image_mode": False,
@@ -201,7 +203,7 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55):
         "min_tracking_confidence": tracking_confidence,
     }
     base = mp.solutions.hands.Hands(**settings)
-    if cpu_threads <= 1:
+    if cpu_threads <= 1 and graph_mode == "full":
         return base
     try:
         from google.protobuf import text_format
@@ -232,11 +234,11 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55):
                 "num_hands": 1,
                 "use_prev_landmarks": True,
             },
-            outputs=[
-                "multi_hand_landmarks",
-                "multi_hand_world_landmarks",
-                "multi_handedness",
-            ],
+            outputs=(
+                ["multi_hand_landmarks"]
+                if graph_mode == "lean-image" else
+                ["multi_hand_landmarks", "multi_hand_world_landmarks", "multi_handedness"]
+            ),
         )
     except Exception as exc:
         print(
@@ -259,6 +261,7 @@ class MediaPipeTracker:
         inference_threads: int = 4,
         tracking_confidence: float = .40,
         backend: str = "legacy",
+        graph_mode: str = "full",
     ) -> None:
         try:
             import cv2
@@ -279,6 +282,9 @@ class MediaPipeTracker:
         self.diagnostics_enabled = True
         self.inference_threads = max(1, int(inference_threads))
         self.tracking_confidence = max(0.0, min(1.0, float(tracking_confidence)))
+        if graph_mode not in ("full", "lean-image"):
+            raise ValueError("unsupported MediaPipe graph mode")
+        self.graph_mode = graph_mode
         self._last_timestamp_ms = -1
         if backend not in TRACKER_BACKEND_LABELS:
             raise ValueError(f"unsupported tracker backend: {backend}")
@@ -308,6 +314,7 @@ class MediaPipeTracker:
         else:
             self.hands = _legacy_hands(
                 mp, self.inference_threads, self.tracking_confidence,
+                self.graph_mode,
             )
 
         log_startup_stage("tracker construction", started)
@@ -349,9 +356,14 @@ class MediaPipeTracker:
             hand_score = float(handedness.score or 0.0)
         else:
             landmarks = result.multi_hand_landmarks[0].landmark
-            handedness = result.multi_handedness[0].classification[0]
-            hand_label = handedness.label
-            hand_score = float(handedness.score)
+            handednesses = getattr(result, "multi_handedness", None)
+            if handednesses:
+                handedness = handednesses[0].classification[0]
+                hand_label = handedness.label
+                hand_score = float(handedness.score)
+            else:
+                hand_label = "Hand"
+                hand_score = 1.0
         if not _landmarks_valid(landmarks):
             return TrackingResult(HandObservation(now, False), frame,
                                   {"landmark_validation": "invalid"})
@@ -381,7 +393,9 @@ class MediaPipeTracker:
             timestamp=now,
             detected=True,
             confidence=hand_score,
-            confidence_source="handedness",
+            confidence_source=(
+                "landmark_presence" if self.graph_mode == "lean-image" else "handedness"
+            ),
             palm_x=palm_x,
             palm_y=palm_y,
             palm_scale=palm_scale,
@@ -400,8 +414,9 @@ class MediaPipeTracker:
             diagnostics = {
                 "tracker_backend": self.backend,
                 "tracker_backend_label": self.backend_label,
+                "tracker_graph": self.graph_mode,
                 "palm_anchor": PALM_ANCHOR,
-                "confidence_source": "handedness",
+                "confidence_source": observation.confidence_source,
                 "finger_bends": bends,
                 "hand_landmarks": [[p.x, p.y] for p in landmarks],
             }

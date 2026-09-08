@@ -8,6 +8,8 @@ Super Glove Ball can instead consume a native Power Glove packet through
 The distinction is what the game receives. It does not require a second camera
 system or a different hand calibration.
 
+![Shared camera and MediaPipe front end branching on RetroPie into conventional FCEUmm input or native Nestopia Power Glove input](images/architecture/end-to-end.png)
+
 ## Follow one hand movement
 
 1. The **PowerGlove Vision Controller (Arduino UNO Q)** captures the newest camera frame. Older waiting frames are replaced rather than queued.
@@ -18,6 +20,10 @@ system or a different hand calibration.
 
 Each stage takes time. Smooth movement does not imply zero latency, and a
 successful send is not proof that a displayed frame has caught up.
+
+The Dashboard is an observer of this path. Its preview and optional statistics
+can be turned off without changing the coordinates or controller packets sent
+to RetroPie.
 
 ## Joystick-style input: directions and buttons
 
@@ -101,7 +107,7 @@ Their versioning and timing should not be confused with the signed network
 protocol used between the two computers.
 
 The build uses a pinned upstream revision and a maintained patch. Licensing,
-source provenance, and distribution details are in [Third-party components](THIRD_PARTY_COMPONENTS.md#modified-nestopia-libretro-core).
+source provenance, and distribution details are in [Third-party notices](../THIRD_PARTY_NOTICES.md#modified-nestopia-libretro-core).
 Follow the [native installation instructions](super-glove-ball-native.md#compare-both-modes-from-emulationstation)
 to select the core or return that ROM to FCEUmm.
 

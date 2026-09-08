@@ -7,7 +7,9 @@
 **Current project version: 0.4.0.** This release promotes the tested
 MediaPipe efficiency work: newest-frame capture, four inference threads,
 30-fps-first camera negotiation, off-thread lightweight preview rendering, and
-Latest-coordinate native movement with guarded reacquisition. Update the
+Latest-coordinate native movement with guarded reacquisition. Optional,
+capability-checked camera latency experiments are available without changing
+the compatible defaults. Update the
 Controller and RetroPie together using the [installation guide](docs/INSTALL_README.md).
 
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
@@ -69,9 +71,12 @@ require fresh confirmation. Controller Start/Stop and shutdown are on Dashboard.
 
 When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
 
-The [development review and parking lot](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
-records completed fixes and decisions for a later session, including
-latency measurements still awaiting live play. Player calibration, complete backups, background hostname refresh, independent Networking indication, signed controller sessions, and web-module cleanup are implemented. Controller transport now requires matching version-2 software on both computers; follow the [coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
+The [Changelog](docs/CHANGELOG.md) retains the completed Setup review and release
+evidence instead of maintaining a second history. Player calibration, complete
+backups, background hostname refresh, independent Networking indication, signed
+controller sessions, and web-module cleanup are implemented. Controller transport
+requires matching version-2 software on both computers; follow the
+[coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
 
 Manage players and backups in **Setup → Players**. Select the active player on Dashboard or in Glove Academy; that selection applies to both practice and gameplay. Dashboard combines the game name and session status in one Game card.
 
@@ -101,10 +106,10 @@ On Dashboard, **Center hand** saves the resting reference for the selected playe
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
 | Review movement-filter evidence and experiments | [Motion smoothing analysis](docs/motion-smoothing-analysis.md) |
-| Isolate native X/Y from Super Glove Ball behavior | [Controller dot test](docs/uno-q-dot-test.md) |
+| Measure native X/Y or isolate it from Super Glove Ball behavior | [Native movement validation](docs/direction-response-benchmark.md#direct-output-dot-test) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
-| Check dependency provenance or release history | [Third-party components](docs/THIRD_PARTY_COMPONENTS.md) and [Changelog](docs/CHANGELOG.md) |
+| Check dependency provenance or release history | [Third-party notices](THIRD_PARTY_NOTICES.md) and [Changelog](docs/CHANGELOG.md) |
 
 ### Pixel Pal's Extra-Digit Hunt
 
@@ -281,7 +286,7 @@ FCEUmm and the same global recognition settings.
 For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
 collects fresh timing observations without changing camera settings or controls.
 It keeps Controller software timing separate from network, emulator, and display delay.
-The optional [PowerGlove Vision Controller dot test](docs/uno-q-dot-test.md) reuses the cabinet's installed
+The optional [PowerGlove Vision Controller dot test](docs/direction-response-benchmark.md#direct-output-dot-test) reuses the cabinet's installed
 `lr-powerglove-dot` core to display the same receiver X/Y publication without
 game movement logic, with read-only input-range and validity measurements.
 
@@ -329,7 +334,10 @@ practicing or playing; starting immediately after a reboot can take longer.
 The live camera is diagnostic rather than part of controller output. **Show
 statistics** is off by default and can be enabled on Dashboard or Setup; the
 browser remembers the choice. When it is off, the Dashboard does not render or
-retain the optional controller, axes, finger, performance, or event panels.
+retain the optional controller, axes, finger, performance, or event panels, and
+the worker skips their derived housekeeping. When enabled, changed controls are
+published immediately while routine detail and percentile summaries refresh at
+about 10 Hz through a latest-only status worker.
 Camera
 capture continuously keeps only the newest frame, and browser JPEG encoding
 runs on a separate latest-preview worker that may drop stale preview jobs.
@@ -343,6 +351,22 @@ bright. Prefer light from the camera side or move bright windows out of the
 background. The project does not force hardware backlight compensation: on the
 tested Razer Kiyo Pro it made the measured backlit scene darker, and aggressive
 manual exposure can trade brightness for motion blur and reduced frame rate.
+
+Setup also offers two opt-in camera experiments. **Low latency — Direct V4L2**
+reads the newest Linux MJPEG driver buffer and automatically falls back to
+OpenCV if the camera or negotiated format is incompatible. **Razer Kiyo Pro —
+tested low latency** keeps automatic exposure, requests a fixed frame rate using
+advertised standard UVC controls, and also requests the Kiyo's volatile HDR-off
+mode. For this project's Kiyo Pro, that is the recommended exposure experiment:
+640×480 MJPEG, automatic exposure, fixed frame rate, and HDR off. Repowering the
+camera restores its hardware defaults.
+
+The direct reader passed a live compatibility check on this project's Kiyo Pro
+and exposed valid driver sequence numbers and monotonic timestamps. It remains
+an option rather than a universal default because other camera drivers may not
+provide the same Linux MJPEG interface. A matched lean MediaPipe output test did
+not produce a meaningful end-to-end improvement, so the complete proven graph
+remains selected.
 
 The Controller host helper supports one UVC camera. Installation works with or without
 the camera connected. On the first healthy sighting it records the camera and its
@@ -425,11 +449,15 @@ Use the [Installation Guide's maintenance section](docs/INSTALL_README.md#update
 for updates, and the [Configuration Reference](docs/CONFIGURATION_REFERENCE.md)
 for settings and all command options. The [Contributing guide](docs/CONTRIBUTING.md)
 covers tests, documentation, package verification, and releases. Printable
-editions are stored in [output/pdf/](output/pdf/).
+editions are stored in [output/pdf/](output/pdf/). The maintained Markdown set
+is intentionally consolidated into 19 documents: operational details live with
+their owning guide, and third-party licensing, provenance, asset origins, and
+native-core modifications share one notice. Regenerate PDFs only after the
+Markdown review is complete.
 
 PowerGlove Vision is an independent project licensed under the [MIT License](LICENSE).
 The modified Nestopia core is GPLv2 software and is documented separately from
-the MIT application; see its [distribution and license record](native/nestopia-powerglove/README.md).
+the MIT application; see its [distribution and license record](THIRD_PARTY_NOTICES.md#modified-nestopia-libretro-core).
 Nintendo, NES, Power Glove, and the named games belong to their respective
 owners. Third-party software and models retain their own terms, documented in
-[Third-party components](docs/THIRD_PARTY_COMPONENTS.md).
+[Third-party notices](THIRD_PARTY_NOTICES.md).

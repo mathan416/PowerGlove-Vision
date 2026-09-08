@@ -7,6 +7,67 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Changed
+
+- Moved Dashboard status publication onto a latest-only worker. Changed
+  controller state is submitted immediately; routine detailed gesture and
+  controller feedback is limited to about 10 Hz, and rolling percentile
+  summaries to 2 Hz, only while **Show statistics** is enabled. Ordinary camera
+  preview no longer requests landmark diagnostic payloads merely to draw the
+  already-available skeleton.
+
+- Added an opt-in direct V4L2 capture backend for Linux 64-bit, 640×480 MJPEG
+  cameras. It drains to the newest driver buffer, retains a valid monotonic
+  camera timestamp, and automatically reopens the compatible OpenCV path if the
+  camera or negotiated format is unsupported.
+
+- Added capability-detected low-latency exposure choices. Standard UVC controls
+  are queried before any write; supported cameras retain automatic exposure but
+  can disable exposure-driven frame-rate variation. The Kiyo Pro choice also
+  requests the existing USB-identity-checked volatile HDR-off mode.
+
+- Added a configuration-only lean MediaPipe Hands comparison that requests image
+  landmarks without world-landmark or handedness output streams. The full graph
+  remains the production default until matched Controller tests prove the lean
+  output set is faster without recognition regressions.
+
+- Consolidated overlapping documentation by purpose. Third-party licensing,
+  runtime provenance, asset origins, and modified-core distribution now share
+  one notice; screenshot and web-art production moved into Contributing; the
+  early-start repair material moved into the Configuration Reference; and the
+  September 6 Setup review was folded into this release history.
+
+- The September 6 review covered Setup routes, persistence, worker controls,
+  pairing, signed delivery, installation manifests, player backups, hostname
+  refresh, networking indication, and web-module separation. Automated checks,
+  browser interaction tests, package verification, and live paired-device checks
+  passed for the recorded fixes. Its then-outstanding camera-to-display latency
+  work is now tracked in the movement evidence documents rather than a separate
+  review file.
+
+- Regenerated the complete 19-guide PDF set and Controller Help from the
+  consolidated Markdown structure.
+
+- Added end-to-end architecture and timing-boundary diagrams showing the shared
+  camera and MediaPipe front end, authenticated Controller-to-RetroPie delivery,
+  the FCEUmm and custom Nestopia paths, and the final game/display response.
+  Camera benchmark results now state exactly which part of that chain each test
+  measured and what remained outside it.
+
+### Validation
+
+- A live Razer Kiyo Pro test accepted the direct V4L2 path at 640×480 MJPEG
+  and 30 fps. The driver supplied monotonic timestamps and advancing sequence
+  numbers; a representative fresh sample measured about 1.25 ms from the
+  driver timestamp to userspace dequeue, with the expected 33.3 ms capture
+  cadence. Direct V4L2 remains optional because other Linux cameras and drivers
+  may negotiate differently.
+
+- The output-paused lean-graph comparison was not promoted. Against the same
+  direct-capture setup, its median inference time improved only from about
+  43.9 ms to 43.2 ms, while p95 sample age increased from about 108.5 ms to
+  114.6 ms. The complete graph therefore remains the default.
+
 ## [0.4.0] - 2026-09-07
 
 Version 0.4.0 promotes the native-movement efficiency work validated after the

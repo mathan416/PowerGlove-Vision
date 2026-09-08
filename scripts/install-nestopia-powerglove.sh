@@ -6,8 +6,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Installed the consolidated third-party notice and modification ledger.
 #   2026-09-04 - Added isolated RetroPie installation with GPLv2 notices.
-#   2026-09-04 - Installed the additive PowerGlove Vision modification ledger.
 # Full history: docs/CHANGELOG.md and Git history.
 set -eu
 
@@ -28,7 +28,6 @@ esac
 install -d -m 0755 "$target"
 install -m 0644 "$core" "$target/nestopia_powerglove_libretro.so"
 install -m 0644 "$destination/source/COPYING" "$target/COPYING"
-install -m 0644 "$root/native/nestopia-powerglove/README.md" "$target/README.md"
-install -m 0644 "$root/native/nestopia-powerglove/CHANGES.md" "$target/POWERGLOVE-VISION-CHANGES.md"
+install -m 0644 "$root/THIRD_PARTY_NOTICES.md" "$target/POWERGLOVE-VISION-NOTICES.md"
 printf '%s\n' "Installed $target/nestopia_powerglove_libretro.so"
 printf '%s\n' "Use configure-super-glove-ball-core.py to opt one ROM into native mode or restore FCEUmm."

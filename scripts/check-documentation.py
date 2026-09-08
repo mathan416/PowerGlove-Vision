@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Required one PDF edition for every consolidated Markdown document.
 #   2026-09-05 - Kept Pixel Pal's Extra-Digit Hunt counts synchronized with guide art.
 #   2026-09-04 - Guarded the Nestopia revision and patch digest in third-party records.
 #   2026-09-04 - Limited Help coverage checks to guides directly under docs.
@@ -50,9 +51,11 @@ CONFIGURATION_FILES = (
     ".github/workflows/quality.yml",
 )
 PDF_EDITIONS = {
+    "THIRD_PARTY_NOTICES.md": "PowerGlove-Vision-Third-Party-Notices.pdf",
     "docs/BUILD_YOUR_OWN.md": "PowerGlove-Vision-Build-Your-Own.pdf",
     "docs/NATIVE_EMULATION_EXPLAINED.md": "PowerGlove-Vision-Native-Emulation.pdf",
     "docs/TROUBLESHOOTING.md": "PowerGlove-Vision-Troubleshooting.pdf",
+    "docs/motion-smoothing-analysis.md": "PowerGlove-Vision-Motion-Analysis.pdf",
 
     "docs/MATRIX_GUIDE.md": "PowerGlove-Vision-Matrix-Guide.pdf",
     "docs/ARCHITECTURE.md": "PowerGlove-Vision-Architecture.pdf",
@@ -60,7 +63,6 @@ PDF_EDITIONS = {
     "docs/INSTALL_README.md": "PowerGlove-Vision-Guide.pdf",
     "docs/cheatsheet.md": "PowerGlove-Vision-Quick-Reference.pdf",
     "docs/bad-street-brawler-programs.md": "Bad-Street-Brawler-Power-Glove-Programs.pdf",
-    "docs/THIRD_PARTY_COMPONENTS.md": "PowerGlove-Vision-Third-Party-Components.pdf",
     "docs/CHANGELOG.md": "PowerGlove-Vision-Changelog.pdf",
     "docs/CONFIGURATION_REFERENCE.md": "PowerGlove-Vision-Configuration-Reference.pdf",
     "docs/SECURITY.md": "PowerGlove-Vision-Security.pdf",
@@ -83,10 +85,7 @@ def check_native_component_record(errors: list[str]) -> None:
     patch = ROOT / "native/nestopia-powerglove/nestopia-powerglove.patch"
     digest = hashlib.sha256(patch.read_bytes()).hexdigest()
     records = {
-        "third-party component inventory": ROOT / "docs/THIRD_PARTY_COMPONENTS.md",
-        "root third-party notices": ROOT / "THIRD_PARTY_NOTICES.md",
-        "native-core README": ROOT / "native/nestopia-powerglove/README.md",
-        "native-core change ledger": ROOT / "native/nestopia-powerglove/CHANGES.md",
+        "third-party notices": ROOT / "THIRD_PARTY_NOTICES.md",
     }
     for label, path in records.items():
         if revision not in path.read_text():
@@ -139,11 +138,11 @@ def check_extra_digit_hunt(errors: list[str]) -> None:
 
 
 def tracked_markdown() -> list[Path]:
-    """Return tracked and new nonignored Markdown files in stable path order."""
+    """Return present tracked and new nonignored Markdown files in stable order."""
     output = subprocess.check_output(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "*.md"], cwd=ROOT
     ).decode().split("\0")
-    return sorted(Path(name) for name in output if name)
+    return sorted(Path(name) for name in output if name and (ROOT / name).is_file())
 
 
 def local_targets(path: Path) -> list[Path]:
@@ -238,8 +237,6 @@ def main() -> int:
         # Distribution-wide licensing notices stay beside the root LICENSE.
         if path not in {
             Path("README.md"), Path("THIRD_PARTY_NOTICES.md"),
-            Path("native/nestopia-powerglove/README.md"),
-            Path("native/nestopia-powerglove/CHANGES.md"),
         } and path.parts[0] != "docs":
             errors.append(f"project Markdown must be under docs/: {path}")
         for target in local_targets(path):
@@ -259,9 +256,13 @@ def main() -> int:
         except json.JSONDecodeError as exc:
             errors.append(f"invalid JSON in {path.relative_to(ROOT)}: {exc}")
 
-    missing_sources = sorted(set(PDF_EDITIONS) - {str(path) for path in markdown})
+    markdown_sources = {str(path) for path in markdown}
+    missing_sources = sorted(set(PDF_EDITIONS) - markdown_sources)
     for name in missing_sources:
         errors.append(f"PDF source is not available Markdown: {name}")
+    missing_editions = sorted(markdown_sources - set(PDF_EDITIONS))
+    for name in missing_editions:
+        errors.append(f"maintained Markdown has no registered PDF edition: {name}")
     if args.require_pdfs:
         check_pdfs(errors)
 

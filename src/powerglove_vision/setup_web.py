@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Added advanced camera reader and exposure choices.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Organize Setup and keep failed requests and unsaved fields recoverable.
 
@@ -25,7 +26,7 @@ SETUP_CONTENT = """<style>main a{color:var(--cyan)}#players{margin-bottom:14px}#
 <label>RetroPie hostname or IP address<input id=receiver name=receiver placeholder=RETROPIE-NAME.local autocomplete=off></label>
 <label>Startup game profile<select id=profile name=profile>{{PROFILE_OPTIONS}}</select></label>
 <label>Hand or glove (diagnostic label)<select id=glove_color name=glove_color><option value=none>Bare hand</option><option value=white>White glove</option><option value=black>Black glove</option></select></label>
-</div><details><summary>Advanced connection and camera settings</summary><div class=formgrid><label>Receiver UDP port<input id=port name=port type=number min=1 max=65535 required></label><label>Camera<input id=camera name=camera placeholder=auto></label><label>Camera frame rate<select id=camera_fps name=camera_fps><option value=auto>Automatic — prefer 30 fps</option><option value=30>30 fps</option><option value=60>60 fps</option></select></label></div><p>Keep port 55355 and camera auto unless your installation needs different values. Automatic frame rate prefers the measured 30 fps path and safely accepts a rate supported by the camera. The hand or glove label records your setup; it does not change recognition.</p><p class=setup-status-note id=camera-rate-status role=status>Actual camera rate appears while tracking is active.</p><label class=check><input id=rotate_token type=checkbox> Replace the pairing key when saving</label><p>Replacing the key stops controller output. Pair with RetroPie again afterward.</p></details>
+</div><details><summary>Advanced connection and camera settings</summary><div class=formgrid><label>Receiver UDP port<input id=port name=port type=number min=1 max=65535 required></label><label>Camera<input id=camera name=camera placeholder=auto></label><label>Camera frame rate<select id=camera_fps name=camera_fps><option value=auto>Automatic — prefer 30 fps</option><option value=30>30 fps</option><option value=60>60 fps</option></select></label><label>Camera reader<select id=camera_backend name=camera_backend><option value=opencv>Compatible — OpenCV</option><option value=direct-v4l2>Low latency — Direct V4L2</option></select></label><label>Exposure behavior<select id=camera_exposure name=camera_exposure><option value=auto>Automatic — no camera changes</option><option value=low-latency>Low latency — standard UVC</option><option value=kiyo-low-latency>Razer Kiyo Pro — tested low latency</option></select></label></div><p>Keep port 55355 and camera auto unless your installation needs different values. Direct V4L2 uses the newest Linux camera buffer and automatically falls back to OpenCV if the camera or format is unsupported. Low latency keeps automatic exposure but disables variable frame-rate exposure only when the camera advertises that standard control. The Kiyo Pro choice also requests the tested volatile HDR-off mode; repower the camera to restore its hardware defaults.</p><p class=setup-status-note id=camera-rate-status role=status>Actual camera behavior appears while tracking is active.</p><label class=check><input id=rotate_token type=checkbox> Replace the pairing key when saving</label><p>Replacing the key stops controller output. Pair with RetroPie again afterward.</p></details>
 <div class=controls><button type=submit>Save settings</button><button class=secondary type=button id=test>Check console address</button></div></fieldset><p>Saving connection settings restarts tracking. Checking an address only confirms name resolution; it does not prove controller delivery.</p><p class=notice id=notice role=status aria-live=polite></p></form><button id=setup-retry type=button hidden>Reload saved settings</button></section>
 <section id=pairing-section class=card style="margin-bottom:14px" aria-labelledby=pair-title><h2 id=pair-title>Pair with RetroPie</h2>
 <p id=secure-note></p>
@@ -58,7 +59,7 @@ SETUP_SCRIPT = r"""(()=>{
 const $=id=>document.getElementById(id), secure=location.protocol==='https:';
 let prepared=null, savedConfig=null, settingsBusy=false, pairingBusy=false;
 let pairStep=1, lockedUntil=0, retryConfirmation=false;
-const settingsFields=['receiver','port','profile','glove_color','camera','camera_fps'];
+const settingsFields=['receiver','port','profile','glove_color','camera','camera_fps','camera_backend','camera_exposure'];
 async function api(path,payload,timeoutMs=0){
   const options=payload===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)};
   if(path==='/api/attract')options.headers['X-PowerGlove-Action']='attract';
@@ -106,7 +107,9 @@ async function refreshStatus(){
     $('status-tracking').textContent=({active:'Active',starting:'Starting',idle:'Idle',error:'Needs attention'}[w.vision_state]||(w.worker_running?'Starting':'Unavailable'));
     $('status-output').textContent=w.controller_request_pending?'Request pending':w.practice_mode?'Paused for practice':w.controller_enabled?'Armed':'Stopped';
     const actual=Number(w.camera_fps),requested=w.camera_fps_requested;
-    $('camera-rate-status').textContent=Number.isFinite(actual)&&actual>0?(requested!=='auto'&&Number(requested)!==actual?`Requested ${requested} fps; this camera is delivering ${actual} fps. Tracking continues at the supported rate.`:`Camera is currently delivering ${actual} fps.`):'Actual camera rate appears while tracking is active.';
+    const backend=w.capture_backend==='direct-v4l2'?'Direct V4L2':w.capture_backend==='opencv'?'OpenCV':'—',fallback=w.capture_backend_fallback?` Direct mode fell back safely: ${w.capture_backend_fallback}.`:'';
+    const exposure=w.camera_exposure_mode==='auto'?'automatic exposure':w.camera_exposure_applied?'low-latency exposure applied':'low-latency exposure unavailable';
+    $('camera-rate-status').textContent=(Number.isFinite(actual)&&actual>0?(requested!=='auto'&&Number(requested)!==actual?`Requested ${requested} fps; this camera is delivering ${actual} fps.`:`Camera is delivering ${actual} fps.`):'Camera rate is unavailable.')+` Reader: ${backend}; ${exposure}.`+fallback;
   }else{$('status-tracking').textContent='Unavailable';$('status-output').textContent='Unavailable'}
 }
 async function statusLoop(){try{await refreshStatus()}finally{setTimeout(statusLoop,5000)}}statusLoop();
@@ -197,7 +200,7 @@ window.addEventListener('pagehide',()=>{clearSecrets();prepared=null;retryConfir
 window.addEventListener('pageshow',()=>{expirePairing()});
 setInterval(expirePairing,500);
 $('form').onsubmit=e=>{e.preventDefault();if(settingsBusy||pairingBusy||windowActive())return;if($('rotate_token').checked&&!confirm('Replace the pairing key and stop controller output? You must pair with RetroPie again.'))return;settingsBusy=true;action(e.submitter,'notice',async()=>{
- try{const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),camera_fps:$('camera_fps').value,rotate_token:$('rotate_token').checked};
+ try{const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),camera_fps:$('camera_fps').value,camera_backend:$('camera_backend').value,camera_exposure:$('camera_exposure').value,rotate_token:$('rotate_token').checked};
  renderPairing();await api('/api/config',payload);$('rotate_token').checked=false;$('notice').textContent='Settings saved. Tracking is restarting.';await load(true);
  }finally{settingsBusy=false;renderPairing()}
 })};

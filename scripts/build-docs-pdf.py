@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Consolidated the PDF plan around 19 owning Markdown documents.
 #   2026-09-06 - Keep expanded player settings readable in manual screenshots.
 #   2026-09-05 - Kept each PDF list marker with its wrapped item text.
 #   2026-09-05 - Rendered paired gesture art side by side inside See it table cells.
@@ -104,7 +105,10 @@ def inline(text: str) -> str:
     text = html.escape(text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)
     text = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<i>\1</i>", text)
-    for index, markup in enumerate(tokens):
+    # Resolve outer Markdown links before the code spans they may contain.
+    # Otherwise a label such as [`CHANGES.md`](CHANGES.md) inserts its protected
+    # code token after that token's replacement pass has already happened.
+    for index, markup in reversed(tuple(enumerate(tokens))):
         text = text.replace(f"@@TOKEN{index}@@", markup)
     return text
 
@@ -564,12 +568,26 @@ def build(source: Path, destination: Path, title: str, subtitle: str, kind: str)
 
 def main():
     """Build every maintained PDF edition and report the generation date."""
+    obsolete = {
+        "Nestopia-PowerGlove-Changes.pdf",
+        "Nestopia-PowerGlove-Core-Guide.pdf",
+        "PowerGlove-Vision-Dot-Test.pdf",
+        "PowerGlove-Vision-Early-Startup.pdf",
+        "PowerGlove-Vision-Guide-Asset-Reference.pdf",
+        "PowerGlove-Vision-Setup-Code-Review.pdf",
+        "PowerGlove-Vision-Third-Party-Components.pdf",
+        "PowerGlove-Vision-Web-Illustrations.pdf",
+    }
+    for name in obsolete:
+        path = OUTPUT / name
+        if path.exists():
+            path.unlink()
     docs = ROOT / "docs"
     overview = ROOT / "README.md"
     install = docs / "INSTALL_README.md"
     cheatsheet = docs / "cheatsheet.md"
     programs = docs / "bad-street-brawler-programs.md"
-    third_party = docs / "THIRD_PARTY_COMPONENTS.md"
+    third_party = ROOT / "THIRD_PARTY_NOTICES.md"
     changelog = docs / "CHANGELOG.md"
     configuration = docs / "CONFIGURATION_REFERENCE.md"
     security = docs / "SECURITY.md"
@@ -603,8 +621,8 @@ def main():
         "Profile handbook",
     )
     build(
-        third_party, OUTPUT / "PowerGlove-Vision-Third-Party-Components.pdf",
-        "Third-party Runtime Components",
+        third_party, OUTPUT / "PowerGlove-Vision-Third-Party-Notices.pdf",
+        "Third-party Notices and Runtime Components",
         "MediaPipe provenance, modifications, checksums, licensing, and update procedure.",
         "Technical notice",
     )
@@ -655,8 +673,8 @@ def main():
           "Confirmed behavior, open questions, tracing, and safe fallback operation.",
           "Native compatibility record")
     build(direction_response, OUTPUT / "PowerGlove-Vision-Direction-Response.pdf",
-          "Direction-response Benchmark",
-          "Matched-state native Nestopia and FCEUmm response measurements.",
+          "Native Movement Response and Validation",
+          "Matched-state response, dot-core isolation, and camera-to-display evidence.",
           "Benchmark report")
     build(docs / "BUILD_YOUR_OWN.md", OUTPUT / "PowerGlove-Vision-Build-Your-Own.pdf",
           "Build your own: parts, cost, and difficulty", "Parts, planning costs, tested hardware, and a staged first build.", "Community guide")
@@ -664,7 +682,9 @@ def main():
           "How native Power Glove emulation works", "Follow hand recognition through joystick and native game input.", "Community guide")
     build(docs / "TROUBLESHOOTING.md", OUTPUT / "PowerGlove-Vision-Troubleshooting.pdf",
           "Troubleshooting by symptom", "Find the first failing stage, from the camera to the displayed game.", "Community guide")
-    print(f"Built 18 PDF guides on {date.today().isoformat()}")
+    build(docs / "motion-smoothing-analysis.md", OUTPUT / "PowerGlove-Vision-Motion-Analysis.pdf",
+          "Native Movement Analysis", "Evidence and experiments behind Latest coordinate and bounded movement.", "Engineering analysis")
+    print(f"Built 19 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

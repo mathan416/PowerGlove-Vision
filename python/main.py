@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Pass optional direct capture and capability-checked exposure settings.
 #   2026-09-07 - Pass an explicit validated MediaPipe inference thread count.
 #   2026-09-06 - Support measured opt-in Kiyo Pro capture controls and buffer count.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
@@ -61,6 +62,8 @@ def load_device_config() -> dict:
         "inference_threads": 4,
         "tracking_confidence": 0.40,
         "camera_fps": "auto",
+        "camera_backend": "opencv",
+        "camera_exposure": "auto",
     }
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     from powerglove_vision.game_registry import atomic_write
@@ -87,6 +90,10 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
         "--tracker-backend", "legacy",
         "--web-host", "127.0.0.1", "--web-port", "8089", "--no-matrix",
     ]
+    tracker_graph = settings.get("tracker_graph", "full")
+    if tracker_graph not in ("full", "lean-image"):
+        tracker_graph = "full"
+    command.extend(["--tracker-graph", tracker_graph])
     inference_threads = settings.get("inference_threads", 4)
     if type(inference_threads) is not int or inference_threads not in (1, 2, 4):
         inference_threads = 4
@@ -104,10 +111,18 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
     else:
         requested_fps = 0
     command.extend(["--fps", str(requested_fps)])
+    camera_backend = settings.get("camera_backend", "opencv")
+    if camera_backend not in ("opencv", "direct-v4l2"):
+        camera_backend = "opencv"
+    command.extend(["--capture-backend", camera_backend])
+    camera_exposure = settings.get("camera_exposure", "auto")
+    if settings.get("kiyo_hdr_off") is True:
+        camera_exposure = "kiyo-low-latency"
+    if camera_exposure not in ("auto", "low-latency", "kiyo-low-latency"):
+        camera_exposure = "auto"
+    command.extend(["--camera-exposure", camera_exposure])
     if settings.get("camera_buffers") == 2:
         command.extend(["--camera-buffers", "2"])
-    if settings.get("kiyo_hdr_off") is True:
-        command.append("--kiyo-hdr-off")
     native_xy_mode = settings.get("native_xy_mode", "latest")
     if native_xy_mode not in ("bounded", "latest"):
         native_xy_mode = "latest"
@@ -172,7 +187,10 @@ def main() -> int:
                     break
                 try:
                     control.flush_controller_request()
-                    with urllib.request.urlopen("http://127.0.0.1:8089/status", timeout=0.3) as response:
+                    worker_status_url = "http://127.0.0.1:8089/status"
+                    if control.statistics_requested():
+                        worker_status_url += "?statistics=1"
+                    with urllib.request.urlopen(worker_status_url, timeout=0.3) as response:
                         status = json.load(response)
                     control.update_worker(status)
                     control.update_firmware(matrix.firmware_identity())

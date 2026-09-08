@@ -19,6 +19,7 @@ import unittest
 from unittest.mock import patch
 
 from powerglove_vision import kiyo_camera as kiyo
+from powerglove_vision import camera_controls
 from powerglove_vision.vision_app import _camera_rate_attempts, build_parser
 
 
@@ -68,7 +69,8 @@ class KiyoTests(unittest.TestCase):
         self.assertNotIn('--camera-buffers',original);self.assertNotIn('--kiyo-hdr-off',original)
         candidate=command({'camera_buffers':2,'kiyo_hdr_off':True},Path('/tmp/model'))
         self.assertEqual(candidate[candidate.index('--camera-buffers')+1],'2')
-        self.assertIn('--kiyo-hdr-off',candidate)
+        self.assertEqual(candidate[candidate.index('--camera-exposure')+1],
+                         'kiyo-low-latency')
         self.assertEqual(candidate[candidate.index('--inference-threads')+1], '4')
         self.assertEqual(candidate[candidate.index('--tracking-confidence')+1], '0.4')
         self.assertEqual(candidate[candidate.index('--fps')+1], '0')
@@ -78,6 +80,46 @@ class KiyoTests(unittest.TestCase):
             command({'camera_fps':30},Path('/tmp/model')).index('--fps')+1], '30')
         self.assertEqual(command({'camera_fps':25},Path('/tmp/model'))[
             command({'camera_fps':25},Path('/tmp/model')).index('--fps')+1], '0')
+        direct=command({'camera_backend':'direct-v4l2',
+                        'camera_exposure':'low-latency',
+                        'tracker_graph':'lean-image'},Path('/tmp/model'))
+        self.assertEqual(direct[direct.index('--capture-backend')+1], 'direct-v4l2')
+        self.assertEqual(direct[direct.index('--camera-exposure')+1], 'low-latency')
+        self.assertEqual(direct[direct.index('--tracker-graph')+1], 'lean-image')
+
+    def test_standard_low_latency_controls_are_queried_before_writes(self):
+        values={camera_controls.EXPOSURE_AUTO:3,
+                camera_controls.EXPOSURE_AUTO_PRIORITY:1}
+        writes=[]
+        def ioctl(_fd,request,data):
+            control=struct.unpack_from('I',data,0)[0]
+            if request==camera_controls.VIDIOC_QUERYCTRL:
+                struct.pack_into('II',data,0,control,1)
+                data[8:16]=b'exposure'
+                struct.pack_into('iiii',data,40,0,3,1,1)
+                struct.pack_into('I',data,56,0)
+            elif request==camera_controls.VIDIOC_S_CTRL:
+                _,value=struct.unpack('Ii',data);values[control]=value;writes.append((control,value))
+            elif request==camera_controls.VIDIOC_G_CTRL:
+                struct.pack_into('i',data,4,values[control])
+        with patch.object(camera_controls.sys,'platform','linux'), \
+             patch.object(camera_controls.os,'open',return_value=7), \
+             patch.object(camera_controls.os,'close'):
+            report=camera_controls.configure_low_latency('/dev/video2',ioctl)
+        self.assertTrue(report['applied'])
+        self.assertEqual(writes,[(camera_controls.EXPOSURE_AUTO,3),
+                                 (camera_controls.EXPOSURE_AUTO_PRIORITY,0)])
+
+    def test_unsupported_standard_controls_never_write(self):
+        writes=[]
+        def ioctl(_fd,request,_data):
+            if request==camera_controls.VIDIOC_QUERYCTRL:raise OSError('unsupported')
+            writes.append(request)
+        with patch.object(camera_controls.sys,'platform','linux'), \
+             patch.object(camera_controls.os,'open',return_value=7), \
+             patch.object(camera_controls.os,'close'):
+            report=camera_controls.configure_low_latency('/dev/video9',ioctl)
+        self.assertFalse(report['supported']);self.assertEqual(writes,[])
 
     def test_every_camera_rate_falls_back_to_driver_negotiation(self):
         self.assertEqual(_camera_rate_attempts(0), (30, None))

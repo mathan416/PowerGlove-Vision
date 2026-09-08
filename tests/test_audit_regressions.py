@@ -43,7 +43,7 @@ class AuditRegressionTests(unittest.TestCase):
         audit = runpy.run_path(str(ROOT / 'scripts/check-documentation.py'))
         errors = []
         audit['check_help_coverage'](
-            [Path('docs/GAMEPLAY_GUIDE.md'), Path('docs/images/web/README.md')],
+            [Path('docs/GAMEPLAY_GUIDE.md'), Path('docs/support/README.md')],
             errors,
         )
         self.assertEqual(errors, [])

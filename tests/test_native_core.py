@@ -96,18 +96,17 @@ class NativeCoreTests(unittest.TestCase):
 
     def test_distribution_keeps_gpl_notice_with_installed_core(self):
         installer = (ROOT / "scripts/install-nestopia-powerglove.sh").read_text()
-        notice = (ROOT / "native/nestopia-powerglove/README.md").read_text()
-        changes = (ROOT / "native/nestopia-powerglove/CHANGES.md").read_text()
+        notice = (ROOT / "THIRD_PARTY_NOTICES.md").read_text()
         self.assertIn('destination/source/COPYING', installer)
         self.assertIn('target/COPYING', installer)
-        self.assertIn('POWERGLOVE-VISION-CHANGES.md', installer)
+        self.assertIn('POWERGLOVE-VISION-NOTICES.md', installer)
         self.assertIn("GNU General Public License, version 2", notice)
         self.assertIn("not a compiled core", notice)
         self.assertIn("3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397", notice)
-        self.assertIn("Martin Freij", changes)
-        self.assertIn("leaves it byte-for-byte unchanged", changes)
-        self.assertIn("camera-to-Nestopia Y orientation", changes)
-        self.assertIn("3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397", changes)
+        self.assertIn("Martin Freij", notice)
+        self.assertIn("leaves it", notice)
+        self.assertIn("byte-for-byte unchanged", notice)
+        self.assertIn("camera-to-Nestopia Y orientation", notice)
 
     def test_patch_does_not_remove_upstream_attribution(self):
         patch = (ROOT / "native/nestopia-powerglove/nestopia-powerglove.patch").read_text()

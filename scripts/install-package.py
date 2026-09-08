@@ -71,6 +71,7 @@ def unpack(archive, destination, machine, version):
             "src/powerglove_vision/profile_control.py",
             "config/games.json",
             "config/profiles.json",
+            "THIRD_PARTY_NOTICES.md",
         ]
         required += (["app.yaml", "sketch/sketch.yaml", "sketch/sketch.ino", "scripts/uno-q-early-start.py",
                       "uno-q/powerglove-early-start.service", "uno-q/powerglove-system-shutdown.path"]
@@ -83,8 +84,6 @@ def unpack(archive, destination, machine, version):
                          "scripts/install-nestopia-powerglove.sh",
                          "scripts/configure-super-glove-ball-core.py",
                          "native/nestopia-powerglove/nestopia-powerglove.patch",
-                         "native/nestopia-powerglove/README.md",
-                         "native/nestopia-powerglove/CHANGES.md",
                      ])
         for relative in required:
             if "PowerGlove-Vision/" + relative not in seen:

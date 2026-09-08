@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Aligned packaged PDFs with the consolidated documentation set.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Require the extracted Setup browser module.
 #   2026-09-06 - Required the Rock Paper Scissors browser module.
@@ -35,9 +36,11 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ARCHIVE = ROOT / "output" / "app-lab" / "PowerGlove-Vision-Uno-Q.zip"
 PACKAGE_ROOT = PurePosixPath("PowerGlove-Vision")
 PUBLIC_PDF_NAMES = {
+    "PowerGlove-Vision-Third-Party-Notices.pdf",
     "PowerGlove-Vision-Build-Your-Own.pdf",
     "PowerGlove-Vision-Native-Emulation.pdf",
     "PowerGlove-Vision-Troubleshooting.pdf",
+    "PowerGlove-Vision-Motion-Analysis.pdf",
 
     "PowerGlove-Vision-Matrix-Guide.pdf",
     "PowerGlove-Vision-Architecture.pdf",
@@ -49,7 +52,6 @@ PUBLIC_PDF_NAMES = {
     "PowerGlove-Vision-Guide.pdf",
     "PowerGlove-Vision-Overview.pdf",
     "PowerGlove-Vision-Security.pdf",
-    "PowerGlove-Vision-Third-Party-Components.pdf",
     "PowerGlove-Vision-Input-Audit.pdf",
     "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
     "PowerGlove-Vision-Direction-Response.pdf",
@@ -110,11 +112,8 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/scripts/benchmark-vision-replay.py",
     "PowerGlove-Vision/scripts/benchmark-native-motion-curve.py",
     "PowerGlove-Vision/native/nestopia-powerglove/nestopia-powerglove.patch",
-    "PowerGlove-Vision/native/nestopia-powerglove/README.md",
-    "PowerGlove-Vision/native/nestopia-powerglove/CHANGES.md",
     "PowerGlove-Vision/docs/super-glove-ball-native.md",
     "PowerGlove-Vision/docs/direction-response-benchmark.md",
-    "PowerGlove-Vision/docs/uno-q-dot-test.md",
     "PowerGlove-Vision/docs/motion-smoothing-analysis.md",
     "PowerGlove-Vision/docs/power-glove-rom-input-audit.md",
     "PowerGlove-Vision/docs/images/gestures/actions/menu-guard.png",
@@ -142,7 +141,6 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/CONFIGURATION_REFERENCE.md",
     "PowerGlove-Vision/docs/CONTRIBUTING.md",
     "PowerGlove-Vision/docs/SECURITY.md",
-    "PowerGlove-Vision/docs/THIRD_PARTY_COMPONENTS.md",
     "PowerGlove-Vision/python/main.py",
     "PowerGlove-Vision/sketch/sketch.ino",
     "PowerGlove-Vision/scripts/install-uno-q-shutdown-helper.sh",

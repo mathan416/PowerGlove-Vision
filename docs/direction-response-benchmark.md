@@ -1,4 +1,4 @@
-# Direction-response benchmark
+# Native movement response and validation
 
 ## Experimental X/Y correction investigation — September 7, 2026
 
@@ -65,6 +65,32 @@ cabinet testing.
 ROMs stay outside the project and every result is tied to its digest.
 Gun Smoke uses the positional Program G mapping, making it a useful second
 FCEUmm exercise of the shared camera-direction recognition when supplied.
+
+### Direct-output dot test
+
+Use the installed `lr-powerglove-dot` core when game behavior makes native X/Y
+difficult to judge. It reuses the normal Controller camera, MediaPipe
+recognition, reach mapping, signed transport, receiver, and 64-byte native-state
+publication; the dot core replaces only the game's interpretation and ignores
+the ROM.
+
+1. Launch Super Glove Ball through the normal cabinet menu and select
+   `lr-powerglove-dot` for that launch. Keep the normal start/end hooks and
+   Controller game session.
+2. Select the intended player, start controller delivery, confirm calibration,
+   and close Dashboard preview. A yellow dot and `TRACKING` should follow the
+   hand. Leaving view must show `NO INPUT`; returning must restore the dot.
+3. Film the hand and display together at a verified high frame rate. Hold still
+   for five seconds, make three horizontal and three vertical movements with
+   one-second holds, then test loss and recovery separately.
+4. Exit normally so receiver and core traces finalize. Repeat the same motion
+   with `lr-nestopia-powerglove` and unchanged player and camera settings.
+
+For guided software measurements, run `scripts/run-native-latency-session.py`
+on the cabinet. It collects bounded, read-only native telemetry and does not
+launch a game, start camera output, or alter calibration. Synthetic publication
+proves transport behavior only; it is not evidence of physical hand-to-display
+latency.
 
 ## Method
 
@@ -269,6 +295,8 @@ and individual coordinate records. Full options are in the
 
 ### Keep the stage boundaries separate
 
+![End-to-end latency boundaries from the physical hand and camera through MediaPipe, RetroPie, the emulator, and the visible game](images/architecture/timing.png)
+
 | Stage | Evidence to collect | What it does not establish |
 | --- | --- | --- |
 | Exposure and camera delivery | Physical visual reference plus camera/driver timestamps when available | OpenCV read-completion timestamps do not measure exposure or upstream buffering. |
@@ -286,6 +314,27 @@ delay, or add independently measured p95 values into an end-to-end percentile.
 The opt-in tools in the [native session procedure](#native-latency-and-stationary-jitter-session)
 provide receiver/core instrumentation. Collect actual traces and compare their
 overhead before reporting those intervals as measured.
+
+### How the camera experiments fit the complete path
+
+The camera comparisons answer whether a fresher image reaches MediaPipe; they do
+not measure the complete controller. Their results belong beside, not in place
+of, model, transport, emulator, and display evidence.
+
+| Experiment | Boundary covered | Result | Still outside the measurement |
+| --- | --- | --- | --- |
+| Kiyo 640x480 and 1280x720, one or two OpenCV buffers, HDR state comparison | Camera delivery and JPEG decode before inference | 640x480 with fixed-rate automatic exposure and HDR off produced the most consistent tested capture lane | MediaPipe, gestures, network, emulator, display |
+| Automatic, 30 fps, and 60 fps live play | Negotiated camera cadence plus the complete chain as perceived by the player | 30 fps felt smoother and more attached than the 60-fps request and became the first choice | No synchronized physical latency number |
+| Direct V4L2 at 640x480 MJPEG and 30 fps | Driver timestamp to newest-buffer dequeue | Worked on the Kiyo Pro; a representative fresh frame measured about 1.25 ms and 33.3 ms capture cadence | Exposure start, MediaPipe, transport, game, display |
+| OpenCV versus direct V4L2 | Alternate entrance to the same newest-frame slot | Direct capture passed on the test camera and remains optional with automatic fallback | Does not change the MediaPipe model or game mapping |
+| Full versus lean MediaPipe graph | Model output and resulting sample age after capture | Lean median inference improved only about 1.6% and p95 sample age worsened, so the full graph remained selected | Network, core, rendered response |
+| Dashboard closed versus open | Optional preview and statistics load around the Controller path | Preview uses latest-only work; routine statistics are omitted unless requested | Does not isolate camera exposure or display latency |
+
+Functional live play, including a completed Super Glove Ball game, proves that
+the entire chain can work together. It does not assign delay to an individual
+stage. The remaining definitive latency test is a repeated high-frame-rate view
+of the physical hand and screen, correlated with Controller, receiver, and core
+traces from the same session.
 
 For the visual test, frame the hand and game display in one 120/240-fps recording.
 Hold an open hand still for five seconds, then make five short horizontal steps
@@ -655,3 +704,30 @@ require live play and a hand/display recording. The protocol reference is
 USB-identity-checked control implementation without adding that external utility.
 Aggregate source evidence is retained locally in
 `data/benchmarks/uno-q-camera-2026-09-06.json` (excluded from installation payloads).
+
+## Direct V4L2 and lean-graph comparison — September 7, 2026
+
+The later output-paused Controller comparison used the same Kiyo Pro at
+640×480 MJPEG and 30 fps, with low-latency automatic exposure and the volatile
+Kiyo HDR-off request. The direct V4L2 reader initialized without fallback,
+reported advancing camera sequence numbers, and supplied monotonic driver
+timestamps. A fresh observed frame measured about 1.25 ms from its driver
+timestamp to userspace dequeue, and the capture interval was the expected
+33.3 ms. This establishes compatibility for the tested camera and Controller;
+it does not assume every V4L2 driver exposes the same ABI, format, or timestamp.
+
+Matched twelve-second status windows then compared the complete MediaPipe Hands
+output graph with the configuration-only `lean-image` output set. The strongest
+steady segments measured:
+
+| Graph | Observed samples | Inference p50 / p95 (ms) | Sample age p50 / p95 (ms) |
+| --- | ---: | --- | --- |
+| Complete | 18 | 43.9 / 91.8 | 81.4 / 108.5 |
+| Lean image output | 23 | 43.2 / 84.4 | 70.0 / 114.6 |
+
+The lean lane reduced median inference by only about 1.6% and increased p95
+sample age. It therefore failed the required 10% end-to-end promotion gate.
+The complete graph was restored; direct V4L2 remains available as the selected
+camera-specific test option. A later complete-graph confirmation contained a
+single 215 ms tail, reinforcing that short status windows should guide rather
+than replace longer gameplay and physical latency validation.

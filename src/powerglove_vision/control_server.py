@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Added portable camera backend and exposure settings.
 #   2026-09-06 - Separate maintained browser pages from HTTP routing.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
@@ -85,6 +86,16 @@ def _camera_fps(value: Any, *, strict: bool = False) -> str | int:
     return "auto"
 
 
+def _choice(value: Any, choices: tuple[str, ...], fallback: str, message: str,
+            *, strict: bool = False) -> str:
+    """Normalize one public fixed-choice setting."""
+    if isinstance(value, str) and value in choices:
+        return value
+    if strict:
+        raise ValueError(message)
+    return fallback
+
+
 class ForbiddenActionError(Exception):
     """Raised when a sensitive browser action lacks its CSRF safeguard."""
 
@@ -161,6 +172,17 @@ class ControlState:
         self.build_identity = current_identity()
         self.firmware_identity = None
         self.connection_probe = None
+        self._statistics_until = 0.0
+
+    def request_statistics(self, seconds: float = 1.0) -> None:
+        """Lease detailed worker telemetry while a visible Dashboard requests it."""
+        with self.lock:
+            self._statistics_until = max(self._statistics_until, time.monotonic() + seconds)
+
+    def statistics_requested(self) -> bool:
+        """Return whether the supervisor should request detailed worker status."""
+        with self.lock:
+            return time.monotonic() < self._statistics_until
 
     def configure_pairing_identity(self, identity: str) -> None:
         """Publish the current certificate identity used for physical verification."""
@@ -370,6 +392,16 @@ class ControlState:
             "glove_color": config.get("glove_color", "none"),
             "camera": str(config.get("camera", "auto")),
             "camera_fps": _camera_fps(config.get("camera_fps", "auto")),
+            "camera_backend": _choice(
+                config.get("camera_backend", "opencv"),
+                ("opencv", "direct-v4l2"), "opencv", "Choose a camera reader.",
+            ),
+            "camera_exposure": _choice(
+                "kiyo-low-latency" if config.get("kiyo_hdr_off") is True else
+                    config.get("camera_exposure", "auto"),
+                ("auto", "low-latency", "kiyo-low-latency"), "auto",
+                "Choose an exposure mode.",
+            ),
             "matrix_attract": config.get("matrix_attract", "on"),
             "native_xy_mode": config.get("native_xy_mode", "latest"),
             "paired": bool(config.get("receiver") and config.get("token")),
@@ -441,6 +473,16 @@ class ControlState:
             incoming.get("camera_fps", current.get("camera_fps", "auto")),
             strict=True,
         )
+        camera_backend = _choice(
+            incoming.get("camera_backend", current.get("camera_backend", "opencv")),
+            ("opencv", "direct-v4l2"), "opencv",
+            "Choose OpenCV or Direct V4L2 for camera reading.", strict=True,
+        )
+        camera_exposure = _choice(
+            incoming.get("camera_exposure", current.get("camera_exposure", "auto")),
+            ("auto", "low-latency", "kiyo-low-latency"), "auto",
+            "Choose Automatic, Low latency, or Kiyo Pro tested exposure.", strict=True,
+        )
         token = secrets.token_urlsafe(24) if incoming.get("rotate_token") else current.get("token")
         if not token:
             token = secrets.token_urlsafe(24)
@@ -449,9 +491,11 @@ class ControlState:
             "receiver": receiver, "port": port, "token": token,
             "profile": profile, "glove_color": glove_color,
             "camera": camera, "camera_fps": camera_fps,
+            "camera_backend": camera_backend, "camera_exposure": camera_exposure,
             "matrix_attract": current.get("matrix_attract", "on"),
             "native_xy_mode": current.get("native_xy_mode", "latest"),
         })
+        saved.pop("kiyo_hdr_off", None)
         from .game_registry import atomic_write
         atomic_write(self.config_path, json.dumps(saved, indent=2) + "\n")
         if not receiver or incoming.get("rotate_token"):
@@ -652,6 +696,9 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 except OSError:
                     self.send_error(404)
             elif path == "/status":
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                if query.get("statistics") == ["1"]:
+                    state.request_statistics()
                 _send(self, 200, json.dumps(state.snapshot()).encode(), "application/json")
             elif path == "/api/connection-status":
                 _send(self, 200, json.dumps(state.connection_status()).encode(), "application/json")

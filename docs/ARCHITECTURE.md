@@ -27,6 +27,7 @@ camera, receiver, or game is working.
 | --- | --- |
 | Machines and processes | [System boundaries](#system-boundaries) |
 | A movement reaching a game | [Camera-to-controller flow](#camera-to-controller-flow) |
+| Camera tests in the full path | [Measurement boundaries](#measurement-boundaries) |
 | Boot, Glove Academy, and Tune | [Runtime modes](#runtime-modes) |
 | Personal sensitivity | [Recognition and tuning](#recognition-and-tuning) |
 | Game launches and settings | [Profile and configuration flows](#profile-and-configuration-flows) |
@@ -73,9 +74,11 @@ sockets. These functions are kept separate from camera inference.
 
 ![Nine-stage flow from a camera frame to the game response](images/architecture/input.png)
 
-1. The camera layer opens a UVC capture source. A dedicated OpenCV capture
-     thread drains it continuously and publishes only the newest frame; older
-     unprocessed frames are superseded rather than queued.
+1. The camera layer opens a UVC capture source. The compatible path uses OpenCV.
+   An opt-in direct V4L2 reader can instead dequeue the newest 640×480 MJPEG
+   driver buffer and its timestamp, with automatic OpenCV fallback. A dedicated
+   capture thread publishes only the newest frame; older unprocessed frames are
+   superseded rather than queued.
 2. MediaPipe identifies the hand landmarks. The tracker validates finite,
    non-collapsed palm geometry and produces a `HandObservation` using the
    selected frame's capture timestamp. MediaPipe's score is labelled as
@@ -126,7 +129,11 @@ direction thresholds together and sets release to half of activation. It does
 not alter native reach, finger gestures, or game mappings. Re-centering clears
 saved reach spans because they belong to the old center.
 
-The worker also publishes diagnostic state after inference. Browser video is
+The worker also publishes essential state after inference. Changed controller
+state is submitted immediately to a separate latest-only publisher. When the
+browser's **Show statistics** preference is enabled, routine derived gesture and
+controller detail refreshes at about 10 Hz and rolling percentile summaries at
+2 Hz; hidden statistics do not incur that work. Browser video is
 submitted at most five times per second and only while a stream consumer is
 connected. A separate single-slot worker draws normalized landmarks, downsizes
 the gameplay preview to 320×240, performs JPEG encoding, and discards a
@@ -135,10 +142,41 @@ diagnostics follow that preview cadence; finger geometry itself is calculated
 once for recognition. Controller sending occurs before optional preview work,
 so the browser refresh rate is not the controller state update rate. Optional
 Dashboard statistics are off by default and browser-local; when disabled, the
-page does not read, render, or retain detailed controller and event fields.
-Capture
+page does not read, render, retain, or request detailed controller and event
+fields. Capture
 age, inference cadence, skipped frames, preview cost, and send time expose the
 local stages; none alone is an end-to-end camera-to-game latency measurement.
+
+### Shared front end and emulator paths
+
+![End-to-end flow from camera and MediaPipe through authenticated delivery to the FCEUmm and Nestopia game paths](images/architecture/end-to-end.png)
+
+The camera, newest-frame capture, MediaPipe model, calibration, and gesture
+recognition are shared. The split occurs on RetroPie after an authenticated
+packet is accepted. FCEUmm receives ordinary directions and buttons through the
+Linux virtual gamepad. Super Glove Ball's custom Nestopia core instead reads the
+newest 64-byte native state and assembles the ten-byte Power Glove packet used
+by the ROM. Both finish in the emulator, game logic, RetroArch video path, and
+physical display. Dashboard preview and optional statistics branch from the
+Controller worker and never sit between recognition and delivery.
+
+### Measurement boundaries
+
+![Nine measurement boundaries from physical hand movement through camera, MediaPipe, network, emulator, and visible response](images/architecture/timing.png)
+
+The camera experiments measure only the beginning of this chain. A valid V4L2
+driver timestamp can describe driver-to-userspace dequeue time, while an OpenCV
+read-completion timestamp begins later and cannot reveal exposure or upstream
+camera buffering. Capture age and inference time describe the Controller;
+receiver publication and core consumption use the RetroPie's clock. Only one
+high-frame-rate recording containing both the real hand and the game display
+measures the complete visible response without synchronizing those computers.
+
+The tests deliberately retain these boundaries. A faster camera dequeue does
+not prove faster recognition, a successful UDP send does not prove receiver or
+game consumption, and a headless ROM response excludes RetroArch presentation
+and display delay. The benchmark guide records which part of this diagram each
+experiment actually covered.
 
 The read-only `scripts/measure-vision-status.py` collector deduplicates observed
 inference timestamps and capture sequences. Public status is cached by the
@@ -466,7 +504,7 @@ settings intact. Detailed commands are in the [Installation Guide](CONFIGURATION
 
 Documentation has an editable Markdown source, generated diagrams, built-in Help
 rendering, and a PDF edition. `scripts/build-architecture-diagrams.py` regenerates
-these seven figures. `scripts/build-docs-pdf.py` generates the PDF set. The Help
+these nine figures. `scripts/build-docs-pdf.py` generates the PDF set. The Help
 and package allowlists explicitly include this architecture guide. The local
 quick reference remains excluded from public deployment.
 

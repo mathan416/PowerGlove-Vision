@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Accepted driver timestamps and safely closed direct capture backends.
 #   2026-09-07 - Kept optional trace thread identifiers compatible with Python 3.7.
 #   2026-09-05 - Added latest-frame capture and asynchronous preview encoding.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -81,6 +82,7 @@ class LatestFrameCapture:
         capture: Any,
         first_frame: Any | None = None,
         *,
+        first_captured_at: float | None = None,
         clock: Callable[[], float] = time.monotonic,
         metadata: dict[str, Any] | None = None,
     ) -> None:
@@ -94,7 +96,10 @@ class LatestFrameCapture:
         self._trace = DiagnosticTrace.from_environment("capture")
         if first_frame is not None:
             self._sequence = 1
-            self._latest = CapturedFrame(1, clock(), True, first_frame)
+            self._latest = CapturedFrame(
+                1, clock() if first_captured_at is None else first_captured_at,
+                True, first_frame,
+            )
         self._thread = threading.Thread(
             target=self._run, name="powerglove-camera", daemon=True
         )
@@ -113,11 +118,15 @@ class LatestFrameCapture:
                 trace.record(dict(event="capture_read_begin", sequence=attempt,
                                   at_ns=started_ns, thread_id=thread_id))
             try:
-                ok, frame = self._capture.read()
+                timed_read = getattr(self._capture, "read_with_timestamp", None)
+                if timed_read is None:
+                    ok, frame = self._capture.read()
+                    captured_at = self._clock()
+                else:
+                    ok, frame, captured_at = timed_read()
             except Exception:
                 # Publish failure so the main loop can apply its timed reconnect.
-                ok, frame = False, None
-            captured_at = self._clock()
+                ok, frame, captured_at = False, None, self._clock()
             if traced:
                 ended_ns = time.monotonic_ns()
                 cpu_ended_ns = time.thread_time_ns()
@@ -126,6 +135,9 @@ class LatestFrameCapture:
                                   thread_cpu_ns=cpu_ended_ns - cpu_started_ns))
             with self._lock:
                 self._sequence += 1
+                capture_metadata = getattr(self._capture, "last_metadata", None)
+                if isinstance(capture_metadata, dict):
+                    self.metadata.update(capture_metadata)
                 self._latest = CapturedFrame(
                     self._sequence, captured_at, bool(ok), frame if ok else None
                 )
@@ -150,6 +162,9 @@ class LatestFrameCapture:
         finally:
             if threading.current_thread() is not self._thread:
                 self._thread.join(timeout=1.0)
+            close = getattr(self._capture, "close", None)
+            if close is not None and not self._thread.is_alive():
+                close()
             if self._trace is not None:
                 self._trace.close()
 
@@ -307,6 +322,81 @@ class LatestPreviewEncoder:
         with self._lock:
             if self._closed:
                 return
+            self._closed = True
+        try:
+            self._jobs.get_nowait()
+        except queue.Empty:
+            pass
+        try:
+            self._jobs.put_nowait(None)
+        except queue.Full:
+            pass
+        self._thread.join(timeout=1.0)
+
+
+@dataclass(frozen=True)
+class _StatusJob:
+    status: dict
+    clear_frame: bool
+
+
+class LatestStatusPublisher:
+    """Publish only the newest prepared status without blocking inference."""
+
+    def __init__(self, publish: Callable[..., None]) -> None:
+        self._publish = publish
+        self._jobs: queue.Queue[_StatusJob | None] = queue.Queue(maxsize=1)
+        self._closed = False
+        self._lock = threading.Lock()
+        self._failure: BaseException | None = None
+        self._thread = threading.Thread(
+            target=self._run, name="powerglove-status", daemon=True,
+        )
+        self._thread.start()
+
+    def submit(self, status: dict, *, clear_frame: bool = False) -> bool:
+        """Replace pending housekeeping while preserving the newest state."""
+        self.raise_if_failed()
+        with self._lock:
+            if self._closed:
+                return False
+        job = _StatusJob(dict(status), bool(clear_frame))
+        try:
+            self._jobs.put_nowait(job)
+            return True
+        except queue.Full:
+            try:
+                self._jobs.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self._jobs.put_nowait(job)
+                return True
+            except queue.Full:
+                return False
+
+    def _run(self) -> None:
+        while True:
+            job = self._jobs.get()
+            if job is None:
+                return
+            try:
+                self._publish(job.status, clear_frame=job.clear_frame)
+            except BaseException as exc:
+                with self._lock:
+                    self._failure = exc
+                return
+
+    def raise_if_failed(self) -> None:
+        """Surface publisher failures on the owning control thread."""
+        with self._lock:
+            failure = self._failure
+            self._failure = None
+        if failure is not None:
+            raise failure
+
+    def close(self) -> None:
+        with self._lock:
             self._closed = True
         try:
             self._jobs.get_nowait()

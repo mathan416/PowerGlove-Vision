@@ -94,6 +94,8 @@ from camera frames and controller packets, which remain newest-state-only.
 | Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
 | Camera | `auto` | Prefer `auto`. Use a number from `0` through `99` only when automatic selection chooses the wrong capture device. |
 | Camera frame rate | Automatic | Tries 30 fps first, then accepts the camera driver's usable rate if necessary. Explicit 30- and 60-fps requests are available for comparison and fall back safely when unsupported. The live negotiated rate appears below the setting while tracking is active. |
+| Camera reader | Compatible — OpenCV | The normal portable capture path. **Low latency — Direct V4L2** is an opt-in Linux 64-bit, 640×480 MJPEG experiment that drains to the newest driver buffer and falls back to OpenCV if its requirements are not met. |
+| Exposure behavior | Automatic — no camera changes | Leave cameras untouched by default. **Low latency — standard UVC** keeps automatic exposure and requests fixed frame rate only when those controls are advertised. **Razer Kiyo Pro — tested low latency** adds the Kiyo's volatile HDR-off request. |
 | Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
 
 Selecting **Save settings** validates the fields, writes them atomically with private
@@ -123,6 +125,11 @@ the bottom of Setup. It is off by default and is stored in browser local storage
 not `device.json`. When disabled, the Dashboard still polls basic state needed
 for controls and connection feedback but does not read, render, or retain the
 optional controller, axes, finger, performance, and recent-event fields.
+The worker publishes changed controller state immediately. While statistics are
+shown, routine detailed feedback is refreshed at about 10 Hz and replaces any
+older pending Dashboard work in a one-item worker queue. Expensive rolling
+percentiles are refreshed at 2 Hz. With statistics hidden, those calculations
+are not performed; camera tracking and controller transmission are unchanged.
 
 ### Comfortable movement range
 
@@ -238,6 +245,24 @@ forced rate if it cannot produce frames. Setup can explicitly request 30 or 60
 fps for comparison and reports the negotiated rate while tracking is active.
 An unsupported explicit rate also falls back to the driver's usable choice.
 
+The capture and exposure choices are independent. `camera_backend` is `opencv`
+or `direct-v4l2`; `camera_exposure` is `auto`, `low-latency`, or
+`kiyo-low-latency`. Direct V4L2 requires Linux's 64-bit V4L2 ABI and an already
+negotiated 640×480 MJPEG stream. It exposes the camera sequence and monotonic
+driver timestamp when the driver supplies them. Any initialization or format
+failure is reported as `capture_backend_fallback`, then the camera is reopened
+through OpenCV. No game, gesture, reach, or calibration setting is changed.
+
+Low-latency exposure first queries the standard V4L2 controls. Unsupported or
+disabled controls are never written. On a compatible camera, exposure remains
+automatic while exposure auto-priority is disabled so long exposures cannot
+silently reduce frame cadence. The Kiyo mode additionally verifies USB identity
+before sending the existing HDR-off request. These changes are volatile. For
+the project's Razer Kiyo Pro, start comparisons at 640×480 MJPEG, Automatic
+30-fps-first rate, `kiyo-low-latency`, and either OpenCV or Direct V4L2. Do not
+force a manual exposure ceiling unless the camera advertises a suitable standard
+control and a measured test proves the darker image still recognizes the hand.
+
 The earlier Kiyo Pro capture experiment used two buffers and a volatile HDR-off
 command while requesting 60 fps. It remains useful historical evidence, but it
 is not the 0.4.0 general default. See the [capture comparison](direction-response-benchmark.md#uno-q-kiyo-pro-capture-comparison--september-6-2026).
@@ -277,6 +302,16 @@ delay another controller sample. During gameplay, normalized landmark drawing
 and JPEG encoding use a 320×240 copy after inference; Academy and tuning retain
 the full-size preview. Closing those pages avoids even that optional work. When a preview is open, submissions are limited to 5 fps
 (`--preview-fps 5`).
+
+The full MediaPipe graph remains the production setting. The configuration-only
+`lean-image` experiment requests only image landmarks from the same MediaPipe
+Hands graph, omitting handedness and world-landmark output streams. It does not
+replace the hand model or reduce the 21 landmarks calculated for recognition.
+An output-paused Controller comparison improved median inference only from about
+43.9 ms to 43.2 ms and worsened p95 sample age from about 108.5 ms to 114.6 ms.
+That result did not pass the promotion gate, so `full` remains the supported
+default. Retain `lean-image` only for repeatable comparisons on future runtimes
+or hardware.
 
 The worker preloads OpenCV and MediaPipe on its background vision thread as
 soon as its control server is available. Preloading imports the libraries;
@@ -1533,11 +1568,14 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--camera-buffers NUMBER` | `1` | One or two capture buffers; the measured UNO Q Kiyo candidate uses two. |
 | `--kiyo-hdr-off` | Off | Identity-checked volatile Kiyo Pro HDR-off with automatic fixed-rate exposure. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
+| `--capture-backend VALUE` | `opencv` | `opencv` is the compatible reader. `direct-v4l2` is the optional newest-driver-buffer experiment and falls back to OpenCV when unsupported. |
+| `--camera-exposure VALUE` | `auto` | `auto` makes no exposure changes; `low-latency` uses only advertised standard V4L2 controls; `kiyo-low-latency` adds the USB-identity-checked Kiyo HDR-off request. |
 | `--inference-threads NUMBER` | `4` | CPU threads requested for each MediaPipe Hands inference calculator; accepted values are 1, 2, and 4. The Controller supervisor passes its validated setting explicitly. Benchmark before changing. |
 | `--tracking-confidence NUMBER` | `0.40` | Minimum MediaPipe landmark-tracking confidence. The selected value reduced reacquisition tails in live testing; do not treat it as position confidence. |
 | `--native-xy-mode VALUE` | `latest` | Native Super Glove Ball response: `latest` for direct newest coordinates or `bounded` for the speed-sensitive comparison curve. |
 | `--motion-tracking` | Ignored | Hidden compatibility spelling retained for old launch scripts; optical flow is archived and this flag does not enable it. |
 | `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
+| `--tracker-graph VALUE` | `full` | `full` retains the proven outputs. `lean-image` omits world-landmark and handedness output streams for an output-paused comparison. |
 | `--preview-fps NUMBER` | `5` | Maximum rate at which optional browser preview jobs are submitted. |
 | `--glove-color VALUE` | `none` | `none`, `white`, or `black`; an informational label, not a different recognition model. |
 | `--no-mirror` | Off | Disables horizontal image mirroring. |
@@ -1878,8 +1916,19 @@ may subsequently reset the sketch during its ordinary upload.
 Inspect `journalctl --user -b -u powerglove-early-start.service`; disable with
 `systemctl --user disable powerglove-early-start.service`. Review compatibility
 after platform updates: the tested loader is Arduino platform 1.0.0 with App Lab
-0.13.0. Full installation and removal details are in
-[Early sketch startup](EARLY_START.md).
+0.13.0. The helper writes only the startup release word `0xCAFFEEEE` at
+`0x40036400` after checking board identity, startup-app selection, the cached
+Wait for App header, and four 64-byte samples of installed sketch memory. This
+is a bounded compatibility check, not complete firmware attestation. Do not run
+it during uploads or alongside another debugger.
+
+For validation, reboot rather than judging the user-service restart alone. A
+successful cold boot shows the Arduino logo and heart, measures the blank
+interval, starts the project hourglass, and reaches the usual glove animation
+and controls without reconnecting the camera. A service log that reports
+`released` confirms the helper action; it does not by itself prove cold-boot
+timing or application readiness. If the checks fail, leave the helper disabled
+and allow ordinary App Lab startup to remain the fallback.
 
 
 ### Matrix animation timing reference

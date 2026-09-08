@@ -13,6 +13,7 @@
 Run with PYTHONPATH=src python tests/browser_dashboard_statistics.py.
 """
 import asyncio
+from urllib.parse import urlsplit
 
 from playwright.async_api import async_playwright
 
@@ -26,7 +27,8 @@ async def main():
         context = await browser.new_context()
 
         async def route(request):
-            path = request.request.url.split('statistics.test')[-1]
+            parsed = urlsplit(request.request.url)
+            path = parsed.path
             if path in ('/dashboard', '/setup'):
                 return await request.fulfill(
                     body=DASHBOARD if path == '/dashboard' else SETUP,
@@ -50,7 +52,7 @@ async def main():
         await page.add_init_script("""const originalFetch=window.fetch;
 window.diagnosticReads=0;window.statusReads=0;
 window.fetch=async(...args)=>{const response=await originalFetch(...args);
-if(args[0]==='/status'){const json=response.json.bind(response);response.json=async()=>{
+if(String(args[0]).startsWith('/status')){const json=response.json.bind(response);response.json=async()=>{
 window.statusReads++;return new Proxy(await json(),{get(target,key){
 if(['dpad','buttons','axes','fingers','performance','events'].includes(key))window.diagnosticReads++;
 return target[key];}});};}return response;};""")

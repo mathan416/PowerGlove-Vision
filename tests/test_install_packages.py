@@ -69,13 +69,12 @@ class ArchiveTests(unittest.TestCase):
                          'src/powerglove_vision/profile_control.py',
                          'src/powerglove_vision/retropie_hook.py',
                          'config/games.json', 'config/profiles.json',
+                         'THIRD_PARTY_NOTICES.md',
                          'retropie/powerglove-receiver.service',
                          'retropie/bin/powerglove-retropie-hook',
                          'retropie/runcommand-onstart-powerglove.sh',
                          'retropie/runcommand-onend-powerglove.sh',
-                         'native/nestopia-powerglove/nestopia-powerglove.patch',
-                         'native/nestopia-powerglove/README.md',
-                         'native/nestopia-powerglove/CHANGES.md'):
+                         'native/nestopia-powerglove/nestopia-powerglove.patch'):
                 output.writestr('PowerGlove-Vision/' + name, 'test')
             if extra:
                 output.writestr(*extra)

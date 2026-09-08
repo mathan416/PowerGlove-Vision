@@ -132,6 +132,38 @@ controls, and check grammar and punctuation before submitting changes.
 Update all affected guides when a user-visible command, path, control, screen,
 configuration field, dependency, or troubleshooting procedure changes.
 
+### Screenshots, illustrations, and web artwork
+
+Refresh application screenshots from the repository root with:
+
+```sh
+PYTHONPATH=src python scripts/capture-guide-screenshots.py
+```
+
+The development environment needs Playwright and Chrome. The script renders the
+current application templates against isolated sample responses and temporary
+player state. It never contacts a live Controller or RetroPie. Camera areas use
+a labelled placeholder and pairing inputs use non-secret examples. The capture
+covers Dashboard, Play, Academy learning and personalization, player settings
+and restoration, Setup, Games, Help, attract settings, and every guided-pairing
+state. Shared filenames mean one refresh can affect several guides, so inspect
+the images before rebuilding the PDFs. The script also checks the Security
+network table at phone, tablet, and desktop widths.
+
+Gesture artwork, architecture illustrations, and physical matrix photographs
+are maintained separately. Preserve the intentional extra-finger artwork.
+Generate compact Help copies with `scripts/build-help-images.py` after editing
+the originals under `docs/images/gestures`. Individual web gestures are limited
+to 320 pixels on their longest side and multi-gesture sheets to 960 pixels;
+aspect ratio and transparency remain intact. PDF generation continues to use
+the full-resolution originals.
+
+Website branding icons live under `assets/`, not in the generated gesture
+thumbnail directory. The shared shell uses `favicon.ico` and the Apple touch
+icon; PNG variants remain available. Keep the original full logo unchanged.
+Artwork origins, licensing, and screenshot provenance belong in the consolidated
+[Third-party notices](../THIRD_PARTY_NOTICES.md#documentation-and-website-assets).
+
 ### Write for the reader's next action
 
 1. Give each guide a clear job: the overview explains the project, installation leads to a working system, reference material defines settings and flags, and game cards help people play. Link between them instead of repeating long explanations.
@@ -283,7 +315,7 @@ and gameplay remain release gates; simulated filesystem tests do not replace the
 
 ## Review parking lot
 
-The [6 September Setup and code review](https://github.com/mathan416/PowerGlove-Vision/blob/dev/docs/reviews/2026-09-06-setup-and-code-review.md)
-records tested fixes, review coverage, and decisions awaiting the maintainer.
-Update that record as items are resolved. Keep measurement-dependent movement
-changes separate from routine UI and persistence fixes.
+The Changelog records completed reviews and release evidence. Keep unresolved
+measurement-dependent movement work here rather than maintaining a second
+release history. Separate camera-to-display validation from routine UI and
+persistence fixes.

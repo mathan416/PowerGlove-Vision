@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Added an expiring demand signal for optional Dashboard telemetry.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Expose bounded player operations and enforce fresh centering.
@@ -67,6 +68,17 @@ class SharedDebugState:
         self.tuning = None
         self.practice_active = False
         self.practice_request: bool | None = None
+        self.statistics_until = 0.0
+
+    def request_statistics(self, seconds: float = 1.0) -> None:
+        """Keep detailed worker telemetry active only for a watching browser."""
+        with self.lock:
+            self.statistics_until = max(self.statistics_until, time.monotonic() + seconds)
+
+    def statistics_requested(self) -> bool:
+        """Return whether optional Dashboard statistics currently have a reader."""
+        with self.lock:
+            return time.monotonic() < self.statistics_until
 
     def update(self, jpeg: bytes, status: dict) -> None:
         """Atomically replace the current JPEG frame and worker status."""
@@ -207,7 +219,10 @@ def make_handler(shared: SharedDebugState) -> type[BaseHTTPRequestHandler]:
                 self.wfile.write(body)
             elif self.path == "/":
                 self.send_response(200); self.send_header("Content-Type", "text/html"); self.end_headers(); self.wfile.write(PAGE)
-            elif self.path == "/status":
+            elif self.path.split("?", 1)[0] == "/status":
+                query = self.path.split("?", 1)[1] if "?" in self.path else ""
+                if "statistics=1" in query.split("&"):
+                    shared.request_statistics()
                 with shared.lock:
                     status = dict(shared.status)
                     status["preview_clients"] = shared.stream_clients

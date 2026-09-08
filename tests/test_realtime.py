@@ -25,7 +25,8 @@ from powerglove_vision.diagnostic_trace import DiagnosticTrace
 
 from powerglove_vision.debug_server import SharedDebugState
 from powerglove_vision.realtime import (
-    LatestFrameCapture, LatestPreviewEncoder, RollingPerformance,
+    LatestFrameCapture, LatestPreviewEncoder, LatestStatusPublisher,
+    RollingPerformance,
 )
 
 
@@ -80,6 +81,50 @@ class FakeCv2:
 
 
 class RealtimePipelineTests(unittest.TestCase):
+    def test_driver_timestamp_and_close_are_preserved(self):
+        class TimedCapture:
+            def __init__(self):self.closed=False;self.calls=0;self.stop=threading.Event()
+            def read_with_timestamp(self):
+                self.calls+=1
+                if self.calls==1:return True,'driver-frame',12.5
+                self.stop.wait(1)
+                return False,None,12.6
+            def release(self):self.stop.set()
+            def close(self):self.closed=True
+        source=TimedCapture();capture=LatestFrameCapture(source)
+        deadline=time.monotonic()+1;result=None
+        while result is None and time.monotonic()<deadline:
+            result=capture.latest_after(0);time.sleep(.005)
+        self.assertIsNotNone(result);self.assertEqual(result.captured_at,12.5)
+        capture.release();self.assertTrue(source.closed)
+
+    def test_status_publisher_keeps_newest_pending_snapshot(self):
+        published=[];gate=threading.Event()
+        def publish(status,clear_frame=False):
+            if status['sequence']==1:gate.wait(1)
+            published.append((status['sequence'],clear_frame))
+        publisher=LatestStatusPublisher(publish)
+        publisher.submit({'sequence':1});time.sleep(.01)
+        publisher.submit({'sequence':2});publisher.submit({'sequence':3},clear_frame=True)
+        gate.set();time.sleep(.05);publisher.close()
+        self.assertEqual(published,[(1,False),(3,True)])
+
+    def test_status_publisher_surfaces_background_failure(self):
+        def fail(_status,clear_frame=False):
+            raise RuntimeError('status failed')
+        publisher=LatestStatusPublisher(fail)
+        publisher.submit({'sequence':1})
+        deadline=time.monotonic()+1
+        while time.monotonic()<deadline:
+            try:
+                publisher.raise_if_failed()
+            except RuntimeError as exc:
+                self.assertEqual(str(exc),'status failed')
+                break
+            time.sleep(.005)
+        else:self.fail('publisher failure was not surfaced')
+        publisher.close()
+
     def test_capture_trace_records_a_pending_read_and_publication_without_images(self):
         source = QueuedCapture()
         entered = threading.Event()

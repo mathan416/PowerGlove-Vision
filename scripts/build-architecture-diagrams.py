@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-07 - Added end-to-end delivery and measurement-boundary diagrams.
 #   2026-09-05 - Added the armed controller and renewable game-session gates.
 #   2026-09-06 - Updated tuning flow for the family personalization wizard.
 #   2026-09-04 - Added seven source-defined architecture diagrams.
@@ -54,7 +55,9 @@ def diagram(name, title, nodes, edges, footer):
         d.text((x+20,y+16),heading,font=font(29),fill='#07111f')
         for i,line in enumerate(body.split('\n')):d.text((x+20,y+61+i*31),line,font=font(25),fill='#374151')
     d.text((45,905),footer,font=font(24),fill='#526175')
-    OUT.mkdir(parents=True,exist_ok=True);im.save(OUT/(name+'.png'))
+    # Low PNG compression avoids decoder-specific row artifacts seen when the
+    # timing diagram is embedded by ReportLab and rendered by Poppler.
+    OUT.mkdir(parents=True,exist_ok=True);im.save(OUT/(name+'.png'), compress_level=1)
 
 
 def main():
@@ -66,7 +69,7 @@ def main():
       [('cam','uno'),('uno','pi'),('uno','mcu'),('pi','game')],
       'Browser <-> UNO web UI; game hooks -> UNO profile relay. These are separate control paths.')
     diagram('input','02 / One hand movement becomes game input',[
-      ('a',0,0,'1. Camera frame','UVC capture through OpenCV'),('b',1,0,'2. Hand observation','MediaPipe landmarks + curls'),('c',2,0,'3. Gesture engine','Calibration + effective thresholds'),
+      ('a',0,0,'1. Camera frame','OpenCV or direct V4L2'),('b',1,0,'2. Hand observation','MediaPipe landmarks + curls'),('c',2,0,'3. Gesture engine','Calibration + effective thresholds'),
       ('d',2,1,'4. Profile mapping','Held states, pulses and toggles'),('e',1,1,'5. Delivery gate','Armed + live game/manual context'),('f',0,1,'6. UDP state packet','Signed session + sequence'),
       ('g',0,2,'7. Receiver checks','HMAC, challenge and sequence'),('h',1,2,'8. Linux uinput','Virtual gamepad state'),('i',2,2,'9. Game response','RetroArch mapping and gameplay')],
       [('a','b'),('b','c'),('c','d'),('d','e'),('e','f'),('f','g'),('g','h'),('h','i')],
@@ -101,7 +104,19 @@ def main():
       ('check',2,2,'Verify on the device','Web health, matrix, live gameplay')],
       [('source','linux'),('linux','runtime'),('pins','compile'),('compile','flash'),('flash','check')],
       'Installing a platform alone changes neither application behaviour nor the running matrix firmware.')
-    print('Built seven architecture diagrams')
+    diagram('end-to-end','08 / Camera to game: one front end, two delivery paths',[
+      ('cam',0,0,'1. Camera and exposure','640x480 MJPEG at 30 fps'),('capture',1,0,'2. Newest-frame capture','OpenCV or direct V4L2'),('model',2,0,'3. MediaPipe Hands','Landmarks and palm coordinate'),
+      ('recognition',2,1,'4. Recognition and mapping','Calibration, reach, gestures'),('sender',1,1,'5. Authenticated UDP','Newest state; no replay queue'),('receiver',0,1,'6. RetroPie receiver','Validate and publish accepted state'),
+      ('route',0,2,'7. Route by emulator','FCEUmm: virtual gamepad\nNestopia: native state'),('core',1,2,'8. Emulator core','Buttons or glove packet'),('game',2,2,'9. Game and display','Emulator frame to visible response')],
+      [('cam','capture'),('capture','model'),('model','recognition'),('recognition','sender'),('sender','receiver'),('receiver','route'),('route','core'),('core','game')],
+      'The browser preview and statistics observe the worker; neither belongs in the controller delivery path.')
+    diagram('timing','09 / Where end-to-end time is measured',[
+      ('motion',0,0,'1. Physical hand motion','High-speed video start point'),('camera',1,0,'2. Exposure and delivery','Driver time when available'),('model',2,0,'3. MediaPipe inference','Capture age + inference time'),
+      ('send',2,1,'4. Encode and send','Controller monotonic clock'),('network',1,1,'5. Network transit','Requires correlated clocks'),('receiver',0,1,'6. Receiver publication','RetroPie monotonic clock'),
+      ('core',0,2,'7. Core consumption','Next emulated input callback'),('render',1,2,'8. Game and video frame','ROM, RetroArch, display queue'),('visible',2,2,'9. Visible response','High-speed video end point')],
+      [('motion','camera'),('camera','model'),('model','send'),('send','network'),('network','receiver'),('receiver','core'),('core','render'),('render','visible')],
+      'One hand-and-screen recording measures the whole path. Software traces explain only their own clock domains.')
+    print('Built nine architecture diagrams')
 
 
 if __name__ == '__main__':

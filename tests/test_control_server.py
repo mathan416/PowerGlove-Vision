@@ -162,6 +162,7 @@ class ControlStateTests(unittest.TestCase):
             "receiver": "retropieconsole.local", "port": 55355,
             "token": "private-token", "profile": "bad_street_brawler",
             "glove_color": "none", "camera": "auto", "camera_fps": "auto",
+            "camera_backend": "opencv", "camera_exposure": "auto",
             "camera_buffers": 2, "tracking_confidence": 0.45,
         }))
         self.state = ControlState(self.path)
@@ -269,15 +270,21 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b'id=camera_fps', SETUP)
         self.assertIn(b'Automatic \xe2\x80\x94 prefer 30 fps', SETUP)
         self.assertIn(b'id=camera-rate-status', SETUP)
+        self.assertIn(b'id=camera_backend', SETUP)
+        self.assertIn(b'id=camera_exposure', SETUP)
         self.state.save_config({
             "receiver": "arcade.local", "port": 55357,
             "profile": "program_i", "glove_color": "white", "camera": "2",
             "camera_fps": "60",
+            "camera_backend": "direct-v4l2",
+            "camera_exposure": "low-latency",
         })
         saved = json.loads(self.path.read_text())
         self.assertEqual(saved["token"], "private-token")
         self.assertEqual(saved["receiver"], "arcade.local")
         self.assertEqual(saved["camera_fps"], 60)
+        self.assertEqual(saved["camera_backend"], "direct-v4l2")
+        self.assertEqual(saved["camera_exposure"], "low-latency")
         self.assertEqual(saved["camera_buffers"], 2)
         self.assertEqual(saved["tracking_confidence"], 0.45)
         self.assertEqual(self.state.revision, 1)

@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Request detailed worker telemetry only while statistics are shown.
 #   2026-09-07 - Identified the active native X/Y coordinate source.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
 #   2026-09-06 - Separate maintained web modules without changing rendered pages.
@@ -53,7 +54,7 @@ const performance=s=>{const p=s.performance||{},inference=p.inference_ms||{},age
 let seen=[],switching=false,desiredProfile='',nativeSwitching=false;
 function displayStatistics(){const enabled=window.dashboardStatisticsEnabled();$('dashboard-statistics').hidden=!enabled;$('dashboard-workspace').classList.toggle('statistics-off',!enabled);if(!enabled){seen=[];for(const id of ['dpad','buttons','axes','fingers','performance','events'])$(id).textContent='';}}
 window.addEventListener('statisticschange',displayStatistics);displayStatistics();
-async function update(){if(document.hidden)return;try{const s=await(await fetch('/status',{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
+async function update(){if(document.hidden)return;try{const statusPath=window.dashboardStatisticsEnabled()?'/status?statistics=1':'/status',s=await(await fetch(statusPath,{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
 $('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||ready?'good':'warn'));
 if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
 const nativeMode=s.native_xy_mode==='latest'?'latest':'bounded';if(nativeSwitching&&$('native-xy-mode').value===nativeMode){nativeSwitching=false;$('native-xy-mode').disabled=false}if(!nativeSwitching)$('native-xy-mode').value=nativeMode;$('native-xy-note').textContent=nativeMode==='latest'?'No coordinate smoothing':'Speed-sensitive smoothing';

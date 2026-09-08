@@ -4,7 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-07 - Added PDFs for the remaining public technical guides.
 #   2026-09-06 - Made Rock Paper Scissors and live native validation discoverable in Help.
 #   2026-09-06 - Added the local Rock Paper Scissors page to cabinet links.
 #   2026-09-05 - Described retained controller state as armed rather than started.
@@ -17,8 +19,6 @@
 #   2026-09-03 - Rendered allowlisted inline gesture images used in guide tables.
 #   2026-09-03 - Added allowlisted PDF downloads for every public guide.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
-# Full history: docs/CHANGELOG.md and Git history.
-
 """Render the bundled public Markdown guides as safe, offline Help pages."""
 
 from __future__ import annotations
@@ -48,12 +48,10 @@ HELP_GUIDES = (
     {'slug': 'native-super-glove-ball', 'title': 'Super Glove Ball native compatibility', 'file': 'super-glove-ball-native.md', 'description': 'Live-confirmed native game actions, packet evidence, and deliberately unused fields for the custom Nestopia path.', 'group': 'Technical documentation'},
     {'slug': 'configuration', 'title': 'Configuration reference', 'file': 'CONFIGURATION_REFERENCE.md', 'description': 'Every public setting, template, generated file, and installed location.', 'group': 'Technical documentation'},
     {'slug': 'input-audit', 'title': 'Power Glove game input audit', 'file': 'power-glove-rom-input-audit.md', 'description': 'ROM-level evidence separating native Power Glove input from standard controller mappings.', 'group': 'Technical documentation'},
-    {'slug': 'direction-response', 'title': 'Direction-response benchmark', 'file': 'direction-response-benchmark.md', 'description': 'Native latency and stationary-jitter test steps, optional software traces, video evidence, and headless core measurements.', 'group': 'Technical documentation'},
+    {'slug': 'direction-response', 'title': 'Native movement validation', 'file': 'direction-response-benchmark.md', 'description': 'Native latency, jitter, dot-core isolation, software traces, video evidence, and headless measurements.', 'group': 'Technical documentation'},
     {'slug': 'motion-smoothing', 'title': 'Motion smoothing analysis', 'file': 'motion-smoothing-analysis.md', 'description': 'Trace-based analysis of recognition age, optical flow, smoothing, and experimental native X/Y response.', 'group': 'Technical documentation'},
-    {'slug': 'uno-q-dot-test', 'title': 'PowerGlove Vision Controller dot test', 'file': 'uno-q-dot-test.md', 'description': 'Use the installed diagnostic core to isolate receiver X/Y input from game movement behavior.', 'group': 'Technical documentation'},
-    {'slug': 'early-start', 'title': 'Early sketch startup', 'file': 'EARLY_START.md', 'description': 'Inspect, maintain, and remove the PowerGlove Vision Controller startup helper included by the installer.', 'group': 'Technical documentation'},
     {'slug': 'security', 'title': 'Security and privacy', 'file': 'SECURITY.md', 'description': 'Pairing boundaries, safe network use, shutdown permissions, and reporting.', 'group': 'Technical documentation'},
-    {'slug': 'components', 'title': 'Third-party components', 'file': 'THIRD_PARTY_COMPONENTS.md', 'description': 'MediaPipe, model, license, checksum, and runtime provenance.', 'group': 'Technical documentation'},
+    {'slug': 'components', 'title': 'Third-party notices', 'file': '../THIRD_PARTY_NOTICES.md', 'description': 'MediaPipe, model, emulator, license, checksum, modification, and runtime provenance.', 'group': 'Technical documentation'},
     {'slug': 'contributing', 'title': 'Contributing', 'file': 'CONTRIBUTING.md', 'description': 'Source formatting, tests, documentation, packaging, and review expectations.', 'group': 'Technical documentation'},
     {'slug': 'changelog', 'title': 'Changelog', 'file': 'CHANGELOG.md', 'description': 'User-visible additions, fixes, security changes, and documentation updates.', 'group': 'Technical documentation'},
 )
@@ -74,13 +72,14 @@ HELP_PDFS = {
     "input-audit": "PowerGlove-Vision-Input-Audit.pdf",
     "native-super-glove-ball": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
     "direction-response": "PowerGlove-Vision-Direction-Response.pdf",
+    "motion-smoothing": "PowerGlove-Vision-Motion-Analysis.pdf",
     "overview": "PowerGlove-Vision-Overview.pdf",
     "installation": "PowerGlove-Vision-Guide.pdf",
     "gameplay": "PowerGlove-Vision-Gameplay-Guide.pdf",
     "programs": "Bad-Street-Brawler-Power-Glove-Programs.pdf",
     "configuration": "PowerGlove-Vision-Configuration-Reference.pdf",
     "security": "PowerGlove-Vision-Security.pdf",
-    "components": "PowerGlove-Vision-Third-Party-Components.pdf",
+    "components": "PowerGlove-Vision-Third-Party-Notices.pdf",
     "contributing": "PowerGlove-Vision-Contributing.pdf",
     "changelog": "PowerGlove-Vision-Changelog.pdf",
 }

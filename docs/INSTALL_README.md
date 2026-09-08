@@ -92,6 +92,14 @@ Dashboard should load. With gestures off, a closed camera is normal. Open
 **Play** or **Glove Academy** to check that your camera view and whole hand
 appear, then return to Dashboard with controller transmission stopped.
 
+New installations keep **Compatible — OpenCV** and **Automatic — no camera
+changes** as the safe camera defaults. Under Setup's advanced camera settings,
+Direct V4L2 and low-latency exposure are optional measured comparisons. Direct
+V4L2 falls back automatically when a camera cannot supply its required 640×480
+MJPEG stream. Standard exposure changes are sent only when the camera advertises
+them; the Kiyo Pro choice also sends an identity-checked, volatile HDR-off
+request. These settings do not alter calibration or gesture thresholds.
+
 ## 3. Run the RetroPie installer
 
 Run this single line in the RetroPie terminal:

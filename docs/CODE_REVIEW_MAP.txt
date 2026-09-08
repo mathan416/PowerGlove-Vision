@@ -40,9 +40,10 @@ docs/INSTALL_README.md: installation, secure pairing, and verification.
 docs/GAMEPLAY_GUIDE.md and docs/MATRIX_GUIDE.md: gestures and visible feedback.
 docs/NATIVE_EMULATION_EXPLAINED.md: native input concepts.
 docs/super-glove-ball-native.md: exact-ROM evidence and current compatibility.
-docs/direction-response-benchmark.md: latency/jitter tools and test protocol.
+docs/direction-response-benchmark.md: latency, jitter, dot-core, and test protocol.
 docs/CONTRIBUTING.md and docs/SECURITY.md: development and security expectations.
-docs/reviews/2026-09-06-setup-and-code-review.md: completed reviews and follow-ups.
+docs/CHANGELOG.md: release history and completed review evidence.
+THIRD_PARTY_NOTICES.md: dependencies, licensing, assets, and native-core changes.
 
 TRACE THE RUNTIME
 -----------------
@@ -63,8 +64,10 @@ credential handling, newest-frame/state-only behavior, and explicit fallbacks.
 
 DOCUMENTATION AND DELIVERY
 --------------------------
-Help renders maintained Markdown through help_content.py. The PDF editions are
-built by scripts/build-docs-pdf.py; inspect affected rendered pages after changes.
+Help renders maintained Markdown through help_content.py. Overlapping Markdown
+has been consolidated into 19 owning documents. The PDF editions intentionally
+remain at their pre-consolidation state until the next requested regeneration;
+scripts/build-docs-pdf.py will remove superseded editions at that time.
 Keep intentional extra-finger artwork and its published count synchronized.
 Community guides cover building the hardware, native emulation, and symptom-led
 troubleshooting. Documentation screenshots use simulated, non-secret fixtures;
@@ -87,7 +90,7 @@ state, tokens, passwords, active pairing codes, or raw camera recordings.
 
 COMPLETE SOURCE INVENTORY
 -------------------------
-404 Git-visible files (including pending additions and generated PDF editions).
+405 Git-visible files currently present, including the pre-consolidation PDFs.
 .
 |-- .gitattributes
 |-- .github
@@ -125,17 +128,16 @@ COMPLETE SOURCE INVENTORY
 |   |-- CODE_REVIEW_MAP.txt
 |   |-- CONFIGURATION_REFERENCE.md
 |   |-- CONTRIBUTING.md
-|   |-- EARLY_START.md
 |   |-- GAMEPLAY_GUIDE.md
 |   |-- INSTALL_README.md
 |   |-- MATRIX_GUIDE.md
 |   |-- NATIVE_EMULATION_EXPLAINED.md
 |   |-- SECURITY.md
-|   |-- THIRD_PARTY_COMPONENTS.md
 |   |-- TROUBLESHOOTING.md
 |   |-- bad-street-brawler-programs.md
 |   |-- cheatsheet.md
 |   |-- direction-response-benchmark.md
+|   |-- motion-smoothing-analysis.md
 |   |-- extra-digit-hunt.json
 |   |-- images
 |   |   |-- architecture
@@ -295,8 +297,6 @@ COMPLETE SOURCE INVENTORY
 |   |           |   `-- wrist-roll-right.png
 |   |           `-- wrist-and-depth.png
 |   |-- power-glove-rom-input-audit.md
-|   |-- reviews
-|   |   `-- 2026-09-06-setup-and-code-review.md
 |   `-- super-glove-ball-native.md
 |-- licenses
 |   `-- Apache-2.0.txt
@@ -305,8 +305,6 @@ COMPLETE SOURCE INVENTORY
 |   `-- hand_landmarker.task
 |-- native
 |   `-- nestopia-powerglove
-|       |-- CHANGES.md
-|       |-- README.md
 |       |-- diagnostic_trace.h
 |       `-- nestopia-powerglove.patch
 |-- output
@@ -314,23 +312,32 @@ COMPLETE SOURCE INVENTORY
 |   |   `-- PowerGlove-Vision-Uno-Q.zip.sha256
 |   `-- pdf
 |       |-- Bad-Street-Brawler-Power-Glove-Programs.pdf
+|       |-- Nestopia-PowerGlove-Changes.pdf
+|       |-- Nestopia-PowerGlove-Core-Guide.pdf
 |       |-- PowerGlove-Vision-Architecture.pdf
 |       |-- PowerGlove-Vision-Build-Your-Own.pdf
 |       |-- PowerGlove-Vision-Changelog.pdf
 |       |-- PowerGlove-Vision-Configuration-Reference.pdf
 |       |-- PowerGlove-Vision-Contributing.pdf
 |       |-- PowerGlove-Vision-Direction-Response.pdf
+|       |-- PowerGlove-Vision-Dot-Test.pdf
+|       |-- PowerGlove-Vision-Early-Startup.pdf
 |       |-- PowerGlove-Vision-Gameplay-Guide.pdf
 |       |-- PowerGlove-Vision-Guide.pdf
+|       |-- PowerGlove-Vision-Guide-Asset-Reference.pdf
 |       |-- PowerGlove-Vision-Input-Audit.pdf
 |       |-- PowerGlove-Vision-Matrix-Guide.pdf
+|       |-- PowerGlove-Vision-Motion-Analysis.pdf
 |       |-- PowerGlove-Vision-Native-Emulation.pdf
 |       |-- PowerGlove-Vision-Overview.pdf
 |       |-- PowerGlove-Vision-Quick-Reference.pdf
 |       |-- PowerGlove-Vision-Security.pdf
+|       |-- PowerGlove-Vision-Setup-Code-Review.pdf
 |       |-- PowerGlove-Vision-Super-Glove-Ball-Native.pdf
 |       |-- PowerGlove-Vision-Third-Party-Components.pdf
-|       `-- PowerGlove-Vision-Troubleshooting.pdf
+|       |-- PowerGlove-Vision-Third-Party-Notices.pdf
+|       |-- PowerGlove-Vision-Troubleshooting.pdf
+|       `-- PowerGlove-Vision-Web-Illustrations.pdf
 |-- pyproject.toml
 |-- python
 |   |-- main.py
