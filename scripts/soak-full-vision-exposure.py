@@ -5,6 +5,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-08 - Added the output-disabled full-pipeline exposure soak.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Run finite output-disabled Vision lifecycles and emit aggregate JSON only."""
 
@@ -206,6 +209,7 @@ def run_cycle(args, index):
 
 
 def main():
+    """Run finite full-worker cycles and emit only aggregate JSON results."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", required=True)
     parser.add_argument("--model", type=Path, required=True)

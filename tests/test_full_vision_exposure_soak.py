@@ -4,6 +4,11 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-08 - Added isolation checks for the full vision exposure soak.
+# Full history: docs/CHANGELOG.md and Git history.
+
+"""Verify the full vision exposure soak cannot enable controller output."""
 
 import importlib.util
 from pathlib import Path

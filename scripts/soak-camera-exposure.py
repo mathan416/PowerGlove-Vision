@@ -5,6 +5,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-08 - Added the output-free camera exposure reliability soak.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Run an output-free, aggregate-only V4L2 exposure soak.
 
@@ -159,6 +162,7 @@ def main():
         raise SystemExit("refusing exposure test: camera is not the enrolled Kiyo Pro")
     stopped = False
     def request_stop(_signum, _frame):
+        """Ask the active finite soak cycle to stop cleanly."""
         nonlocal stopped
         stopped = True
     signal.signal(signal.SIGINT, request_stop)
