@@ -160,8 +160,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="CPU threads for the legacy MediaPipe inference calculators",
     )
     parser.add_argument(
-        "--tracking-confidence", type=float, default=.40,
+        "--tracking-confidence", type=float, default=.35,
         help="minimum MediaPipe landmark-tracking confidence",
+    )
+    parser.add_argument(
+        "--tracking-roi-scale", type=float,
+        choices=(2.0, 2.25), default=2.25,
+        help="next-frame MediaPipe tracking region; 2.25 is the validated default",
     )
     parser.add_argument(
         "--tracker-backend", choices=("legacy", "tasks-video"), default="legacy",
@@ -415,6 +420,7 @@ def _prepare_vision(args):
             model_path=model_path,
             inference_threads=args.inference_threads,
             tracking_confidence=args.tracking_confidence,
+            tracking_roi_scale=args.tracking_roi_scale,
             backend=args.tracker_backend,
             graph_mode=args.tracker_graph,
         )
@@ -813,8 +819,14 @@ def main() -> int:
             capture_failure_since = None
             frame = captured_frame.frame
             inference_started = time.monotonic()
+            capture_ready_at = getattr(captured_frame, "ready_at", None)
+            if capture_ready_at is None:
+                capture_ready_at = captured_frame.captured_at
             capture_age_ms = max(
                 0.0, (inference_started - captured_frame.captured_at) * 1000
+            )
+            capture_ready_age_ms = max(
+                0.0, (inference_started - capture_ready_at) * 1000
             )
             capture_interval_ms = (
                 None if last_capture_at is None
@@ -881,6 +893,7 @@ def main() -> int:
                 trace.record(dict(event="vision", session=session_key(sender.session),
                     sequence=state.sequence, capture_sequence=captured_frame.sequence,
                     capture_ns=int(captured_frame.captured_at * 1e9),
+                    capture_ready_ns=int(capture_ready_at * 1e9),
                     start_ns=int(inference_started * 1e9), tracking_end_ns=tracking_finished_ns,
                     end_ns=int(inference_finished * 1e9),
                     sent=receiver_available, detected=state.detected, calibrated=state.calibrated,
@@ -914,6 +927,7 @@ def main() -> int:
                 last_controller_signature = signature
             performance.record(
                 capture_age_ms=capture_age_ms,
+                capture_ready_age_ms=capture_ready_age_ms,
                 capture_interval_ms=capture_interval_ms,
                 inference_ms=inference_ms,
                 inference_interval_ms=inference_interval_ms,
@@ -989,11 +1003,13 @@ def main() -> int:
             status["confidence_source"] = result.observation.confidence_source
             status["inference_threads"] = args.inference_threads
             status["tracking_confidence"] = tracker.tracking_confidence
+            status["tracking_roi_scale"] = tracker.tracking_roi_scale
             status["tracker_graph"] = tracker.graph_mode
             status["palm_anchor"] = PALM_ANCHOR
             status.update(capture.metadata)
             status["capture_sequence"] = captured_frame.sequence
             status["capture_age_ms"] = round(capture_age_ms, 1)
+            status["capture_ready_age_ms"] = round(capture_ready_age_ms, 1)
             status["capture_interval_ms"] = (
                 None if capture_interval_ms is None else round(capture_interval_ms, 1)
             )

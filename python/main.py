@@ -60,7 +60,8 @@ def load_device_config() -> dict:
         "matrix_attract": "on",
         "native_xy_mode": "latest",
         "inference_threads": 4,
-        "tracking_confidence": 0.40,
+        "tracking_confidence": 0.35,
+        "tracking_roi_scale": 2.25,
         "camera_fps": "auto",
         "camera_backend": "opencv",
         "camera_exposure": "auto",
@@ -98,11 +99,16 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
     if type(inference_threads) is not int or inference_threads not in (1, 2, 4):
         inference_threads = 4
     command.extend(["--inference-threads", str(inference_threads)])
-    tracking_confidence = settings.get("tracking_confidence", 0.40)
+    tracking_confidence = settings.get("tracking_confidence", 0.35)
     if (type(tracking_confidence) not in (int, float)
             or not 0.0 <= tracking_confidence <= 1.0):
-        tracking_confidence = 0.40
+        tracking_confidence = 0.35
     command.extend(["--tracking-confidence", str(tracking_confidence)])
+    tracking_roi_scale = settings.get("tracking_roi_scale", 2.25)
+    if (type(tracking_roi_scale) not in (int, float)
+            or float(tracking_roi_scale) not in (2.0, 2.25)):
+        tracking_roi_scale = 2.25
+    command.extend(["--tracking-roi-scale", str(float(tracking_roi_scale))])
     camera_fps = settings.get("camera_fps", "auto")
     if camera_fps == "auto":
         requested_fps = 0

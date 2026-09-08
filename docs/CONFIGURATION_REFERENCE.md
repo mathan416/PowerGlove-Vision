@@ -237,8 +237,9 @@ forward recovery.
 
 ### Selected camera and inference settings
 
-The 0.4.0 baseline uses the complete 640×480 MJPEG image, four MediaPipe
-inference threads, a `0.40` tracking-confidence threshold, and Automatic camera
+The current baseline uses the complete 640×480 MJPEG image, four MediaPipe
+inference threads, a `0.35` tracking-confidence threshold, a `2.25` next-frame
+hand search area, and Automatic camera
 rate. Automatic tries 30 fps first because live play felt smoother and more
 attached to the hand than the 60-fps request, then reopens the camera without a
 forced rate if it cannot produce frames. Setup can explicitly request 30 or 60
@@ -493,7 +494,8 @@ A typical device configuration file contains the following fields:
   "camera": "auto",
   "camera_fps": "auto",
   "inference_threads": 4,
-  "tracking_confidence": 0.4,
+  "tracking_confidence": 0.35,
+  "tracking_roi_scale": 2.25,
   "native_xy_mode": "latest",
   "matrix_attract": "on"
 }
@@ -501,7 +503,8 @@ A typical device configuration file contains the following fields:
 
 `camera_fps` is `auto`, `30`, or `60`; Automatic prefers 30 and then accepts a
 usable driver rate. `inference_threads` accepts 1, 2, or 4. The 0.4.0 baseline
-uses four threads and `tracking_confidence` 0.40. `native_xy_mode` is `latest`
+uses four threads, `tracking_confidence` 0.35, and `tracking_roi_scale` 2.25.
+`native_xy_mode` is `latest`
 or `bounded`, with Latest as the production default. Setup preserves these
 measured fields when saving unrelated connection settings.
 
@@ -1571,7 +1574,8 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--capture-backend VALUE` | `opencv` | `opencv` is the compatible reader. `direct-v4l2` is the optional newest-driver-buffer experiment and falls back to OpenCV when unsupported. |
 | `--camera-exposure VALUE` | `auto` | `auto` makes no exposure changes; `low-latency` uses only advertised standard V4L2 controls; `kiyo-low-latency` adds the USB-identity-checked Kiyo HDR-off request. |
 | `--inference-threads NUMBER` | `4` | CPU threads requested for each MediaPipe Hands inference calculator; accepted values are 1, 2, and 4. The Controller supervisor passes its validated setting explicitly. Benchmark before changing. |
-| `--tracking-confidence NUMBER` | `0.40` | Minimum MediaPipe landmark-tracking confidence. The selected value reduced reacquisition tails in live testing; do not treat it as position confidence. |
+| `--tracking-confidence NUMBER` | `0.35` | Minimum MediaPipe landmark-tracking confidence. This threshold matched or slightly improved the saved-clip result without changing the fast-sweep loss pattern; do not treat it as position confidence. |
+| `--tracking-roi-scale NUMBER` | `2.25` | Scale of MediaPipe's next-frame hand search area. The prior `2.0` remains accepted for comparison; `2.25` recovered five of nine previously missed fast-sweep frames without a material latency or false-activation cost. |
 | `--native-xy-mode VALUE` | `latest` | Native Super Glove Ball response: `latest` for direct newest coordinates or `bounded` for the speed-sensitive comparison curve. |
 | `--motion-tracking` | Ignored | Hidden compatibility spelling retained for old launch scripts; optical flow is archived and this flag does not enable it. |
 | `--tracker-backend VALUE` | `legacy` | `legacy` selects **MediaPipe Hands**; `tasks-video` selects **MediaPipe Tasks Video (experimental)** using the packaged Hand Landmarker model. The identifiers remain stable for scripts. |
@@ -2421,19 +2425,36 @@ for camera placement, interpretation, process activation, and rollback.
 | `POWERGLOVE_BUILD_DIAGNOSTICS=1` | Unset/off | Build a separately named diagnostic core in a fresh directory; no installation or launch-selection change. |
 | `POWERGLOVE_CORE_DIAGNOSTIC_TRACE` | Unset/off | New private CSV path used only by the diagnostic core. Export occurs at normal game unload. |
 
-`run-native-latency-session.py` takes `--status-url` and a new `--output-dir`;
-it reads status and provides operator cues. `analyze-latency-trace.py` takes
+`prepare-end-to-end-session.py` performs a read-only Controller/RetroPie/source
+preflight. Its `prepare` phase allows an intentionally stopped camera/game; its
+`record` phase requires live gameplay readiness. It writes only an allowlisted,
+privacy-safe manifest to a new private directory.
+
+`run-native-latency-session.py` takes `--status-url`, a new `--output-dir`, and
+`--protocol smoke|full`; it reads status and provides operator cues. An optional
+`--preflight` records only the preflight file's SHA-256 in the session manifest.
+Its default `--poll-interval 0.25` avoids treating cached duplicates as additional
+inferences or needlessly loading the Controller web service.
+`manage-latency-traces.py start` applies bounded Controller and receiver tracing,
+and `stop` restores their production environments before collecting finalized
+files. Its private state file is required for restoration. It does not select a
+diagnostic core. `analyze-latency-trace.py` takes
 `--controller`, `--receiver`, optional `--core`, and a new `--output`; core joins
 require `--same-cabinet-boot` after verifying the same boot/native-state path.
 `benchmark-diagnostic-overhead.py --output PATH` measures local synthetic trace
 overhead without controlling hardware.
 
 `analyze-latency-video.py` takes `--video`, a new `--output-dir`, and optional
-`--frames` (up to 500 zero-based indexes) or `--annotations`. It needs PyAV and
-Pillow only on the analysis computer. It requires an exact video hash and
-reviewed timing before measuring annotated events. All raw traces, recordings,
-and position annotations remain temporary and local. Public status still samples
-inference; the new trace joins never estimate cross-host network delay by
+`--frames` (up to 500 zero-based indexes), `--around`/`--radius`, or
+`--annotations`. Optional `--capture-fps` records a confirmed camera mode and
+suggests the playback-to-capture scale without approving it. An initial run creates an overview contact sheet and an
+unapproved `smoke` or `full` annotation template; null event frames and
+`timing_verified: false` prevent accidental acceptance. It needs PyAV and Pillow
+only in a temporary environment on the analysis computer. Stored display rotation
+is applied to review images while presentation timestamps remain unchanged. It requires an exact
+video hash and reviewed timing before measuring annotated events. All raw traces,
+recordings, and position annotations remain temporary and local. Public status
+still samples inference; trace joins never estimate cross-host network delay by
 subtracting independent monotonic clocks.
 
 ### Bounded native X/Y speed curve

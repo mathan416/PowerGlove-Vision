@@ -362,6 +362,8 @@ COMPLETE SOURCE INVENTORY
 |-- scripts
 |   |-- analyze-latency-trace.py
 |   |-- analyze-latency-video.py
+|   |-- manage-latency-traces.py
+|   |-- prepare-end-to-end-session.py
 |   |-- application-payload.py
 |   |-- avahi-resolver-service.py
 |   |-- benchmark-diagnostic-overhead.py

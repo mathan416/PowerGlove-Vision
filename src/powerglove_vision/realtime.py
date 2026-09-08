@@ -33,6 +33,7 @@ class CapturedFrame:
     captured_at: float
     ok: bool
     frame: Any
+    ready_at: float | None = None
 
 
 class RollingPerformance:
@@ -98,7 +99,7 @@ class LatestFrameCapture:
             self._sequence = 1
             self._latest = CapturedFrame(
                 1, clock() if first_captured_at is None else first_captured_at,
-                True, first_frame,
+                True, first_frame, clock(),
             )
         self._thread = threading.Thread(
             target=self._run, name="powerglove-camera", daemon=True
@@ -127,6 +128,7 @@ class LatestFrameCapture:
             except Exception:
                 # Publish failure so the main loop can apply its timed reconnect.
                 ok, frame, captured_at = False, None, self._clock()
+            ready_at = self._clock()
             if traced:
                 ended_ns = time.monotonic_ns()
                 cpu_ended_ns = time.thread_time_ns()
@@ -139,7 +141,8 @@ class LatestFrameCapture:
                 if isinstance(capture_metadata, dict):
                     self.metadata.update(capture_metadata)
                 self._latest = CapturedFrame(
-                    self._sequence, captured_at, bool(ok), frame if ok else None
+                    self._sequence, captured_at, bool(ok), frame if ok else None,
+                    ready_at,
                 )
             if traced:
                 trace.record(dict(event="capture_publication", sequence=attempt,

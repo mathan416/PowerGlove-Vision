@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Added overview/contact sheets and a bound annotation template.
 #   2026-09-06 - Add timestamp validation, onset brackets, and annotated evidence stills.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -114,47 +115,142 @@ def analyze(times, annotation):
                     'Human tremor is included; stationary acceptance also requires matching telemetry review.']), selected
 
 
+def review_selection(frame_count, explicit='', around='', radius=4, overview=24):
+    """Choose bounded review frames without pretending they are detected events."""
+    selected = {int(value) for value in explicit.split(',') if value.strip()} if explicit else set()
+    centers = {int(value) for value in around.split(',') if value.strip()} if around else set()
+    for center in centers:
+        selected.update(range(max(0, center-radius), min(frame_count, center+radius+1)))
+    if not selected and frame_count:
+        count = min(overview, frame_count)
+        selected.update(round(index*(frame_count-1)/max(1, count-1)) for index in range(count))
+    if len(selected) > 500 or any(index < 0 or index >= frame_count for index in selected):
+        raise ValueError('Choose at most 500 existing decoded frames')
+    return selected
+
+
+def annotation_template(digest, protocol, seconds_per_pts_second=1.0,
+                        capture_fps=None):
+    """Create placeholders that cannot accidentally pass reviewed analysis."""
+    directions = ('left', 'right') if protocol == 'smoke' else ('left', 'right', 'up', 'down')
+    count = 2 if protocol == 'smoke' else 10
+    return {'video_sha256': digest, 'timing_verified': False,
+            'seconds_per_pts_second': seconds_per_pts_second,
+            'capture_fps_reported': capture_fps,
+            'trials': [{'label': '%s-%02d' % (direction, index+1),
+                        'direction': direction, 'unoccluded': False,
+                        'hand_onset': None, 'game_onset': None}
+                       for direction in directions for index in range(count)],
+            'stationary': [],
+            'instructions': [
+                'Verify original recording rate and slow-motion retiming before setting timing_verified true.',
+                'Set unoccluded true and replace null indexes only after reviewing both hand and game.',
+                'Use --around FRAME to create a tighter frame-by-frame contact sheet.',
+            ]}
+
+
+def build_contact_sheet(paths, destination, columns=4):
+    """Combine selected evidence stills into a legible local review sheet."""
+    if not paths:
+        return
+    from PIL import Image, ImageOps
+    width = 360
+    thumbs = []
+    for path in paths:
+        with Image.open(path) as source:
+            copy = source.convert('RGB')
+            height = max(1, round(copy.height * width / copy.width))
+            thumbs.append(ImageOps.fit(copy, (width, height)))
+    cell_height = max(image.height for image in thumbs)
+    rows = math.ceil(len(thumbs) / columns)
+    sheet = Image.new('RGB', (columns*width, rows*cell_height), 'black')
+    for index, picture in enumerate(thumbs):
+        sheet.paste(picture, ((index % columns)*width, (index // columns)*cell_height))
+    sheet.save(destination, compress_level=1)
+
+
 def main():
     """Index a video or analyze explicit reviewed annotations and extract evidence."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--video', type=Path, required=True)
     parser.add_argument('--annotations', type=Path)
     parser.add_argument('--frames', help='Comma-separated zero-based frames to inspect without measuring')
+    parser.add_argument('--around', help='Comma-separated center frames for a frame-by-frame review strip')
+    parser.add_argument('--radius', type=int, default=4,
+                        help='Frames on each side of every --around center (default: 4)')
+    parser.add_argument('--protocol', choices=('smoke', 'full'), default='full',
+                        help='Trial placeholders to put in a new annotation template')
+    parser.add_argument('--overview-frames', type=int, default=24,
+                        help='Evenly spaced frames in the initial contact sheet (default: 24)')
+    parser.add_argument('--capture-fps', type=float,
+                        help='Operator-confirmed capture rate; suggests, but never approves, timing scale')
     parser.add_argument('--output-dir', type=Path, required=True)
     args = parser.parse_args()
     import av
     from PIL import ImageDraw, ImageOps
+    if (not 0 <= args.radius <= 30 or not 4 <= args.overview_frames <= 100
+            or args.capture_fps is not None and not 1 <= args.capture_fps <= 1000):
+        parser.error('radius must be 0..30, overview-frames 4..100, and capture-fps 1..1000')
     args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
     digest = hashlib.sha256()
     with args.video.open('rb') as stream:
         for chunk in iter(lambda: stream.read(1024*1024), b''):
             digest.update(chunk)
     annotation = json.loads(args.annotations.read_text()) if args.annotations else None
+    overview_only = annotation is None and not args.frames and not args.around
     if annotation and annotation.get('video_sha256') != digest.hexdigest():
         parser.error('Annotations must name this original video SHA-256')
     times = []
+    display_rotation = None
     with av.open(str(args.video)) as container:
         for frame in container.decode(video=0):
             if frame.pts is None or frame.time_base is None:
                 parser.error('Decoded frame has no presentation timestamp')
             times.append(float(frame.pts*frame.time_base))
+            rotation = int(frame.rotation or 0)
+            if display_rotation is None:
+                display_rotation = rotation
+            elif rotation != display_rotation:
+                parser.error('Video display orientation changes between frames')
             if len(times) > 150000:
                 parser.error('Use a shorter recording (maximum 150000 frames)')
-    selected = {int(v) for v in args.frames.split(',')} if args.frames else set()
+    try:
+        selected = (set() if annotation and not args.frames and not args.around else
+                    review_selection(len(times), args.frames or '', args.around or '',
+                                     args.radius, args.overview_frames))
+    except ValueError as error:
+        parser.error(str(error))
     report = dict(format='powerglove-video-index/1', video_sha256=digest.hexdigest(),
                   frame_count=len(times), presentation_seconds=times,
+                  display_rotation_degrees=display_rotation or 0,
                   timing_verified=False, note='Verify real capture rate/retiming before latency analysis')
     if annotation:
         report, evidence = analyze(times, annotation)
         selected.update(evidence)
         report['video_sha256'] = digest.hexdigest()
+        report['display_rotation_degrees'] = display_rotation or 0
     if len(selected) > 500 or any(i < 0 or i >= len(times) for i in selected):
         parser.error('Choose at most 500 existing decoded frames')
+    elif not annotation:
+        encoded_fps = 1.0 / statistics.median(
+            b-a for a, b in zip(times, times[1:])
+        ) if len(times) > 1 else None
+        scale = encoded_fps / args.capture_fps if args.capture_fps and encoded_fps else 1.0
+        template = annotation_template(
+            digest.hexdigest(), args.protocol, scale, args.capture_fps
+        )
+        (args.output_dir/'annotations.template.json').write_text(
+            json.dumps(template, indent=2, allow_nan=False) + '\n')
+    saved = []
     with av.open(str(args.video)) as container:
         for index, frame in enumerate(container.decode(video=0)):
             if index not in selected:
                 continue
             picture = frame.to_image()
+            if display_rotation:
+                picture = picture.rotate(display_rotation, expand=True)
+            if overview_only and picture.width > 1280:
+                picture.thumbnail((1280, 1280))
             draw = ImageDraw.Draw(picture)
             labels = ['Frame %d | file PTS %.6f s' % (index, times[index])]
             if annotation:
@@ -171,7 +267,10 @@ def main():
             picture = ImageOps.expand(picture, border=(0,18*len(labels)+8,0,0), fill='black')
             draw = ImageDraw.Draw(picture)
             draw.multiline_text((4,4),'\n'.join(labels),fill='white',spacing=6)
-            picture.save(args.output_dir / ('frame-%06d.png' % index))
+            destination = args.output_dir / ('frame-%06d.png' % index)
+            picture.save(destination, compress_level=1)
+            saved.append(destination)
+    build_contact_sheet(saved, args.output_dir/'contact-sheet.png')
     with (args.output_dir/'report.json').open('x') as stream:
         json.dump(report, stream, indent=2, allow_nan=False)
         stream.write('\n')

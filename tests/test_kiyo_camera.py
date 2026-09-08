@@ -72,10 +72,13 @@ class KiyoTests(unittest.TestCase):
         self.assertEqual(candidate[candidate.index('--camera-exposure')+1],
                          'kiyo-low-latency')
         self.assertEqual(candidate[candidate.index('--inference-threads')+1], '4')
-        self.assertEqual(candidate[candidate.index('--tracking-confidence')+1], '0.4')
+        self.assertEqual(candidate[candidate.index('--tracking-confidence')+1], '0.35')
+        self.assertEqual(candidate[candidate.index('--tracking-roi-scale')+1], '2.25')
         self.assertEqual(candidate[candidate.index('--fps')+1], '0')
         tuned=command({'tracking_confidence':.45},Path('/tmp/model'))
         self.assertEqual(tuned[tuned.index('--tracking-confidence')+1], '0.45')
+        roi=command({'tracking_roi_scale':2.25},Path('/tmp/model'))
+        self.assertEqual(roi[roi.index('--tracking-roi-scale')+1], '2.25')
         self.assertEqual(command({'camera_fps':30},Path('/tmp/model'))[
             command({'camera_fps':30},Path('/tmp/model')).index('--fps')+1], '30')
         self.assertEqual(command({'camera_fps':25},Path('/tmp/model'))[

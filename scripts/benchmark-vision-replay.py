@@ -40,6 +40,10 @@ def percentile(values: list[float], fraction: float) -> float | None:
 def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
              preview: bool, model: Path | None, cues: list[dict],
              tracking_confidence: float = .55,
+             tracking_roi_scale: float = 2.0,
+             palm_detection_mode: str = "tracked",
+             detection_confidence: float = .55,
+             model_complexity: int = 0,
              frame_times: list[float] | None = None,
              effective_fps: float | None = None) -> dict:
     """Replay one clip through a single tracker configuration and summarize it."""
@@ -47,6 +51,10 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
     tracker = MediaPipeTracker(
         backend=backend, inference_threads=threads, model_path=model, mirror=True,
         tracking_confidence=tracking_confidence,
+        tracking_roi_scale=tracking_roi_scale,
+        use_previous_landmarks=palm_detection_mode == "tracked",
+        detection_confidence=detection_confidence,
+        model_complexity=model_complexity,
     )
     tracker.preview_enabled = preview
     tracker.diagnostics_enabled = preview
@@ -161,6 +169,10 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
     return {
         "backend": backend, "threads": threads,
         "tracking_confidence": tracking_confidence, "resize": list(size),
+        "tracking_roi_scale": tracking_roi_scale,
+        "palm_detection_mode": palm_detection_mode,
+        "detection_confidence": detection_confidence,
+        "model_complexity": model_complexity,
         "preview": "open" if preview else "closed", "frames": frame_index,
         "inference_ms": {"p50": percentile(inference, .50),
                          "p95": percentile(inference, .95),
@@ -188,7 +200,16 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--threads", nargs="+", type=int, choices=(1, 2, 4))
     result.add_argument("--tracking-confidences", nargs="+", type=float,
-                        choices=(.45, .50, .55, .60))
+                        choices=(.30, .35, .40, .45, .50, .55, .60))
+    result.add_argument("--tracking-roi-scales", nargs="+", type=float,
+                        choices=(2.0, 2.1, 2.15, 2.2, 2.25, 2.3, 2.35,
+                                 2.4, 2.6, 2.8, 3.0))
+    result.add_argument("--palm-detection-modes", nargs="+",
+                        choices=("tracked", "every-frame"))
+    result.add_argument("--detection-confidences", nargs="+", type=float,
+                        choices=(.30, .35, .40, .45, .50, .55, .60))
+    result.add_argument("--model-complexities", nargs="+", type=int,
+                        choices=(0, 1))
     result.add_argument("--preview", choices=("closed", "open", "both"))
     return result
 
@@ -206,7 +227,10 @@ def main() -> int:
     frame_times = cue_document.get("frame_times_seconds")
     effective_fps = cue_document.get("effective_fps")
     lanes = []
-    focused = bool(args.threads or args.tracking_confidences or args.preview)
+    focused = bool(args.threads or args.tracking_confidences
+                   or args.tracking_roi_scales or args.palm_detection_modes
+                   or args.detection_confidences or args.model_complexities
+                   or args.preview)
     sizes = ((640, 480),) if args.quick or focused else ((640, 480), (512, 384))
     previews = ((False,) if args.preview in (None, "closed") else
                 (True,) if args.preview == "open" else (False, True))
@@ -214,18 +238,28 @@ def main() -> int:
         previews = (False, True)
     threads_to_test = tuple(args.threads or ((2,) if args.quick or focused else (1, 2, 4)))
     confidences = tuple(args.tracking_confidences or (.55,))
+    roi_scales = tuple(args.tracking_roi_scales or (2.0,))
+    palm_modes = tuple(args.palm_detection_modes or ("tracked",))
+    detection_confidences = tuple(args.detection_confidences or (.55,))
+    model_complexities = tuple(args.model_complexities or (0,))
     for size in sizes:
         for preview in previews:
             for threads in threads_to_test:
                 for confidence in confidences:
-                    lanes.append(run_lane(
-                        args.clip, "legacy", threads, size, preview, None, cues,
-                        confidence, frame_times, effective_fps,
-                    ))
+                    for roi_scale in roi_scales:
+                        for palm_mode in palm_modes:
+                            for detection_confidence in detection_confidences:
+                                for model_complexity in model_complexities:
+                                    lanes.append(run_lane(
+                                        args.clip, "legacy", threads, size, preview,
+                                        None, cues, confidence, roi_scale, palm_mode,
+                                        detection_confidence, model_complexity,
+                                        frame_times, effective_fps,
+                                    ))
             if args.model is not None and not args.quick:
                 lanes.append(run_lane(
                     args.clip, "tasks-video", 1, size, preview, args.model, cues,
-                    .55, frame_times, effective_fps,
+                    .55, 2.0, "tracked", .55, 0, frame_times, effective_fps,
                 ))
     result = {
         "version": 2, "clip": str(args.clip), "full_frame_resize_only": True,

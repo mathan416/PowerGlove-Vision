@@ -231,8 +231,9 @@ false activations and weakened roll recognition. Thread count did not change
 recognition, and no alternative produced a consistent qualifying latency gain.
 No replay alternative met the 15% promotion threshold in that early clip.
 Subsequent matched live gameplay did promote **MediaPipe Hands** at 640×480 with
-four explicitly selected inference threads for 0.4.0. That later selection also
-uses a `0.40` tracking-confidence threshold and a 30-fps-first camera policy.
+four explicitly selected inference threads for 0.4.0. The current selection uses
+a `0.35` tracking-confidence threshold, a `2.25` next-frame tracking-region scale,
+and a 30-fps-first camera policy.
 Preview encoding at full size measured about 9.6 ms p95 in this historical run;
 0.4.0 moves gameplay annotation and 320×240 encoding off the inference thread.
 
@@ -353,6 +354,24 @@ enabled in the global configuration, and no reported throttling. Effective
 per-game settings and live timing must still be checked with the game running.
 No recognition, smoothing, camera, network, or video defaults were changed.
 
+### Repeatable fast-sweep tracking search — September 8, 2026
+
+A preserved local-only, user-confirmed clip provided identical neutral, slow,
+fast-sweep, and recovery frames for every lane. Increasing MediaPipe's
+next-frame landmark search-region scale from `2.0` to `2.25` raised fast-sweep
+detection from 90.22% to 95.65%, recovering five of nine missing fast frames
+without introducing a new fast-frame loss. Overall continuity increased from
+94.53% to 95.77%; inference p95 remained approximately 62 ms and neutral false
+activation count did not change. Larger regions plateaued and then regressed.
+
+Changing palm-detection confidence from `0.30` through `0.60` produced the same
+continuity, fast-sweep detection, and recovery, so it was not promoted as a new
+setting. Forcing palm detection every frame reached 97.83% fast-sweep detection
+but increased inference to about 96/119 ms p50/p95 and was rejected. The full
+landmark model was also rejected: it reduced fast-sweep detection to 93.48% and
+increased inference from about 32/60 ms to 54/115 ms p50/p95. Production keeps
+the lite model, tracked-landmark cadence, four threads, and scale `2.25`.
+
 The subsequent game launch confirmed `lr-nestopia-powerglove`, device `517`,
 and the native-state path. Both active append files were checked for video
 overrides; they added a 60.00 Hz refresh value and did not override threaded
@@ -450,7 +469,7 @@ camera, calibration, smoothing, and video settings unchanged for the baseline.
 
 ### Preflight and camera placement
 
-Record the installed software/core identities, active player, calibrated state,
+Record the installed software/core identities, calibration availability,
 selected native-state path, and effective RetroArch video settings (including
 per-game append files). Confirm `lr-nestopia-powerglove`, device `517`, and that
 the Robo-Glove follows the hand. Local send success alone is not receiver
@@ -463,6 +482,27 @@ the hand must not obscure the Robo-Glove. Keep them at similar vertical position
 in the recording where practical to reduce rolling-shutter timing differences.
 Leave the PowerGlove Vision Controller camera in its normal playing position.
 Make a short framing clip before starting measurements.
+
+Before the recording day, the read-only preflight can capture the software and
+hardware facts that otherwise tend to get missed. It keeps a strict public-status
+allowlist and records no token, pairing credential, player name, image, landmark,
+or raw coordinate. `prepare` permits an intentionally closed camera and stopped
+game; `record` makes the live camera, calibration, native-state ABI, and RetroArch
+checks mandatory:
+
+```sh
+python3 scripts/prepare-end-to-end-session.py \
+  --controller-status 'http://CONTROLLER:8088/status?statistics=1' \
+  --controller-ssh arduino@CONTROLLER --controller-identity /path/to/controller-key \
+  --retropie-ssh pi@RETROPIE --retropie-identity /path/to/retropie-key \
+  --output-dir /tmp/pgv-preflight-01 --phase prepare
+```
+
+Run it again with a new output directory and `--phase record` after Super Glove
+Ball is running. Treat a warning about a dirty development checkout as an identity
+warning, not as a reason to rewrite or discard work. The report includes boot-ID
+hashes, file hashes, selected non-secret settings, service state, temperatures,
+free space, and the fixed acceptance gates. It never changes either device.
 
 An iPhone high-frame-rate original is useful: 120 fps gives 8.3 ms frame spacing,
 240 fps gives 4.2 ms. A Mac camera works too; verify its actual recording cadence
@@ -477,11 +517,12 @@ Run from the development checkout on the Mac:
 ```sh
 python3 scripts/run-native-latency-session.py \
   --status-url http://UNO-Q-NAME.local:8088/status \
-  --output-dir /tmp/powerglove-session-01
+  --output-dir /tmp/powerglove-session-01 --protocol full \
+  --preflight /tmp/pgv-preflight-01/preflight.json
 ```
 
 The read-only runner waits for Enter before each window, counts down, then
-collects status at a requested 50 ms interval. It guides three 20-second supported
+observes cached status at a deliberately light 250 ms interval. It guides three 20-second supported
 open-hand holds, then ten moves in each direction: five short and five longer
 steps, with a hold and return to center between moves. Each direction lasts
 60 seconds. Terminal cues pace the operator; they do not synchronize clocks.
@@ -495,6 +536,15 @@ candidate needs continuous observed detection/calibration and no active buttons;
 video, delivery, condition changes, and request errors must still be reviewed.
 Repeat invalid holds using the single-window collector and a new output path.
 Physical tremor is part of the live measurement, not isolated tracker noise.
+Use `--protocol smoke` first for one eight-second neutral hold and two left/right
+trials per direction. It checks framing and the evidence path in under a minute;
+it is not the performance baseline. The full protocol remains the three neutral
+holds and all four ten-trial direction windows. Both protocols create a private
+cue log and a conservative video-annotation template. Cue timestamps pace the
+person only and are never treated as synchronized video or device timestamps.
+Use `--poll-interval 0.1..1.0` only for an explicit observer-load comparison;
+faster polling is not higher-cadence inference evidence and can perturb the web
+service being observed.
 
 ### Optional correlated software tracing
 
@@ -515,6 +565,28 @@ environment reached the actual worker/receiver. Use separate windows or up to
 600 seconds when preparing a longer session; the duration starts at process
 initialization, so allow time for launch and preflight. Remove temporary overrides
 and restart normally afterward. Normal installation does not enable tracing.
+
+`manage-latency-traces.py` provides a bounded and reversible way to apply those
+variables to the installed Controller and receiver. It restarts only their normal
+services, verifies the diagnostic environment, and stores a private local state
+file needed for restoration:
+
+```sh
+python3 scripts/manage-latency-traces.py start \
+  --controller-ssh arduino@CONTROLLER --controller-identity /path/to/controller-key \
+  --retropie-ssh pi@RETROPIE --retropie-identity /path/to/retropie-key \
+  --duration 180 --state /tmp/pgv-trace-state.json
+
+python3 scripts/manage-latency-traces.py stop \
+  --state /tmp/pgv-trace-state.json --output-dir /tmp/pgv-traces-01
+```
+
+Always run `stop`, even after a cancelled recording. It force-recreates the normal
+Controller container, removes the receiver's temporary runtime-only service
+override, restarts both, verifies that diagnostic variables are gone, and then
+collects finalized traces. It also reports if either device rebooted. This helper
+does not select the diagnostic libretro core; core timing still requires the
+separately named build described below.
 
 Each process reserves a new private file named `PREFIX.ROLE.PID.json`. It retains
 at most 20,000 events in memory. Recording uses a nonblocking lock, drops evidence
@@ -588,23 +660,52 @@ workload windows with tracing off/on/off on the actual devices, including the
 normal/diagnostic core comparison. Report distribution changes and capture/
 tracking continuity; do not silently subtract a synthetic overhead estimate.
 
+An isolated September 8 device run measured only the trace call itself, with no
+camera or game workload. On the PowerGlove Vision Controller (arm64, Python
+3.13.14), disabled p50/p95 were 0.468/0.469 microseconds and enabled p50/p95 were
+11.771/18.073 microseconds. On RetroPie (arm64, Python 3.7.3), the corresponding
+values were 1.222/1.277 and 18.259/24.389 microseconds. These tens-of-microseconds
+event costs support using bounded traces, but one Controller enabled maximum was
+2.083 ms; the recording session must still include trace-off/trace-on/trace-off
+workload comparisons before a latency conclusion is accepted.
+
 ### Original-video review and screenshots
 
 Install `av` (PyAV) and `Pillow` into a temporary **Mac diagnostic environment**;
-they are not Controller or receiver runtime dependencies. First index the original
-recording and extract selected zero-based frames for visual review:
+they are not Controller or receiver runtime dependencies. With no explicit frame
+selection, the first run creates a 24-frame overview contact sheet and a
+deliberately incomplete annotation template:
 
 ```sh
+python3 -m venv /tmp/pgv-video-tools
+/tmp/pgv-video-tools/bin/pip install av Pillow
+/tmp/pgv-video-tools/bin/python scripts/analyze-latency-video.py \
+  --video /path/to/original.mov --protocol smoke --capture-fps 120 \
+  --output-dir /tmp/pgv-video-overview
+
 python scripts/analyze-latency-video.py --video /path/to/original.mov \
   --frames 100,101,102 --output-dir /tmp/pgv-video-index
 ```
 
 The report includes the original SHA-256 and decoded presentation timestamp of
-every frame, bounded to 150,000 frames. Inspect candidate onset frames and their
+every frame, bounded to 150,000 frames. Stored video display rotation is applied
+consistently to review images without changing timestamps. Inspect candidate onset frames and their
 immediate predecessors. Record first physical motion and first corresponding
 Robo-Glove motion, not terminal cue time. To measure stopping, also mark hand stop
 and game settling. Use a reviewed annotation file with this structure (example
 frame numbers and digest are placeholders, not measurements):
+
+```sh
+python scripts/analyze-latency-video.py --video /path/to/original.mov \
+  --around 1234 --radius 5 --output-dir /tmp/pgv-video-onset-1234
+```
+
+The tighter contact sheet shows the candidate frame and its neighbours. Each
+output directory must be new, so an earlier review is never silently replaced.
+`--capture-fps` stores the operator-confirmed camera mode and suggests the ratio
+between encoded playback PTS and capture time. It never sets `timing_verified`;
+the reviewer must still confirm that each accepted trial lies in a uniform-rate
+portion of the original.
 
 ```json
 {

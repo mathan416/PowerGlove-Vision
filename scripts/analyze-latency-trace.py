@@ -32,8 +32,10 @@ def analyze(controller, receiver, core):
     for report, role in ((controller, 'controller'), (receiver, 'receiver')):
         if report.get('format') != 'powerglove-diagnostic/1' or report.get('role') != role:
             raise ValueError('Wrong diagnostic format or role')
-    metrics = {key: [] for key in ('capture_read_to_processing', 'processing', 'tracking', 'gesture_and_calibration', 'encode_and_send',
-        'capture_read_to_send', 'processing_to_send_start', 'receipt_to_validation', 'validation_to_publication_start',
+    metrics = {key: [] for key in ('capture_timestamp_to_processing', 'capture_read_to_processing',
+        'processing', 'tracking', 'gesture_and_calibration', 'encode_and_send',
+        'capture_timestamp_to_send', 'capture_read_to_send', 'processing_to_send_start',
+        'receipt_to_validation', 'validation_to_publication_start',
         'publication', 'receiver_to_native_publication', 'native_write',
         'publication_record_to_first_core_consumption')}
     invalid = 0
@@ -54,13 +56,17 @@ def analyze(controller, receiver, core):
             interval('encode_and_send', event['start_ns'], event['end_ns'])
         elif event['event'] == 'vision':
             visions[key] = event
-            interval('capture_read_to_processing', event['capture_ns'], event['start_ns'])
+            interval('capture_timestamp_to_processing', event['capture_ns'], event['start_ns'])
+            if event.get('capture_ready_ns') is not None:
+                interval('capture_read_to_processing', event['capture_ready_ns'], event['start_ns'])
             interval('processing', event['start_ns'], event['end_ns'])
             if event.get('tracking_end_ns') is not None:
                 interval('tracking', event['start_ns'], event['tracking_end_ns'])
                 interval('gesture_and_calibration', event['tracking_end_ns'], event['end_ns'])
     for key in sends.keys() & visions.keys():
-        interval('capture_read_to_send', visions[key]['capture_ns'], sends[key]['end_ns'])
+        interval('capture_timestamp_to_send', visions[key]['capture_ns'], sends[key]['end_ns'])
+        if visions[key].get('capture_ready_ns') is not None:
+            interval('capture_read_to_send', visions[key]['capture_ready_ns'], sends[key]['end_ns'])
         interval('processing_to_send_start', visions[key]['end_ns'], sends[key]['start_ns'])
     publications = {}
     for event in receiver['events']:

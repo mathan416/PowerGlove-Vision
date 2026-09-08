@@ -46,6 +46,10 @@ class VisionBenchmarkToolTests(unittest.TestCase):
         self.assertEqual([cue[2] for cue in fixed.CUES], [cue[0] for cue in guided.CUES])
         self.assertEqual(fixed.CUES[-1][1], 30)
         self.assertEqual(sum(cue[3] for cue in guided.CUES), 52)
+        self.assertEqual(
+            [cue[0] for cue in guided.TRACKING_CUES],
+            ["neutral_near", "slow_xy", "fast_xy", "tracking_recovery", "neutral_finish"],
+        )
         self.assertIn("Live camera preview", guided.PAGE)
         self.assertIn("Record this step", guided.PAGE)
 
@@ -96,6 +100,7 @@ class VisionBenchmarkToolTests(unittest.TestCase):
             capture.cv2 = Cv2()
             capture.output = Path(directory) / "guided.avi"
             capture.width, capture.height, capture.fps = 640, 480, 30.0
+            capture.cues = guided.CUES
             capture.lock = threading.Lock()
             capture.condition = threading.Condition(capture.lock)
             capture.index = 0

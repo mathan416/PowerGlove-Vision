@@ -193,21 +193,26 @@ def _finger_curls_from_bends(bends: dict) -> dict:
 
 
 def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
-                  graph_mode: str = "full"):
+                  detection_confidence: float = .55,
+                  graph_mode: str = "full", tracking_roi_scale: float = 2.0,
+                  use_previous_landmarks: bool = True,
+                  model_complexity: int = 0):
     """Build the lite legacy graph, enabling safe CPU parallelism when supported."""
     settings = {
         "static_image_mode": False,
         "max_num_hands": 1,
-        "model_complexity": 0,
-        "min_detection_confidence": 0.55,
+        "model_complexity": model_complexity,
+        "min_detection_confidence": detection_confidence,
         "min_tracking_confidence": tracking_confidence,
     }
     base = mp.solutions.hands.Hands(**settings)
-    if cpu_threads <= 1 and graph_mode == "full":
+    if (cpu_threads <= 1 and graph_mode == "full"
+            and tracking_roi_scale == 2.0 and use_previous_landmarks):
         return base
     try:
         from google.protobuf import text_format
         from mediapipe.calculators.tensor import inference_calculator_pb2
+        from mediapipe.calculators.util import rect_transformation_calculator_pb2
         from mediapipe.framework import calculator_pb2
         from mediapipe.python.solution_base import SolutionBase
 
@@ -227,12 +232,27 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
             modified += 1
         if modified != 2:
             raise RuntimeError(f"expected two CPU inference nodes, found {modified}")
+        roi_modified = 0
+        for node in graph.node:
+            if (node.calculator != "RectTransformationCalculator" or
+                    "handlandmarklandmarkstoroi" not in node.name):
+                continue
+            options = node.options.Extensions[
+                rect_transformation_calculator_pb2.RectTransformationCalculatorOptions.ext
+            ]
+            options.scale_x = tracking_roi_scale
+            options.scale_y = tracking_roi_scale
+            roi_modified += 1
+        if roi_modified != 1:
+            raise RuntimeError(
+                f"expected one next-frame hand region, found {roi_modified}"
+            )
         threaded = SolutionBase(
             graph_config=graph,
             side_inputs={
-                "model_complexity": 0,
+                "model_complexity": model_complexity,
                 "num_hands": 1,
-                "use_prev_landmarks": True,
+                "use_prev_landmarks": use_previous_landmarks,
             },
             outputs=(
                 ["multi_hand_landmarks"]
@@ -259,10 +279,26 @@ class MediaPipeTracker:
         mirror: bool = True,
         model_path: Path | str | None = None,
         inference_threads: int = 4,
-        tracking_confidence: float = .40,
+        tracking_confidence: float = .35,
+        detection_confidence: float = .55,
         backend: str = "legacy",
         graph_mode: str = "full",
+        tracking_roi_scale: float = 2.25,
+        use_previous_landmarks: bool = True,
+        model_complexity: int = 0,
     ) -> None:
+        self.tracking_roi_scale = float(tracking_roi_scale)
+        if not 2.0 <= self.tracking_roi_scale <= 3.0:
+            raise ValueError("tracking ROI scale must be between 2.0 and 3.0")
+        if type(use_previous_landmarks) is not bool:
+            raise ValueError("use_previous_landmarks must be a boolean")
+        self.use_previous_landmarks = use_previous_landmarks
+        self.detection_confidence = float(detection_confidence)
+        if not 0.0 <= self.detection_confidence <= 1.0:
+            raise ValueError("detection confidence must be between 0.0 and 1.0")
+        if type(model_complexity) is not int or model_complexity not in (0, 1):
+            raise ValueError("model complexity must be 0 or 1")
+        self.model_complexity = model_complexity
         try:
             import cv2
             started = time.monotonic()
@@ -314,7 +350,10 @@ class MediaPipeTracker:
         else:
             self.hands = _legacy_hands(
                 mp, self.inference_threads, self.tracking_confidence,
-                self.graph_mode,
+                self.detection_confidence,
+                self.graph_mode, self.tracking_roi_scale,
+                self.use_previous_landmarks,
+                self.model_complexity,
             )
 
         log_startup_stage("tracker construction", started)

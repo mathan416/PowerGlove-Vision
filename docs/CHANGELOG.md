@@ -9,6 +9,19 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Promoted MediaPipe's `2.25` next-frame hand search area and `0.35` tracking
+  confidence as the reproducible defaults. The larger search area recovered five
+  of nine missed fast-sweep frames without material latency or false-activation
+  cost. Palm-confidence changes, every-frame palm detection, and the full
+  landmark model did not pass their latency/continuity gates and remain
+  benchmark evidence rather than gameplay modes.
+
+- Added advance preparation for the next physical hand-to-display latency session:
+  a privacy-safe read-only two-device preflight, a short framing/smoke protocol,
+  a reversible Controller/receiver trace manager, and contact-sheet-based video
+  review. These tools leave movement math unchanged and cannot treat terminal cue
+  time or unrelated device clocks as physical latency evidence.
+
 - Moved Dashboard status publication onto a latest-only worker. Changed
   controller state is submitted immediately; routine detailed gesture and
   controller feedback is limited to about 10 Hz, and rolling percentile

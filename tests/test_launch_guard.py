@@ -25,7 +25,8 @@ class LaunchGuardTests(unittest.TestCase):
         self.assertEqual(args.fps, 0)
         self.assertEqual(args.camera_format, "MJPG")
         self.assertEqual(args.inference_threads, 4)
-        self.assertEqual(args.tracking_confidence, 0.40)
+        self.assertEqual(args.tracking_confidence, 0.35)
+        self.assertEqual(args.tracking_roi_scale, 2.25)
         self.assertEqual(args.tracker_backend, "legacy")
         self.assertEqual(args.preview_fps, 5.0)
 

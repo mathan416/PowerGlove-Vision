@@ -45,6 +45,11 @@ CUES = (
     ("neutral_finish", "Neutral finish", "Finish with a relaxed open hand and remain still.", 3.0),
 )
 
+TRACKING_CUES = tuple(
+    cue for cue in CUES
+    if cue[0] in ("neutral_near", "slow_xy", "fast_xy", "tracking_recovery", "neutral_finish")
+)
+
 
 PAGE = """<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>
 <title>PowerGlove Guided Capture</title><style>
@@ -61,11 +66,13 @@ async function update(){try{const s=await(await fetch('/status',{cache:'no-store
 class GuidedCapture:
     """Capture user-confirmed cues while continuously publishing a live preview."""
 
-    def __init__(self, camera: str, output: Path, width: int, height: int, fps: float) -> None:
+    def __init__(self, camera: str, output: Path, width: int, height: int,
+                 fps: float, cues: tuple = CUES) -> None:
         import cv2
         self.cv2 = cv2
         self.output = output
         self.width, self.height, self.fps = width, height, fps
+        self.cues = cues
         self.lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
         self.index = 0
@@ -120,7 +127,7 @@ class GuidedCapture:
                 if self.phase == "countdown" and now - self.phase_started >= 2.0:
                     self.phase = "recording"
                     self.phase_started = now
-                    label, title, instruction, duration = CUES[self.index]
+                    label, title, instruction, duration = self.cues[self.index]
                     self.cue_records.append({"start": self.timeline, "end": self.timeline + duration,
                                              "label": label, "instruction": instruction})
                 if self.phase == "recording":
@@ -133,7 +140,7 @@ class GuidedCapture:
                     else:
                         self.timeline += duration
                         self.index += 1
-                        if self.index >= len(CUES):
+                        if self.index >= len(self.cues):
                             self.complete = True
                             self.phase = "complete"
                             self._finish_locked()
@@ -143,7 +150,7 @@ class GuidedCapture:
                             self.phase_started = now
                 if now >= preview_at:
                     preview = frame.copy()
-                    cv2.putText(preview, CUES[min(self.index, len(CUES)-1)][1], (16, 34),
+                    cv2.putText(preview, self.cues[min(self.index, len(self.cues)-1)][1], (16, 34),
                                 cv2.FONT_HERSHEY_SIMPLEX, .75, (255, 255, 255), 2, cv2.LINE_AA)
                     encoded, data = cv2.imencode(".jpg", preview, [cv2.IMWRITE_JPEG_QUALITY, 76])
                     if encoded:
@@ -182,15 +189,15 @@ class GuidedCapture:
     def status(self) -> dict:
         """Return browser-safe progress for the current capture cue."""
         with self.lock:
-            index = min(self.index, len(CUES) - 1)
-            label, title, instruction, duration = CUES[index]
+            index = min(self.index, len(self.cues) - 1)
+            label, title, instruction, duration = self.cues[index]
             elapsed = time.monotonic() - self.phase_started
             remaining = max(0.0, (2.0 if self.phase == "countdown" else duration) - elapsed)
             progress = 0.0 if self.phase == "ready" else (
                 min(1.0, elapsed / 2.0) if self.phase == "countdown" else
                 min(1.0, elapsed / duration) if self.phase == "recording" else 1.0
             )
-            return {"index": index, "total": len(CUES), "label": label, "title": title,
+            return {"index": index, "total": len(self.cues), "label": label, "title": title,
                     "instruction": instruction, "phase": self.phase, "remaining": remaining,
                     "progress": progress, "complete": self.complete, "frames": self.frames}
 
@@ -265,8 +272,10 @@ def main() -> int:
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=float, default=30.0)
+    parser.add_argument("--protocol", choices=("full", "tracking"), default="full")
     args = parser.parse_args()
-    guided = GuidedCapture(args.camera, args.output, args.width, args.height, args.fps)
+    cues = TRACKING_CUES if args.protocol == "tracking" else CUES
+    guided = GuidedCapture(args.camera, args.output, args.width, args.height, args.fps, cues)
     server = ThreadingHTTPServer((args.host, args.port), handler(guided))
     print(f"Guided capture: http://{args.host}:{args.port}", flush=True)
     try:

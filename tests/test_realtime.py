@@ -151,6 +151,10 @@ class RealtimePipelineTests(unittest.TestCase):
                 while capture.latest_after(0) is None and time.monotonic() < deadline:
                     time.sleep(.005)
                 self.assertEqual(capture.latest_after(0).frame, "private-camera-content")
+                self.assertGreaterEqual(
+                    capture.latest_after(0).ready_at,
+                    capture.latest_after(0).captured_at,
+                )
             finally:
                 capture.release()
             report = json.loads(path.read_text())

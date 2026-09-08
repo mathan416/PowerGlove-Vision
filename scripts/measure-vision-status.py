@@ -32,7 +32,7 @@ CONDITIONS = (
     "active_profile", "vision_profile", "practice_mode", "controller_enabled",
     "controller_context_active", "tracker_backend", "camera_width", "camera_height",
     "camera_format", "camera_fps", "preview_clients", "inference_threads",
-    "tracking_confidence", "palm_anchor", "confidence_source", "version",
+    "tracking_confidence", "palm_anchor", "version",
 )
 LIMITATIONS = [
     "Status polling observes a subset of inference results, not every camera frame.",
@@ -115,11 +115,15 @@ class StatusWindow:
                             "detected_inference_ms": [], "missing_hand_inference_ms": [],
                             "capture_skips": [], "observation_intervals_ms": [],
                             "last_observed_at": None, "tracking_losses": 0, "previous_detected": None,
-                            "button_active_samples": {},
+                            "button_active_samples": {}, "confidence_source_samples": {},
                             "sent_sample_age_ms": [], "axes": {"x": [], "y": []}}
             self.segments.append(self.current)
         segment = self.current
         segment["observed_samples"] += 1
+        confidence_source = status.get("confidence_source")
+        if isinstance(confidence_source, str):
+            sources = segment["confidence_source_samples"]
+            sources[confidence_source] = sources.get(confidence_source, 0) + 1
         if segment["last_observed_at"] is not None:
             segment["observation_intervals_ms"].append((timestamp - segment["last_observed_at"]) * 1000)
         segment["last_observed_at"] = timestamp

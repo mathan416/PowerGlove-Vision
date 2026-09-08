@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Cover session preflight gates and guided video review helpers.
 #   2026-09-07 - Cover receiver-to-native publication timing.
 #   2026-09-06 - Cover drops, clock separation, session reuse, and video timing brackets.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -41,9 +42,158 @@ def load(name):
 trace_analysis = load('analyze-latency-trace')
 video_analysis = load('analyze-latency-video')
 measure = load('measure-vision-status')
+preflight = load('prepare-end-to-end-session')
+trace_manager = load('manage-latency-traces')
+session_runner = load('run-native-latency-session')
 
 
 class DiagnosticTests(unittest.TestCase):
+    def test_guided_session_uses_lightweight_status_polling(self):
+        report = {'observed_samples':1, 'request_errors':0,
+                  'segments':[{'stationary_candidate':True}]}
+        with tempfile.TemporaryDirectory() as folder, \
+                patch('builtins.input', return_value=''), \
+                patch.object(session_runner.time, 'sleep'), \
+                patch.object(session_runner.measurement, 'collect', return_value=report) as collect:
+            session_runner.collect_window(
+                'http://controller/status', Path(folder)/'neutral.json',
+                'neutral', 'neutral', 1, poll_interval=.25,
+            )
+        collect.assert_called_once_with('http://controller/status', 1, .25, 'neutral')
+
+    def test_trace_manager_builds_bounded_ssh_command_and_private_state(self):
+        command = trace_manager.ssh_command('pi@10.0.2.37', Path('/tmp/key'),
+                                            'retropieconsole.local')
+        self.assertEqual(command[-1], 'pi@10.0.2.37')
+        self.assertIn('HostKeyAlias=retropieconsole.local', command)
+        self.assertIn('APP_HOME', trace_manager.CONTROLLER_START)
+        self.assertIn('APP_HOME', trace_manager.CONTROLLER_STOP)
+        self.assertIn('controller_was_enabled', trace_manager.CONTROLLER_START)
+        self.assertIn('controller_rearmed', trace_manager.CONTROLLER_STOP)
+        self.assertIn('KillSignal=SIGINT', trace_manager.RETROPIE_START)
+        self.assertIn('retroarch_running', trace_manager.RETROPIE_PREFLIGHT)
+        self.assertIn('Receiver trace did not flush', trace_manager.RETROPIE_STOP)
+        self.assertLess(trace_manager.RETROPIE_STOP.index("'stop','powerglove-receiver.service'"),
+                        trace_manager.RETROPIE_STOP.index("'rm','-f',drop"))
+        self.assertIn("('POWERGLOVE_DIAGNOSTIC_TRACE=%s/receiver' % folder) not in shown",
+                      trace_manager.RETROPIE_STOP)
+        with tempfile.TemporaryDirectory() as folder:
+            destination = Path(folder)/'state.json'
+            trace_manager.save_state(destination, {'format':'test'})
+            self.assertEqual(json.loads(destination.read_text()), {'format':'test'})
+            self.assertEqual(destination.stat().st_mode & 0o777, 0o600)
+            with self.assertRaises(FileExistsError):
+                trace_manager.save_state(destination, {'format':'again'})
+
+    def test_preflight_selects_only_safe_status_and_applies_fixed_gates(self):
+        status = dict(worker_running=True, camera_available=True, calibrated=True,
+            tracker_backend='legacy', tracker_graph='full', native_xy_mode='latest',
+            camera_width=640, camera_height=480, camera_format='MJPG', camera_fps=30.0,
+            build={'commit':'a'*40}, token='must-not-survive', active_player='player-id')
+        selected = {key: status.get(key) for key in preflight.STATUS_FIELDS if key in status}
+        self.assertNotIn('token', selected)
+        self.assertNotIn('active_player', selected)
+        checks = preflight.evaluate(selected, {'disk_free_bytes':2**30},
+            {'disk_free_bytes':2**30, 'files':{'core_sha256':'b'*64},
+             'native_state':{'present':True,'size':64}, 'retroarch_running':False},
+            {'commit':'a'*40,'dirty':False})
+        failed = {item['name']:item['severity'] for item in checks if not item['passed']}
+        self.assertEqual(failed, {})
+
+    def test_prepare_preflight_rejects_running_emulator_before_receiver_restart(self):
+        status = dict(worker_running=True, camera_available=False, calibrated=False,
+            tracker_backend='legacy', tracker_graph='full', native_xy_mode='latest',
+            camera_width=640, camera_height=480, camera_format='MJPG', camera_fps=30,
+            build={'commit':'a'*40})
+        controller = {'disk_free_bytes':2**30, 'files':{'calibration_present':True}}
+        retropie = {'disk_free_bytes':2**30, 'files':{'core_sha256':'b'*64},
+                    'native_state':{'present':True,'size':64}, 'retroarch_running':True}
+        checks = preflight.evaluate(status, controller, retropie,
+                                    {'commit':'a'*40,'dirty':False})
+        errors = {item['name'] for item in checks
+                  if not item['passed'] and item['severity'] == 'error'}
+        self.assertEqual(errors, {'RetroArch is closed before trace setup'})
+
+    def test_preflight_rejects_wrong_camera_and_missing_native_abi(self):
+        status = dict(worker_running=True, camera_available=True, calibrated=True,
+            tracker_backend='legacy', tracker_graph='full', native_xy_mode='latest',
+            camera_width=1280, camera_height=720, camera_format='MJPG', camera_fps=60)
+        checks = preflight.evaluate(status, {'disk_free_bytes':2**30},
+            {'disk_free_bytes':2**30, 'files':{}, 'native_state':{'present':False}},
+            {'commit':'a'*40,'dirty':False}, require_gameplay=True)
+        errors = {item['name'] for item in checks
+                  if not item['passed'] and item['severity'] == 'error'}
+        self.assertIn('camera is configured for 640x480 MJPEG', errors)
+        self.assertIn('camera is configured for 30 fps', errors)
+        self.assertIn('native state ABI is present', errors)
+
+    def test_record_preflight_requires_live_calibration_not_only_a_saved_file(self):
+        status = dict(worker_running=True, camera_available=True, calibrated=False,
+            tracker_backend='legacy', tracker_graph='full', native_xy_mode='latest',
+            camera_width=640, camera_height=480, camera_format='MJPG', camera_fps=30)
+        controller = {'disk_free_bytes':2**30, 'files':{'calibration_present':True}}
+        retropie = {'disk_free_bytes':2**30, 'files':{'core_sha256':'b'*64},
+                    'native_state':{'present':True,'size':64}, 'retroarch_running':True}
+        checks = preflight.evaluate(status, controller, retropie,
+                                    {'commit':'a'*40,'dirty':False}, require_gameplay=True)
+        errors = {item['name'] for item in checks
+                  if not item['passed'] and item['severity'] == 'error'}
+        self.assertIn('player calibration is available', errors)
+
+    def test_record_preflight_warns_for_local_tools_but_rejects_runtime_mismatch(self):
+        status = dict(worker_running=True, camera_available=True, calibrated=True,
+            tracker_backend='legacy', tracker_graph='full', native_xy_mode='latest',
+            camera_width=640, camera_height=480, camera_format='MJPG', camera_fps=30,
+            build={'commit':'a'*40})
+        controller = {'disk_free_bytes':2**30}
+        retropie = {'disk_free_bytes':2**30, 'files':{'core_sha256':'b'*64},
+                    'native_state':{'present':True,'size':64}, 'retroarch_running':True}
+        checks = preflight.evaluate(status, controller, retropie,
+                                    {'commit':'c'*40,'dirty':True}, require_gameplay=True)
+        failed = {item['name']:item['severity'] for item in checks if not item['passed']}
+        self.assertEqual(failed, {
+            'source checkout is clean':'warning',
+            'deployed Controller commit matches checkout':'error',
+        })
+
+    def test_video_review_selection_and_template_are_bounded(self):
+        self.assertEqual(video_analysis.review_selection(20, around='10', radius=2),
+                         {8, 9, 10, 11, 12})
+        overview = video_analysis.review_selection(100, overview=5)
+        self.assertEqual(overview, {0, 25, 50, 74, 99})
+        template = video_analysis.annotation_template('a'*64, 'smoke')
+        self.assertFalse(template['timing_verified'])
+        self.assertEqual(len(template['trials']), 4)
+        self.assertTrue(all(item['hand_onset'] is None for item in template['trials']))
+        with self.assertRaises(ValueError):
+            video_analysis.review_selection(10, explicit='10')
+
+        slow_motion = video_analysis.annotation_template('c'*64, 'smoke', .25, 120)
+        self.assertEqual(slow_motion['capture_fps_reported'], 120)
+        self.assertEqual(slow_motion['seconds_per_pts_second'], .25)
+        self.assertFalse(slow_motion['timing_verified'])
+
+    def test_confidence_source_changes_do_not_split_tracking_segment(self):
+        window = measure.StatusWindow('movement')
+        for index, (detected, source) in enumerate(((True, 'handedness'),
+                                                     (False, 'generic'),
+                                                     (True, 'handedness'))):
+            window.observe(dict(vision_state='active', timestamp=index+1,
+                capture_sequence=index+1, detected=detected, calibrated=True,
+                confidence_source=source), 1)
+        report = window.report(3)
+        self.assertEqual(len(report['segments']), 1)
+        self.assertEqual(report['segments'][0]['tracking_losses'], 1)
+        self.assertEqual(report['segments'][0]['confidence_source_samples'],
+                         {'handedness':2, 'generic':1})
+
+    def test_video_review_template_requires_explicit_human_approval(self):
+        template = video_analysis.annotation_template('b'*64, 'full')
+        self.assertEqual(len(template['trials']), 40)
+        self.assertFalse(template['timing_verified'])
+        self.assertTrue(all(item['unoccluded'] is False for item in template['trials']))
+        self.assertTrue(all(item['game_onset'] is None for item in template['trials']))
+
     def test_disabled_does_not_open_files_or_start_thread(self):
         with patch.dict(os.environ, {}, clear=True), patch('os.open') as opened:
             self.assertIsNone(DiagnosticTrace.from_environment('controller'))
@@ -87,7 +237,7 @@ class DiagnosticTests(unittest.TestCase):
         controller = dict(format='powerglove-diagnostic/1', role='controller', dropped=0, events=[
             dict(event='send', session=s, sequence=1, start_ns=100, end_ns=200) for s in ('a','b')])
         controller['events'].append(dict(event='vision', session='a', sequence=1, capture_ns=20,
-            start_ns=30, tracking_end_ns=50, end_ns=70))
+            capture_ready_ns=25, start_ns=30, tracking_end_ns=50, end_ns=70))
         receiver = dict(format='powerglove-diagnostic/1', role='receiver', dropped=0, events=[
             dict(event='receive', session=s, sequence=1, received_ns=900000000, validated_ns=900000100,
                  publication_start_ns=900000200, end_ns=900000400, published_ns=900000250+i,
@@ -98,7 +248,8 @@ class DiagnosticTests(unittest.TestCase):
         report = trace_analysis.analyze(controller, receiver, core)
         self.assertEqual(report['correlated_send_receive'], 2)
         self.assertIsNone(report['network_transit_ms'])
-        self.assertAlmostEqual(report['timings_ms']['capture_read_to_send']['p50'], .00018)
+        self.assertAlmostEqual(report['timings_ms']['capture_timestamp_to_send']['p50'], .00018)
+        self.assertAlmostEqual(report['timings_ms']['capture_read_to_send']['p50'], .000175)
         self.assertAlmostEqual(report['timings_ms']['processing_to_send_start']['p50'], .00003)
         self.assertAlmostEqual(
             report['timings_ms']['receiver_to_native_publication']['p50'], .00026

@@ -16,6 +16,7 @@ import math
 import unittest
 from types import SimpleNamespace
 
+from powerglove_vision import tracker as tracker_module
 from powerglove_vision.tracker import (
     TRACKER_BACKEND_LABELS,
     _Point, _camera_curl_points, _curl, _finger_bends,
@@ -36,6 +37,32 @@ def pose_points(closed):
 
 
 class TrackerGeometryTests(unittest.TestCase):
+    def test_tracking_roi_scale_is_bounded_before_graph_construction(self):
+        tracker = object.__new__(tracker_module.MediaPipeTracker)
+        with self.assertRaises(ValueError):
+            tracker_module.MediaPipeTracker.__init__(tracker, tracking_roi_scale=1.9)
+
+    def test_previous_landmark_mode_requires_boolean_before_graph_construction(self):
+        tracker = object.__new__(tracker_module.MediaPipeTracker)
+        with self.assertRaises(ValueError):
+            tracker_module.MediaPipeTracker.__init__(
+                tracker, use_previous_landmarks="sometimes"
+            )
+
+    def test_detection_confidence_is_bounded_before_graph_construction(self):
+        tracker = object.__new__(tracker_module.MediaPipeTracker)
+        with self.assertRaises(ValueError):
+            tracker_module.MediaPipeTracker.__init__(
+                tracker, detection_confidence=1.1
+            )
+
+    def test_model_complexity_is_bounded_before_graph_construction(self):
+        tracker = object.__new__(tracker_module.MediaPipeTracker)
+        with self.assertRaises(ValueError):
+            tracker_module.MediaPipeTracker.__init__(
+                tracker, model_complexity=2
+            )
+
     def test_handedness_certainty_is_not_position_confidence(self):
         self.assertFalse(HandObservation(1.0, True, confidence=.69).usable)
         self.assertTrue(HandObservation(

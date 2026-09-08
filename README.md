@@ -293,14 +293,20 @@ game movement logic, with read-only input-range and validity measurements.
 The [native latency session tools](docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
 guide stationary/movement windows, optionally correlate software traces, and
 extract annotated evidence from an original hand-and-screen recording. They are
-disabled during normal play. Historical trace tools can compare recognized,
+disabled during normal play. A privacy-safe preflight records the exact two-device
+test state without changing it; smoke mode checks framing before the full session,
+and the reversible trace helper restores production services before exporting its
+bounded evidence. Historical trace tools can compare recognized,
 optical-flow, selected, and filtered coordinates without recording video; the
 current live path reports MediaPipe coordinates and the chosen response mode.
 Physical hand-to-screen latency still requires synchronized recording.
 
 The production Controller runs the proven CPU MediaPipe Hands path at 640×480,
-with four explicitly selected inference threads and a `0.40` tracking-confidence
-threshold. Camera rate defaults to Automatic, which tries the measured 30 fps
+with four explicitly selected inference threads, a `0.35` tracking-confidence
+threshold, and a `2.25` next-frame hand search area. The larger search area
+recovered five of nine previously missed fast-sweep frames in repeatable replay
+without a material latency or false-activation cost. Camera rate defaults to
+Automatic, which tries the measured 30 fps
 path before safely accepting the driver's supported rate. An isolated Adreno GPU probe
 successfully created a delegate but the first MediaPipe Tasks graph was much
 slower than production, so no GPU wheel or runtime change ships in this

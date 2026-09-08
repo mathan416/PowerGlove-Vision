@@ -67,6 +67,8 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/scripts/analyze-latency-trace.py",
     "PowerGlove-Vision/scripts/analyze-latency-video.py",
     "PowerGlove-Vision/scripts/benchmark-diagnostic-overhead.py",
+    "PowerGlove-Vision/scripts/prepare-end-to-end-session.py",
+    "PowerGlove-Vision/scripts/manage-latency-traces.py",
     "PowerGlove-Vision/scripts/analyze-motion-trace.py",
     "PowerGlove-Vision/scripts/compare-motion-matrix.py",
     "PowerGlove-Vision/scripts/analyze-motion-samples.py",

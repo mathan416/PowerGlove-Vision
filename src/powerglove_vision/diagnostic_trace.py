@@ -51,7 +51,12 @@ class DiagnosticTrace:
             return None
         try:
             seconds = float(os.environ.get('POWERGLOVE_DIAGNOSTIC_SECONDS', '180'))
-            return cls('%s.%s.%d.json' % (prefix, role, os.getpid()), role, seconds)
+            # Camera recovery may construct the same role more than once inside
+            # one long-lived process. A monotonic suffix keeps every bounded
+            # trace distinct without overwriting or disabling the later trace.
+            return cls('%s.%s.%d.%d.json' % (
+                prefix, role, os.getpid(), time.monotonic_ns()
+            ), role, seconds)
         except (OSError, ValueError) as exc:
             print('Diagnostic trace disabled: %s' % exc, flush=True)
             return None

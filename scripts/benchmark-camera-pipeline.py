@@ -360,7 +360,8 @@ def main():
     parser.add_argument('--source-root', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--seconds', type=int, choices=range(5, 31), default=10)
     parser.add_argument('--inference-threads', type=int, choices=(1, 2, 4), default=2)
-    parser.add_argument('--tracking-confidence', type=float, choices=(.45, .50, .55, .60),
+    parser.add_argument('--tracking-confidence', type=float,
+                        choices=(.30, .35, .40, .45, .50, .55, .60),
                         default=.55)
     parser.add_argument('--graph-mode', choices=('full', 'lean-image'), default='full')
     parser.add_argument('--worker-stopped', action='store_true', required=True,
