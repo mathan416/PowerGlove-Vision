@@ -73,6 +73,7 @@ class ProfileRequest:
     system: str
     rom: str
     peer: tuple[str, int]
+    emulator: str = ""
     session_id: str | None = None
     lease_seconds: float = 0.0
 
@@ -84,6 +85,7 @@ class ActiveGameLease:
     profile: str | None = None
     system: str = ""
     rom: str = ""
+    emulator: str = ""
     expires_at: float = 0.0
 
     def refresh(self, request: ProfileRequest, now: float) -> bool:
@@ -96,11 +98,13 @@ class ActiveGameLease:
             and self.profile == request.profile
             and self.system == request.system
             and self.rom == request.rom
+            and self.emulator == request.emulator
         )
         self.session_id = request.session_id
         self.profile = request.profile
         self.system = request.system
         self.rom = request.rom
+        self.emulator = request.emulator
         self.expires_at = now + request.lease_seconds
         return not same
 
@@ -117,6 +121,7 @@ class ActiveGameLease:
         self.profile = None
         self.system = ""
         self.rom = ""
+        self.emulator = ""
         self.expires_at = 0.0
 
     def snapshot(self, now: float) -> dict[str, Any]:
@@ -174,6 +179,12 @@ class ProfileCommandServer:
                 profile = data.get("profile")
                 if profile is not None and profile not in SUPPORTED_PROFILES:
                     raise ValueError("unknown profile")
+                emulator = data.get("emulator", "")
+                if (not isinstance(emulator, str) or len(emulator) > 64
+                        or not emulator.isascii()
+                        or any(not (character.isalnum() or character in "-_.")
+                               for character in emulator)):
+                    raise ValueError("invalid emulator")
                 session_id = data.get("session_id")
                 lease_seconds = data.get("lease_seconds", 0.0)
                 if session_id is not None:
@@ -196,6 +207,7 @@ class ProfileCommandServer:
                     system=str(data.get("system", ""))[:64],
                     rom=Path(str(data.get("rom", ""))).name[:255],
                     peer=peer,
+                    emulator=emulator,
                     session_id=session_id,
                     lease_seconds=float(lease_seconds or 0.0),
                 )
@@ -260,7 +272,8 @@ def select_profile(registry: dict[str, str], system: str, rom: str) -> str | Non
 
 def send_request(host: str, port: int, token: str, profile: str | None,
                  system: str, rom: str, timeout: float, *,
-                 session_id: str | None = None, lease_seconds: float = 0.0) -> dict[str, Any]:
+                 session_id: str | None = None, lease_seconds: float = 0.0,
+                 emulator: str = "") -> dict[str, Any]:
     """Send a signed profile request with bounded retries and require a valid acknowledgement."""
     request_id = uuid.uuid4().hex
     message = {
@@ -270,6 +283,7 @@ def send_request(host: str, port: int, token: str, profile: str | None,
         "profile": profile,
         "system": system,
         "rom": Path(rom).name,
+        "emulator": emulator,
     }
     if session_id is not None:
         message["session_id"] = session_id

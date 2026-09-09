@@ -70,7 +70,13 @@ class NativeMotionTests(unittest.TestCase):
         self.assertLess(engine._filtered_palm_x, target.palm_x)
 
     def test_native_source_and_activation_are_explicit(self):
-        self.assertTrue(_native_xy_active(self.engine, False, False, False))
+        self.assertTrue(_native_xy_active(
+            self.engine, False, False, False, "lr-nestopia-powerglove"
+        ))
+        self.assertFalse(_native_xy_active(
+            self.engine, False, False, False, "lr-fceumm"
+        ))
+        self.assertFalse(_native_xy_active(self.engine, False, False, False, ""))
         self.assertFalse(_native_xy_active(self.engine, True, False, False))
         self.assertFalse(_native_xy_active(self.engine, False, True, False))
         self.assertFalse(_native_xy_active(self.engine, False, False, True))

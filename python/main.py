@@ -205,6 +205,7 @@ def main() -> int:
             )
             control.update_supervisor(camera=False, running=True)
             configuration_changed = False
+            camera_recovery_restart = False
             while process.poll() is None:
                 if revision != control.revision:
                     configuration_changed = True
@@ -229,6 +230,17 @@ def main() -> int:
                             file=sys.stderr,
                             flush=True,
                         )
+                        if camera_recovery.last_action == "recover":
+                            # Do not race UVC open/read calls against the host's
+                            # physical USB unbind/rebind cycle.
+                            camera_recovery_restart = True
+                            process.terminate()
+                            try:
+                                process.wait(timeout=7)
+                            except subprocess.TimeoutExpired:
+                                process.kill()
+                                process.wait(timeout=2)
+                            break
                     active_profile = status.get("active_profile")
                     matrix.set_profile(
                         None if status.get("practice_mode") or active_profile == "off"
@@ -241,6 +253,20 @@ def main() -> int:
                     pass
                 time.sleep(0.25)
             process = None
+            if camera_recovery_restart:
+                matrix.set_status(MatrixStatus.LOADING)
+                control.update_supervisor(camera=False, running=True)
+                recovered = camera_recovery.wait_for_recovery()
+                print(
+                    "PowerGlove Vision: guarded USB camera recovery "
+                    + ("completed" if recovered else "did not confirm completion"),
+                    file=sys.stderr,
+                    flush=True,
+                )
+                # Let udev finish publishing the returned video nodes before
+                # the fresh worker performs camera discovery and UVC setup.
+                time.sleep(2.0)
+                continue
             if configuration_changed:
                 matrix.set_status(MatrixStatus.LOADING)
                 control.update_supervisor(camera=False, running=False)

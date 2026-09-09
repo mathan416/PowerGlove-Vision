@@ -28,6 +28,10 @@ from .profile_control import load_registry, read_token, select_profile, send_req
 
 
 DEFAULT_SESSION_FILE = Path.home() / ".cache" / "powerglove-vision" / "active-game.json"
+KNOWN_CORES = {
+    "fceumm_libretro.so": "lr-fceumm",
+    "nestopia_powerglove_libretro.so": "lr-nestopia-powerglove",
+}
 
 
 def _write_session(path: Path, session_id: str) -> None:
@@ -92,6 +96,31 @@ def _retroarch_running(proc_root: Path = Path("/proc")) -> bool:
     return False
 
 
+def _running_retroarch_emulator(proc_root: Path = Path("/proc")) -> str:
+    """Identify the newest running supported core; unknown cores safely mean joystick."""
+    candidates: list[tuple[int, str]] = []
+    try:
+        entries = proc_root.iterdir()
+    except OSError:
+        return ""
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            if not (entry / "comm").read_text().strip().casefold().startswith("retroarch"):
+                continue
+            arguments = (entry / "cmdline").read_bytes().split(b"\0")
+            emulator = ""
+            for index, argument in enumerate(arguments[:-1]):
+                if argument == b"-L":
+                    emulator = KNOWN_CORES.get(Path(os.fsdecode(arguments[index + 1])).name, "")
+                    break
+            candidates.append((int(entry.name), emulator))
+        except (OSError, ValueError, UnicodeError):
+            continue
+    return max(candidates, default=(0, ""))[1]
+
+
 def _start_session_process(args: argparse.Namespace, session_id: str) -> None:
     """Start a detached, user-owned lease refresher without delaying game launch."""
     command = [
@@ -122,11 +151,13 @@ def _run_session(args: argparse.Namespace, settings: dict, token: str, profile: 
             return 0
         time.sleep(0.1)
     while _session_is_current(args.session_file, session_id) and _retroarch_running():
+        emulator = _running_retroarch_emulator()
         try:
             send_request(
                 settings["uno_q"], int(settings.get("port", 55356)), token,
                 profile, args.system, args.rom, float(settings.get("timeout", 0.4)),
                 session_id=session_id, lease_seconds=args.lease_seconds,
+                emulator=emulator,
             )
         except (OSError, TimeoutError, ValueError, KeyError, TypeError):
             pass

@@ -100,6 +100,33 @@ class RelayTests(unittest.TestCase):
 
 
 class HookTests(unittest.TestCase):
+    def test_running_core_detection_prefers_newest_retroarch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for pid, core in (
+                (101, "/opt/retropie/libretrocores/lr-nestopia-powerglove/nestopia_powerglove_libretro.so"),
+                (202, "/opt/retropie/libretrocores/lr-fceumm/fceumm_libretro.so"),
+            ):
+                process = root / str(pid)
+                process.mkdir()
+                (process / "comm").write_text("retroarch\n")
+                (process / "cmdline").write_bytes(
+                    b"retroarch\0-L\0" + core.encode() + b"\0game.nes\0"
+                )
+            self.assertEqual(
+                retropie_hook._running_retroarch_emulator(root), "lr-fceumm"
+            )
+
+    def test_unknown_running_core_falls_back_to_joystick_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            process = Path(directory) / "303"
+            process.mkdir()
+            (process / "comm").write_text("retroarch\n")
+            (process / "cmdline").write_bytes(
+                b"retroarch\0-L\0/tmp/unknown_libretro.so\0game.nes\0"
+            )
+            self.assertEqual(retropie_hook._running_retroarch_emulator(Path(directory)), "")
+
     def test_registered_game_starts_a_detached_session(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -147,6 +174,7 @@ class HookTests(unittest.TestCase):
             self.assertEqual(send.call_count, 2)
             self.assertEqual(send.call_args_list[0][1]["session_id"], session_id)
             self.assertEqual(send.call_args_list[0][1]["lease_seconds"], 6.0)
+            self.assertEqual(send.call_args_list[0][1]["emulator"], "")
             self.assertIsNone(send.call_args_list[1][0][3])
             self.assertFalse(session_file.exists())
 

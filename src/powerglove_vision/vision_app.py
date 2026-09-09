@@ -534,10 +534,12 @@ def _effective_profile(profile: str | None, practice_mode: bool) -> str | None:
 
 
 def _native_xy_active(engine: GestureEngine, practice_mode: bool,
-                      tuning_active: bool, needs_center: bool) -> bool:
+                      tuning_active: bool, needs_center: bool,
+                      emulator: str = "") -> bool:
     """Use native coordinates only in ready Super Glove Ball gameplay."""
     return (
         engine.profile == "super_glove_ball"
+        and emulator == "lr-nestopia-powerglove"
         and engine.calibrated
         and not practice_mode
         and not tuning_active
@@ -550,6 +552,14 @@ def _native_xy_source(active: bool) -> str:
     if not active:
         return "inactive"
     return "mediapipe"
+
+
+def _input_mode(profile: str | None, emulator: str) -> str:
+    """Select native input only for the one explicitly supported core/profile pair."""
+    return (
+        "native" if profile == "super_glove_ball"
+        and emulator == "lr-nestopia-powerglove" else "joystick"
+    )
 
 
 def _update_controller_state(
@@ -639,6 +649,7 @@ def _base_status(
     controller_enabled: bool,
     *,
     practice_mode: bool = False,
+    emulator: str = "",
 ) -> dict:
     """Build a neutral dashboard state for idle, starting, and error modes."""
     vision_profile = _effective_profile(profile, practice_mode)
@@ -659,6 +670,8 @@ def _base_status(
         "controller_enabled": controller_enabled,
         "camera_available": False,
         "native_xy_source": "inactive",
+        "emulator": emulator,
+        "input_mode": _input_mode(profile, emulator),
     })
     return status
 
@@ -681,6 +694,7 @@ def main() -> int:
     current_profile: str | None = None if args.profile == "off" else args.profile
     current_game = "Startup default"
     profile_source = "startup"
+    current_emulator = ""
     controller_enabled = args.controller_enabled
     practice_mode = False
     token = load_worker_token(args)
@@ -736,6 +750,10 @@ def main() -> int:
             requested_profile = None if lease_expired else request.profile if request is not None else (
                 dashboard_request[0] if dashboard_request is not None else current_profile
             )
+            requested_emulator = (
+                "" if lease_expired or dashboard_request is not None
+                else request.emulator if request is not None else current_emulator
+            )
             profile_requested = request is not None or dashboard_request is not None or lease_expired
             practice_request = shared.take_practice_request()
             if request is not None and request.session_id and request.profile is not None:
@@ -758,6 +776,7 @@ def main() -> int:
                 # A terminal release must never share a session with later frames.
                 sender.new_session()
                 current_profile = requested_profile
+                current_emulator = requested_emulator
                 if profile_requested:
                     if request is not None:
                         current_game = request.rom or request.system or "No game"
@@ -792,6 +811,7 @@ def main() -> int:
                         _base_status(
                             current_profile, current_game, profile_source,
                             controller_enabled, practice_mode=practice_mode,
+                            emulator=current_emulator,
                         ),
                         clear_frame=True,
                     )
@@ -866,7 +886,10 @@ def main() -> int:
                     vision_job = _background_call(_close_vision, capture, tracker)
                     vision_operation = "close"
                     capture = tracker = engine = cv2 = None
-                status = _base_status(None, current_game, profile_source, controller_enabled)
+                status = _base_status(
+                    None, current_game, profile_source, controller_enabled,
+                    emulator=current_emulator,
+                )
                 status.update(active_game_lease.snapshot(time.monotonic()))
                 status["controller_context_active"] = _controller_context_active(
                     active_game_lease, profile_source
@@ -879,7 +902,8 @@ def main() -> int:
 
             if capture is None or tracker is None or cv2 is None:
                 status = _base_status(current_profile, current_game, profile_source,
-                                      controller_enabled, practice_mode=practice_mode)
+                                      controller_enabled, practice_mode=practice_mode,
+                                      emulator=current_emulator)
                 status.update(active_game_lease.snapshot(time.monotonic()))
                 status["controller_context_active"] = _controller_context_active(
                     active_game_lease, profile_source
@@ -925,6 +949,7 @@ def main() -> int:
                     status = _base_status(
                         current_profile, current_game, profile_source,
                         controller_enabled, practice_mode=practice_mode,
+                        emulator=current_emulator,
                     )
                     status.update(active_game_lease.snapshot(time.monotonic()))
                     status["controller_context_active"] = _controller_context_active(
@@ -972,7 +997,7 @@ def main() -> int:
             # ordinary camera preview already draws directly from the tracker.
             tracker.diagnostics_enabled = tuning_active
             native_xy_active = _native_xy_active(
-                engine, practice_mode, tuning_active, needs_center
+                engine, practice_mode, tuning_active, needs_center, current_emulator
             )
             result = tracker.process(frame, captured_frame.captured_at)
             motion_mode = getattr(result, "motion_only", False)
@@ -1189,6 +1214,8 @@ def main() -> int:
             status["vision_profile"] = vision_profile
             status["practice_mode"] = practice_mode
             status["profile_source"] = profile_source
+            status["emulator"] = current_emulator
+            status["input_mode"] = _input_mode(current_profile, current_emulator)
             status["receiver_available"] = receiver_available
             status["receiver_error"] = (
                 "Practice mode; controller transmission is paused"

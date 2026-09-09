@@ -73,12 +73,13 @@ class ProfileTests(unittest.TestCase):
             ack = send_request(
                 "127.0.0.1", server.socket.getsockname()[1],
                 "a-long-test-token", "program_h", "nes", "Example.7z", 0.2,
-                session_id="a" * 32, lease_seconds=6.0,
+                session_id="a" * 32, lease_seconds=6.0, emulator="lr-fceumm",
             )
             self.assertTrue(ack["accepted"])
             request = server.take()
             self.assertEqual(request.session_id, "a" * 32)
             self.assertEqual(request.lease_seconds, 6.0)
+            self.assertEqual(request.emulator, "lr-fceumm")
         finally:
             server.close()
 
@@ -93,6 +94,23 @@ class ProfileTests(unittest.TestCase):
         self.assertFalse(lease.expire(17.9))
         self.assertTrue(lease.expire(18.0))
         self.assertFalse(lease.snapshot(18.0)["game_session_active"])
+
+    def test_request_carries_emulator_and_core_change_is_a_transition(self):
+        lease = ActiveGameLease()
+        native = ProfileRequest(
+            "one", "super_glove_ball", "nes", "Super Glove Ball.7z",
+            ("127.0.0.1", 1), emulator="lr-nestopia-powerglove",
+            session_id="e" * 32, lease_seconds=6.0,
+        )
+        joystick = ProfileRequest(
+            "two", "super_glove_ball", "nes", "Super Glove Ball.7z",
+            ("127.0.0.1", 1), emulator="lr-fceumm",
+            session_id="e" * 32, lease_seconds=6.0,
+        )
+        self.assertTrue(lease.refresh(native, 10.0))
+        self.assertFalse(lease.refresh(native, 11.0))
+        self.assertTrue(lease.refresh(joystick, 12.0))
+        self.assertEqual(lease.emulator, "lr-fceumm")
 
     def test_vision_consumes_heartbeats_once_and_turns_off_after_expiry(self):
         lease = ActiveGameLease()

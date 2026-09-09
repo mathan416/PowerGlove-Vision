@@ -26,6 +26,7 @@ from pathlib import Path
 
 APP_DATA = Path("/home/arduino/ArduinoApps/powerglove-vision/data")
 REQUEST = APP_DATA / "camera-recovery-request"
+RESULT = APP_DATA / "camera-recovery-result"
 USB_DEVICES = Path("/sys/bus/usb/devices")
 VIDEO_CLASS = Path("/sys/class/video4linux")
 USB_DRIVER = Path("/sys/bus/usb/drivers/usb")
@@ -229,6 +230,26 @@ def _consume_request() -> str | None:
         return None
 
 
+def _publish_result(status: str) -> None:
+    """Atomically tell the unprivileged supervisor that the guarded action ended."""
+    APP_DATA.mkdir(parents=True, exist_ok=True)
+    temporary = RESULT.with_name(RESULT.name + "." + str(os.getpid()) + ".tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(str(temporary), flags, 0o644)
+    try:
+        with os.fdopen(descriptor, "w") as stream:
+            json.dump({"schema": 1, "status": status}, stream)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(str(temporary), str(RESULT))
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def _within_cooldown(now: float) -> bool:
     """Report whether a prior physical reset is still inside the cooldown."""
     try:
@@ -316,7 +337,13 @@ def main(argv: list[str] | None = None) -> int:
         return _enroll_if_present(required=False)
     if arguments:
         raise SystemExit("usage: powerglove-camera-recovery [--configure|--configure-if-present]")
-    return _recover()
+    try:
+        result = _recover()
+    except Exception:
+        _publish_result("failed")
+        raise
+    _publish_result("ready")
+    return result
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 from typing import Callable, Mapping
@@ -38,28 +39,54 @@ class CameraRecoveryRequester:
         request: Path,
         *,
         delay: float = 15.0,
+        retry_delay: float = 65.0,
+        result: Path | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.marker = marker
         self.request = request
         self.delay = max(0.0, float(delay))
+        self.retry_delay = max(self.delay, float(retry_delay))
+        self.result = result or request.with_name("camera-recovery-result")
         self.clock = clock
         self._missing_since: float | None = None
         self._requested = False
         self._was_available = False
+        self._last_request_at: float | None = None
+        self.last_action: str | None = None
 
     def _create_request(self, reason: str) -> None:
         """Atomically signal one narrowly classified host-side camera action."""
         self.request.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.result.unlink()
+        except FileNotFoundError:
+            pass
         temporary = self.request.with_name(self.request.name + ".tmp")
         temporary.write_text(reason + "\n")
         temporary.replace(self.request)
+        self.last_action = reason
+
+    def wait_for_recovery(self, timeout: float = 25.0) -> bool:
+        """Wait for the fixed-purpose host helper to finish one physical reset."""
+        deadline = time.monotonic() + max(0.0, float(timeout))
+        while time.monotonic() < deadline:
+            try:
+                result = json.loads(self.result.read_text())
+                self.result.unlink()
+                return result.get("status") == "ready"
+            except FileNotFoundError:
+                time.sleep(0.1)
+            except (OSError, ValueError, TypeError):
+                return False
+        return False
 
     def observe(self, status: Mapping[str, object]) -> bool:
         """Create one request after a sustained camera error; return when created."""
         if bool(status.get("camera_available")):
             self._missing_since = None
             self._requested = False
+            self._last_request_at = None
             newly_available = not self._was_available
             self._was_available = True
             if self.marker.is_file() and newly_available:
@@ -81,13 +108,21 @@ class CameraRecoveryRequester:
         now = self.clock()
         if self._missing_since is None:
             self._missing_since = now
-        if self._requested or now - self._missing_since < self.delay:
+        if self._requested:
+            if self._last_request_at is None or now - self._last_request_at < self.retry_delay:
+                return False
+            # The host may have restored USB enumeration without restoring a
+            # usable video stream. Permit another guarded attempt after both
+            # sides' cooldowns have elapsed.
+            self._requested = False
+        if now - self._missing_since < self.delay:
             return False
         if not self.marker.is_file():
             return False
 
         self._create_request("recover")
         self._requested = True
+        self._last_request_at = now
         return True
 
 

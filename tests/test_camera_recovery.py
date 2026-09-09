@@ -27,7 +27,8 @@ class CameraRecoveryRequesterTests(unittest.TestCase):
         self.marker = self.root / ".enabled"
         self.request = self.root / "request"
         self.monitor = CameraRecoveryRequester(
-            self.marker, self.request, delay=15.0, clock=lambda: self.now
+            self.marker, self.request, delay=15.0, retry_delay=65.0,
+            clock=lambda: self.now
         )
 
     @staticmethod
@@ -48,9 +49,22 @@ class CameraRecoveryRequesterTests(unittest.TestCase):
         self.assertTrue(self.request.exists())
         self.assertEqual(self.request.read_text(), "recover\n")
         self.request.unlink()
-        self.now += 60
+        self.now += 64.9
         self.assertFalse(self.monitor.observe(self.missing()))
         self.assertFalse(self.request.exists())
+        self.now += 0.1
+        self.assertTrue(self.monitor.observe(self.missing()))
+        self.assertEqual(self.request.read_text(), "recover\n")
+
+    def test_host_completion_result_is_consumed(self):
+        self.monitor.result.write_text('{"schema":1,"status":"ready"}\n')
+        self.assertTrue(self.monitor.wait_for_recovery(timeout=0.1))
+        self.assertFalse(self.monitor.result.exists())
+
+    def test_host_failure_result_is_consumed(self):
+        self.monitor.result.write_text('{"schema":1,"status":"failed"}\n')
+        self.assertFalse(self.monitor.wait_for_recovery(timeout=0.1))
+        self.assertFalse(self.monitor.result.exists())
 
     def test_never_requests_without_installed_host_helper(self):
         self.monitor.observe(self.missing())

@@ -43,11 +43,13 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         self.stamp = self.root / "stamp"
         self.config = self.root / "camera.json"
         self.request = self.data / "camera-recovery-request"
+        self.result = self.data / "camera-recovery-result"
         self.usb_devices = self.root / "usb-devices"
         self.usb_devices.mkdir()
         self.patchers = [
             patch.object(helper, "APP_DATA", self.data),
             patch.object(helper, "REQUEST", self.request),
+            patch.object(helper, "RESULT", self.result),
             patch.object(helper, "USB_DEVICES", self.usb_devices),
             patch.object(helper, "USB_DRIVER", self.driver),
             patch.object(helper, "CONFIG", self.config),
@@ -124,6 +126,7 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         self.request.write_text("enroll\n")
         with patch.object(helper, "_discover_cameras", return_value=[self.discovery(camera, hub)]):
             self.assertEqual(helper.main([]), 0)
+        self.assertEqual(json.loads(self.result.read_text())["status"], "ready")
         saved = json.loads(self.config.read_text())
         self.assertEqual(saved["camera"]["vendor_id"], "1532")
         self.assertEqual(saved["hub"]["sysfs_name"], "2-1")
