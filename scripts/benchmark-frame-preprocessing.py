@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 # Project: PowerGlove Vision
 # File: scripts/benchmark-frame-preprocessing.py
-# Purpose: Measure allocation-free camera preprocessing before changing tracker semantics.
+# Purpose: Compare output-paused frame-preparation candidates without changing tracker semantics.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Added fused and grayscale controls with streaming, frame-free reports.
 #   2026-09-07 - Added an output-paused mirror and buffer-reuse benchmark.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Compare current preprocessing with reusable buffers on a local camera clip.
+"""Compare frame preparation candidates on a local camera clip.
 
-The no-mirror lane is a cost ceiling only. It is deliberately ineligible for
-promotion until an end-to-end tracker experiment proves identical handedness,
-roll, preview mirroring, anchors, and gestures.
+The benchmark never runs MediaPipe, never enables controller output, and retains
+only aggregate timings. The fused NumPy lane is eligible for later live testing
+only when it exactly matches the current mirrored RGB pixels. Grayscale and
+no-mirror lanes are deliberately non-equivalent controls, not candidates.
 """
 from __future__ import annotations
 
@@ -42,66 +44,171 @@ def summary(values: list[float]) -> dict:
     }
 
 
-def run(path: Path, maximum: int) -> dict:
-    """Compare allocation patterns over at most the requested frame count."""
+def _timed(callable_):
+    """Return a callable's result and elapsed wall time in milliseconds."""
+    started = time.perf_counter_ns()
+    result = callable_()
+    return result, (time.perf_counter_ns() - started) / 1e6
+
+
+def _gain(baseline: dict, candidate: dict) -> float:
+    """Return p95 improvement relative to the current implementation."""
+    if not baseline["p95_ms"]:
+        return 0.0
+    return 100 * (baseline["p95_ms"] - candidate["p95_ms"]) / baseline["p95_ms"]
+
+
+def fused_mirror_channel_swap(frame, numpy):
+    """Mirror X and reverse BGR channels in one contiguous array copy."""
+    return numpy.ascontiguousarray(frame[:, ::-1, ::-1])
+
+
+def build_report(lanes: dict, frames: int, equivalence: dict) -> dict:
+    """Build a privacy-safe aggregate report from per-frame durations."""
+    summaries = {name: summary(values) for name, values in lanes.items()}
+    current = summaries["current_flip_and_convert"]
+    reused = summaries["reused_flip_and_convert"]
+    fused = summaries["fused_numpy_mirror_channel_swap"]
+    reused_gain = _gain(current, reused)
+    fused_gain = _gain(current, fused)
+    reused_eligible = equivalence["reused"] and reused_gain > 0
+    fused_eligible = equivalence["fused"] and fused_gain > 0
+    return {
+        "format": "powerglove-frame-preprocessing-benchmark-v2",
+        "frames": frames,
+        "controller_output": False,
+        "mediapipe_inference_run": False,
+        "frame_content_retained": False,
+        "lanes": summaries,
+        # Retain version-1 names for simple comparison with earlier reports.
+        "current_flip_and_convert": current,
+        "reused_flip_and_convert": reused,
+        "reused_output_bit_exact": equivalence["reused"],
+        "reused_p95_improvement_percent": round(reused_gain, 2),
+        "reused_promotion_eligible": reused_eligible,
+        "fused_output_bit_exact": equivalence["fused"],
+        "fused_p95_improvement_percent": round(fused_gain, 2),
+        "fused_promotion_eligible": fused_eligible,
+        "no_mirror_cost_ceiling": summaries["no_mirror_convert_only"],
+        "promotion_eligible": reused_eligible or fused_eligible,
+        "no_mirror_promotion_eligible": False,
+        "grayscale_promotion_eligible": False,
+        "limitations": [
+            "This isolates preparation cost; MediaPipe inference is not run or estimated.",
+            "VideoCapture has already decoded each source frame to BGR before these lanes run.",
+            "The grayscale transform control measures BGR-to-gray-to-RGB work, not camera MJPEG grayscale decoding.",
+            "Synthetic JPEG controls re-encode each decoded frame outside the timed lanes and do not reproduce the camera's original MJPEG bytes.",
+            "Grayscale and no-mirror outputs are not recognition-equivalent and cannot be promoted from this report.",
+            "Any bit-exact faster candidate still requires repeated live latency, continuity, gesture, and thermal validation.",
+        ],
+    }
+
+
+def run(path: Path, maximum: int, jpeg_controls: bool = True) -> dict:
+    """Stream at most ``maximum`` frames and retain aggregate durations only."""
     import cv2
     import numpy as np
 
+    lane_names = (
+        "current_flip_and_convert",
+        "reused_flip_and_convert",
+        "fused_numpy_mirror_channel_swap",
+        "no_mirror_convert_only",
+        "grayscale_transform_expand_control",
+    )
+    lanes = {name: [] for name in lane_names}
+    if jpeg_controls:
+        lanes.update({
+            "synthetic_jpeg_color_decode_prepare": [],
+            "synthetic_jpeg_grayscale_decode_expand": [],
+        })
+    equivalent = {"reused": True, "fused": True}
     capture = cv2.VideoCapture(str(path))
     if not capture.isOpened():
         raise RuntimeError(f"could not open clip: {path}")
-    frames = []
-    while len(frames) < maximum:
-        ok, frame = capture.read()
-        if not ok:
-            break
-        frames.append(frame)
-    capture.release()
+    frames = 0
+    mirror_buffer = rgb_buffer = None
+    try:
+        while frames < maximum:
+            ok, frame = capture.read()
+            if not ok:
+                break
+            if mirror_buffer is None:
+                mirror_buffer = np.empty_like(frame)
+                rgb_buffer = np.empty_like(frame)
+
+            expected, elapsed = _timed(
+                lambda: cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+            )
+            lanes["current_flip_and_convert"].append(elapsed)
+
+            def reused_prepare():
+                cv2.flip(frame, 1, dst=mirror_buffer)
+                cv2.cvtColor(mirror_buffer, cv2.COLOR_BGR2RGB, dst=rgb_buffer)
+                return rgb_buffer
+
+            reused, elapsed = _timed(reused_prepare)
+            lanes["reused_flip_and_convert"].append(elapsed)
+            equivalent["reused"] = equivalent["reused"] and bool(
+                np.array_equal(expected, reused)
+            )
+
+            fused, elapsed = _timed(
+                lambda: fused_mirror_channel_swap(frame, np)
+            )
+            lanes["fused_numpy_mirror_channel_swap"].append(elapsed)
+            equivalent["fused"] = equivalent["fused"] and bool(
+                np.array_equal(expected, fused)
+            )
+
+            _unused, elapsed = _timed(
+                lambda: cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            )
+            lanes["no_mirror_convert_only"].append(elapsed)
+
+            def grayscale_prepare():
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                gray = cv2.flip(gray, 1)
+                return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+
+            grayscale, elapsed = _timed(grayscale_prepare)
+            lanes["grayscale_transform_expand_control"].append(elapsed)
+
+            if jpeg_controls:
+                encoded_ok, encoded = cv2.imencode(".jpg", frame)
+                if not encoded_ok:
+                    raise RuntimeError("could not create synthetic JPEG control")
+
+                def color_decode_prepare():
+                    decoded = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+                    if decoded is None:
+                        raise RuntimeError("synthetic color JPEG decode failed")
+                    return cv2.cvtColor(cv2.flip(decoded, 1), cv2.COLOR_BGR2RGB)
+
+                _color, elapsed = _timed(color_decode_prepare)
+                lanes["synthetic_jpeg_color_decode_prepare"].append(elapsed)
+
+                def grayscale_decode_expand():
+                    gray = cv2.imdecode(encoded, cv2.IMREAD_GRAYSCALE)
+                    if gray is None:
+                        raise RuntimeError("synthetic grayscale JPEG decode failed")
+                    return cv2.cvtColor(cv2.flip(gray, 1), cv2.COLOR_GRAY2RGB)
+
+                _gray, elapsed = _timed(grayscale_decode_expand)
+                lanes["synthetic_jpeg_grayscale_decode_expand"].append(elapsed)
+
+            # Drop all pixel arrays before requesting another source frame.
+            del expected, reused, fused, grayscale, _unused
+            if jpeg_controls:
+                del encoded, _color, _gray
+            frames += 1
+    finally:
+        capture.release()
     if not frames:
         raise RuntimeError("clip contains no readable frames")
-
-    current, reused, no_mirror = [], [], []
-    mirror_buffer = np.empty_like(frames[0])
-    rgb_buffer = np.empty_like(frames[0])
-    bit_exact = True
-    for frame in frames:
-        started = time.perf_counter_ns()
-        expected = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-        current.append((time.perf_counter_ns() - started) / 1e6)
-
-        started = time.perf_counter_ns()
-        cv2.flip(frame, 1, dst=mirror_buffer)
-        cv2.cvtColor(mirror_buffer, cv2.COLOR_BGR2RGB, dst=rgb_buffer)
-        reused.append((time.perf_counter_ns() - started) / 1e6)
-        bit_exact = bit_exact and bool(np.array_equal(expected, rgb_buffer))
-
-        started = time.perf_counter_ns()
-        cv2.cvtColor(frame, cv2.COLOR_BGR2RGB, dst=rgb_buffer)
-        no_mirror.append((time.perf_counter_ns() - started) / 1e6)
-
-    current_summary, reused_summary = summary(current), summary(reused)
-    gain = 0.0
-    if current_summary["p95_ms"]:
-        gain = 100 * (current_summary["p95_ms"] - reused_summary["p95_ms"]) \
-            / current_summary["p95_ms"]
-    return {
-        "format": "powerglove-frame-preprocessing-benchmark-v1",
-        "source": str(path),
-        "frames": len(frames),
-        "controller_output": False,
-        "current_flip_and_convert": current_summary,
-        "reused_flip_and_convert": reused_summary,
-        "reused_output_bit_exact": bit_exact,
-        "reused_p95_improvement_percent": round(gain, 2),
-        "no_mirror_cost_ceiling": summary(no_mirror),
-        "promotion_eligible": bit_exact and gain > 0,
-        "no_mirror_promotion_eligible": False,
-        "limitations": [
-            "This isolates preprocessing cost and does not measure MediaPipe latency.",
-            "The no-mirror lane is informational until end-to-end output equivalence is proven.",
-            "A live repeated run is required before changing production buffer handling.",
-        ],
-    }
+    report = build_report(lanes, frames, equivalent)
+    report["source"] = str(path)
+    return report
 
 
 def main() -> int:
@@ -110,8 +217,12 @@ def main() -> int:
     parser.add_argument("clip", type=Path)
     parser.add_argument("--frames", type=int, default=300)
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--no-jpeg-controls", action="store_true",
+        help="skip synthetic JPEG color/grayscale decode controls",
+    )
     args = parser.parse_args()
-    report = run(args.clip, max(1, args.frames))
+    report = run(args.clip, max(1, args.frames), not args.no_jpeg_controls)
     rendered = json.dumps(report, indent=2, sort_keys=True)
     if args.output:
         with args.output.open("x", encoding="utf-8") as handle:

@@ -28,6 +28,7 @@ async def main():
                   glove_color='none', camera='auto', camera_fps='auto', matrix_attract='on',
                   camera_backend='opencv', camera_exposure='auto',
                   camera_manual_exposure=78, camera_manual_gain=96,
+                  directional_search=True,
                   camera_options=[
                       dict(value='auto', label='Automatic — choose the connected camera'),
                       dict(value='2', label='Razer Kiyo Pro — camera 2'),
@@ -63,6 +64,7 @@ async def main():
                 if r.request.post_data_json['action']=='export':state['backup']=dict(format='powerglove-hand-setup',version=2,name='Iain')
                 return await r.fulfill(json=state)
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
+            if path=='/api/directional-search':config['directional_search']=r.request.post_data_json['enabled'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
             if path=='/status':return await r.fulfill(json=dict(worker_running=True,vision_state='idle',controller_enabled=False,version='0.4.0',camera_fps=30.0,camera_fps_requested='auto'))
             if path=='/api/games':return await r.fulfill(json={'document':'{"games": {}}','revision':'test','profiles':['off'],'has_backup':False})
@@ -100,6 +102,7 @@ async def main():
         await expect(page.locator('#camera-rate-status')).to_contain_text('30')
         await expect(page.locator('#camera option')).to_have_count(2)
         await expect(page.locator('#camera')).to_have_value('auto')
+        await expect(page.locator('#directional-search')).to_be_checked()
         await expect(page.locator('.connection-indicators li')).to_have_count(6)
         await expect(page.locator('#connection-status-note')).to_contain_text('Console checked 1 seconds ago')
         await expect(page.locator('#connection-status-note')).to_contain_text('do not confirm that a game received input')
@@ -219,6 +222,10 @@ async def main():
             await page.get_by_role('button',name='Save attract mode',exact=True).click()
             await expect(page.locator('#attract-notice')).to_contain_text('saved')
             assert config['matrix_attract']==mode
+        await page.locator('#directional-search').uncheck()
+        await page.get_by_role('button',name='Save experimental tracking',exact=True).click()
+        await expect(page.locator('#directional-search-notice')).to_contain_text('Tracking is restarting')
+        assert config['directional_search'] is False
         n=len(calls);await page.goto('http://pairing.test/setup')
         await expect(page.locator('#pair-wizard')).to_be_hidden()
         await expect(page.get_by_role('link',name='Open secure Setup')).to_be_visible()

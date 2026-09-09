@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Exposed direction-aware tracking as an independent experimental setting.
 #   2026-09-08 - Listed discovered cameras in Setup while preserving Automatic selection.
 #   2026-09-08 - Added portable automatic/manual exposure and gain settings.
 #   2026-09-07 - Added portable camera backend and exposure settings.
@@ -433,6 +434,7 @@ class ControlState:
             "camera_manual_gain": _manual_camera_value(
                 config.get("camera_manual_gain", 96), gain=True
             ),
+            "directional_search": config.get("directional_search") is True,
             "matrix_attract": config.get("matrix_attract", "on"),
             "paired": bool(config.get("receiver") and config.get("token")),
             "connection_configured": bool(str(config.get("receiver", "")).strip() and config.get("token")),
@@ -454,6 +456,20 @@ class ControlState:
         current["matrix_attract"] = mode
         atomic_write(self.config_path, json.dumps(current, indent=2) + "\n")
         return {"mode": mode}
+
+    def save_directional_search(self, incoming):
+        """Persist only the optional direction-aware tracking experiment."""
+        with self.config_lock:
+            enabled = incoming.get("enabled")
+            if type(enabled) is not bool:
+                raise ValueError("Choose On or Off for experimental fast-sweep tracking.")
+            current = self.load_config()
+            current["directional_search"] = enabled
+            from .game_registry import atomic_write
+            atomic_write(self.config_path, json.dumps(current, indent=2) + "\n")
+            with self.lock:
+                self.revision += 1
+            return {"directional_search": enabled}
 
     def save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
         """Serialize full configuration writes with display preference changes."""
@@ -742,7 +758,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 if (self.headers.get("Sec-Fetch-Site", "").lower() == "cross-site" or
                         (origin and origin not in ("http://"+self.headers.get("Host", ""), "https://"+self.headers.get("Host", "")))):
                     raise ForbiddenActionError("Open this control from the Controller website.")
-                if path in ("/api/games", "/api/tuning", "/api/players", "/api/attract"):
+                if path in ("/api/games", "/api/tuning", "/api/players", "/api/attract",
+                            "/api/directional-search"):
                     expected = path.rsplit("/", 1)[-1]
                     origin = self.headers.get("Origin")
                     if (self.headers.get("X-PowerGlove-Action") != expected
@@ -752,6 +769,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     incoming = self.json_body(require_json=True)
                     if path == "/api/attract":
                         result = state.save_attract(incoming)
+                    elif path == "/api/directional-search":
+                        result = state.save_directional_search(incoming)
                     elif path == "/api/games":
                         action = incoming.get("action")
                         if action in ("validate", "format"):

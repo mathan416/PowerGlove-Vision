@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Added fused-colour and fixed search-region comparison lanes.
 #   2026-09-07 - Retained temporary palm-anchor candidates for aggregate comparison.
 #   2026-09-05 - Kept aggregate means compatible with Python 3.7.
 #   2026-09-05 - Added repeatable MediaPipe backend, thread, size, and preview comparisons.
@@ -16,7 +17,9 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
+import math
 import sys
 import time
 from math import ceil
@@ -37,24 +40,96 @@ def percentile(values: list[float], fraction: float) -> float | None:
     return round(ordered[max(0, ceil(len(ordered) * fraction) - 1)], 2)
 
 
+def parse_roi_shift(value: str) -> tuple[float, float]:
+    """Parse one bounded replay-only X,Y next-frame ROI shift."""
+    try:
+        parts = value.split(",")
+        if len(parts) != 2:
+            raise ValueError
+        shift = (float(parts[0]), float(parts[1]))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("ROI shift must be X,Y") from exc
+    if any(not math.isfinite(item) or not -.25 <= item <= .25 for item in shift):
+        raise argparse.ArgumentTypeError(
+            "ROI shift values must be finite and between -0.25 and 0.25"
+        )
+    return shift
+
+
+def roi_shift_lane_label(shift_x: float, shift_y: float) -> str:
+    """Make the production baseline unmistakable from fixed-shift research."""
+    if shift_x == 0.0 and shift_y == 0.0:
+        return "production-zero-shift"
+    return f"replay-research-fixed-shift-x{shift_x:+.2f}-y{shift_y:+.2f}"
+
+
+def tracking_path_summary(samples: list[dict]) -> dict:
+    """Summarize detector cost and consecutive missing results per replay lane."""
+    counts = Counter(sample["path"] for sample in samples)
+    timing = {}
+    for path in sorted(counts):
+        values = [sample["ms"] for sample in samples if sample["path"] == path]
+        timing[path] = {
+            "count": len(values),
+            "p50": percentile(values, .50),
+            "p95": percentile(values, .95),
+        }
+    missing_runs = []
+    current_run = 0
+    for sample in samples:
+        if not sample["detected"]:
+            current_run += 1
+        elif current_run:
+            missing_runs.append(current_run)
+            current_run = 0
+    if current_run:
+        missing_runs.append(current_run)
+    return {
+        "paths": timing,
+        "missing_runs": missing_runs,
+        "short_missing_runs": [length for length in missing_runs if length <= 3],
+        "long_missing_runs": [length for length in missing_runs if length > 3],
+    }
+
+
 def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
              preview: bool, model: Path | None, cues: list[dict],
              tracking_confidence: float = .55,
              tracking_roi_scale: float = 2.0,
+             tracking_roi_shift: tuple[float, float] = (0.0, 0.0),
              palm_detection_mode: str = "tracked",
              detection_confidence: float = .55,
              model_complexity: int = 0,
+             fused_preprocessing: bool = True,
+             palm_inference_threads: int | None = None,
+             tracking_roi_scale_x: float | None = None,
+             tracking_roi_scale_y: float | None = None,
              frame_times: list[float] | None = None,
-             effective_fps: float | None = None) -> dict:
+             effective_fps: float | None = None,
+             directional_search: bool = False,
+             directional_search_gain: float = .275,
+             directional_search_min_speed: float = .5,
+             directional_search_max_offset: float = .04) -> dict:
     """Replay one clip through a single tracker configuration and summarize it."""
     import cv2
     tracker = MediaPipeTracker(
         backend=backend, inference_threads=threads, model_path=model, mirror=True,
         tracking_confidence=tracking_confidence,
         tracking_roi_scale=tracking_roi_scale,
+        tracking_roi_shift_x=tracking_roi_shift[0],
+        tracking_roi_shift_y=tracking_roi_shift[1],
         use_previous_landmarks=palm_detection_mode == "tracked",
         detection_confidence=detection_confidence,
         model_complexity=model_complexity,
+        fused_preprocessing=fused_preprocessing,
+        palm_inference_threads=palm_inference_threads,
+        tracking_roi_scale_x=tracking_roi_scale_x,
+        tracking_roi_scale_y=tracking_roi_scale_y,
+        directional_search=directional_search,
+        directional_search_gain=directional_search_gain,
+        directional_search_min_speed=directional_search_min_speed,
+        directional_search_max_offset=directional_search_max_offset,
+        tracking_evidence=True,
     )
     tracker.preview_enabled = preview
     tracker.diagnostics_enabled = preview
@@ -64,6 +139,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
     detected = []
     observations = []
     motion_samples = []
+    tracking_paths = []
     encoded_ms = []
     frame_index = 0
     engine = GestureEngine("practice")
@@ -90,6 +166,11 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
             finished = time.monotonic()
             inference.append((finished - started) * 1000)
             detected.append(result.observation.detected)
+            tracking_paths.append({
+                "path": result.diagnostics.get("tracking_path", "unavailable"),
+                "ms": (finished - started) * 1000,
+                "detected": result.observation.detected,
+            })
             state = engine.update(result.observation)
             item = result.observation
             motion_samples.append({
@@ -100,6 +181,12 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
                 "y": item.palm_y if item.detected else None,
                 "scale": item.palm_scale if item.detected else None,
                 "palm_anchors": result.palm_anchors if item.detected else {},
+                "directional_search_active": bool(
+                    result.diagnostics.get("directional_search_active", False)
+                ),
+                "directional_search_offset": result.diagnostics.get(
+                    "directional_search_offset", (0.0, 0.0)
+                ),
             })
             cue = next((item for item in cues if item["start"] <= elapsed < item["end"]), None)
             feedback = engine.recognition_feedback()
@@ -168,11 +255,22 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
     }
     return {
         "backend": backend, "threads": threads,
+        "palm_inference_threads": palm_inference_threads or threads,
         "tracking_confidence": tracking_confidence, "resize": list(size),
         "tracking_roi_scale": tracking_roi_scale,
+        "tracking_roi_scale_x": tracking_roi_scale_x or tracking_roi_scale,
+        "tracking_roi_scale_y": tracking_roi_scale_y or tracking_roi_scale,
+        "tracking_roi_shift": {"x": tracking_roi_shift[0], "y": tracking_roi_shift[1]},
+        "tracking_roi_lane": roi_shift_lane_label(*tracking_roi_shift),
+        "tracking_roi_shift_research_only": tracking_roi_shift != (0.0, 0.0),
         "palm_detection_mode": palm_detection_mode,
         "detection_confidence": detection_confidence,
         "model_complexity": model_complexity,
+        "frame_preparation": "fused" if fused_preprocessing else "current",
+        "directional_search": directional_search,
+        "directional_search_gain": directional_search_gain,
+        "directional_search_min_speed": directional_search_min_speed,
+        "directional_search_max_offset": directional_search_max_offset,
         "preview": "open" if preview else "closed", "frames": frame_index,
         "inference_ms": {"p50": percentile(inference, .50),
                          "p95": percentile(inference, .95),
@@ -180,6 +278,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         "preview_encode_ms": {"p50": percentile(encoded_ms, .50),
                               "p95": percentile(encoded_ms, .95)},
         "detection_continuity_percent": round(sum(detected) / len(detected) * 100, 2) if detected else 0,
+        "tracking_path_summary": tracking_path_summary(tracking_paths),
         "cue_results": cue_stats,
         "neutral_false_activation_frames": neutral_false_frames,
         "neutral_coordinate_jitter_span": jitter_span,
@@ -199,11 +298,26 @@ def parser() -> argparse.ArgumentParser:
         help="Run only the proven 640x480, two-thread lane for clip validation",
     )
     result.add_argument("--threads", nargs="+", type=int, choices=(1, 2, 4))
+    result.add_argument(
+        "--palm-threads", nargs="+", type=int, choices=(1, 2, 4),
+        help="replay research only: palm-detector threads; landmark threads remain --threads",
+    )
     result.add_argument("--tracking-confidences", nargs="+", type=float,
-                        choices=(.30, .35, .40, .45, .50, .55, .60))
+                        choices=(.10, .20, .25, .30, .35, .40, .45, .50, .55, .60))
     result.add_argument("--tracking-roi-scales", nargs="+", type=float,
                         choices=(2.0, 2.1, 2.15, 2.2, 2.25, 2.3, 2.35,
                                  2.4, 2.6, 2.8, 3.0))
+    result.add_argument(
+        "--tracking-roi-x-scales", nargs="+", type=float,
+        choices=(2.0, 2.1, 2.15, 2.2, 2.25, 2.3, 2.35, 2.4, 2.45,
+                 2.5, 2.6, 2.8, 3.0),
+        help="replay research only: override horizontal next-frame ROI scale",
+    )
+    result.add_argument(
+        "--tracking-roi-shift", action="append", type=parse_roi_shift,
+        help=("replay research only: add one fixed ROI-local X,Y shift to the "
+              "next-frame landmark region; repeat this option for multiple lanes"),
+    )
     result.add_argument("--palm-detection-modes", nargs="+",
                         choices=("tracked", "every-frame"))
     result.add_argument("--detection-confidences", nargs="+", type=float,
@@ -211,6 +325,17 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--model-complexities", nargs="+", type=int,
                         choices=(0, 1))
     result.add_argument("--preview", choices=("closed", "open", "both"))
+    result.add_argument(
+        "--frame-preparations", nargs="+", choices=("current", "fused"),
+        help="compare the current two-step transform with fused full-colour preparation",
+    )
+    result.add_argument(
+        "--directional-search-modes", nargs="+", choices=("off", "on"),
+        help="replay research only: compare conditional direction-aware input search",
+    )
+    result.add_argument("--directional-search-gains", nargs="+", type=float)
+    result.add_argument("--directional-search-min-speeds", nargs="+", type=float)
+    result.add_argument("--directional-search-max-offsets", nargs="+", type=float)
     return result
 
 
@@ -227,42 +352,71 @@ def main() -> int:
     frame_times = cue_document.get("frame_times_seconds")
     effective_fps = cue_document.get("effective_fps")
     lanes = []
-    focused = bool(args.threads or args.tracking_confidences
-                   or args.tracking_roi_scales or args.palm_detection_modes
+    focused = bool(args.threads or args.palm_threads or args.tracking_confidences
+                   or args.tracking_roi_scales or args.tracking_roi_x_scales
+                   or args.tracking_roi_shift
+                   or args.palm_detection_modes
                    or args.detection_confidences or args.model_complexities
-                   or args.preview)
+                   or args.frame_preparations or args.directional_search_modes
+                   or args.directional_search_gains
+                   or args.directional_search_min_speeds
+                   or args.directional_search_max_offsets or args.preview)
     sizes = ((640, 480),) if args.quick or focused else ((640, 480), (512, 384))
     previews = ((False,) if args.preview in (None, "closed") else
                 (True,) if args.preview == "open" else (False, True))
     if not args.quick and not focused:
         previews = (False, True)
     threads_to_test = tuple(args.threads or ((2,) if args.quick or focused else (1, 2, 4)))
+    palm_threads_to_test = tuple(args.palm_threads or (None,))
     confidences = tuple(args.tracking_confidences or (.55,))
     roi_scales = tuple(args.tracking_roi_scales or (2.0,))
+    roi_x_scales = tuple(args.tracking_roi_x_scales or (None,))
+    roi_shifts = tuple(args.tracking_roi_shift or ((0.0, 0.0),))
     palm_modes = tuple(args.palm_detection_modes or ("tracked",))
     detection_confidences = tuple(args.detection_confidences or (.55,))
     model_complexities = tuple(args.model_complexities or (0,))
+    frame_preparations = tuple(args.frame_preparations or ("fused",))
+    directional_modes = tuple(args.directional_search_modes or ("off",))
+    directional_gains = tuple(args.directional_search_gains or (.275,))
+    directional_min_speeds = tuple(args.directional_search_min_speeds or (.5,))
+    directional_max_offsets = tuple(args.directional_search_max_offsets or (.04,))
     for size in sizes:
         for preview in previews:
             for threads in threads_to_test:
-                for confidence in confidences:
-                    for roi_scale in roi_scales:
-                        for palm_mode in palm_modes:
-                            for detection_confidence in detection_confidences:
-                                for model_complexity in model_complexities:
-                                    lanes.append(run_lane(
-                                        args.clip, "legacy", threads, size, preview,
-                                        None, cues, confidence, roi_scale, palm_mode,
-                                        detection_confidence, model_complexity,
-                                        frame_times, effective_fps,
-                                    ))
+                for palm_threads in palm_threads_to_test:
+                    for confidence in confidences:
+                        for roi_scale in roi_scales:
+                            for roi_x_scale in roi_x_scales:
+                                for roi_shift in roi_shifts:
+                                    for palm_mode in palm_modes:
+                                        for detection_confidence in detection_confidences:
+                                            for model_complexity in model_complexities:
+                                                for preparation in frame_preparations:
+                                                    for directional_mode in directional_modes:
+                                                        for directional_gain in directional_gains:
+                                                            for directional_speed in directional_min_speeds:
+                                                                for directional_offset in directional_max_offsets:
+                                                                    lanes.append(run_lane(
+                                                                        args.clip, "legacy", threads, size, preview,
+                                                                        None, cues, confidence, roi_scale, roi_shift,
+                                                                        palm_mode, detection_confidence, model_complexity,
+                                                                        preparation == "fused", palm_threads,
+                                                                        roi_x_scale, None,
+                                                                        frame_times, effective_fps,
+                                                                        directional_mode == "on", directional_gain,
+                                                                        directional_speed, directional_offset,
+                                                                    ))
             if args.model is not None and not args.quick:
                 lanes.append(run_lane(
                     args.clip, "tasks-video", 1, size, preview, args.model, cues,
-                    .55, 2.0, "tracked", .55, 0, frame_times, effective_fps,
+                    .55, 2.0, (0.0, 0.0), "tracked", .55, 0, True, None,
+                    None, None,
+                    frame_times, effective_fps,
                 ))
     result = {
         "version": 2, "clip": str(args.clip), "full_frame_resize_only": True,
+        "fixed_roi_shift_scope": "replay research only; production remains zero shift",
+        "directional_search_scope": "replay research only; production remains disabled",
         "cues": cues,
         "lanes": lanes,
         "note": ("Observation samples support cue-by-cue recognition review. Live Dashboard "

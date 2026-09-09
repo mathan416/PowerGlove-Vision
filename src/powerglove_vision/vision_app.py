@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-08 - Published frame-preparation and palm-reacquisition trace evidence.
 #   2026-09-08 - Added a same-descriptor manual-exposure full-pipeline test lane.
 #   2026-09-07 - Added optional direct V4L2 capture and portable exposure negotiation.
 #   2026-09-07 - Use capture timestamps and throttle derived performance summaries.
@@ -186,6 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--tracker-graph", choices=("full", "lean-image"), default="full",
         help="MediaPipe graph output set; lean-image is an output-paused experiment",
     )
+    parser.add_argument("--directional-search", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--preview-fps", type=float, default=5.0,
         help="maximum diagnostic camera-preview rate",
@@ -503,6 +505,7 @@ def _prepare_vision(args):
             tracking_roi_scale=args.tracking_roi_scale,
             backend=args.tracker_backend,
             graph_mode=args.tracker_graph,
+            directional_search=args.directional_search,
         )
         log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
@@ -564,7 +567,31 @@ def _native_trace_fields(engine: GestureEngine, result, active: bool) -> dict:
         "native_xy_active": bool(active),
         "latest_recovery_pending": bool(engine._latest_recovery_pending),
         "latest_confirmation_pending": bool(engine._latest_confirmation_pending),
+        "tracking_path": result.diagnostics.get("tracking_path"),
+        "palm_detector_invoked": result.diagnostics.get("palm_detector_invoked"),
+        "palm_detection_count": result.diagnostics.get("palm_detection_count"),
+        "palm_reacquired": bool(result.diagnostics.get("palm_reacquired", False)),
+        "hand_missing_streak": result.diagnostics.get("hand_missing_streak", 0),
+        "frame_preparation": result.diagnostics.get("frame_preparation"),
     }
+
+
+TRACKING_STATUS_FIELDS = (
+    "frame_preparation",
+    "tracking_path",
+    "palm_detector_invoked",
+    "palm_detection_count",
+    "palm_reacquired",
+    "hand_missing_streak",
+    "landmark_continuations_total",
+    "palm_detection_packets_total",
+    "palm_redetections_total",
+    "palm_reacquisitions_total",
+    "hand_missing_results_total",
+    "invalid_landmark_results_total",
+    "directional_search_active",
+    "directional_search_offset",
+)
 
 
 def _launch_guard_active(deadline: float, now: float | None = None) -> bool:
@@ -1083,8 +1110,15 @@ def main() -> int:
             status["inference_threads"] = args.inference_threads
             status["tracking_confidence"] = tracker.tracking_confidence
             status["tracking_roi_scale"] = tracker.tracking_roi_scale
+            status["directional_search"] = tracker.directional_search
+            status["tracking_evidence"] = tracker.tracking_evidence
             status["tracker_graph"] = tracker.graph_mode
             status["palm_anchor"] = PALM_ANCHOR
+            status.update({
+                name: result.diagnostics[name]
+                for name in TRACKING_STATUS_FIELDS
+                if name in result.diagnostics
+            })
             status.update(capture.metadata)
             status["capture_sequence"] = captured_frame.sequence
             status["capture_age_ms"] = round(capture_age_ms, 1)

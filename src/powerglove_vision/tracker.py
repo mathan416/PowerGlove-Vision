@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-08 - Added replay-only conditional search and precise tracking-path evidence.
 #   2026-09-07 - Added an isolated image-landmark-only graph experiment.
 #   2026-09-07 - Added geometry validation and benchmarkable pose-stable palm anchors.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
@@ -37,6 +38,7 @@ TRACKER_BACKEND_LABELS = {
 # Existing calibration centres and reach spans were recorded from this anchor.
 # Benchmark alternatives without silently changing that coordinate contract.
 PALM_ANCHOR = "five_point_average"
+TRACKING_EVIDENCE_OUTPUTS = ("palm_detections",)
 
 
 def log_startup_stage(label: str, started: float) -> None:
@@ -96,6 +98,200 @@ class _Point:
     x: float
     y: float
     z: float = 0.0
+
+
+class _DirectionalSearchState:
+    """Lead only the model input during sustained, aligned fast movement."""
+
+    def __init__(self, gain: float = .5, min_speed: float = .45,
+                 alignment: float = .82, max_offset: float = .08) -> None:
+        self.gain = gain
+        self.min_speed = min_speed
+        self.alignment = alignment
+        self.max_offset = max_offset
+        self.history: list[tuple[float, float, float]] = []
+        self.offset = (0.0, 0.0)
+        self.active = False
+
+    def reset(self) -> None:
+        """Discard search history so recovery starts from the full frame."""
+        self.history.clear()
+        self.offset = (0.0, 0.0)
+        self.active = False
+
+    def next_offset(self, timestamp: float) -> tuple[float, float]:
+        """Return an input-only offset after two aligned fast observations."""
+        self.active = False
+        if len(self.history) < 3:
+            return self.offset
+        first, second, latest = self.history[-3:]
+        dt1 = second[2] - first[2]
+        dt2 = latest[2] - second[2]
+        next_dt = timestamp - latest[2]
+        if min(dt1, dt2, next_dt) <= 0.0:
+            return self.offset
+        velocity1 = ((second[0] - first[0]) / dt1,
+                     (second[1] - first[1]) / dt1)
+        velocity2 = ((latest[0] - second[0]) / dt2,
+                     (latest[1] - second[1]) / dt2)
+        speed1 = math.hypot(*velocity1)
+        speed2 = math.hypot(*velocity2)
+        cosine = (
+            (velocity1[0] * velocity2[0] + velocity1[1] * velocity2[1])
+            / (speed1 * speed2)
+        ) if speed1 > 0.0 and speed2 > 0.0 else -1.0
+        outward_at_edge = (
+            (latest[0] <= .04 and velocity2[0] < 0.0)
+            or (latest[0] >= .96 and velocity2[0] > 0.0)
+            or (latest[1] <= .04 and velocity2[1] < 0.0)
+            or (latest[1] >= .96 and velocity2[1] > 0.0)
+        )
+        if (speed1 < self.min_speed or speed2 < self.min_speed
+                or cosine < self.alignment or outward_at_edge):
+            self.offset = (0.0, 0.0)
+            return self.offset
+        # Offset the image opposite the hand's projected movement. The graph's
+        # previous ROI therefore sees a smaller displacement. Output landmarks
+        # are translated back before PowerGlove coordinates are calculated.
+        dt = min(next_dt, .067)
+        x = self.offset[0] - self.gain * velocity2[0] * dt
+        y = self.offset[1] - self.gain * velocity2[1] * dt
+        magnitude = math.hypot(x, y)
+        if magnitude > self.max_offset:
+            scale = self.max_offset / magnitude
+            x *= scale
+            y *= scale
+        self.offset = (x, y)
+        self.active = True
+        return self.offset
+
+    def observe(self, x: float, y: float, timestamp: float) -> None:
+        """Retain only enough unshifted coordinate history to prove direction."""
+        self.history.append((x, y, timestamp))
+        del self.history[:-3]
+
+
+def _translate_tracker_input(rgb: Any, offset: tuple[float, float],
+                             cv2: Any, numpy: Any) -> Any:
+    """Translate a research frame while keeping its size and colour unchanged."""
+    if offset == (0.0, 0.0):
+        return rgb
+    height, width = rgb.shape[:2]
+    translated = cv2.warpAffine(
+        rgb,
+        numpy.asarray(((1.0, 0.0, offset[0] * width),
+                       (0.0, 1.0, offset[1] * height)), dtype=numpy.float32),
+        (width, height),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+    translated.flags.writeable = False
+    return translated
+
+
+class _TrackingTelemetry:
+    """Classify graph tracking paths without retaining frames or landmarks."""
+
+    def __init__(self) -> None:
+        self.ever_detected = False
+        self.hand_missing_streak = 0
+        self.landmark_continuations_total = 0
+        self.palm_detection_packets_total = 0
+        self.palm_redetections_total = 0
+        self.palm_reacquisitions_total = 0
+        self.hand_missing_results_total = 0
+        self.invalid_landmark_results_total = 0
+
+    def observe(
+        self,
+        detected: bool,
+        palm_detector_invoked: bool | None,
+        palm_detection_count: int | None,
+        *,
+        invalid_landmarks: bool = False,
+    ) -> dict:
+        """Record one graph result using direct evidence when it is exposed."""
+        reacquired = False
+        if palm_detector_invoked is True:
+            self.palm_detection_packets_total += 1
+            if detected:
+                if self.ever_detected and self.hand_missing_streak:
+                    path = "palm_reacquisition"
+                    reacquired = True
+                    self.palm_reacquisitions_total += 1
+                elif self.ever_detected:
+                    path = "palm_redetection"
+                    self.palm_redetections_total += 1
+                else:
+                    path = "initial_palm_detection"
+            else:
+                path = "palm_detection_no_valid_hand"
+        elif detected:
+            # The graph gates palm detection when a previous landmark ROI can
+            # produce this frame's valid landmarks, making this continuation
+            # classification exact even though a skipped stream has no packet.
+            path = "landmark_continuation"
+            palm_detector_invoked = False
+            self.landmark_continuations_total += 1
+        else:
+            # MediaPipe represents both a skipped detector stream and a
+            # detector invocation with zero detections as no packet. A missing
+            # hand therefore cannot be subdivided without native profiling.
+            path = "hand_missing_path_unobservable"
+
+        if detected:
+            self.ever_detected = True
+            self.hand_missing_streak = 0
+        else:
+            self.hand_missing_results_total += 1
+            self.hand_missing_streak += 1
+        if invalid_landmarks:
+            self.invalid_landmark_results_total += 1
+
+        return {
+            "tracking_path": path,
+            "palm_detector_invoked": palm_detector_invoked,
+            "palm_detection_count": palm_detection_count,
+            "palm_reacquired": reacquired,
+            "hand_missing_streak": self.hand_missing_streak,
+            "landmark_continuations_total": self.landmark_continuations_total,
+            "palm_detection_packets_total": self.palm_detection_packets_total,
+            "palm_redetections_total": self.palm_redetections_total,
+            "palm_reacquisitions_total": self.palm_reacquisitions_total,
+            "hand_missing_results_total": self.hand_missing_results_total,
+            "invalid_landmark_results_total": self.invalid_landmark_results_total,
+        }
+
+
+def _palm_detector_evidence(result: Any) -> tuple[bool | None, int | None]:
+    """Return direct graph evidence; ``None`` means the stream is unavailable."""
+    if not hasattr(result, "palm_detections"):
+        return None, None
+    detections = result.palm_detections
+    if detections is None:
+        return None, None
+    try:
+        return True, len(detections)
+    except TypeError:
+        return True, None
+
+
+def _prepare_tracker_frame(frame: Any, mirror: bool, preview: bool,
+                           fused: bool,
+                           cv2: Any, numpy: Any) -> tuple[Any, Any, str]:
+    """Prepare MediaPipe RGB input with one copy when no mirrored preview is due."""
+    if mirror and not preview and fused:
+        # Reverse screen X and BGR channel order in one contiguous allocation.
+        # This is pixel-identical to flip followed by BGR-to-RGB conversion.
+        rgb = numpy.ascontiguousarray(frame[:, ::-1, ::-1])
+        display_frame = frame
+        preparation = "fused-mirror-bgr-to-rgb"
+    else:
+        display_frame = cv2.flip(frame, 1) if mirror else frame
+        rgb = cv2.cvtColor(display_frame, cv2.COLOR_BGR2RGB)
+        preparation = "preview-compatible" if mirror else "bgr-to-rgb"
+    rgb.flags.writeable = False
+    return display_frame, rgb, preparation
 
 
 def _camera_curl_points(result: Any, landmarks: list, tasks: bool,
@@ -192,11 +388,41 @@ def _finger_curls_from_bends(bends: dict) -> dict:
     return {name + "_curl": max(values) for name, values in bends.items()}
 
 
+def _configure_tracking_roi(options: Any, scale: float,
+                            shift_x: float, shift_y: float,
+                            scale_x: float | None = None,
+                            scale_y: float | None = None) -> None:
+    """Apply one fixed graph ROI candidate without changing output coordinates."""
+    options.scale_x = scale if scale_x is None else scale_x
+    options.scale_y = scale if scale_y is None else scale_y
+    options.shift_x = shift_x
+    # MediaPipe Hands normally frames 10% above the calculated hand rectangle.
+    # A research shift is additional to that proven built-in framing.
+    options.shift_y = -0.1 + shift_y
+
+
+def _inference_node_threads(node_name: str, landmark_threads: int,
+                            palm_threads: int | None) -> int:
+    """Choose threads independently for MediaPipe's two inference models."""
+    normalized = node_name.lower()
+    if "palmdetection" in normalized:
+        return landmark_threads if palm_threads is None else palm_threads
+    if "handlandmark" in normalized:
+        return landmark_threads
+    raise RuntimeError(f"unrecognized MediaPipe inference node: {node_name}")
+
+
 def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
                   detection_confidence: float = .55,
                   graph_mode: str = "full", tracking_roi_scale: float = 2.0,
+                  tracking_roi_shift_x: float = 0.0,
+                  tracking_roi_shift_y: float = 0.0,
                   use_previous_landmarks: bool = True,
-                  model_complexity: int = 0):
+                  model_complexity: int = 0,
+                  palm_inference_threads: int | None = None,
+                  tracking_roi_scale_x: float | None = None,
+                  tracking_roi_scale_y: float | None = None,
+                  tracking_evidence: bool = False):
     """Build the lite legacy graph, enabling safe CPU parallelism when supported."""
     settings = {
         "static_image_mode": False,
@@ -207,7 +433,12 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
     }
     base = mp.solutions.hands.Hands(**settings)
     if (cpu_threads <= 1 and graph_mode == "full"
-            and tracking_roi_scale == 2.0 and use_previous_landmarks):
+            and tracking_roi_scale == 2.0
+            and tracking_roi_shift_x == 0.0
+            and tracking_roi_shift_y == 0.0
+            and tracking_roi_scale_x is None
+            and tracking_roi_scale_y is None
+            and use_previous_landmarks):
         return base
     try:
         from google.protobuf import text_format
@@ -219,19 +450,29 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
         graph = calculator_pb2.CalculatorGraphConfig()
         text_format.Parse(base._graph.text_config, graph)
         modified = 0
+        configured_inference_nodes = set()
         for node in graph.node:
             if node.calculator != "InferenceCalculatorCpu":
                 continue
+            node_threads = _inference_node_threads(
+                node.name, cpu_threads, palm_inference_threads,
+            )
             options = node.options.Extensions[
                 inference_calculator_pb2.InferenceCalculatorOptions.ext
             ]
-            options.cpu_num_thread = cpu_threads
+            options.cpu_num_thread = node_threads
             # XNNPACK uses its own thread pool, independent of the interpreter.
             if options.delegate.HasField("xnnpack"):
-                options.delegate.xnnpack.num_threads = cpu_threads
+                options.delegate.xnnpack.num_threads = node_threads
+            configured_inference_nodes.add(
+                "palm" if "palmdetection" in node.name.lower() else "landmark"
+            )
             modified += 1
-        if modified != 2:
-            raise RuntimeError(f"expected two CPU inference nodes, found {modified}")
+        if modified != 2 or configured_inference_nodes != {"palm", "landmark"}:
+            raise RuntimeError(
+                "expected one palm and one landmark CPU inference node, "
+                f"found {modified}: {sorted(configured_inference_nodes)}"
+            )
         roi_modified = 0
         for node in graph.node:
             if (node.calculator != "RectTransformationCalculator" or
@@ -240,8 +481,11 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
             options = node.options.Extensions[
                 rect_transformation_calculator_pb2.RectTransformationCalculatorOptions.ext
             ]
-            options.scale_x = tracking_roi_scale
-            options.scale_y = tracking_roi_scale
+            _configure_tracking_roi(
+                options, tracking_roi_scale,
+                tracking_roi_shift_x, tracking_roi_shift_y,
+                tracking_roi_scale_x, tracking_roi_scale_y,
+            )
             roi_modified += 1
         if roi_modified != 1:
             raise RuntimeError(
@@ -255,9 +499,9 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
                 "use_prev_landmarks": use_previous_landmarks,
             },
             outputs=(
-                ["multi_hand_landmarks"]
-                if graph_mode == "lean-image" else
-                ["multi_hand_landmarks", "multi_hand_world_landmarks", "multi_handedness"]
+                (["multi_hand_landmarks"] if graph_mode == "lean-image" else [
+                    "multi_hand_landmarks", "multi_hand_world_landmarks", "multi_handedness",
+                ]) + list(TRACKING_EVIDENCE_OUTPUTS if tracking_evidence else ())
             ),
         )
     except Exception as exc:
@@ -284,12 +528,62 @@ class MediaPipeTracker:
         backend: str = "legacy",
         graph_mode: str = "full",
         tracking_roi_scale: float = 2.25,
+        tracking_roi_shift_x: float = 0.0,
+        tracking_roi_shift_y: float = 0.0,
         use_previous_landmarks: bool = True,
         model_complexity: int = 0,
+        fused_preprocessing: bool = True,
+        palm_inference_threads: int | None = None,
+        tracking_roi_scale_x: float | None = None,
+        tracking_roi_scale_y: float | None = None,
+        directional_search: bool = False,
+        directional_search_gain: float = .275,
+        directional_search_min_speed: float = .5,
+        directional_search_max_offset: float = .04,
+        tracking_evidence: bool = False,
     ) -> None:
+        if type(directional_search) is not bool:
+            raise ValueError("directional search must be a boolean")
+        for label, value, lower, upper in (
+            ("gain", directional_search_gain, 0.0, 1.0),
+            ("minimum speed", directional_search_min_speed, 0.0, 4.0),
+            ("maximum offset", directional_search_max_offset, 0.0, .15),
+        ):
+            if not math.isfinite(float(value)) or not lower <= float(value) <= upper:
+                raise ValueError(
+                    f"directional search {label} must be between {lower} and {upper}"
+                )
+        self.directional_search = directional_search
+        self._directional_search = _DirectionalSearchState(
+            float(directional_search_gain), float(directional_search_min_speed),
+            max_offset=float(directional_search_max_offset),
+        )
+        if type(tracking_evidence) is not bool:
+            raise ValueError("tracking evidence must be a boolean")
+        self.tracking_evidence = tracking_evidence
         self.tracking_roi_scale = float(tracking_roi_scale)
         if not 2.0 <= self.tracking_roi_scale <= 3.0:
             raise ValueError("tracking ROI scale must be between 2.0 and 3.0")
+        for label, value in (("X", tracking_roi_scale_x),
+                             ("Y", tracking_roi_scale_y)):
+            if value is not None and (not math.isfinite(float(value))
+                                      or not 2.0 <= float(value) <= 3.0):
+                raise ValueError(
+                    f"tracking ROI {label} scale must be between 2.0 and 3.0"
+                )
+        self.tracking_roi_scale_x = (
+            None if tracking_roi_scale_x is None else float(tracking_roi_scale_x)
+        )
+        self.tracking_roi_scale_y = (
+            None if tracking_roi_scale_y is None else float(tracking_roi_scale_y)
+        )
+        self.tracking_roi_shift_x = float(tracking_roi_shift_x)
+        self.tracking_roi_shift_y = float(tracking_roi_shift_y)
+        if (not math.isfinite(self.tracking_roi_shift_x)
+                or not -.25 <= self.tracking_roi_shift_x <= .25
+                or not math.isfinite(self.tracking_roi_shift_y)
+                or not -.25 <= self.tracking_roi_shift_y <= .25):
+            raise ValueError("tracking ROI shifts must be finite and between -0.25 and 0.25")
         if type(use_previous_landmarks) is not bool:
             raise ValueError("use_previous_landmarks must be a boolean")
         self.use_previous_landmarks = use_previous_landmarks
@@ -299,8 +593,17 @@ class MediaPipeTracker:
         if type(model_complexity) is not int or model_complexity not in (0, 1):
             raise ValueError("model complexity must be 0 or 1")
         self.model_complexity = model_complexity
+        if type(fused_preprocessing) is not bool:
+            raise ValueError("fused preprocessing must be a boolean")
+        self.fused_preprocessing = fused_preprocessing
+        if (palm_inference_threads is not None
+                and (type(palm_inference_threads) is not int
+                     or palm_inference_threads not in (1, 2, 4))):
+            raise ValueError("palm inference threads must be 1, 2, 4, or omitted")
+        self.palm_inference_threads = palm_inference_threads
         try:
             import cv2
+            import numpy
             started = time.monotonic()
             import mediapipe as mp
             log_startup_stage("MediaPipe import", started)
@@ -311,6 +614,7 @@ class MediaPipeTracker:
                 "install with: pip install -e '.[vision]'"
             ) from exc
         self.cv2 = cv2
+        self.numpy = numpy
         self.mp = mp
         self.glove_color = glove_color
         self.mirror = mirror
@@ -322,6 +626,7 @@ class MediaPipeTracker:
             raise ValueError("unsupported MediaPipe graph mode")
         self.graph_mode = graph_mode
         self._last_timestamp_ms = -1
+        self._tracking_telemetry = _TrackingTelemetry()
         if backend not in TRACKER_BACKEND_LABELS:
             raise ValueError(f"unsupported tracker backend: {backend}")
         if backend == "legacy" and not hasattr(mp, "solutions"):
@@ -352,8 +657,13 @@ class MediaPipeTracker:
                 mp, self.inference_threads, self.tracking_confidence,
                 self.detection_confidence,
                 self.graph_mode, self.tracking_roi_scale,
+                self.tracking_roi_shift_x, self.tracking_roi_shift_y,
                 self.use_previous_landmarks,
                 self.model_complexity,
+                self.palm_inference_threads,
+                self.tracking_roi_scale_x,
+                self.tracking_roi_scale_y,
+                self.tracking_evidence,
             )
 
         log_startup_stage("tracker construction", started)
@@ -367,10 +677,16 @@ class MediaPipeTracker:
         cv2 = self.cv2
         annotate = self.preview_enabled
         now = time.monotonic() if timestamp is None else timestamp
-        if self.mirror:
-            frame = cv2.flip(frame, 1)
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        rgb.flags.writeable = False
+        frame, rgb, frame_preparation = _prepare_tracker_frame(
+            frame, self.mirror, annotate, self.fused_preprocessing,
+            cv2, self.numpy,
+        )
+        search_offset = (
+            self._directional_search.next_offset(now)
+            if self.directional_search and not self._tasks else (0.0, 0.0)
+        )
+        if search_offset != (0.0, 0.0):
+            rgb = _translate_tracker_input(rgb, search_offset, cv2, self.numpy)
         if self._tasks:
             timestamp_ms = max(self._last_timestamp_ms + 1, int(now * 1000))
             self._last_timestamp_ms = timestamp_ms
@@ -380,11 +696,20 @@ class MediaPipeTracker:
         else:
             result = self.hands.process(rgb)
             detected = result.multi_hand_landmarks
+        palm_detector_invoked, palm_detection_count = _palm_detector_evidence(result)
         if not detected:
+            if self.directional_search:
+                self._directional_search.reset()
+            diagnostics = self._tracking_telemetry.observe(
+                False, palm_detector_invoked, palm_detection_count,
+            )
+            diagnostics["frame_preparation"] = frame_preparation
+            diagnostics["directional_search_active"] = False
+            diagnostics["directional_search_offset"] = search_offset
             if not annotate:
-                return TrackingResult(HandObservation(now, False), frame)
+                return TrackingResult(HandObservation(now, False), frame, diagnostics)
             return TrackingResult(
-                HandObservation(now, False), frame,
+                HandObservation(now, False), frame, diagnostics,
                 preview_overlay={"message": "Show one hand to the camera"},
             )
 
@@ -395,6 +720,10 @@ class MediaPipeTracker:
             hand_score = float(handedness.score or 0.0)
         else:
             landmarks = result.multi_hand_landmarks[0].landmark
+            if search_offset != (0.0, 0.0):
+                for point in landmarks:
+                    point.x -= search_offset[0]
+                    point.y -= search_offset[1]
             handednesses = getattr(result, "multi_handedness", None)
             if handednesses:
                 handedness = handednesses[0].classification[0]
@@ -404,8 +733,17 @@ class MediaPipeTracker:
                 hand_label = "Hand"
                 hand_score = 1.0
         if not _landmarks_valid(landmarks):
-            return TrackingResult(HandObservation(now, False), frame,
-                                  {"landmark_validation": "invalid"})
+            if self.directional_search:
+                self._directional_search.reset()
+            diagnostics = self._tracking_telemetry.observe(
+                False, palm_detector_invoked, palm_detection_count,
+                invalid_landmarks=True,
+            )
+            diagnostics["frame_preparation"] = frame_preparation
+            diagnostics["directional_search_active"] = False
+            diagnostics["directional_search_offset"] = search_offset
+            diagnostics["landmark_validation"] = "invalid"
+            return TrackingResult(HandObservation(now, False), frame, diagnostics)
         palm_ids = (0, 5, 9, 13, 17)
         if self.diagnostics_enabled:
             palm_anchors = _palm_anchor_candidates(landmarks)
@@ -418,6 +756,8 @@ class MediaPipeTracker:
             palm_y = sum(float(landmarks[i].y) for i in palm_ids) / len(palm_ids)
             palm_anchors = {}
             palm_points = []
+        if self.directional_search:
+            self._directional_search.observe(palm_x, palm_y, now)
         palm_scale = (_distance(landmarks[0], landmarks[9]) + _distance(landmarks[5], landmarks[17])) / 2
         roll = math.atan2(
             landmarks[5].y - landmarks[17].y,
@@ -448,9 +788,14 @@ class MediaPipeTracker:
                 "landmarks": [(float(point.x), float(point.y)) for point in landmarks],
                 "label": f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}",
             }
-        diagnostics = {}
+        diagnostics = self._tracking_telemetry.observe(
+            True, palm_detector_invoked, palm_detection_count,
+        )
+        diagnostics["frame_preparation"] = frame_preparation
+        diagnostics["directional_search_active"] = self._directional_search.active
+        diagnostics["directional_search_offset"] = search_offset
         if self.diagnostics_enabled:
-            diagnostics = {
+            diagnostics.update({
                 "tracker_backend": self.backend,
                 "tracker_backend_label": self.backend_label,
                 "tracker_graph": self.graph_mode,
@@ -458,7 +803,7 @@ class MediaPipeTracker:
                 "confidence_source": observation.confidence_source,
                 "finger_bends": bends,
                 "hand_landmarks": [[p.x, p.y] for p in landmarks],
-            }
+            })
         return TrackingResult(observation, frame, diagnostics,
                               palm_points=palm_points,
                               palm_anchors=palm_anchors,

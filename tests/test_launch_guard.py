@@ -29,6 +29,14 @@ class LaunchGuardTests(unittest.TestCase):
         self.assertEqual(args.tracking_roi_scale, 2.25)
         self.assertEqual(args.tracker_backend, "legacy")
         self.assertEqual(args.preview_fps, 5.0)
+        self.assertFalse(args.directional_search)
+
+    def test_directional_search_is_hidden_and_explicitly_opt_in(self):
+        args = build_parser().parse_args([
+            "--receiver", "console", "--token", "x" * 16,
+            "--directional-search",
+        ])
+        self.assertTrue(args.directional_search)
 
     def test_guard_expires_at_deadline(self):
         self.assertTrue(_launch_guard_active(16.0, now=15.999))

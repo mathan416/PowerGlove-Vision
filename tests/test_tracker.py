@@ -13,15 +13,19 @@
 """Verify camera curl geometry without requiring MediaPipe or a camera."""
 
 import math
+import inspect
 import unittest
 from types import SimpleNamespace
 
 from powerglove_vision import tracker as tracker_module
 from powerglove_vision.tracker import (
-    TRACKER_BACKEND_LABELS,
-    _Point, _camera_curl_points, _curl, _finger_bends,
+    TRACKER_BACKEND_LABELS, TRACKING_EVIDENCE_OUTPUTS,
+    _DirectionalSearchState, _TrackingTelemetry,
+    _Point, _camera_curl_points, _configure_tracking_roi, _curl, _finger_bends,
     _finger_curls, _finger_curls_from_bends, _landmarks_valid,
-    _palm_anchor_candidates, _polygon_centroid,
+    _inference_node_threads,
+    _palm_anchor_candidates, _palm_detector_evidence, _polygon_centroid,
+    _prepare_tracker_frame, _translate_tracker_input,
 )
 from powerglove_vision.gesture import GestureEngine
 from powerglove_vision.model import HandObservation
@@ -37,10 +41,240 @@ def pose_points(closed):
 
 
 class TrackerGeometryTests(unittest.TestCase):
+    def test_directional_search_uses_measured_gentle_gain_by_default(self):
+        default = inspect.signature(
+            tracker_module.MediaPipeTracker
+        ).parameters["directional_search_gain"].default
+        self.assertEqual(default, .275)
+
+    def test_directional_search_requires_two_aligned_fast_intervals(self):
+        state = _DirectionalSearchState(gain=.5, min_speed=.4, max_offset=.08)
+        state.observe(.20, .50, 0.0)
+        state.observe(.23, .50, .05)
+        self.assertEqual(state.next_offset(.10), (0.0, 0.0))
+        state.observe(.26, .50, .10)
+        x, y = state.next_offset(.15)
+        self.assertAlmostEqual(x, -.015)
+        self.assertEqual(y, 0.0)
+        self.assertTrue(state.active)
+
+    def test_directional_search_stops_accumulating_on_stop_or_reversal(self):
+        state = _DirectionalSearchState(gain=.5, min_speed=.4, max_offset=.08)
+        for x, timestamp in ((.20, 0.0), (.23, .05), (.26, .10)):
+            state.observe(x, .50, timestamp)
+        moving = state.next_offset(.15)
+        state.observe(.26, .50, .15)
+        self.assertNotEqual(moving, (0.0, 0.0))
+        self.assertEqual(state.next_offset(.20), (0.0, 0.0))
+        self.assertFalse(state.active)
+        state.observe(.23, .50, .20)
+        self.assertEqual(state.next_offset(.25), (0.0, 0.0))
+        self.assertFalse(state.active)
+
+    def test_directional_search_is_bounded_and_loss_reset_is_immediate(self):
+        state = _DirectionalSearchState(gain=1.0, min_speed=.1, max_offset=.02)
+        for x, timestamp in ((.20, 0.0), (.30, .05), (.40, .10)):
+            state.observe(x, .50, timestamp)
+        x, y = state.next_offset(.15)
+        self.assertAlmostEqual(math.hypot(x, y), .02)
+        state.reset()
+        self.assertEqual(state.next_offset(.20), (0.0, 0.0))
+        self.assertFalse(state.active)
+
+    def test_directional_input_translation_preserves_shape(self):
+        import cv2
+        import numpy as np
+
+        rgb = np.arange(5 * 6 * 3, dtype=np.uint8).reshape((5, 6, 3))
+        translated = _translate_tracker_input(rgb, (.1, -.1), cv2, np)
+        self.assertEqual(translated.shape, rgb.shape)
+        self.assertFalse(translated.flags.writeable)
+        self.assertIs(_translate_tracker_input(rgb, (0.0, 0.0), cv2, np), rgb)
+
+    def test_fused_preparation_matches_existing_mirrored_rgb_exactly(self):
+        import cv2
+        import numpy as np
+
+        frame = np.arange(3 * 4 * 3, dtype=np.uint8).reshape((3, 4, 3))
+        display, rgb, lane = _prepare_tracker_frame(
+            frame, True, False, True, cv2, np,
+        )
+        expected = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+        self.assertTrue(np.array_equal(rgb, expected))
+        self.assertTrue(rgb.flags.c_contiguous)
+        self.assertFalse(rgb.flags.writeable)
+        self.assertIs(display, frame)
+        self.assertEqual(lane, "fused-mirror-bgr-to-rgb")
+
+    def test_preview_preparation_retains_mirrored_bgr_frame(self):
+        import cv2
+        import numpy as np
+
+        frame = np.arange(3 * 4 * 3, dtype=np.uint8).reshape((3, 4, 3))
+        display, rgb, lane = _prepare_tracker_frame(
+            frame, True, True, True, cv2, np,
+        )
+        expected_display = cv2.flip(frame, 1)
+        self.assertTrue(np.array_equal(display, expected_display))
+        self.assertTrue(np.array_equal(
+            rgb, cv2.cvtColor(expected_display, cv2.COLOR_BGR2RGB),
+        ))
+        self.assertEqual(lane, "preview-compatible")
+
+    def test_nonmirrored_preparation_keeps_existing_contract(self):
+        import cv2
+        import numpy as np
+
+        frame = np.arange(3 * 4 * 3, dtype=np.uint8).reshape((3, 4, 3))
+        display, rgb, lane = _prepare_tracker_frame(
+            frame, False, False, True, cv2, np,
+        )
+        self.assertIs(display, frame)
+        self.assertTrue(np.array_equal(rgb, frame[:, :, ::-1]))
+        self.assertEqual(lane, "bgr-to-rgb")
+
+    def test_fused_preparation_can_be_disabled_for_repeatable_comparison(self):
+        import cv2
+        import numpy as np
+
+        frame = np.arange(3 * 4 * 3, dtype=np.uint8).reshape((3, 4, 3))
+        display, rgb, lane = _prepare_tracker_frame(
+            frame, True, False, False, cv2, np,
+        )
+        self.assertTrue(np.array_equal(display, cv2.flip(frame, 1)))
+        self.assertTrue(np.array_equal(
+            rgb, cv2.cvtColor(display, cv2.COLOR_BGR2RGB),
+        ))
+        self.assertEqual(lane, "preview-compatible")
+
+    def test_tracking_evidence_names_match_the_mediapipe_graph_outputs(self):
+        self.assertEqual(TRACKING_EVIDENCE_OUTPUTS, (
+            "palm_detections",
+        ))
+
+    def test_inference_threads_can_target_palm_and_landmark_models_separately(self):
+        palm = "palmdetectioncpu__inferencecalculator__InferenceCalculator"
+        landmark = "handlandmarkcpu__inferencecalculator__InferenceCalculator"
+        self.assertEqual(_inference_node_threads(palm, 4, 1), 1)
+        self.assertEqual(_inference_node_threads(palm, 4, None), 4)
+        self.assertEqual(_inference_node_threads(landmark, 4, 1), 4)
+        with self.assertRaises(RuntimeError):
+            _inference_node_threads("unexpected", 4, 1)
+
+    def test_detector_evidence_distinguishes_skipped_empty_and_unavailable(self):
+        self.assertEqual(_palm_detector_evidence(SimpleNamespace()), (None, None))
+        self.assertEqual(
+            _palm_detector_evidence(SimpleNamespace(palm_detections=None)),
+            (None, None),
+        )
+        self.assertEqual(
+            _palm_detector_evidence(SimpleNamespace(palm_detections=[])),
+            (True, 0),
+        )
+        self.assertEqual(
+            _palm_detector_evidence(SimpleNamespace(palm_detections=[1])),
+            (True, 1),
+        )
+
+    def test_tracking_telemetry_classifies_initial_continuation_and_reacquisition(self):
+        telemetry = _TrackingTelemetry()
+        initial = telemetry.observe(True, True, 1)
+        continued = telemetry.observe(True, None, None)
+        redetected = telemetry.observe(True, True, 1)
+        missed = telemetry.observe(False, None, None)
+        detector_miss = telemetry.observe(False, True, 0)
+        recovered = telemetry.observe(True, True, 1)
+        self.assertEqual(initial["tracking_path"], "initial_palm_detection")
+        self.assertEqual(continued["tracking_path"], "landmark_continuation")
+        self.assertEqual(redetected["tracking_path"], "palm_redetection")
+        self.assertEqual(missed["tracking_path"], "hand_missing_path_unobservable")
+        self.assertEqual(detector_miss["tracking_path"], "palm_detection_no_valid_hand")
+        self.assertEqual(recovered["tracking_path"], "palm_reacquisition")
+        self.assertTrue(recovered["palm_reacquired"])
+        self.assertEqual(recovered["palm_detection_packets_total"], 4)
+        self.assertEqual(recovered["palm_redetections_total"], 1)
+        self.assertEqual(recovered["palm_reacquisitions_total"], 1)
+        self.assertEqual(recovered["hand_missing_results_total"], 2)
+        self.assertEqual(recovered["hand_missing_streak"], 0)
+
+    def test_tracking_telemetry_never_guesses_when_detector_is_unobservable(self):
+        telemetry = _TrackingTelemetry()
+        detected = telemetry.observe(True, None, None)
+        missing = telemetry.observe(False, None, None, invalid_landmarks=True)
+        self.assertEqual(detected["tracking_path"], "landmark_continuation")
+        self.assertEqual(missing["tracking_path"], "hand_missing_path_unobservable")
+        self.assertIsNone(missing["palm_detector_invoked"])
+        self.assertEqual(missing["invalid_landmark_results_total"], 1)
+
     def test_tracking_roi_scale_is_bounded_before_graph_construction(self):
         tracker = object.__new__(tracker_module.MediaPipeTracker)
         with self.assertRaises(ValueError):
             tracker_module.MediaPipeTracker.__init__(tracker, tracking_roi_scale=1.9)
+
+    def test_directional_search_settings_are_bounded_before_graph_construction(self):
+        for arguments in (
+            {"directional_search": "yes"},
+            {"directional_search_gain": 1.01},
+            {"directional_search_min_speed": -0.01},
+            {"directional_search_max_offset": .151},
+        ):
+            tracker = object.__new__(tracker_module.MediaPipeTracker)
+            with self.subTest(arguments=arguments), self.assertRaises(ValueError):
+                tracker_module.MediaPipeTracker.__init__(tracker, **arguments)
+
+    def test_tracking_evidence_requires_an_explicit_boolean(self):
+        tracker = object.__new__(tracker_module.MediaPipeTracker)
+        with self.assertRaises(ValueError):
+            tracker_module.MediaPipeTracker.__init__(
+                tracker, tracking_evidence="yes",
+            )
+
+    def test_palm_inference_threads_are_bounded_before_graph_construction(self):
+        for value in (0, 3, 5, 1.0, True):
+            tracker = object.__new__(tracker_module.MediaPipeTracker)
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                tracker_module.MediaPipeTracker.__init__(
+                    tracker, palm_inference_threads=value,
+                )
+
+    def test_tracking_roi_shift_is_bounded_before_graph_construction(self):
+        for arguments in (
+            {"tracking_roi_shift_x": -.251},
+            {"tracking_roi_shift_x": .251},
+            {"tracking_roi_shift_y": float("nan")},
+            {"tracking_roi_shift_y": float("inf")},
+        ):
+            tracker = object.__new__(tracker_module.MediaPipeTracker)
+            with self.subTest(arguments=arguments), self.assertRaises(ValueError):
+                tracker_module.MediaPipeTracker.__init__(tracker, **arguments)
+
+    def test_fixed_roi_shift_preserves_scale_and_builtin_vertical_framing(self):
+        options = SimpleNamespace()
+        _configure_tracking_roi(options, 2.25, .05, -.10)
+        self.assertEqual(options.scale_x, 2.25)
+        self.assertEqual(options.scale_y, 2.25)
+        self.assertEqual(options.shift_x, .05)
+        self.assertAlmostEqual(options.shift_y, -.20)
+
+        baseline = SimpleNamespace()
+        _configure_tracking_roi(baseline, 2.25, 0.0, 0.0)
+        self.assertEqual(baseline.shift_x, 0.0)
+        self.assertAlmostEqual(baseline.shift_y, -.10)
+
+        horizontal = SimpleNamespace()
+        _configure_tracking_roi(horizontal, 2.25, 0.0, 0.0, 2.45, 2.25)
+        self.assertEqual(horizontal.scale_x, 2.45)
+        self.assertEqual(horizontal.scale_y, 2.25)
+
+    def test_axis_specific_tracking_roi_scale_is_bounded(self):
+        for arguments in (
+            {"tracking_roi_scale_x": 1.99},
+            {"tracking_roi_scale_x": 3.01},
+            {"tracking_roi_scale_y": float("nan")},
+        ):
+            tracker = object.__new__(tracker_module.MediaPipeTracker)
+            with self.subTest(arguments=arguments), self.assertRaises(ValueError):
+                tracker_module.MediaPipeTracker.__init__(tracker, **arguments)
 
     def test_previous_landmark_mode_requires_boolean_before_graph_construction(self):
         tracker = object.__new__(tracker_module.MediaPipeTracker)

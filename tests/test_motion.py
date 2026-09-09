@@ -95,6 +95,8 @@ class NativeMotionTests(unittest.TestCase):
         self.assertTrue(fields['observation_detected'])
         self.assertEqual(fields['observed_xy'], [.5, .5])
         self.assertTrue(fields['native_xy_active'])
+        self.assertIsNone(fields['tracking_path'])
+        self.assertIsNone(fields['frame_preparation'])
         self.engine._latest_confirmation_pending = True
         fields = _native_trace_fields(self.engine, result, True)
         self.assertTrue(fields['latest_confirmation_pending'])
@@ -103,6 +105,20 @@ class NativeMotionTests(unittest.TestCase):
         )
         self.assertFalse(missing['observation_detected'])
         self.assertIsNone(missing['observed_xy'])
+
+    def test_native_trace_includes_non_biometric_reacquisition_evidence(self):
+        result = TrackingResult(self.pose, object(), {
+            'tracking_path': 'palm_reacquisition',
+            'palm_detector_invoked': True,
+            'palm_detection_count': 1,
+            'palm_reacquired': True,
+            'hand_missing_streak': 0,
+        })
+        fields = _native_trace_fields(self.engine, result, True)
+        self.assertEqual(fields['tracking_path'], 'palm_reacquisition')
+        self.assertTrue(fields['palm_detector_invoked'])
+        self.assertEqual(fields['palm_detection_count'], 1)
+        self.assertTrue(fields['palm_reacquired'])
 
     def test_latest_holds_one_backward_reacquisition_after_consistent_motion(self):
         for timestamp, x in ((10.0, .50), (10.1, .55), (10.2, .60)):
@@ -409,6 +425,21 @@ class NativeMotionTests(unittest.TestCase):
             command = worker_command({'inference_threads': value}, Path('/tmp/model'))
             index = command.index('--inference-threads')
             self.assertEqual(command[index + 1], expected)
+
+    def test_directional_search_defaults_off_and_requires_a_real_boolean(self):
+        import runpy
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]
+        worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']
+        self.assertNotIn('--directional-search', worker_command({}, Path('/tmp/model')))
+        self.assertNotIn(
+            '--directional-search',
+            worker_command({'directional_search': 'true'}, Path('/tmp/model')),
+        )
+        self.assertIn(
+            '--directional-search',
+            worker_command({'directional_search': True}, Path('/tmp/model')),
+        )
 
     def test_fast_position_does_not_replay_gesture_or_depth_samples(self):
         fist = replace(self.pose, thumb_curl=1, index_curl=1, middle_curl=1, ring_curl=1, pinky_curl=1)
