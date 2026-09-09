@@ -26,7 +26,10 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
     def test_tracking_path_summary_separates_short_and_long_losses(self):
         samples = [
             {"path": "landmark_continuation", "ms": 10, "detected": True},
-            {"path": "hand_missing_path_unobservable", "ms": 20, "detected": False},
+            {
+                "path": "hand_missing_path_unobservable", "ms": 20,
+                "detected": False, "frame": 2, "elapsed": .04, "cue": "fast_xy",
+            },
             {
                 "path": "palm_reacquisition", "ms": 30, "detected": True,
                 "recovery_gap_ms": 66.7, "recovery_missing_span_ms": 33.3,
@@ -40,6 +43,11 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
         summary = BENCHMARK.tracking_path_summary(samples)
         self.assertEqual(summary["short_missing_runs"], [1])
         self.assertEqual(summary["long_missing_runs"], [4])
+        self.assertEqual(summary["missing_run_details"][0], {
+            "start_frame": 2, "end_frame": 2,
+            "start_elapsed": .04, "end_elapsed": .04,
+            "cues": ["fast_xy"], "frames": 1,
+        })
         self.assertEqual(summary["paths"]["palm_detection_no_valid_hand"]["p95"], 70)
         self.assertEqual(summary["recovery_gap_ms"]["p50"], 66.7)
         self.assertEqual(summary["recovery_missing_span_ms"]["p50"], 33.3)

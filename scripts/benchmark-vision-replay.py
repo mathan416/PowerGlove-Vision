@@ -76,15 +76,35 @@ def tracking_path_summary(samples: list[dict]) -> dict:
             "p95": percentile(values, .95),
         }
     missing_runs = []
+    missing_run_details = []
     current_run = 0
-    for sample in samples:
+    current_detail = None
+    for index, sample in enumerate(samples, start=1):
         if not sample["detected"]:
             current_run += 1
+            if current_detail is None:
+                current_detail = {
+                    "start_frame": sample.get("frame", index),
+                    "end_frame": sample.get("frame", index),
+                    "start_elapsed": sample.get("elapsed"),
+                    "end_elapsed": sample.get("elapsed"),
+                    "cues": [],
+                }
+            current_detail["end_frame"] = sample.get("frame", index)
+            current_detail["end_elapsed"] = sample.get("elapsed")
+            cue = sample.get("cue")
+            if cue is not None and cue not in current_detail["cues"]:
+                current_detail["cues"].append(cue)
         elif current_run:
             missing_runs.append(current_run)
+            current_detail["frames"] = current_run
+            missing_run_details.append(current_detail)
             current_run = 0
+            current_detail = None
     if current_run:
         missing_runs.append(current_run)
+        current_detail["frames"] = current_run
+        missing_run_details.append(current_detail)
     recovery_gaps = [sample["recovery_gap_ms"] for sample in samples
                      if sample.get("recovery_gap_ms") is not None]
     recovery_missing_spans = [sample["recovery_missing_span_ms"] for sample in samples
@@ -94,6 +114,7 @@ def tracking_path_summary(samples: list[dict]) -> dict:
     return {
         "paths": timing,
         "missing_runs": missing_runs,
+        "missing_run_details": missing_run_details,
         "short_missing_runs": [length for length in missing_runs if length <= 3],
         "long_missing_runs": [length for length in missing_runs if length > 3],
         "recovery_gap_ms": {
@@ -182,6 +203,10 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
                 if frame_times is not None and frame_index <= len(frame_times)
                 else frame_index / source_fps
             )
+            cue = next(
+                (item for item in cues if item["start"] <= elapsed < item["end"]),
+                None,
+            )
             frame = cv2.resize(frame, size, interpolation=cv2.INTER_AREA)
             started = time.monotonic()
             result = tracker.process(frame, elapsed)
@@ -190,6 +215,9 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
             detected.append(result.observation.detected)
             tracking_paths.append({
                 "path": result.diagnostics.get("tracking_path", "unavailable"),
+                "frame": frame_index,
+                "elapsed": elapsed,
+                "cue": None if cue is None else cue["label"],
                 "ms": (finished - started) * 1000,
                 "detected": result.observation.detected,
                 "recovery_gap_ms": result.diagnostics.get("recovery_gap_ms"),
@@ -218,7 +246,6 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
                     "directional_search_offset", (0.0, 0.0)
                 ),
             })
-            cue = next((item for item in cues if item["start"] <= elapsed < item["end"]), None)
             feedback = engine.recognition_feedback()
             curls = engine.curl_feedback(result.observation)
             push = engine.push_feedback(result.observation)["active"]

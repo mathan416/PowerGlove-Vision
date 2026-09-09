@@ -885,8 +885,18 @@ detection, and four were palm reacquisitions. The misses formed runs of 1, 9, 1,
 and 3 frames. Landmark continuation measured 3.92/4.67 ms p50/p95, while
 reacquisition measured 9.57/9.74 ms. The complete last-good-to-recovered gaps
 were 96.19/434.10 ms p50/p95; the first-missing-to-recovered spans were
-62.96/418.14 ms. This demonstrates that the damaging tail is the missed-frame
-run, not the recovery inference alone.
+62.96/418.14 ms.
+
+Frame-level review corrected the interpretation of that tail: the nine-frame
+run occurs inside the scripted **tracking recovery** cue, where the instructions
+explicitly say to remove the hand completely. It is expected loss, not a failed
+fast sweep. The selected fast-X/Y cue detected 91 of 92 frames (98.91%); its one
+miss is exactly at the 7.0-second transition into that cue. A twelve-lane search
+sweep did not shorten the intentional nine-frame run. The current
+`0.275 / 0.50 / 0.04` direction-aware settings remain tied for the best overall
+continuity and are unchanged. Future replay reports include each missing run's
+frame range and cue label so scripted departure cannot be confused with
+gameplay loss.
 
 A camera-free palm-detector thread sweep on that clip compared 1, 2, and 4
 threads. All three retained 96.52% continuity. Their overall inference p50/p95

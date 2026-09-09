@@ -70,6 +70,10 @@ authoritative record for line-level and file-level history.
 
 ### Validation
 
+- Corrected the saved-clip loss interpretation after frame-level review. Its
+  nine-frame run is the scripted hand-removal cue, while the selected fast-sweep
+  lane detected 91 of 92 frames and missed only the exact cue-boundary frame.
+  Replay reports now label missing runs with frame ranges and cue names.
 - Replayed the saved 402-frame sweep with Dashboard preview closed and open.
   Both lanes used identical fused preprocessing and 96.52% detection continuity;
   inference p95 was 4.70 ms closed and 4.65 ms open on the development Mac.
