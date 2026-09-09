@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Installed the image-array dependencies required by pipeline tests.
 #   2026-09-04 - Made dev the default source for release-candidate builds.
 #   2026-09-04 - Added versioned two-machine release packaging.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -47,7 +48,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes rsync zip
-          python -m pip install reportlab pypdf
+          python -m pip install reportlab pypdf numpy opencv-python-headless
       - name: Test and build
         env:
           RELEASE_VERSION: ${{ inputs.version }}
