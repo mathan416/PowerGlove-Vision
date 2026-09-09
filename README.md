@@ -366,7 +366,11 @@ physical hand-to-display latency.
 Strong light behind the player can leave the hand dark even when the room looks
 bright. Prefer light from the camera side or move bright windows out of the
 background. The project does not force hardware backlight compensation: on the
-tested Razer Kiyo Pro it made the measured backlit scene darker.
+tested Razer Kiyo Pro it made the measured backlit scene darker. A matched
+exposure-78/gain-96 capture improved overall detection from 98.73% to 99.57%
+when backlight was reduced, with fewer missing frames and reacquisitions;
+inference timing remained unchanged. Lighting improves recognition margin, not
+model execution speed.
 
 Setup also offers opt-in camera controls. **Low latency — Direct V4L2**
 reads the newest Linux MJPEG driver buffer and automatically falls back to

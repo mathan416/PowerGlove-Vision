@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered zero/one-frame directional reacquisition comparison.
 #   2026-09-09 - Verified selected conditional search replay reporting.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -118,11 +119,13 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
             "--directional-search-gains", ".35", ".5",
             "--directional-search-min-speeds", ".4", ".6",
             "--directional-search-max-offsets", ".04", ".08",
+            "--directional-search-recovery-frames", "0", "1",
         ])
         self.assertEqual(parsed.directional_search_modes, ["off", "on"])
         self.assertEqual(parsed.directional_search_gains, [.35, .5])
         self.assertEqual(parsed.directional_search_min_speeds, [.4, .6])
         self.assertEqual(parsed.directional_search_max_offsets, [.04, .08])
+        self.assertEqual(parsed.directional_search_recovery_frames, [0, 1])
 
 
 if __name__ == "__main__":

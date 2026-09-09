@@ -17,6 +17,11 @@ authoritative record for line-level and file-level history.
   now separate the duration since the last detected hand, the observed missing
   span, the recovery inference time, and the longest loss instead of inferring
   recovery cost from worker-loop timing.
+- Added a production-matched, user-paced fast-sweep recorder and a replay-only
+  zero/one-frame directional-search recovery comparison. Direct V4L2 captures
+  retain their actual buffer, exposure, and gain settings, restore camera
+  automation on exit, and retry brief invalid-frame gaps without abandoning the
+  recording.
 
 ### Changed
 
@@ -80,6 +85,18 @@ authoritative record for line-level and file-level history.
 - A 100,000-iteration synthetic soak kept signed UDP send p95 at 0.0179 ms in
   all three off/on/off lanes. A deliberately 5 ms status consumer did not block
   controller sends because pending Dashboard snapshots were replaced newest-only.
+- Replayed a current-settings Kiyo Pro fast-sweep clip through the production
+  four-thread lane. The selected `2.25` search area, `0.35` tracking confidence,
+  and `0.55` palm-detection confidence retained 98.82% fast-sweep detection.
+  Larger search areas, lower detection thresholds, and a one-frame search-offset
+  carry did not improve the moving cue, so immediate reset and current defaults
+  remain unchanged.
+- A matched exposure-78/gain-96 lighting comparison improved overall detection
+  continuity from 98.73% to 99.57%, reduced missing frames from three to one,
+  and reduced reacquisitions from two to one. Fast-sweep detection remained
+  effectively tied at 98.82% and 98.84%, while inference stayed near 35 ms
+  median and 49 ms p95. Better front lighting adds tracking margin but does not
+  make MediaPipe inference itself faster.
 
 ## [0.4.0-rc.1] - 2026-09-08
 

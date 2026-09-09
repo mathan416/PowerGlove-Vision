@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added production-matched direct capture, fast sweeps, and transient-frame retry.
 #   2026-09-05 - Added user-paced benchmark capture with browser preview.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -50,6 +51,12 @@ TRACKING_CUES = tuple(
     if cue[0] in ("neutral_near", "slow_xy", "fast_xy", "tracking_recovery", "neutral_finish")
 )
 
+FAST_SWEEP_CUES = (
+    ("neutral_start", "Neutral start", "Hold a relaxed open hand near the saved centre.", 2.0),
+    ("fast_xy", "Fast X/Y sweeps", "Repeat quick left/right, up/down, and diagonal sweeps while keeping the whole hand visible.", 8.0),
+    ("neutral_finish", "Neutral finish", "Return to centre and hold the open hand still.", 2.0),
+)
+
 
 PAGE = """<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>
 <title>PowerGlove Guided Capture</title><style>
@@ -67,13 +74,16 @@ class GuidedCapture:
     """Capture user-confirmed cues while continuously publishing a live preview."""
 
     def __init__(self, camera: str, output: Path, width: int, height: int,
-                 fps: float, cues: tuple = CUES) -> None:
+                 fps: float, cues: tuple = CUES, *, capture_backend: str = "opencv",
+                 camera_buffers: int = 1, manual_exposure: int | None = None,
+                 manual_gain: int | None = None) -> None:
         import cv2
         self.cv2 = cv2
         self.output = output
         self.width, self.height, self.fps = width, height, fps
         self.cues = cues
         self.lock = threading.Lock()
+        self.release_lock = threading.Lock()
         self.condition = threading.Condition(self.lock)
         self.index = 0
         self.phase = "ready"
@@ -85,7 +95,11 @@ class GuidedCapture:
         self.timeline = 0.0
         self.complete = False
         self.closed = False
-        self.capture = self._open_camera(camera)
+        self.camera_released = False
+        self.capture_metadata = {}
+        self.capture = self._open_camera(
+            camera, capture_backend, camera_buffers, manual_exposure, manual_gain,
+        )
         output.parent.mkdir(parents=True, exist_ok=True)
         self.writer = cv2.VideoWriter(str(output), cv2.VideoWriter_fourcc(*"MJPG"), fps, (width, height))
         if not self.writer.isOpened():
@@ -93,9 +107,16 @@ class GuidedCapture:
             raise RuntimeError("Could not create guided benchmark clip")
         threading.Thread(target=self._camera_loop, name="guided-camera", daemon=True).start()
 
-    def _open_camera(self, selection: str):
+    def _open_camera(self, selection: str, capture_backend: str,
+                     camera_buffers: int, manual_exposure: int | None,
+                     manual_gain: int | None):
         """Open the first matching camera using low-latency capture settings."""
         cv2 = self.cv2
+        manual = manual_exposure is not None or manual_gain is not None
+        if manual and (manual_exposure is None or manual_gain is None):
+            raise ValueError("manual capture requires both exposure and gain")
+        if manual and capture_backend != "direct-v4l2":
+            raise ValueError("manual capture requires the direct V4L2 reader")
         for device in camera_candidates(selection):
             backend = cv2.CAP_V4L2 if sys.platform.startswith("linux") else cv2.CAP_ANY
             candidate = cv2.VideoCapture(device, backend)
@@ -103,20 +124,91 @@ class GuidedCapture:
             candidate.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
             candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
             candidate.set(cv2.CAP_PROP_FPS, self.fps)
-            candidate.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            candidate.set(cv2.CAP_PROP_BUFFERSIZE, camera_buffers)
             if candidate.isOpened():
-                return candidate
+                ok, _frame = candidate.read()
+                if not ok:
+                    candidate.release()
+                    continue
+                if capture_backend == "opencv":
+                    self.capture_metadata = {"capture_backend": "opencv"}
+                    return candidate
+                if not sys.platform.startswith("linux"):
+                    candidate.release()
+                    raise RuntimeError("direct V4L2 capture requires Linux")
+                path = (
+                    f"/dev/video{int(device)}"
+                    if isinstance(device, int) or str(device).isdigit()
+                    else str(device)
+                )
+                candidate.release()
+                from powerglove_vision.v4l2_capture import DirectV4L2Capture
+                import numpy
+                direct = DirectV4L2Capture(path, camera_buffers, cv2, numpy)
+                ok = False
+                deadline = time.monotonic() + 5.0
+                while not ok and time.monotonic() < deadline:
+                    ok, _frame, _captured_at = direct.read_with_timestamp()
+                if not ok:
+                    direct.close()
+                    raise RuntimeError("direct V4L2 produced no benchmark frame")
+                self.capture_metadata = {
+                    "capture_backend": "direct-v4l2",
+                    "camera_buffers": direct.actual_buffers,
+                }
+                if manual:
+                    from powerglove_vision.camera_controls import (
+                        configure_manual_on_fd, restore_automatic_on_fd,
+                    )
+                    report = configure_manual_on_fd(
+                        direct.fd, int(manual_exposure), int(manual_gain),
+                    )
+                    if not report.get("applied"):
+                        restore_automatic_on_fd(direct.fd)
+                        direct.close()
+                        raise RuntimeError(
+                            report.get("reason", "camera rejected manual benchmark settings")
+                        )
+                    direct.before_close = restore_automatic_on_fd
+                    self.capture_metadata.update({
+                        "camera_exposure": "manual",
+                        "camera_manual_exposure": int(manual_exposure),
+                        "camera_manual_gain": int(manual_gain),
+                    })
+                return direct
             candidate.release()
         raise RuntimeError("No selected camera could be opened")
+
+    def _release_camera(self) -> None:
+        """Release either camera backend and restore temporary controls."""
+        with self.release_lock:
+            if self.camera_released:
+                return
+            self.camera_released = True
+            self.capture.release()
+            close = getattr(self.capture, "close", None)
+            if close is not None:
+                close()
 
     def _camera_loop(self) -> None:
         """Continuously preview frames and retain only explicitly started cues."""
         cv2 = self.cv2
         preview_at = 0.0
+        last_frame_at = time.monotonic()
         while True:
-            ok, frame = self.capture.read()
+            try:
+                ok, frame = self.capture.read()
+            except RuntimeError:
+                # Direct V4L2 rejects malformed MJPEG buffers explicitly. Treat
+                # one like an ordinary read gap so a transient camera frame
+                # cannot abort an otherwise healthy user-paced capture.
+                ok, frame = False, None
             if not ok:
+                if time.monotonic() - last_frame_at < 5.0:
+                    time.sleep(.005)
+                    continue
                 break
+            last_frame_at = time.monotonic()
             if frame.shape[1] != self.width or frame.shape[0] != self.height:
                 frame = cv2.resize(frame, (self.width, self.height))
             now = time.monotonic()
@@ -131,7 +223,7 @@ class GuidedCapture:
                     self.cue_records.append({"start": self.timeline, "end": self.timeline + duration,
                                              "label": label, "instruction": instruction})
                 if self.phase == "recording":
-                    duration = CUES[self.index][3]
+                    duration = self.cues[self.index][3]
                     elapsed = now - self.phase_started
                     if elapsed < duration:
                         self.writer.write(frame)
@@ -159,7 +251,7 @@ class GuidedCapture:
                     preview_at = now + .1
             if finished:
                 break
-        self.capture.release()
+        self._release_camera()
         with self.lock:
             if not self.complete:
                 self._finish_locked()
@@ -177,6 +269,7 @@ class GuidedCapture:
             "frames": self.frames, "duration_seconds": self.timeline,
             "effective_fps": round(self.frames / self.timeline, 6) if self.timeline else 0,
             "frame_times_seconds": self.frame_times, "cues": self.cue_records,
+            "capture": getattr(self, "capture_metadata", {}),
         }, indent=2) + "\n")
 
     def start(self) -> None:
@@ -206,7 +299,7 @@ class GuidedCapture:
         with self.lock:
             self.closed = True
             self._finish_locked()
-        self.capture.release()
+        self._release_camera()
 
 
 def handler(capture: GuidedCapture):
@@ -272,10 +365,19 @@ def main() -> int:
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=float, default=30.0)
-    parser.add_argument("--protocol", choices=("full", "tracking"), default="full")
+    parser.add_argument("--protocol", choices=("full", "tracking", "fast-sweep"), default="full")
+    parser.add_argument("--capture-backend", choices=("opencv", "direct-v4l2"), default="opencv")
+    parser.add_argument("--camera-buffers", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--manual-exposure", type=int)
+    parser.add_argument("--manual-gain", type=int)
     args = parser.parse_args()
-    cues = TRACKING_CUES if args.protocol == "tracking" else CUES
-    guided = GuidedCapture(args.camera, args.output, args.width, args.height, args.fps, cues)
+    cues = (TRACKING_CUES if args.protocol == "tracking" else
+            FAST_SWEEP_CUES if args.protocol == "fast-sweep" else CUES)
+    guided = GuidedCapture(
+        args.camera, args.output, args.width, args.height, args.fps, cues,
+        capture_backend=args.capture_backend, camera_buffers=args.camera_buffers,
+        manual_exposure=args.manual_exposure, manual_gain=args.manual_gain,
+    )
     server = ThreadingHTTPServer((args.host, args.port), handler(guided))
     print(f"Guided capture: http://{args.host}:{args.port}", flush=True)
     try:

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added a replay-selectable one-frame directional reacquisition lane.
 #   2026-09-09 - Measured tracking-loss gaps and recovery inference separately.
 #   2026-09-09 - Kept Dashboard preview out of MediaPipe frame preparation.
 #   2026-09-08 - Added replay-only conditional search and precise tracking-path evidence.
@@ -14,8 +15,6 @@
 #   2026-09-05 - Added clear proven and experimental backend display names.
 #   2026-09-05 - Made legacy and Tasks tracker selection explicit for benchmarks.
 #   2026-09-04 - Logged hand-tracker startup stage durations.
-#   2026-09-02 - Added to PowerGlove Vision.
-#   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Used 3D world landmarks for camera finger curl.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -106,24 +105,48 @@ class _DirectionalSearchState:
     """Lead only the model input during sustained, aligned fast movement."""
 
     def __init__(self, gain: float = .5, min_speed: float = .45,
-                 alignment: float = .82, max_offset: float = .08) -> None:
+                 alignment: float = .82, max_offset: float = .08,
+                 recovery_frames: int = 0) -> None:
         self.gain = gain
         self.min_speed = min_speed
         self.alignment = alignment
         self.max_offset = max_offset
+        self.recovery_frames = recovery_frames
         self.history: list[tuple[float, float, float]] = []
         self.offset = (0.0, 0.0)
         self.active = False
+        self.recovery_frames_remaining = 0
+        self.phase = "inactive"
 
     def reset(self) -> None:
         """Discard search history so recovery starts from the full frame."""
         self.history.clear()
         self.offset = (0.0, 0.0)
         self.active = False
+        self.recovery_frames_remaining = 0
+        self.phase = "inactive"
+
+    def observe_missing(self) -> None:
+        """Carry a proven fast-search offset into one reacquisition frame."""
+        if self.phase == "recovery":
+            self.reset()
+            return
+        if (self.recovery_frames and self.active
+                and self.offset != (0.0, 0.0)):
+            self.recovery_frames_remaining = self.recovery_frames
+            self.phase = "recovery"
+            return
+        self.reset()
 
     def next_offset(self, timestamp: float) -> tuple[float, float]:
         """Return an input-only offset after two aligned fast observations."""
+        if self.recovery_frames_remaining:
+            self.recovery_frames_remaining -= 1
+            self.active = True
+            self.phase = "recovery"
+            return self.offset
         self.active = False
+        self.phase = "inactive"
         if len(self.history) < 3:
             return self.offset
         first, second, latest = self.history[-3:]
@@ -165,10 +188,12 @@ class _DirectionalSearchState:
             y *= scale
         self.offset = (x, y)
         self.active = True
+        self.phase = "lead"
         return self.offset
 
     def observe(self, x: float, y: float, timestamp: float) -> None:
         """Retain only enough unshifted coordinate history to prove direction."""
+        self.recovery_frames_remaining = 0
         self.history.append((x, y, timestamp))
         del self.history[:-3]
 
@@ -591,6 +616,7 @@ class MediaPipeTracker:
         directional_search_gain: float = .275,
         directional_search_min_speed: float = .5,
         directional_search_max_offset: float = .04,
+        directional_search_recovery_frames: int = 0,
         tracking_evidence: bool = False,
     ) -> None:
         if type(directional_search) is not bool:
@@ -604,10 +630,14 @@ class MediaPipeTracker:
                 raise ValueError(
                     f"directional search {label} must be between {lower} and {upper}"
                 )
+        if (type(directional_search_recovery_frames) is not int
+                or directional_search_recovery_frames not in (0, 1)):
+            raise ValueError("directional search recovery frames must be 0 or 1")
         self.directional_search = directional_search
         self._directional_search = _DirectionalSearchState(
             float(directional_search_gain), float(directional_search_min_speed),
             max_offset=float(directional_search_max_offset),
+            recovery_frames=directional_search_recovery_frames,
         )
         if type(tracking_evidence) is not bool:
             raise ValueError("tracking evidence must be a boolean")
@@ -752,14 +782,15 @@ class MediaPipeTracker:
         palm_detector_invoked, palm_detection_count = _palm_detector_evidence(result)
         if not detected:
             if self.directional_search:
-                self._directional_search.reset()
+                self._directional_search.observe_missing()
             diagnostics = self._tracking_telemetry.observe(
                 False, palm_detector_invoked, palm_detection_count,
                 timestamp=now, inference_ms=tracking_inference_ms,
             )
             diagnostics["frame_preparation"] = frame_preparation
-            diagnostics["directional_search_active"] = False
+            diagnostics["directional_search_active"] = self._directional_search.active
             diagnostics["directional_search_offset"] = search_offset
+            diagnostics["directional_search_phase"] = self._directional_search.phase
             if not annotate:
                 return TrackingResult(HandObservation(now, False), frame, diagnostics)
             return TrackingResult(
@@ -788,15 +819,16 @@ class MediaPipeTracker:
                 hand_score = 1.0
         if not _landmarks_valid(landmarks):
             if self.directional_search:
-                self._directional_search.reset()
+                self._directional_search.observe_missing()
             diagnostics = self._tracking_telemetry.observe(
                 False, palm_detector_invoked, palm_detection_count,
                 invalid_landmarks=True,
                 timestamp=now, inference_ms=tracking_inference_ms,
             )
             diagnostics["frame_preparation"] = frame_preparation
-            diagnostics["directional_search_active"] = False
+            diagnostics["directional_search_active"] = self._directional_search.active
             diagnostics["directional_search_offset"] = search_offset
+            diagnostics["directional_search_phase"] = self._directional_search.phase
             diagnostics["landmark_validation"] = "invalid"
             return TrackingResult(HandObservation(now, False), frame, diagnostics)
         palm_ids = (0, 5, 9, 13, 17)
@@ -850,6 +882,7 @@ class MediaPipeTracker:
         diagnostics["frame_preparation"] = frame_preparation
         diagnostics["directional_search_active"] = self._directional_search.active
         diagnostics["directional_search_offset"] = search_offset
+        diagnostics["directional_search_phase"] = self._directional_search.phase
         if self.diagnostics_enabled:
             diagnostics.update({
                 "tracker_backend": self.backend,

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered production-matched fast sweeps and malformed-frame retry.
 #   2026-09-05 - Kept development-script loading compatible with Python 3.7.
 #   2026-09-05 - Added coverage for user-paced guided benchmark capture.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -52,11 +53,16 @@ class VisionBenchmarkToolTests(unittest.TestCase):
         )
         self.assertIn("Live camera preview", guided.PAGE)
         self.assertIn("Record this step", guided.PAGE)
+        self.assertEqual(
+            [cue[0] for cue in guided.FAST_SWEEP_CUES],
+            ["neutral_start", "fast_xy", "neutral_finish"],
+        )
+        self.assertEqual(sum(cue[3] for cue in guided.FAST_SWEEP_CUES), 12)
 
     def test_guided_capture_releases_camera_when_final_step_finishes(self) -> None:
         """Completing capture must not leave the camera owned by the helper."""
         guided = load_script("guided-vision-benchmark.py")
-        guided.CUES = (("neutral", "Neutral", "Hold still", 0.01),)
+        custom_cues = (("neutral", "Neutral", "Hold still", 0.01),)
 
         class Frame:
             shape = (480, 640, 3)
@@ -67,7 +73,13 @@ class VisionBenchmarkToolTests(unittest.TestCase):
         class Camera:
             released = False
 
+            def __init__(self):
+                self.reads = 0
+
             def read(self):
+                self.reads += 1
+                if self.reads == 1:
+                    raise RuntimeError("camera marked the direct MJPEG frame invalid")
                 return True, Frame()
 
             def release(self):
@@ -100,8 +112,9 @@ class VisionBenchmarkToolTests(unittest.TestCase):
             capture.cv2 = Cv2()
             capture.output = Path(directory) / "guided.avi"
             capture.width, capture.height, capture.fps = 640, 480, 30.0
-            capture.cues = guided.CUES
+            capture.cues = custom_cues
             capture.lock = threading.Lock()
+            capture.release_lock = threading.Lock()
             capture.condition = threading.Condition(capture.lock)
             capture.index = 0
             capture.phase = "recording"
@@ -113,6 +126,7 @@ class VisionBenchmarkToolTests(unittest.TestCase):
             capture.timeline = 0.0
             capture.complete = False
             capture.closed = False
+            capture.camera_released = False
             capture.capture = Camera()
             capture.writer = Writer()
 
@@ -120,8 +134,13 @@ class VisionBenchmarkToolTests(unittest.TestCase):
 
             self.assertTrue(capture.complete)
             self.assertTrue(capture.capture.released)
+            self.assertGreaterEqual(capture.capture.reads, 2)
+            capture._release_camera()
+            self.assertTrue(capture.camera_released)
             self.assertIsNone(capture.writer)
-            self.assertTrue((Path(directory) / "guided.avi.json").is_file())
+            sidecar = Path(directory) / "guided.avi.json"
+            self.assertTrue(sidecar.is_file())
+            self.assertEqual(json.loads(sidecar.read_text())["duration_seconds"], .01)
 
     def test_staggered_tracker_gate_requires_latency_continuity_and_precision(self) -> None:
         """A faster result rate alone must not promote the experimental lane."""

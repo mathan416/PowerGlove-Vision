@@ -27,37 +27,49 @@ from powerglove_vision.transport import UdpSender
 
 
 class _Address:
+    """Provide a fixed local address without name-resolution work."""
+
     def current(self):
+        """Return the synthetic receiver address and no resolution error."""
         return "127.0.0.1", None
 
     def close(self):
+        """Match the production resolver lifecycle without external resources."""
         pass
 
 
 class _Socket:
+    """Count in-memory datagrams without using a network interface."""
+
     def __init__(self):
         self.sent = 0
 
     def setblocking(self, _enabled):
+        """Accept the sender's non-blocking configuration request."""
         pass
 
     def recvfrom(self, _size):
+        """Report that the synthetic receiver has no reply pending."""
         raise BlockingIOError
 
     def sendto(self, payload, _peer):
+        """Count and accept one encoded datagram entirely in memory."""
         self.sent += 1
         return len(payload)
 
     def close(self):
+        """Match the production socket lifecycle without external resources."""
         pass
 
 
 def _percentile(values: list[float], fraction: float) -> float:
+    """Return the nearest-rank percentile for one non-empty sample set."""
     ordered = sorted(values)
     return ordered[max(0, math.ceil(len(ordered) * fraction) - 1)]
 
 
 def _summary(values: list[float]) -> dict:
+    """Summarize the latency distribution used by each benchmark lane."""
     return {
         "p50": round(_percentile(values, 0.50), 4),
         "p95": round(_percentile(values, 0.95), 4),
@@ -80,6 +92,7 @@ def run_lane(iterations: int, statistics: bool, slow_publish_ms: float) -> dict:
     published = [0]
 
     def publish(_status, clear_frame=False):
+        """Simulate optional slow Dashboard work on its newest-only worker."""
         if slow_publish_ms:
             time.sleep(slow_publish_ms / 1000.0)
         published[0] += 1
@@ -135,6 +148,7 @@ def run_lane(iterations: int, statistics: bool, slow_publish_ms: float) -> dict:
 
 
 def main() -> int:
+    """Run the off/on/off benchmark lanes and emit their JSON report."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=100000)
     parser.add_argument("--slow-publisher-ms", type=float, default=5.0)

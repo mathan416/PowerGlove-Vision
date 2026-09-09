@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered optional one-frame directional reacquisition search.
 #   2026-09-09 - Covered capture-time tracking loss and recovery timing.
 #   2026-09-09 - Verified preview demand cannot change fused preparation.
 #   2026-09-07 - Covered landmark validity, palm anchors, and confidence semantics.
@@ -44,10 +45,9 @@ def pose_points(closed):
 
 class TrackerGeometryTests(unittest.TestCase):
     def test_directional_search_uses_measured_gentle_gain_by_default(self):
-        default = inspect.signature(
-            tracker_module.MediaPipeTracker
-        ).parameters["directional_search_gain"].default
-        self.assertEqual(default, .275)
+        parameters = inspect.signature(tracker_module.MediaPipeTracker).parameters
+        self.assertEqual(parameters["directional_search_gain"].default, .275)
+        self.assertEqual(parameters["directional_search_recovery_frames"].default, 0)
 
     def test_directional_search_requires_two_aligned_fast_intervals(self):
         state = _DirectionalSearchState(gain=.5, min_speed=.4, max_offset=.08)
@@ -82,6 +82,38 @@ class TrackerGeometryTests(unittest.TestCase):
         state.reset()
         self.assertEqual(state.next_offset(.20), (0.0, 0.0))
         self.assertFalse(state.active)
+
+    def test_directional_search_carries_one_proven_offset_after_a_miss(self):
+        state = _DirectionalSearchState(
+            gain=.5, min_speed=.4, max_offset=.08, recovery_frames=1,
+        )
+        for x, timestamp in ((.20, 0.0), (.23, .05), (.26, .10)):
+            state.observe(x, .50, timestamp)
+        expected = state.next_offset(.15)
+        state.observe_missing()
+        self.assertEqual(state.phase, "recovery")
+        self.assertEqual(state.next_offset(.20), expected)
+        self.assertEqual(state.phase, "recovery")
+        state.observe_missing()
+        self.assertEqual(state.next_offset(.25), (0.0, 0.0))
+        self.assertFalse(state.active)
+
+    def test_directional_search_does_not_carry_an_unproven_offset(self):
+        state = _DirectionalSearchState(gain=.5, min_speed=.4, max_offset=.08)
+        state.observe(.20, .50, 0.0)
+        state.observe_missing()
+        self.assertEqual(state.next_offset(.05), (0.0, 0.0))
+        self.assertEqual(state.phase, "inactive")
+
+    def test_directional_search_can_reproduce_immediate_reset_for_replay(self):
+        state = _DirectionalSearchState(
+            gain=.5, min_speed=.4, max_offset=.08, recovery_frames=0,
+        )
+        for x, timestamp in ((.20, 0.0), (.23, .05), (.26, .10)):
+            state.observe(x, .50, timestamp)
+        self.assertNotEqual(state.next_offset(.15), (0.0, 0.0))
+        state.observe_missing()
+        self.assertEqual(state.next_offset(.20), (0.0, 0.0))
 
     def test_directional_input_translation_preserves_shape(self):
         import cv2
@@ -242,6 +274,7 @@ class TrackerGeometryTests(unittest.TestCase):
             {"directional_search_gain": 1.01},
             {"directional_search_min_speed": -0.01},
             {"directional_search_max_offset": .151},
+            {"directional_search_recovery_frames": 2},
         ):
             tracker = object.__new__(tracker_module.MediaPipeTracker)
             with self.subTest(arguments=arguments), self.assertRaises(ValueError):

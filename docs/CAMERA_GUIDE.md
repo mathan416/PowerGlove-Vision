@@ -80,6 +80,12 @@ restores its own defaults.
 Glove Academy may warn about a dark hand or a much brighter background. These
 warnings are advisory and do not change camera exposure automatically.
 
+In one matched Kiyo Pro test at manual exposure `78` and gain `96`, reducing a
+bright window behind the player improved overall hand detection from 98.73% to
+99.57% and cut reacquisitions from two to one. Fast-sweep detection was already
+about 98.8% in both clips, and inference time did not change. Treat this as
+practical placement guidance rather than a universal camera setting.
+
 ## Reconnection and recovery
 
 The Controller looks for the saved camera whenever tracking starts. Supported

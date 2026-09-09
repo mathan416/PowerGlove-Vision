@@ -898,6 +898,39 @@ continuity and are unchanged. Future replay reports include each missing run's
 frame range and cue label so scripted departure cannot be confused with
 gameplay loss.
 
+### Current-settings reacquisition and lighting A/B — September 9, 2026
+
+A production-matched guided capture used Direct V4L2 with two camera buffers,
+640×480 MJPEG at a requested 30 fps, and the Controller's saved manual exposure
+`78` and gain `96`. The focused protocol records neutral, fast horizontal,
+vertical, and diagonal sweeps, then neutral again. Its user-paced preview does
+not record between cues. Brief malformed MJPEG frames are now retried for up to
+five seconds instead of terminating the diagnostic.
+
+The same private current-settings clip was used to isolate reacquisition
+choices. Search-area scale `2.25` outperformed wider `2.45` and `2.60` lanes.
+Tracking confidences `0.25`, `0.35`, and `0.45` tied on continuity; `0.45` did
+not meet the 10% p95 improvement gate. Palm-detection confidences from `0.35` to
+`0.60` tied at 98.82% fast-sweep detection. A one-frame carry of the last proven
+directional-search offset did not recover a moving-cue frame and worsened one
+p95 comparison, so production continues to reset search state immediately.
+
+The player then repeated the protocol with less window backlight while camera,
+exposure, gain, processing, and recognition settings remained fixed:
+
+| Lighting | Frames | Overall detection | Fast-sweep detection | Missing frames | Reacquisitions | Inference p50 / p95 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Strong window backlight | 237 | 98.73% | 98.82% | 3 | 2 | 35.46 / 48.75 ms |
+| Reduced backlight | 235 | 99.57% | 98.84% | 1 | 1 | 34.95 / 48.64 ms |
+
+The reduced-backlight clip's only miss was exactly at the transition into the
+fast cue; the remainder of that cue stayed detected. This single matched A/B
+supports the existing front-lighting guidance and shows useful continuity
+margin, but it does not justify a recognition-threshold change. The nearly
+identical inference timings are expected: lighting changes image evidence, not
+the amount of model computation. Private clips and per-frame reports remain
+outside Git; only these aggregate conclusions are retained in documentation.
+
 A camera-free palm-detector thread sweep on that clip compared 1, 2, and 4
 threads. All three retained 96.52% continuity. Their overall inference p50/p95
 was 3.74/4.68, 3.97/4.93, and 3.98/4.97 ms respectively on the development Mac.

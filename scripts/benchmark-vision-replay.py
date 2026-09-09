@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Compared immediate search reset with one-frame reacquisition carry.
 #   2026-09-09 - Reported capture-time tracking loss and recovery timing.
 #   2026-09-08 - Added fused-colour and fixed search-region comparison lanes.
 #   2026-09-07 - Retained temporary palm-anchor candidates for aggregate comparison.
@@ -152,7 +153,8 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
              directional_search: bool = False,
              directional_search_gain: float = .275,
              directional_search_min_speed: float = .5,
-             directional_search_max_offset: float = .04) -> dict:
+             directional_search_max_offset: float = .04,
+             directional_search_recovery_frames: int = 0) -> dict:
     """Replay one clip through a single tracker configuration and summarize it."""
     import cv2
     tracker = MediaPipeTracker(
@@ -172,6 +174,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         directional_search_gain=directional_search_gain,
         directional_search_min_speed=directional_search_min_speed,
         directional_search_max_offset=directional_search_max_offset,
+        directional_search_recovery_frames=directional_search_recovery_frames,
         tracking_evidence=True,
     )
     tracker.preview_enabled = preview
@@ -228,6 +231,9 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
                     result.diagnostics.get("last_recovery_inference_ms")
                     if result.diagnostics.get("tracking_recovered") else None
                 ),
+                "directional_search_phase": result.diagnostics.get(
+                    "directional_search_phase", "inactive"
+                ),
             })
             state = engine.update(result.observation)
             item = result.observation
@@ -244,6 +250,9 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
                 ),
                 "directional_search_offset": result.diagnostics.get(
                     "directional_search_offset", (0.0, 0.0)
+                ),
+                "directional_search_phase": result.diagnostics.get(
+                    "directional_search_phase", "inactive"
                 ),
             })
             feedback = engine.recognition_feedback()
@@ -328,6 +337,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         "directional_search_gain": directional_search_gain,
         "directional_search_min_speed": directional_search_min_speed,
         "directional_search_max_offset": directional_search_max_offset,
+        "directional_search_recovery_frames": directional_search_recovery_frames,
         "preview": "open" if preview else "closed", "frames": frame_index,
         "inference_ms": {"p50": percentile(inference, .50),
                          "p95": percentile(inference, .95),
@@ -393,6 +403,11 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--directional-search-gains", nargs="+", type=float)
     result.add_argument("--directional-search-min-speeds", nargs="+", type=float)
     result.add_argument("--directional-search-max-offsets", nargs="+", type=float)
+    result.add_argument(
+        "--directional-search-recovery-frames", nargs="+", type=int,
+        choices=(0, 1),
+        help="replay research only: compare immediate reset with one-frame recovery carry",
+    )
     return result
 
 
@@ -417,7 +432,8 @@ def main() -> int:
                    or args.frame_preparations or args.directional_search_modes
                    or args.directional_search_gains
                    or args.directional_search_min_speeds
-                   or args.directional_search_max_offsets or args.preview)
+                   or args.directional_search_max_offsets
+                   or args.directional_search_recovery_frames or args.preview)
     sizes = ((640, 480),) if args.quick or focused else ((640, 480), (512, 384))
     previews = ((False,) if args.preview in (None, "closed") else
                 (True,) if args.preview == "open" else (False, True))
@@ -437,6 +453,9 @@ def main() -> int:
     directional_gains = tuple(args.directional_search_gains or (.275,))
     directional_min_speeds = tuple(args.directional_search_min_speeds or (.5,))
     directional_max_offsets = tuple(args.directional_search_max_offsets or (.04,))
+    directional_recovery_frames = tuple(
+        args.directional_search_recovery_frames or (0,)
+    )
     for size in sizes:
         for preview in previews:
             for threads in threads_to_test:
@@ -453,7 +472,8 @@ def main() -> int:
                                                         for directional_gain in directional_gains:
                                                             for directional_speed in directional_min_speeds:
                                                                 for directional_offset in directional_max_offsets:
-                                                                    lanes.append(run_lane(
+                                                                    for recovery_frames in directional_recovery_frames:
+                                                                        lanes.append(run_lane(
                                                                         args.clip, "legacy", threads, size, preview,
                                                                         None, cues, confidence, roi_scale, roi_shift,
                                                                         palm_mode, detection_confidence, model_complexity,
@@ -462,7 +482,8 @@ def main() -> int:
                                                                         frame_times, effective_fps,
                                                                         directional_mode == "on", directional_gain,
                                                                         directional_speed, directional_offset,
-                                                                    ))
+                                                                        recovery_frames,
+                                                                        ))
             if args.model is not None and not args.quick:
                 lanes.append(run_lane(
                     args.clip, "tasks-video", 1, size, preview, args.model, cues,
