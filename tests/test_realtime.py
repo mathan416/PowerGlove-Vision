@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered Dashboard cadence and off-thread preview mirroring.
 #   2026-09-07 - Allowed slower CI runners to schedule the capture thread.
 #   2026-09-05 - Added low-latency camera and preview pipeline coverage.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -25,7 +26,7 @@ from powerglove_vision.diagnostic_trace import DiagnosticTrace
 
 from powerglove_vision.debug_server import SharedDebugState
 from powerglove_vision.realtime import (
-    LatestFrameCapture, LatestPreviewEncoder, LatestStatusPublisher,
+    DashboardCadence, LatestFrameCapture, LatestPreviewEncoder, LatestStatusPublisher,
     RollingPerformance,
 )
 from powerglove_vision.v4l2_capture import DirectV4L2Capture
@@ -77,11 +78,25 @@ class FakeCv2:
         self.drawn.append((resized, "resize", size))
         return resized
 
+    def flip(self, frame, axis):
+        mirrored = SimpleNamespace(shape=frame.shape)
+        self.drawn.append((mirrored, "flip", axis))
+        return mirrored
+
     def imencode(self, _extension, _frame, _options):
         return True, FakeJpeg(self.encoded)
 
 
 class RealtimePipelineTests(unittest.TestCase):
+    def test_dashboard_cadence_throttles_coordinates_but_publishes_events(self):
+        cadence = DashboardCadence(10)
+        self.assertTrue(cadence.due(1.0, ("tracking", False)))
+        self.assertFalse(cadence.due(1.01, ("tracking", False)))
+        self.assertTrue(cadence.due(1.02, ("tracking", True)))
+        self.assertFalse(cadence.due(1.03, ("tracking", True)))
+        self.assertTrue(cadence.due(1.13, ("tracking", True)))
+        self.assertTrue(cadence.due(1.14, ("tracking", True), force=True))
+
     def test_direct_camera_restores_controls_before_stream_close(self):
         source=DirectV4L2Capture.__new__(DirectV4L2Capture)
         source.fd=7;source.running=True;source.maps=[];events=[]
@@ -314,6 +329,22 @@ class RealtimePipelineTests(unittest.TestCase):
             resized = next(item[0] for item in cv2.drawn if item[1] == "resize")
             self.assertEqual(resized.shape, (240, 320, 3))
             self.assertIn((resized, "circle", (160, 120)), cv2.drawn)
+        finally:
+            encoder.close()
+
+    def test_preview_mirroring_runs_on_encoder_thread(self):
+        published = threading.Event()
+        encoder = LatestPreviewEncoder(lambda _payload: published.set())
+        cv2 = FakeCv2()
+        source = SimpleNamespace(shape=(480, 640, 3))
+        try:
+            self.assertTrue(encoder.submit(
+                source, "SUPER GLOVE BALL", (255, 255, 255), cv2,
+                {"landmarks": [(0.25, 0.5)]}, mirror=True,
+            ))
+            self.assertTrue(published.wait(1))
+            mirrored = next(item[0] for item in cv2.drawn if item[1] == "flip")
+            self.assertIn((mirrored, "circle", (160, 240)), cv2.drawn)
         finally:
             encoder.close()
 

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added transition-aware 10 Hz Dashboard cadence.
 #   2026-09-07 - Accepted driver timestamps and safely closed direct capture backends.
 #   2026-09-07 - Kept optional trace thread identifiers compatible with Python 3.7.
 #   2026-09-05 - Added latest-frame capture and asynchronous preview encoding.
@@ -73,6 +74,25 @@ class RollingPerformance:
                 "samples": len(ordered),
             }
         return summary
+
+
+class DashboardCadence:
+    """Throttle routine UI snapshots while publishing state transitions promptly."""
+
+    def __init__(self, hz: float = 10.0) -> None:
+        if hz <= 0:
+            raise ValueError("Dashboard cadence must be positive")
+        self.interval = 1.0 / hz
+        self.next_at = 0.0
+        self.last_signature = None
+
+    def due(self, now: float, signature, *, force: bool = False) -> bool:
+        """Return true for the next interval, a transition, or an explicit force."""
+        if force or now >= self.next_at or signature != self.last_signature:
+            self.next_at = now + self.interval
+            self.last_signature = signature
+            return True
+        return False
 
 
 class LatestFrameCapture:
@@ -182,6 +202,7 @@ class _PreviewJob:
     cv2: Any
     overlay: dict
     max_width: Optional[int]
+    mirror: bool
 
 
 class LatestPreviewEncoder:
@@ -210,13 +231,16 @@ class LatestPreviewEncoder:
         cv2: Any,
         overlay: Optional[dict] = None,
         max_width: Optional[int] = None,
+        mirror: bool = False,
     ) -> bool:
         """Queue a preview, replacing pending work rather than delaying gameplay."""
         with self._lock:
             if self._closed:
                 return False
             self._submitted += 1
-        job = _PreviewJob(frame, label, color, cv2, dict(overlay or {}), max_width)
+        job = _PreviewJob(
+            frame, label, color, cv2, dict(overlay or {}), max_width, bool(mirror)
+        )
         try:
             self._jobs.put_nowait(job)
             return True
@@ -243,7 +267,7 @@ class LatestPreviewEncoder:
                 return
             started = time.monotonic()
             try:
-                frame = job.frame
+                frame = job.cv2.flip(job.frame, 1) if job.mirror else job.frame
                 height, width = frame.shape[:2]
                 if job.max_width and width > job.max_width:
                     output_height = max(1, round(height * job.max_width / width))

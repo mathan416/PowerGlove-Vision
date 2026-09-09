@@ -267,6 +267,8 @@ cameras do not need to support both explicit rates. See the
 [Camera guide](CAMERA_GUIDE.md) before changing the reader, exposure, or gain.
 Dashboard's optional **Show statistics** switch is off by default; leave it off
 for the lightest gameplay page and enable it only when reading diagnostics.
+Controller transmission remains ahead of Dashboard housekeeping either way;
+opening the preview does not select a different MediaPipe preparation path.
 
 
 ## 6. Confirm startup and finish

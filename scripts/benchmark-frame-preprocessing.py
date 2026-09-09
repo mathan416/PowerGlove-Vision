@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Documented isolated preparation closures for source checks.
 #   2026-09-08 - Added fused and grayscale controls with streaming, frame-free reports.
 #   2026-09-07 - Added an output-paused mirror and buffer-reuse benchmark.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -143,6 +144,7 @@ def run(path: Path, maximum: int, jpeg_controls: bool = True) -> dict:
             lanes["current_flip_and_convert"].append(elapsed)
 
             def reused_prepare():
+                """Reuse caller-owned mirror and colour-conversion buffers."""
                 cv2.flip(frame, 1, dst=mirror_buffer)
                 cv2.cvtColor(mirror_buffer, cv2.COLOR_BGR2RGB, dst=rgb_buffer)
                 return rgb_buffer
@@ -167,6 +169,7 @@ def run(path: Path, maximum: int, jpeg_controls: bool = True) -> dict:
             lanes["no_mirror_convert_only"].append(elapsed)
 
             def grayscale_prepare():
+                """Build the grayscale comparison lane and expand it to RGB."""
                 gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 gray = cv2.flip(gray, 1)
                 return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
@@ -180,6 +183,7 @@ def run(path: Path, maximum: int, jpeg_controls: bool = True) -> dict:
                     raise RuntimeError("could not create synthetic JPEG control")
 
                 def color_decode_prepare():
+                    """Decode the synthetic colour JPEG and prepare MediaPipe RGB."""
                     decoded = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
                     if decoded is None:
                         raise RuntimeError("synthetic color JPEG decode failed")
@@ -189,6 +193,7 @@ def run(path: Path, maximum: int, jpeg_controls: bool = True) -> dict:
                 lanes["synthetic_jpeg_color_decode_prepare"].append(elapsed)
 
                 def grayscale_decode_expand():
+                    """Decode the grayscale JPEG control and expand it to RGB."""
                     gray = cv2.imdecode(encoded, cv2.IMREAD_GRAYSCALE)
                     if gray is None:
                         raise RuntimeError("synthetic grayscale JPEG decode failed")

@@ -7,7 +7,26 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Added
+
+- Added a camera-free post-inference benchmark with repeated statistics-off,
+  statistics-on, and statistics-off lanes. It measures established-session UDP
+  transmission, Dashboard housekeeping, full-iteration tails, and newest-only
+  publication under a deliberately slow status consumer.
+
 ### Changed
+
+- Kept Dashboard work out of the controller-critical boundary. Tuning state is
+  resolved before MediaPipe inference, gameplay state is sent before periodic
+  handshake maintenance, browser status preparation is limited to 10 Hz while
+  control transitions publish immediately, and preview mirroring no longer
+  selects a slower MediaPipe preparation path.
+- Bounded handshake reply processing to two datagrams per frame and replaced a
+  recursive controller-state copy with an explicit signed-wire mapping. These
+  changes preserve authenticated delivery and receiver-restart recovery.
+- Aligned the example Controller configuration with the shipped four-thread,
+  0.35 tracking-confidence, 2.25 search-area defaults and documented the
+  experimental direction-aware search switch.
 
 - Made Latest coordinate the only live Super Glove Ball native X/Y behavior.
   Removed the Dashboard movement selector and its restart endpoint; older saved
@@ -25,6 +44,15 @@ authoritative record for line-level and file-level history.
   below its controls.
 - Added a focused Camera guide covering automatic selection, frame rate, capture
   reader, exposure, lighting, reconnection, and troubleshooting.
+
+### Validation
+
+- Replayed the saved 402-frame sweep with Dashboard preview closed and open.
+  Both lanes used identical fused preprocessing and 96.52% detection continuity;
+  inference p95 was 4.70 ms closed and 4.65 ms open on the development Mac.
+- A 100,000-iteration synthetic soak kept signed UDP send p95 at 0.0179 ms in
+  all three off/on/off lanes. A deliberately 5 ms status consumer did not block
+  controller sends because pending Dashboard snapshots were replaced newest-only.
 
 ## [0.4.0-rc.1] - 2026-09-08
 

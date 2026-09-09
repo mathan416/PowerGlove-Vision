@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added a shallow signed-wire mapping for the latency-critical sender.
 #   2026-09-07 - Distinguished validated MediaPipe landmarks from handedness certainty.
 #   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
 #   2026-09-05 - Included neutral native hand-pose states in released samples.
@@ -116,6 +117,22 @@ class ControllerState:
         if token:
             result["token"] = token
         return result
+
+    def to_transport_dict(self) -> dict[str, Any]:
+        """Return the signed wire payload without recursive dataclass copying."""
+        return {
+            "sequence": self.sequence,
+            "timestamp": self.timestamp,
+            "profile": self.profile,
+            "detected": self.detected,
+            "confidence": self.confidence,
+            "calibrated": self.calibrated,
+            "axes": self.axes,
+            "dpad": self.dpad,
+            "buttons": self.buttons,
+            "fingers": self.fingers,
+            "events": self.events,
+        }
 
     @classmethod
     def released(

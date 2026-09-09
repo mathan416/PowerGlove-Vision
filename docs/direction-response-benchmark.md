@@ -329,7 +329,7 @@ of, model, transport, emulator, and display evidence.
 | Direct V4L2 at 640x480 MJPEG and 30 fps | Driver timestamp to newest-buffer dequeue | Worked on the Kiyo Pro; a representative fresh frame measured about 1.25 ms and 33.3 ms capture cadence | Exposure start, MediaPipe, transport, game, display |
 | OpenCV versus direct V4L2 | Alternate entrance to the same newest-frame slot | Direct capture passed on the test camera and remains optional with automatic fallback | Does not change the MediaPipe model or game mapping |
 | Full versus lean MediaPipe graph | Model output and resulting sample age after capture | Lean median inference improved only about 1.6% and p95 sample age worsened, so the full graph remained selected | Network, core, rendered response |
-| Dashboard closed versus open | Optional preview and statistics load around the Controller path | Preview uses latest-only work; routine statistics are omitted unless requested | Does not isolate camera exposure or display latency |
+| Dashboard closed versus open | Optional preview and statistics load around the Controller path | Preview uses the same fused MediaPipe preparation in both states; mirroring, drawing, and JPEG encoding are latest-only worker tasks | Does not isolate camera exposure or display latency |
 
 Functional live play, including a completed Super Glove Ball game, proves that
 the entire chain can work together. It does not assign delay to an individual
@@ -859,3 +859,30 @@ still appeared in `lsusb`. That run is excluded from the A/B table because it di
 not complete the comparison. It motivated the classified recovery request: a
 sustained stream failure can now request one guarded reset of the enrolled hub
 without interpreting USB enumeration alone as camera health.
+
+## Direction-aware search and post-inference boundary - September 9, 2026
+
+The optional direction-aware search retained the gentler selected settings:
+gain `0.275`, activation speed `0.50`, and maximum translated offset `0.04`.
+It remains an experimental Setup switch rather than an installation default.
+The saved 402-frame sweep produced 96.52% detection continuity with the switch
+enabled versus 95.52% without it, reduced counted reacquisitions from six to
+four, and retained the same nine-frame long missing run. This is useful but does
+not prove that every camera, distance, or background benefits.
+
+The same selected lane was replayed after separating preview preparation from
+MediaPipe. Dashboard-closed and Dashboard-open lanes both used the identical
+fused mirror-and-colour conversion and both retained 96.52% continuity.
+Inference p50/p95 was 3.78/4.70 ms closed and 3.77/4.65 ms open on the
+development Mac. Open-preview JPEG encoding measured 0.68/0.74 ms p50/p95 on
+its separate worker. These are replay computation times, not UNO Q or physical
+hand-to-display latency.
+
+A new camera-free synthetic benchmark then exercised 100,000 established-session
+controller states in statistics-off, statistics-on, statistics-off order. Signed
+UDP send p95 was 0.0179 ms in all three lanes. Full-iteration p95 was 0.0261,
+0.0435, and 0.0262 ms respectively. The statistics lane deliberately made its
+status consumer sleep 5 ms; newest-only replacement allowed controller sends to
+continue without waiting for that consumer. This establishes ordering and
+backpressure behavior on the development Mac. It excludes MediaPipe, real network
+drivers, RetroPie, the emulator, and the display.

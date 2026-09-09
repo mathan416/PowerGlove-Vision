@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Covered state-first maintenance and bounded reply processing.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-05 - Verified native compound hand poses survive transport.
 #   2026-09-02 - Added to PowerGlove Vision.
@@ -18,6 +19,7 @@ from socket import gaierror
 from unittest.mock import Mock, patch
 
 from powerglove_vision.model import ControllerState
+from powerglove_vision.controller_protocol import decode_message, encode_message
 from powerglove_vision.transport import UdpSender, decode_state, encode_state
 
 
@@ -79,6 +81,46 @@ class TransportTests(unittest.TestCase):
 
         self.assertTrue(sender.send(state))
         self.assertIsNone(sender.last_error)
+
+    @patch("powerglove_vision.transport.socket.socket")
+    def test_established_state_precedes_due_maintenance_hello(self, socket_factory):
+        sender = UdpSender("192.0.2.1", 55355, "secret")
+        self.addCleanup(sender.close)
+        udp_socket = socket_factory.return_value
+        udp_socket.recvfrom.side_effect = BlockingIOError
+        sender._peer = ("192.0.2.1", 55355)
+        sender.challenge = "a" * 32
+        sender._hello_at = 0.0
+
+        self.assertTrue(sender.send(ControllerState.released(1, 1.0, "off", True)))
+        kinds = [decode_message(call.args[0], "secret")["kind"]
+                 for call in udp_socket.sendto.call_args_list]
+        self.assertEqual(kinds, ["state", "hello"])
+
+    @patch("powerglove_vision.transport.decode_message", side_effect=ValueError("junk"))
+    @patch("powerglove_vision.transport.socket.socket")
+    def test_handshake_reply_work_is_bounded_per_frame(self, socket_factory, decode):
+        sender = UdpSender("192.0.2.1", 55355, "secret")
+        self.addCleanup(sender.close)
+        udp_socket = socket_factory.return_value
+        udp_socket.recvfrom.return_value = (b"junk", ("192.0.2.1", 55355))
+        sender._peer = ("192.0.2.1", 55355)
+        sender._hello_at = float("inf")
+
+        self.assertFalse(sender.send(ControllerState.released(1, 1.0, "off", True)))
+        self.assertEqual(decode.call_count, 2)
+
+    def test_transport_mapping_preserves_wire_fields_without_recursive_copy(self):
+        state = ControllerState.released(7, 1.5, "super_glove_ball", True)
+        wire = state.to_transport_dict()
+        self.assertNotIn("protocol", wire)
+        self.assertEqual(wire["sequence"], 7)
+        self.assertIs(wire["axes"], state.axes)
+        decoded = decode_message(encode_message(
+            "state", "secret", session="a" * 32,
+            challenge="b" * 32, state=wire,
+        ), "secret")
+        self.assertEqual(decoded["state"]["profile"], "super_glove_ball")
 
 
 if __name__ == "__main__":

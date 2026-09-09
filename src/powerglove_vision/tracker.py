@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Kept Dashboard preview out of MediaPipe frame preparation.
 #   2026-09-08 - Added replay-only conditional search and precise tracking-path evidence.
 #   2026-09-07 - Added an isolated image-landmark-only graph experiment.
 #   2026-09-07 - Added geometry validation and benchmarkable pose-stable palm anchors.
@@ -279,10 +280,11 @@ def _palm_detector_evidence(result: Any) -> tuple[bool | None, int | None]:
 def _prepare_tracker_frame(frame: Any, mirror: bool, preview: bool,
                            fused: bool,
                            cv2: Any, numpy: Any) -> tuple[Any, Any, str]:
-    """Prepare MediaPipe RGB input with one copy when no mirrored preview is due."""
-    if mirror and not preview and fused:
+    """Prepare MediaPipe RGB input without making Dashboard work part of inference."""
+    if mirror and fused:
         # Reverse screen X and BGR channel order in one contiguous allocation.
         # This is pixel-identical to flip followed by BGR-to-RGB conversion.
+        # The preview worker mirrors its own display copy when one is requested.
         rgb = numpy.ascontiguousarray(frame[:, ::-1, ::-1])
         display_frame = frame
         preparation = "fused-mirror-bgr-to-rgb"

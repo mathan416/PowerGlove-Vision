@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Prioritized state packets and bounded handshake maintenance work.
 #   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
 #   2026-09-06 - Implement approved player and connectivity refinements.
@@ -137,7 +138,7 @@ class UdpSender:
         try:
             # Drain only a bounded number of small handshake replies; input itself
             # is never queued. Accept replies only for our newest hello request.
-            for _ in range(8):
+            for _ in range(2):
                 try:
                     payload, source = self.socket.recvfrom(MAX_PACKET_BYTES + 1)
                 except BlockingIOError:
@@ -153,19 +154,26 @@ class UdpSender:
                 if (reply["kind"] == "challenge" and reply["session"] == self.session
                         and reply["request"] == self.request):
                     self.challenge = reply["challenge"]
-            if now >= self._hello_at:
+            if self.challenge is None and now >= self._hello_at:
                 self.request = uuid.uuid4().hex
                 self.socket.sendto(encode_message("hello", self.token,
                     session=self.session, request=self.request), peer)
-                self._hello_at = now + (1.0 if self.challenge else 0.25)
+                self._hello_at = now + 0.25
             if self.challenge is None:
                 self.last_error = "Waiting for the RetroPie controller handshake; update both computers if this persists."
                 return False
             send_started_ns = time.monotonic_ns() if self.trace and self.trace.enabled else 0
-            data = state.to_dict()
-            data.pop("protocol", None)
+            data = state.to_transport_dict()
             self.socket.sendto(encode_message("state", self.token, session=self.session,
                 challenge=self.challenge, state=data), peer)
+            # Renew an established handshake after publishing the time-critical
+            # gameplay sample. The receiver can reject the old challenge after
+            # a restart, while this maintenance hello obtains its replacement.
+            if now >= self._hello_at:
+                self.request = uuid.uuid4().hex
+                self.socket.sendto(encode_message("hello", self.token,
+                    session=self.session, request=self.request), peer)
+                self._hello_at = now + 1.0
             send_finished_ns = time.monotonic_ns() if send_started_ns else 0
             if send_started_ns:
                 self.trace.record(dict(event="send", session=session_key(self.session),

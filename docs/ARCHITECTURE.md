@@ -119,13 +119,19 @@ direction thresholds together and sets release to half of activation. It does
 not alter native reach, finger gestures, or game mappings. Re-centering clears
 saved reach spans because they belong to the old center.
 
-The worker also publishes essential state after inference. Changed controller
-state is submitted immediately to a separate latest-only publisher. When the
+The worker sends authenticated controller state immediately after recognition.
+Its tuning configuration and pause gates are captured before inference, so no
+tuning or Dashboard lock sits between completed inference and UDP transmission.
+For established sessions, the gameplay state precedes periodic handshake
+maintenance; reply decoding is bounded per frame. UI-visible control transitions
+are then submitted immediately to a separate latest-only publisher. When the
 browser's **Show statistics** preference is enabled, routine derived gesture and
 controller detail refreshes at about 10 Hz and rolling percentile summaries at
 2 Hz; hidden statistics do not incur that work. Browser video is
 submitted at most five times per second and only while a stream consumer is
-connected. A separate single-slot worker draws normalized landmarks, downsizes
+connected. MediaPipe always uses the same fused frame preparation whether the
+preview is open or closed. A separate single-slot worker mirrors the display
+copy, draws normalized landmarks, downsizes
 the gameplay preview to 320×240, performs JPEG encoding, and discards a
 superseded preview instead of delaying gameplay. Detailed joint and landmark
 diagnostics follow that preview cadence; finger geometry itself is calculated

@@ -10,7 +10,9 @@
   "camera_manual_exposure": 78,
   "camera_manual_gain": 96,
   "inference_threads": 4,
-  "tracking_confidence": 0.4,
+  "tracking_confidence": 0.35,
+  "tracking_roi_scale": 2.25,
+  "directional_search": false,
   "native_xy_mode": "latest",
   "matrix_attract": "on"
 }

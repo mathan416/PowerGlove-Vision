@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Verified preview demand cannot change fused preparation.
 #   2026-09-07 - Covered landmark validity, palm anchors, and confidence semantics.
 #   2026-09-05 - Covered stable backend identifiers and display names.
 #   2026-09-03 - Covered folded fingers, rotation, API variants, and menu recognition.
@@ -106,7 +107,7 @@ class TrackerGeometryTests(unittest.TestCase):
         self.assertIs(display, frame)
         self.assertEqual(lane, "fused-mirror-bgr-to-rgb")
 
-    def test_preview_preparation_retains_mirrored_bgr_frame(self):
+    def test_preview_does_not_change_fused_inference_preparation(self):
         import cv2
         import numpy as np
 
@@ -115,11 +116,11 @@ class TrackerGeometryTests(unittest.TestCase):
             frame, True, True, True, cv2, np,
         )
         expected_display = cv2.flip(frame, 1)
-        self.assertTrue(np.array_equal(display, expected_display))
+        self.assertIs(display, frame)
         self.assertTrue(np.array_equal(
             rgb, cv2.cvtColor(expected_display, cv2.COLOR_BGR2RGB),
         ))
-        self.assertEqual(lane, "preview-compatible")
+        self.assertEqual(lane, "fused-mirror-bgr-to-rgb")
 
     def test_nonmirrored_preparation_keeps_existing_contract(self):
         import cv2

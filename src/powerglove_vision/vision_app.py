@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Removed tuning locks from the inference-to-send boundary.
 #   2026-09-08 - Published frame-preparation and palm-reacquisition trace evidence.
 #   2026-09-08 - Added a same-descriptor manual-exposure full-pipeline test lane.
 #   2026-09-07 - Added optional direct V4L2 capture and portable exposure negotiation.
@@ -57,7 +58,7 @@ from .diagnostic_trace import session_key
 from .model import ControllerState
 from .profile_control import ActiveGameLease, ProfileCommandServer, ProfileRequest, read_token
 from .realtime import (
-    LatestFrameCapture, LatestPreviewEncoder, LatestStatusPublisher,
+    DashboardCadence, LatestFrameCapture, LatestPreviewEncoder, LatestStatusPublisher,
     RollingPerformance,
 )
 from .runtime_assets import ensure_hand_landmarker_model
@@ -79,6 +80,19 @@ def _controller_signature(state: ControllerState) -> tuple:
         tuple(sorted(state.buttons.items())),
         tuple(sorted(state.fingers.items())),
         tuple(state.events),
+    )
+
+
+def _dashboard_event_signature(state: ControllerState, *context) -> tuple:
+    """Identify UI-visible transitions while ignoring routine native X/Y travel."""
+    return (
+        state.profile,
+        state.detected,
+        state.calibrated,
+        tuple(sorted(state.dpad.items())),
+        tuple(sorted(state.buttons.items())),
+        tuple(state.events),
+        *context,
     )
 
 
@@ -698,6 +712,7 @@ def main() -> int:
     capture_skipped_total = 0
     last_inference_started = None
     last_controller_signature = None
+    dashboard_cadence = DashboardCadence(10.0)
     preview_at = 0.0
     vision_error: str | None = None
     launch_guard_until = 0.0
@@ -947,11 +962,15 @@ def main() -> int:
             preview_watched = shared.has_stream_clients()
             preview_due = preview_watched and inference_started >= preview_at
             tuning_active = shared.tuning.active()
+            needs_center = shared.tuning.needs_center()
+            # Resolve the immutable tuning view before inference. Dashboard
+            # readers may inspect tuning concurrently, but no tuning lock is
+            # allowed between completed inference and controller transmission.
+            engine.config = shared.tuning.configuration(engine_base_config)
             tracker.preview_enabled = preview_due
             # Landmark diagnostics are required by personalization, but the
             # ordinary camera preview already draws directly from the tracker.
             tracker.diagnostics_enabled = tuning_active
-            needs_center = shared.tuning.needs_center()
             native_xy_active = _native_xy_active(
                 engine, practice_mode, tuning_active, needs_center
             )
@@ -970,7 +989,6 @@ def main() -> int:
             tracking_finished_ns = time.monotonic_ns() if trace and trace.enabled else None
             if startup_timer is not None:
                 log_startup_stage("first inference", inference_started)
-            engine.config = shared.tuning.configuration(engine_base_config)
             state, native_source = _update_controller_state(
                 engine, result, native_xy_active
             )
@@ -990,8 +1008,8 @@ def main() -> int:
                 active_game_lease, profile_source
             )
             receiver_available = sender.send(state) if (
-                controller_enabled and not practice_mode and not shared.tuning.active()
-                and not shared.tuning.needs_center()
+                controller_enabled and not practice_mode and not tuning_active
+                and not needs_center
                 and controller_context_active and not launch_guard_active
             ) else False
             sent_at = time.monotonic()
@@ -1042,6 +1060,30 @@ def main() -> int:
                 controller_transition_age_ms=transition_age_ms,
             )
             statistics_requested = shared.statistics_requested()
+            dashboard_signature = _dashboard_event_signature(
+                state, receiver_available, controller_enabled,
+                controller_context_active, launch_guard_active,
+                practice_mode, tuning_active, native_source,
+            )
+            status_due = dashboard_cadence.due(
+                sent_at, dashboard_signature,
+                force=practice_mode or tuning_active,
+            )
+            if not status_due:
+                if preview_due:
+                    preview_at = time.monotonic() + 1.0 / max(1.0, args.preview_fps)
+                    preview_encoder.submit(
+                        result.frame,
+                        "PRACTICE" if practice_mode else (
+                            "CALIBRATING - hold still" if not engine.calibrated
+                            else vision_profile.replace("_", " ").upper()
+                        ),
+                        (0, 210, 255) if not engine.calibrated else (255, 255, 255),
+                        cv2, result.preview_overlay,
+                        None if practice_mode or tuning_active else 320,
+                        mirror=tracker.mirror,
+                    )
+                continue
             detail_refresh = (
                 practice_mode or tuning_active or
                 (statistics_requested and (
@@ -1195,6 +1237,7 @@ def main() -> int:
                 cv2,
                 result.preview_overlay,
                 None if practice_mode or tuning_active else 320,
+                mirror=tracker.mirror,
             )
     except KeyboardInterrupt:
         matrix.set_status(MatrixStatus.OFF)

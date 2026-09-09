@@ -335,20 +335,27 @@ With **Gestures off** selected, the camera stays closed. Choose an active profil
 open Play, or open Glove Academy to begin. Wait for the camera view before
 practicing or playing; starting immediately after a reboot can take longer.
 
-The live camera is diagnostic rather than part of controller output. **Show
+The live camera preview is diagnostic rather than part of controller output. **Show
 statistics** is off by default and can be enabled on Dashboard or Setup; the
 browser remembers the choice. When it is off, the Dashboard does not render or
 retain the optional controller, axes, finger, performance, or event panels, and
-the worker skips their derived housekeeping. When enabled, changed controls are
-published immediately while routine detail and percentile summaries refresh at
-about 10 Hz through a latest-only status worker.
+the worker skips their derived housekeeping. UI-visible control transitions are
+published immediately while routine detail refreshes at about 10 Hz through a
+latest-only status worker. Tuning locks are resolved before inference and no
+Dashboard lock is taken between completed inference and UDP transmission.
 Camera
 capture continuously keeps only the newest frame, and browser JPEG encoding
 runs on a separate latest-preview worker that may drop stale preview jobs.
-Gameplay preview annotation and encoding use a 320×240 copy while Academy and
+Preview mirroring, annotation, and encoding use a 320×240 copy during gameplay,
+while Academy and
 tuning keep the full preview. The preview remains capped at 5 fps. Closing Dashboard or Glove Academy while playing
 a RetroPie game still avoids optional drawing and encoding work; tracking and
 controller delivery continue.
+
+For repeatable engineering checks, `scripts/benchmark-post-inference.py` runs a
+camera-free signed-send and Dashboard-housekeeping soak. The saved-clip replay
+still measures MediaPipe recognition separately; neither headless tool claims
+physical hand-to-display latency.
 
 Strong light behind the player can leave the hand dark even when the room looks
 bright. Prefer light from the camera side or move bright windows out of the

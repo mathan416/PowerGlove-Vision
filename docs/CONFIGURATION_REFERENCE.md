@@ -131,11 +131,15 @@ the bottom of Setup. It is off by default and is stored in browser local storage
 not `device.json`. When disabled, the Dashboard still polls basic state needed
 for controls and connection feedback but does not read, render, or retain the
 optional controller, axes, finger, performance, and recent-event fields.
-The worker publishes changed controller state immediately. While statistics are
+The worker publishes UI-visible control transitions immediately. While statistics are
 shown, routine detailed feedback is refreshed at about 10 Hz and replaces any
 older pending Dashboard work in a one-item worker queue. Expensive rolling
 percentiles are refreshed at 2 Hz. With statistics hidden, those calculations
 are not performed; camera tracking and controller transmission are unchanged.
+Preview mirroring, annotation, resizing, and JPEG encoding run on the preview
+worker and do not select a different MediaPipe frame-preparation path. Tuning
+state is captured before inference, so browser status reads cannot hold a tuning
+lock between completed inference and the signed controller send.
 
 ### Comfortable movement range
 
@@ -510,6 +514,7 @@ A typical device configuration file contains the following fields:
   "inference_threads": 4,
   "tracking_confidence": 0.35,
   "tracking_roi_scale": 2.25,
+  "directional_search": false,
   "matrix_attract": "on"
 }
 ```
@@ -517,6 +522,10 @@ A typical device configuration file contains the following fields:
 `camera_fps` is `auto`, `30`, or `60`; Automatic prefers 30 and then accepts a
 usable driver rate. `inference_threads` accepts 1, 2, or 4. The 0.4.0 baseline
 uses four threads, `tracking_confidence` 0.35, and `tracking_roi_scale` 2.25.
+`directional_search` is an experimental boolean under **Pair with RetroPie**.
+When enabled, it applies the measured gentle next-frame search translation;
+disable it to use MediaPipe's ordinary search. It does not change reach,
+gestures, mappings, or Latest-coordinate output.
 Latest coordinate is the only live native X/Y behavior. Older
 `native_xy_mode` values are accepted in existing files but ignored.
 
@@ -1669,6 +1678,7 @@ they may still perform their normal work.
 | `scripts/record-vision-benchmark.py` | Optional camera, output, size, and frame-rate flags | Records a fixed 30-second, local-only cue sequence for near/far recognition, X/Y travel, jitter, depth, and recovery comparisons. It is never run by installation or used for training. |
 | `scripts/guided-vision-benchmark.py` | Optional camera, output, bind address, port, size, and frame-rate flags | Serves a temporary live-preview page for user-paced, per-step benchmark recording. Each selected step has a two-second countdown; pauses between steps are not recorded. The camera is released when capture completes. Output stays local and is not training data. |
 | `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, and optional Tasks model path | Replays the same full frames through MediaPipe Hands at 1, 2, and 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, and preview cost. |
+| `scripts/benchmark-post-inference.py` | Optional `--iterations` (default 100000), `--slow-publisher-ms` (default 5), and `--output` | Runs camera-free established-session signed UDP and Dashboard-housekeeping lanes in off/on/off order. Reports p50/p95/p99/max send, housekeeping, and full-iteration times; a slow newest-only status consumer proves Dashboard backpressure cannot queue controller input. |
 | `scripts/benchmark-native-motion-curve.py` | Version-2 vision replay JSON, optional lane index, and required new output path | Compares the former overshooting experiment, capped error curve, actual bounded speed curve, and unsmoothed coordinates. Sweeps 27 bounded candidates and reports jitter, lag, medium response, fast pickup, reversals, overshoot, continuity, and available source age without controlling a game. |
 | `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH` and `--seconds 5..30` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership, compares one/two/one V4L2 buffers, performs fixed-frame profiling, keeps images in memory, and prints progress plus the final numeric report to standard output. It does not change camera controls or player settings. |
 | `scripts/benchmark-palm-anchors.py` | Version-2 replay JSON and required new output path | Compares the five-point baseline, four-knuckle centroid, palm-polygon center, and weighted wrist/knuckle center for pose shift, travel retention, continuity, and reacquisition. It reports evidence but does not change the live anchor. |
