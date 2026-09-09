@@ -408,6 +408,13 @@ built locally from pinned GPLv2 source and verified on the cabinet. The ordinary
 release carries the patch and build recipe, not a compiled core. See the
 [native compatibility record](super-glove-ball-native.md).
 
+The optional project-owned `lr-powerglove-dot` core reads the same guarded
+native-state record but does not emulate a Power Glove packet or load a ROM. A
+fixed Ports launcher holds a renewable `super_glove_ball`/`lr-powerglove-dot`
+profile lease while the calibration display is open. The Controller therefore
+uses the production native X/Y path while the display isolates center, reach,
+edge clamping, tracking loss, and recovery from game logic.
+
 ## Interfaces and recovery
 
 Setup's four status markers share the matrix's cached app, console-service,
@@ -449,7 +456,7 @@ unavailable; this introduces no firmware RPC in the vision worker's frame path.
 | HTTP 8089, loopback | Supervisor/web proxy to worker | Internal status, frame and control requests |
 | UDP 55355 | PowerGlove Vision Controller to RetroPie | Signed controller states, session, challenge, and sequence; handshake replies return to the sender socket |
 | UDP 55356 | RetroPie to UNO relay to worker | Signed profile requests and acknowledgements |
-| `/run/powerglove/native-state` | Authenticated RetroPie receiver to custom core | Read-only, guarded latest sample for experimental native input |
+| `/run/powerglove/native-state` | Authenticated RetroPie receiver to native cores | Read-only, guarded latest sample for Super Glove Ball or the calibration display |
 | TCP 55357 | Pairing participants | Temporary one-time-code pairing service |
 | TCP 55358 | PowerGlove Vision Controller to RetroPie | Paired game-registry service |
 | Private Unix sockets | App resolver to host Avahi | Local hostname resolution |

@@ -89,6 +89,14 @@ If the script reports a failure, stop and follow its message. If `curl` is missi
 install it with `sudo apt-get install curl ca-certificates`, then retry. The
 installer checks compatibility before changing the application.
 
+The ordinary installer includes the tools useful during first setup and later
+maintenance: camera recovery, pairing and health checks, the optional calibration
+dot, a read-only dot report, aggregate vision-status reporting, movement-reach
+support, and emulator configuration. Research replays, protocol traces, soak
+tests, GPU experiments, and benchmark drivers are available from the source
+repository or the separate Engineering Tools download; they are not required to
+install, calibrate, play, back up a hand setup, or update the system.
+
 **Checkpoint:** Open `http://UNO-Q-NAME.local:8088/dashboard` in your browser.
 Dashboard should load. With gestures off, a closed camera is normal. Open
 **Play** or **Glove Academy** to check that your camera view and whole hand
@@ -141,6 +149,11 @@ not change the ROM's saved emulator: FCEUmm remains selected until you choose
 and leaves the tested joystick fallback unchanged. The build needs internet
 access and may take several minutes; no ROM is read or copied by the build.
 
+The installer separately offers **PowerGlove Calibration Test**. Accept it to
+build the small project-owned `lr-powerglove-dot` core and add a ROM-free entry
+to RetroPie's **Ports** list. This choice is optional and can be accepted on a
+later installer run. It does not select an emulator for any NES game.
+
 **Checkpoint:** The report confirms that receiver startup is configured.
 Pairing and live gameplay checks will still be listed as actions.
 
@@ -160,10 +173,9 @@ one-time-code method after both installers finish.
 5. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character code in **RetroPie one-time code**, then select **Pair with RetroPie**. This code is separate from the Controller approval PIN.
 6. Selecting **Pair with RetroPie** brings **Pairing in progress** into view while the request runs, followed by **Pairing complete** or an error with retry instructions. On success, the receiver was restarted and answered an authenticated controller handshake using the newly installed token; you can open Dashboard when ready. On RetroPie, `sudo systemctl status powerglove-receiver.service` should report active. Pairing does not arm controller output or prove that a game received input.
 
-The tested cabinet subsequently launched a game and responded to Controller
-input after this pairing flow, confirming the complete path in that installation.
-Repeat the game check after pairing a different system or changing its emulator
-configuration; the **Pairing complete** message itself remains a receiver-token check.
+After pairing, always complete the game check below. **Pairing complete** proves
+that the receiver accepted the shared key; the game check proves that your own
+camera, Controller, network, receiver, emulator, and game work together.
 
 ![Guided pairing starts with the saved console and a choice of one-time code or SSH password.](images/setup-pairing-method.png)
 
@@ -223,6 +235,14 @@ RetroPie as well as the Controller application.
 1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Center hand** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
 2. Select **Start controller**. This allows controller packets to reach RetroPie and creates the virtual input device.
 3. On RetroPie, run `grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices`. Look for the device name **PowerGlove Vision**. If it is missing, check pairing and the receiver service before changing emulator settings.
+
+For a visual calibration check, open **Ports → PowerGlove Calibration Test**.
+The utility selects native coordinate delivery only while it is open. The
+yellow dot should follow the hand; the green marker means the receiver has a
+fresh calibrated sample. A red X means tracking, calibration, pairing, or the
+sample's freshness is not ready. Adjust center or **Movement reach** on the
+Controller, then reopen or return to the test. Exit normally to release the
+test profile.
 4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **PowerGlove Vision**. Menu labels can vary with the RetroArch version.
 5. Check the D-pad, A, B, Start, and Select assignments. The installer provides an automatic mapping; adjust bindings only if needed, then save the controller profile or RetroArch configuration.
 6. Test movement and buttons in a game. If your cabinet merges multiple controllers, also configure that merger to accept the virtual device.
@@ -391,7 +411,7 @@ exact software and running firmware identities; older firmware may report unavai
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore

@@ -68,22 +68,26 @@ FCEUmm exercise of the shared camera-direction recognition when supplied.
 
 ### Direct-output dot test
 
-Use the installed `lr-powerglove-dot` core when game behavior makes native X/Y
-difficult to judge. It reuses the normal Controller camera, MediaPipe
-recognition, reach mapping, signed transport, receiver, and 64-byte native-state
-publication; the dot core replaces only the game's interpretation and ignores
-the ROM.
+Use the optional **PowerGlove Calibration Test** when game behavior makes native
+X/Y difficult to judge. The release installer can add it as a ROM-free game in
+RetroPie's **Ports** list. Its project-owned `lr-powerglove-dot` core reuses the
+normal Controller camera, MediaPipe recognition, per-player center and reach,
+signed transport, receiver, and 64-byte native-state publication. It replaces
+only the game's interpretation.
 
-1. Launch Super Glove Ball through the normal cabinet menu and select
-   `lr-powerglove-dot` for that launch. Keep the normal start/end hooks and
-   Controller game session.
-2. Select the intended player, start controller delivery, confirm calibration,
-   and close Dashboard preview. A yellow dot and `TRACKING` should follow the
-   hand. Leaving view must show `NO INPUT`; returning must restore the dot.
-3. Film the hand and display together at a verified high frame rate. Hold still
+1. Select the intended player, confirm calibration, and start controller
+   delivery on Dashboard.
+2. Launch **Ports → PowerGlove Calibration Test**. Its fixed launcher requests
+   the native test profile, renews that lease while RetroArch runs, and releases
+   it on exit. It does not need or inspect a ROM.
+3. A yellow dot should follow the hand. The small green marker means the sample
+   is detected, calibrated, coherent, and no more than 250 ms old. A red X means
+   no currently valid input. Leaving view must remove the dot; returning must
+   restore it.
+4. Film the hand and display together at a verified high frame rate. Hold still
    for five seconds, make three horizontal and three vertical movements with
    one-second holds, then test loss and recovery separately.
-4. Exit normally so receiver and core traces finalize. Repeat the same motion
+5. Exit normally so receiver and core traces finalize. Repeat the same motion
    with `lr-nestopia-powerglove` and unchanged player and camera settings.
 
 For guided software measurements, run `scripts/run-native-latency-session.py`
@@ -91,6 +95,11 @@ on the cabinet. It collects bounded, read-only native telemetry and does not
 launch a game, start camera output, or alter calibration. Synthetic publication
 proves transport behavior only; it is not evidence of physical hand-to-display
 latency.
+
+The test is deliberately narrow. It verifies native X/Y center, usable reach,
+edge clamping, stationary stability, loss, and recovery. It does not score
+gestures, tune thresholds, prove a particular game's packet interpretation, or
+separate camera, inference, network, emulator, and display latency by itself.
 
 ## Method
 

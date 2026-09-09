@@ -31,6 +31,7 @@ DEFAULT_SESSION_FILE = Path.home() / ".cache" / "powerglove-vision" / "active-ga
 KNOWN_CORES = {
     "fceumm_libretro.so": "lr-fceumm",
     "nestopia_powerglove_libretro.so": "lr-nestopia-powerglove",
+    "powerglove_dot_libretro.so": "lr-powerglove-dot",
 }
 
 

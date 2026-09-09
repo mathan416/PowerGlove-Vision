@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added a separate Engineering Tools release asset.
 #   2026-09-04 - Added versioned two-machine installation packages.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -68,6 +69,11 @@ def build(version, destination):
         target = destination / name
         shutil.copy2(str(ROOT / "scripts" / name), str(target))
         assets.append(target)
+    engineering_builder = runpy.run_path(str(ROOT / "scripts/build-engineering-tools-package.py"))
+    engineering = engineering_builder["build"](
+        version, destination / "PowerGlove-Vision-Engineering-Tools.zip"
+    )
+    assets.extend((engineering, engineering.with_suffix(engineering.suffix + ".sha256")))
     lines = []
     for path in assets:
         digest = hashlib.sha256()

@@ -82,8 +82,12 @@ def unpack(archive, destination, machine, version):
                          "retropie/runcommand-onstart-powerglove.sh",
                          "retropie/runcommand-onend-powerglove.sh",
                          "scripts/install-nestopia-powerglove.sh",
+                         "scripts/install-powerglove-dot.sh",
                          "scripts/configure-super-glove-ball-core.py",
                          "native/nestopia-powerglove/nestopia-powerglove.patch",
+                         "native/powerglove-dot/powerglove_dot.cpp",
+                         "src/powerglove_vision/dot_launcher.py",
+                         "retropie/bin/powerglove-dot",
                      ])
         for relative in required:
             if "PowerGlove-Vision/" + relative not in seen:

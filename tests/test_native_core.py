@@ -15,6 +15,9 @@
 """Check the reproducible native research spike without building over the network."""
 
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 import unittest
 
 
@@ -22,6 +25,22 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class NativeCoreTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("c++"), "C++ compiler required for calibration core")
+    def test_calibration_dot_core_is_standalone_and_buildable(self):
+        source = ROOT / "native/powerglove-dot/powerglove_dot.cpp"
+        text = source.read_text()
+        for evidence in (
+            'std::memcmp(data, "PGV1", 4)', "first_guard != last_guard",
+            "now - arrived > STALE_NS", "PROFILE_SUPER_GLOVE_BALL",
+            "RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME", "4.0f / 3.0f",
+        ):
+            self.assertIn(evidence, text)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "powerglove_dot_libretro.so"
+            subprocess.run(["c++", "-std=c++11", "-O2", "-fPIC", "-shared",
+                            str(source), "-o", str(output)], check=True)
+            self.assertGreater(output.stat().st_size, 0)
+
     def test_build_is_pinned_separate_and_uses_local_patch(self):
         script = (ROOT / "scripts/build-nestopia-powerglove.sh").read_text()
         self.assertIn("5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e", script)

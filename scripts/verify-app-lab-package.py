@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import runpy
 import stat
 from pathlib import Path, PurePosixPath
 from zipfile import BadZipFile, ZipFile
@@ -35,6 +36,7 @@ from zipfile import BadZipFile, ZipFile
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ARCHIVE = ROOT / "output" / "app-lab" / "PowerGlove-Vision-Uno-Q.zip"
 PACKAGE_ROOT = PurePosixPath("PowerGlove-Vision")
+ENGINEERING_FILES = runpy.run_path(str(ROOT / "scripts/package-inventory.py"))["ENGINEERING_FILES"]
 PUBLIC_PDF_NAMES = {
     "PowerGlove-Vision-Third-Party-Notices.pdf",
     "PowerGlove-Vision-Build-Your-Own.pdf",
@@ -65,18 +67,11 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/docs/CAMERA_GUIDE.md",
 
     "PowerGlove-Vision/src/powerglove_vision/diagnostic_trace.py",
-    "PowerGlove-Vision/scripts/run-native-latency-session.py",
-    "PowerGlove-Vision/scripts/analyze-latency-trace.py",
-    "PowerGlove-Vision/scripts/analyze-latency-video.py",
-    "PowerGlove-Vision/scripts/benchmark-diagnostic-overhead.py",
-    "PowerGlove-Vision/scripts/prepare-end-to-end-session.py",
-    "PowerGlove-Vision/scripts/manage-latency-traces.py",
-    "PowerGlove-Vision/scripts/analyze-motion-trace.py",
-    "PowerGlove-Vision/scripts/compare-motion-matrix.py",
-    "PowerGlove-Vision/scripts/analyze-motion-samples.py",
     "PowerGlove-Vision/scripts/measure-dot-input.py",
-    "PowerGlove-Vision/scripts/instrument-native-core.py",
-    "PowerGlove-Vision/native/nestopia-powerglove/diagnostic_trace.h",
+    "PowerGlove-Vision/scripts/install-powerglove-dot.sh",
+    "PowerGlove-Vision/native/powerglove-dot/powerglove_dot.cpp",
+    "PowerGlove-Vision/src/powerglove_vision/dot_launcher.py",
+    "PowerGlove-Vision/retropie/bin/powerglove-dot",
     "PowerGlove-Vision/src/powerglove_vision/controller_protocol.py",
     "PowerGlove-Vision/src/powerglove_vision/web_common.py",
     "PowerGlove-Vision/src/powerglove_vision/dashboard_web.py",
@@ -108,13 +103,6 @@ REQUIRED_FILES = {
     "PowerGlove-Vision/scripts/build-nestopia-powerglove.sh",
     "PowerGlove-Vision/scripts/install-nestopia-powerglove.sh",
     "PowerGlove-Vision/scripts/configure-super-glove-ball-core.py",
-    "PowerGlove-Vision/scripts/run-nestopia-powerglove-trace.py",
-    "PowerGlove-Vision/scripts/build-fceumm-benchmark.sh",
-    "PowerGlove-Vision/scripts/benchmark-direction-response.py",
-    "PowerGlove-Vision/scripts/record-vision-benchmark.py",
-    "PowerGlove-Vision/scripts/guided-vision-benchmark.py",
-    "PowerGlove-Vision/scripts/benchmark-vision-replay.py",
-    "PowerGlove-Vision/scripts/benchmark-native-motion-curve.py",
     "PowerGlove-Vision/native/nestopia-powerglove/nestopia-powerglove.patch",
     "PowerGlove-Vision/docs/super-glove-ball-native.md",
     "PowerGlove-Vision/docs/direction-response-benchmark.md",
@@ -210,6 +198,10 @@ def archive_errors(path: Path) -> list[str]:
                         errors.append("missing compact gesture image: " + compact)
             for name in sorted(REQUIRED_FILES - names):
                 errors.append(f"required package file is missing: {name}")
+            for relative in sorted(ENGINEERING_FILES):
+                name = "PowerGlove-Vision/" + relative
+                if name in names:
+                    errors.append(f"engineering-only file included in ordinary package: {name}")
             stamp = "PowerGlove-Vision/src/powerglove_vision/_build_info.json"
             if stamp in names:
                 try:

@@ -40,8 +40,20 @@ the repository host supports branch protection.
 
 ## Guide layout and audience
 
+Write the installation guide, gameplay guide, camera guide, troubleshooting guide,
+quick reference, and other user manuals for someone downloading PowerGlove Vision
+for the first time. Do not assume that reader has the project's camera, network
+names, calibration, saved players, or development devices. Lead them from a fresh
+installation through ordinary use, backups, maintenance, updates, and recovery.
+Label tested hardware as a recommendation or example rather than presenting it as
+the reader's configuration.
+
 Keep user guides focused on what people see and what they should do. Put timing,
-rendering, protocol, and other implementation details in the technical references.
+rendering, protocol, benchmark history, and other implementation details in the
+technical references. Technical guides may describe the project's current UNO Q,
+RetroPie system, tests, successful experiments, and rejected approaches when that
+evidence helps another developer reproduce or understand the result. Date or
+otherwise qualify measurements that may change.
 Use small contextual images in tables, place related images side by side, and
 avoid repeating large images when a nearby table already identifies the display.
 Keep headings, images, and captions together where practical when checking PDFs.
@@ -241,11 +253,19 @@ scripts/build-app-lab-package.sh
 scripts/verify-app-lab-package.py
 ```
 
-The App Lab installation ZIP must contain public source, configuration
-examples, documentation, the allowlisted public PDF guides, and the
+The ordinary App Lab installation ZIP must contain production source,
+configuration examples, documentation, the allowlisted public PDF guides, and the
 required custom Linux ARM64 MediaPipe wheel used by the Controller, verified Google model, Apache 2.0 license,
-and third-party notices. It must exclude private `data/`, tests, the cabinet quick-reference PDF, caches, and Git
-history. Do not force-add the generated ZIP to Git. GitHub Actions publishes a
+and third-party notices. It retains the calibration and maintenance support tools
+outside the engineering inventory in `scripts/package-inventory.py`, but excludes
+that engineering inventory as well as private `data/`, tests, the cabinet
+quick-reference PDF, caches, and Git history. Development deployments use
+`--include-engineering`.
+
+Build the optional version-matched research archive with
+`scripts/build-engineering-tools-package.py --version VERSION`. The normal
+release builder creates it alongside the two installers. Do not force-add generated
+ZIPs to Git. GitHub Actions publishes a
 short-lived verified ZIP artifact for each successful workflow run; tagged
 releases may attach a verified ZIP for long-term distribution.
 

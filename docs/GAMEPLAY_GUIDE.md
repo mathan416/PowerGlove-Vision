@@ -407,7 +407,7 @@ are supported; older version-1 sensitivity-only files are rejected.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore

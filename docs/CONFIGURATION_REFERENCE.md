@@ -822,7 +822,7 @@ Use Glove Academy to manage these settings.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
@@ -1257,7 +1257,24 @@ output/app-lab/PowerGlove-Vision-Uno-Q.zip
 
 The installation ZIP includes the verified model at `models/hand_landmarker.task`, its Apache 2.0 license, and third-party notices. It excludes private `data/`,
 caches, tests, Git metadata, and the cabinet-specific quick-reference PDF. It
-includes only the allowlisted public PDF editions used by Help. When an active profile first needs vision, the application installs the bundled Google Hand Landmarker model into its private cache and verifies its SHA-256 checksum. A download is attempted only if the bundle is absent.
+includes only the allowlisted public PDF editions used by Help. It also excludes
+engineering-only replay, protocol-trace, benchmark, GPU experiment, soak-test,
+and documentation-build drivers. The end-user support tools retained in the
+ordinary package are `calibrate-reach.py`, `measure-dot-input.py`,
+`measure-vision-status.py`, camera recovery and installation helpers, emulator
+configuration helpers, and the calibration-dot core source and launcher.
+
+`scripts/package-inventory.py` defines this boundary. The UNO Q development
+deployment passes `--include-engineering` to `scripts/application-payload.py`,
+and a RetroPie installation run directly from a development checkout sees the
+same complete source tree. This preserves the full repository toolset on the
+project test systems. Ordinary App Lab and RetroPie release archives omit it.
+`scripts/build-engineering-tools-package.py` creates a separate, version-matched
+source archive containing the research tools, shared Python modules, native
+source, configuration examples, licenses, and no ROMs, recordings, credentials,
+device data, cached models, or compiled cores.
+
+When an active profile first needs vision, the application installs the bundled Google Hand Landmarker model into its private cache and verifies its SHA-256 checksum. A download is attempted only if the bundle is absent.
 The model stays unopened while **Gestures off** is selected.
 
 ### Automated quality and package verification
@@ -1544,6 +1561,24 @@ Exit codes are `0` for acceptance, `2` for a timeout, and `3` for rejection.
 Acceptance means the request is queued; confirm the applied profile on Dashboard.
 Malformed arguments and file errors can also stop the command.
 
+### Run the calibration display
+
+When selected during RetroPie installation, **PowerGlove Calibration Test** is
+added to the user's **Ports** list. That menu entry runs the fixed
+`/opt/powerglove/bin/powerglove-dot` launcher; it accepts no ROM path or public
+options. The launcher starts the no-content `lr-powerglove-dot` core, requests
+`super_glove_ball` with emulator identity `lr-powerglove-dot`, renews a
+six-second native lease every two seconds, and requests Off when RetroArch
+exits. A crash naturally expires the lease.
+
+The installer builds the project-owned core from
+`native/powerglove-dot/powerglove_dot.cpp` on RetroPie. Upgrades rebuild it only
+when it is already installed; declining the first offer leaves no core or Ports
+entry and changes no games. The display accepts only a coherent `PGV1` version-1
+record for the native profile with detected and calibrated flags and an age no
+greater than 250 ms. It maps signed X/Y into an inset 4:3 field without adding
+smoothing, prediction, or a queue.
+
 ### Run the paired Games service
 
 The RetroPie installer starts this service automatically. Its installed command
@@ -1691,6 +1726,7 @@ they may still perform their normal work.
 | `scripts/build-nestopia-powerglove.sh` | Optional build-directory positional argument | Clones a pinned official Nestopia revision, applies the isolated research patch, and builds a separately named core. It does not install or promote the core. |
 | `scripts/build-fceumm-benchmark.sh` | Optional build-directory positional argument | Builds a pinned stock FCEUmm core in an isolated directory for the direction-response comparison. It does not install the core. |
 | `scripts/install-nestopia-powerglove.sh` | Optional build-directory positional argument | Run with `sudo` on RetroPie after exact-ROM validation. Builds and installs only `lr-nestopia-powerglove`, plus its upstream GPLv2 license and distribution note; stock Nestopia remains untouched. The normal RetroPie installer offers this step when a registered Super Glove Ball ROM is found. |
+| `scripts/install-powerglove-dot.sh` | Optional RetroPie prefix positional argument | Builds and installs the project-owned, ROM-free `lr-powerglove-dot` calibration core. The release installer offers it independently of Super Glove Ball and adds its fixed launcher to Ports. |
 | `scripts/configure-super-glove-ball-core.py` | `--rom PATH --mode MODE [--apply]`, where MODE is `native` or `fceumm` | Previews or atomically selects the custom core for one Super Glove Ball ROM. `--mode fceumm` is the explicit rollback. |
 | `scripts/run-nestopia-powerglove-trace.py` | Core, exact ROM, trace/state/scratch paths | Runs controlled native phases, records the ROM digest and packet evidence, and can save temporary validation frames. |
 | `scripts/benchmark-direction-response.py` | Paths to both cores and the exact Super Glove Ball ROM, scratch path, optional FCEUmm reference ROM, frame count, and JSON output | Runs matched-savestate activation and release comparisons for the same ROM in native and FCEUmm modes. The optional reference lane uses Gun Smoke. ROMs and scratch output remain outside the project. |
@@ -2357,7 +2393,7 @@ firmware. Never restore backup files wholesale over the filesystem root.
 
 ### Build and publish installation assets
 
-Generate the public PDFs and App Lab ZIP, then build both installer packages:
+Generate the public PDFs and App Lab ZIP, then build the release assets:
 
 ```sh
 python3 scripts/build-docs-pdf.py
@@ -2365,9 +2401,11 @@ bash scripts/build-app-lab-package.sh
 python3 scripts/build-install-packages.py --version dev-COMMIT
 ```
 
-`output/install/` contains both ZIPs, the two entry scripts, their shared package
-installer, and `SHA256SUMS`. Package identity and safe paths are validated both
-at build time and installation time. Private runtime files are excluded.
+`output/install/` contains the Controller and RetroPie ZIPs, the optional
+Engineering Tools ZIP, the two entry scripts, their shared package installer,
+checksum companions, and `SHA256SUMS`. Package identity and safe paths are
+validated at build time and installation time. Private runtime files are
+excluded.
 
 The **Build installation release** workflow accepts an existing source revision
 and a new release tag. Its default builds downloadable workflow artifacts only.

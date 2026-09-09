@@ -21,7 +21,7 @@ from powerglove_vision.gesture import GestureEngine
 from powerglove_vision.model import Calibration, HandObservation
 from powerglove_vision.tracker import TrackingResult
 from powerglove_vision.vision_app import (
-    _native_trace_fields, _native_xy_active, _native_xy_source,
+    _input_mode, _native_trace_fields, _native_xy_active, _native_xy_source,
     _update_controller_state, build_parser,
 )
 
@@ -73,6 +73,9 @@ class NativeMotionTests(unittest.TestCase):
         self.assertTrue(_native_xy_active(
             self.engine, False, False, False, "lr-nestopia-powerglove"
         ))
+        self.assertTrue(_native_xy_active(
+            self.engine, False, False, False, "lr-powerglove-dot"
+        ))
         self.assertFalse(_native_xy_active(
             self.engine, False, False, False, "lr-fceumm"
         ))
@@ -82,6 +85,7 @@ class NativeMotionTests(unittest.TestCase):
         self.assertFalse(_native_xy_active(self.engine, False, False, True))
         self.assertEqual(_native_xy_source(True), 'mediapipe')
         self.assertEqual(_native_xy_source(False), 'inactive')
+        self.assertEqual(_input_mode("super_glove_ball", "lr-powerglove-dot"), "native")
 
     def test_latest_coordinate_lane_is_unsmoothed(self):
         self.engine.update_native_motion(self.pose, self.pose, bounded=False)

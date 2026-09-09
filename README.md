@@ -187,6 +187,14 @@ cores appear in RetroPie's per-ROM launch menu; FCEUmm stays selected until you
 choose the native entry. The project does not distribute ROMs or a compiled
 Nestopia core in its ordinary installation archive.
 
+Ordinary release installers contain the production application plus a compact
+end-user support toolkit for calibration, status checks, camera recovery, and
+emulator setup. The full trace, replay, benchmark, GPU experiment, soak-test,
+and documentation-build suite remains in Git and is also available as a separate
+version-matched **PowerGlove Vision Engineering Tools** source archive. Development
+deployments retain those tools; normal users do not need them to install, play,
+calibrate, maintain, or update PowerGlove Vision.
+
 ## Controls
 
 Calibration records the resting hand position that the app treats as the
@@ -290,9 +298,11 @@ FCEUmm and the same global recognition settings.
 For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
 collects fresh timing observations without changing camera settings or controls.
 It keeps Controller software timing separate from network, emulator, and display delay.
-The optional [PowerGlove Vision Controller dot test](docs/direction-response-benchmark.md#direct-output-dot-test) reuses the cabinet's installed
-`lr-powerglove-dot` core to display the same receiver X/Y publication without
-game movement logic, with read-only input-range and validity measurements.
+The optional [PowerGlove Calibration Test](docs/direction-response-benchmark.md#direct-output-dot-test)
+appears as a ROM-free game in RetroPie's **Ports** list when selected during
+installation. Its separate `lr-powerglove-dot` core displays the receiver's
+native X/Y publication without Super Glove Ball's movement logic. This makes
+center, reach, edges, tracking loss, and recovery easier to see before playing.
 
 The [native latency session tools](docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
 guide stationary/movement windows, optionally correlate software traces, and
@@ -430,7 +440,7 @@ during learning mode, with cabinet input paused.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`iain-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore

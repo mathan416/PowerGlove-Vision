@@ -100,6 +100,18 @@ class RelayTests(unittest.TestCase):
 
 
 class HookTests(unittest.TestCase):
+    def test_calibration_core_has_explicit_native_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            process = Path(directory) / "404"
+            process.mkdir()
+            (process / "comm").write_text("retroarch\n")
+            (process / "cmdline").write_bytes(
+                b"retroarch\0-L\0/opt/retropie/libretrocores/lr-powerglove-dot/"
+                b"powerglove_dot_libretro.so\0"
+            )
+            self.assertEqual(retropie_hook._running_retroarch_emulator(Path(directory)),
+                             "lr-powerglove-dot")
+
     def test_running_core_detection_prefers_newest_retroarch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

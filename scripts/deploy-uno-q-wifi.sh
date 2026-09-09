@@ -99,7 +99,7 @@ fi
 readonly UNO_CONNECTION UNO_HEALTH_HOST UNO_HEALTH_AUTHORITY
 
 echo "Uploading PowerGlove Vision over Wi-Fi..."
-python3 "${SCRIPT_DIR}/application-payload.py" "${LOCAL_METADATA_DIR}"
+python3 "${SCRIPT_DIR}/application-payload.py" "${LOCAL_METADATA_DIR}" --include-engineering
 COPYFILE_DISABLE=1 tar -C "${LOCAL_METADATA_DIR}" -cf "${LOCAL_ARCHIVE}" .
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \

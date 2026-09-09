@@ -112,6 +112,19 @@ record is a 64-byte host interface; the game reads the ten-byte emulated packet.
 Their versioning and timing should not be confused with the signed network
 protocol used between the two computers.
 
+## Calibration display: native coordinates without a ROM
+
+The optional **PowerGlove Calibration Test** uses the same 64-byte receiver
+record but draws X/Y as a yellow dot on a 4:3 field. It is a separate,
+project-owned libretro core and appears under RetroPie's **Ports** list when
+chosen during installation. Its launcher selects `super_glove_ball` plus
+`lr-powerglove-dot` only for the lifetime of the test, so the Controller uses
+the native coordinate path without pretending that an NES ROM is running.
+
+Use it to check center, per-player movement reach, edge behavior, stationary
+jitter, brief loss, and recovery. It does not emulate the Power Glove packet,
+evaluate finger gestures, or replace live testing in Super Glove Ball.
+
 The build uses a pinned upstream revision and a maintained patch. Licensing,
 source provenance, and distribution details are in [Third-party notices](../THIRD_PARTY_NOTICES.md#modified-nestopia-libretro-core).
 Follow the [native installation instructions](super-glove-ball-native.md#compare-both-modes-from-emulationstation)

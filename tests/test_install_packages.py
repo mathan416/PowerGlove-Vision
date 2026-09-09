@@ -51,6 +51,19 @@ class PackageContentTests(unittest.TestCase):
             self.assertEqual(len(duplicates), 1)
             self.assertIn('assets/matrix/A.png', duplicates[0])
 
+    def test_engineering_tools_are_rejected_from_ordinary_package(self):
+        spec = importlib.util.spec_from_file_location(
+            'package_verifier_engineering', ROOT / 'scripts/verify-app-lab-package.py')
+        verifier = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(verifier)
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / 'package.zip'
+            with zipfile.ZipFile(archive, 'w') as output:
+                output.writestr(
+                    'PowerGlove-Vision/scripts/benchmark-vision-replay.py', 'engineering')
+            errors = verifier.archive_errors(archive)
+            self.assertTrue(any('engineering-only file included' in error for error in errors))
+
 
 class ArchiveTests(unittest.TestCase):
     def package(self, directory, machine='retropie', extra=None):
@@ -60,6 +73,7 @@ class ArchiveTests(unittest.TestCase):
                 dict(format=1, machine=machine, version='dev-test')))
             for name in ('scripts/setup-machine.py', 'scripts/installation-manifest.py',
                          'scripts/install-nestopia-powerglove.sh',
+                         'scripts/install-powerglove-dot.sh',
                          'scripts/configure-super-glove-ball-core.py',
                          'src/powerglove_vision/receiver.py',
                          'src/powerglove_vision/gesture.py',
@@ -72,9 +86,12 @@ class ArchiveTests(unittest.TestCase):
                          'THIRD_PARTY_NOTICES.md',
                          'retropie/powerglove-receiver.service',
                          'retropie/bin/powerglove-retropie-hook',
+                         'retropie/bin/powerglove-dot',
                          'retropie/runcommand-onstart-powerglove.sh',
                          'retropie/runcommand-onend-powerglove.sh',
-                         'native/nestopia-powerglove/nestopia-powerglove.patch'):
+                         'native/nestopia-powerglove/nestopia-powerglove.patch',
+                         'native/powerglove-dot/powerglove_dot.cpp',
+                         'src/powerglove_vision/dot_launcher.py'):
                 output.writestr('PowerGlove-Vision/' + name, 'test')
             if extra:
                 output.writestr(*extra)
@@ -249,6 +266,46 @@ class PreflightTests(unittest.TestCase):
 
 
 class GameSetupTests(unittest.TestCase):
+    def test_optional_dot_test_builds_and_adds_rom_free_ports_entry(self):
+        setup = installer.load_setup(ROOT)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+
+            def mapped(value):
+                path = Path(value)
+                if str(path).startswith(("/opt/retropie", "/home/pi")):
+                    return root / str(path).lstrip("/")
+                return path
+
+            prefix = mapped("/opt/retropie")
+            for path in (prefix / "libretrocores/lr-fceumm/fceumm_libretro.so",
+                         prefix / "emulators/retroarch/bin/retroarch"):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"binary")
+
+            def command(*args):
+                if args[0] == "bash" and "install-powerglove-dot.sh" in str(args[1]):
+                    target = prefix / "libretrocores/lr-powerglove-dot/powerglove_dot_libretro.so"
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(b"dot")
+
+            account = SimpleNamespace(pw_dir="/home/pi", pw_uid=os.getuid(), pw_gid=os.getgid())
+            with patch.object(setup, "Path", side_effect=mapped), \
+                 patch.object(setup, "BACKUPS", root / "backups"), \
+                 patch.object(setup, "registered_roms", return_value=[]), \
+                 patch.object(setup, "run", side_effect=command) as run, \
+                 patch.object(setup.pwd, "getpwnam", return_value=account), \
+                 patch.object(setup.os, "chown"), \
+                 patch.dict(os.environ, {"SUDO_USER": "pi"}):
+                setup.configure_games(lambda message: "Calibration Test" in message)
+
+            run.assert_any_call("apt-get", "install", "-y", "build-essential")
+            launcher = mapped("/home/pi/RetroPie/roms/ports/PowerGlove Calibration Test.sh")
+            self.assertEqual(launcher.read_text(),
+                             "#!/bin/sh\nexec /opt/powerglove/bin/powerglove-dot\n")
+            self.assertEqual((prefix / "configs/nes/powerglove-native.cfg").read_text(),
+                             'input_libretro_device_p1 = "517"\nvideo_threaded = "false"\n')
+
     def test_missing_emulator_offer_accept_and_decline(self):
         for accept in (True, False):
             setup = installer.load_setup(ROOT)
@@ -257,8 +314,8 @@ class GameSetupTests(unittest.TestCase):
                  patch.dict(os.environ, {'SUDO_USER': 'pi'}), \
                  patch.object(setup, 'registered_roms', return_value=[]), patch.object(setup, 'run') as command:
                 # Core, binary missing; Setup present; each package still missing until installed.
-                exists.side_effect = [False, True] + ([False, False] if accept else [])
-                setup.configure_games(lambda message: accept)
+                exists.side_effect = [False, True] + ([False, False] if accept else []) + [False]
+                setup.configure_games(lambda message: accept and "missing RetroArch/FCEUmm" in message)
             if accept:
                 self.assertEqual(command.call_count, 4)
                 self.assertIn('install_bin', command.call_args_list[0][0])
@@ -303,7 +360,7 @@ class GameSetupTests(unittest.TestCase):
                               side_effect=lambda **kwargs: real_temporary_directory(
                                   prefix=kwargs.get("prefix"), dir=str(root))), \
                  patch.object(setup, "run", side_effect=command) as run:
-                setup.configure_games(lambda _message: True)
+                setup.configure_games(lambda message: "lr-nestopia-powerglove" in message)
 
             run.assert_any_call("apt-get", "install", "-y", "git", "build-essential")
             self.assertIn("lr-nestopia-powerglove", system.read_text())

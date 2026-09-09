@@ -9,6 +9,15 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Added a separate, version-matched PowerGlove Vision Engineering Tools source
+  archive for protocol traces, replay analysis, benchmarks, GPU experiments,
+  soak tests, and maintainer build tools. It contains no ROMs, recordings,
+  credentials, device data, cached models, or compiled cores.
+- Added an optional, ROM-free **PowerGlove Calibration Test** to RetroPie's
+  Ports list. Its separately built `lr-powerglove-dot` core displays the same
+  guarded native X/Y used by Super Glove Ball, automatically holds and releases
+  a native test profile, and gives players a simple center, reach, edge,
+  tracking-loss, and recovery check without changing any game's emulator.
 - Added a camera-free post-inference benchmark with repeated statistics-off,
   statistics-on, and statistics-off lanes. It measures established-session UDP
   transmission, Dashboard housekeeping, full-iteration tails, and newest-only
@@ -25,6 +34,10 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Focused ordinary Controller and RetroPie release packages on production code
+  and end-user calibration, status, recovery, and emulator-setup tools. The full
+  engineering suite remains in Git and on development deployments but is no
+  longer installed for first-time users.
 - Made the active emulator part of RetroPie's authenticated, renewable game
   heartbeat. Only the exact `super_glove_ball` plus
   `lr-nestopia-powerglove` pairing selects native packets; FCEUmm and every
@@ -66,7 +79,7 @@ authoritative record for line-level and file-level history.
   color legend.
 - Put player naming controls before their explanation, summarized what each
   player and hand-setup backup contains, and named downloaded backups after the
-  player, such as `iain-powerglove-hand-setup.json`.
+  player, such as `alex-powerglove-hand-setup.json`.
 - Separated Camera from Connection and startup, moved pairing-key and live camera
   status text beside their related controls, and moved joystick dead-zone help
   below its controls.

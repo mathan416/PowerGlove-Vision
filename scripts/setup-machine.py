@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Added the optional ROM-free RetroPie calibration test.
 #   2026-09-09 - Install uhubctl for capability-gated camera-port power cycling.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-03 - Added repeatable host installers with backups and explicit health reports.
@@ -326,6 +327,29 @@ def configure_games(confirm):
     elif super_glove_ball_roms:
         print("INFO  Super Glove Ball will use FCEUmm; the optional native core was not installed.")
 
+    dot = prefix / "libretrocores/lr-powerglove-dot/powerglove_dot_libretro.so"
+    install_dot = dot.is_file()
+    if not install_dot:
+        install_dot = confirm(
+            "Install the optional PowerGlove Calibration Test in RetroPie's Ports menu? "
+            "It needs no ROM and displays native hand position as a dot"
+        )
+        if install_dot:
+            run("apt-get", "install", "-y", "build-essential")
+    if install_dot:
+        run("bash", SOURCE / "scripts/install-powerglove-dot.sh", prefix)
+        option = prefix / "configs/nes/powerglove-native.cfg"
+        write_file(option, 'input_libretro_device_p1 = "517"\nvideo_threaded = "false"\n')
+        user_name = os.environ.get("SUDO_USER", "")
+        if user_name:
+            account = pwd.getpwnam(user_name)
+            port = Path(account.pw_dir) / "RetroPie/roms/ports/PowerGlove Calibration Test.sh"
+            write_file(port, '#!/bin/sh\nexec /opt/powerglove/bin/powerglove-dot\n', 0o755)
+            os.chown(str(port), account.pw_uid, account.pw_gid)
+            print("PASS  PowerGlove Calibration Test is available in Ports.")
+        else:
+            print("ACTION  Add /opt/powerglove/bin/powerglove-dot to the intended user's Ports menu.")
+
     zap = runpy.run_path(str(SOURCE / "scripts/configure-bsb-zap.py"))
     for rom, profile in roms:
         if profile != "bad_street_brawler":
@@ -440,6 +464,14 @@ def check_retropie(report):
         report.check("Optional native Super Glove Ball core registered",
                      "lr-nestopia-powerglove" in system and option.is_file())
         report.check("Native core GPLv2 license installed", native.with_name("COPYING").is_file())
+    dot = Path("/opt/retropie/libretrocores/lr-powerglove-dot/powerglove_dot_libretro.so")
+    if dot.is_file():
+        user_name = os.environ.get("SUDO_USER", "")
+        account = pwd.getpwnam(user_name) if user_name else None
+        launcher = (Path(account.pw_dir) / "RetroPie/roms/ports/PowerGlove Calibration Test.sh"
+                    if account else None)
+        report.check("Optional PowerGlove Calibration Test installed",
+                     launcher is not None and launcher.is_file())
     try:
         roms = registered_roms()
         report.check("Registered ROMs found (supply your own games)", bool(roms), pending=True)

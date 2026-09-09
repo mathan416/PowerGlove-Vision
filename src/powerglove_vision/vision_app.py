@@ -540,7 +540,7 @@ def _native_xy_active(engine: GestureEngine, practice_mode: bool,
     """Use native coordinates only in ready Super Glove Ball gameplay."""
     return (
         engine.profile == "super_glove_ball"
-        and emulator == "lr-nestopia-powerglove"
+        and emulator in {"lr-nestopia-powerglove", "lr-powerglove-dot"}
         and engine.calibrated
         and not practice_mode
         and not tuning_active
@@ -556,10 +556,10 @@ def _native_xy_source(active: bool) -> str:
 
 
 def _input_mode(profile: str | None, emulator: str) -> str:
-    """Select native input only for the one explicitly supported core/profile pair."""
+    """Select native input only for a supported native core/profile pair."""
     return (
         "native" if profile == "super_glove_ball"
-        and emulator == "lr-nestopia-powerglove" else "joystick"
+        and emulator in {"lr-nestopia-powerglove", "lr-powerglove-dot"} else "joystick"
     )
 
 
