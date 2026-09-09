@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered capture-time tracking loss and recovery timing.
 #   2026-09-09 - Verified preview demand cannot change fused preparation.
 #   2026-09-07 - Covered landmark validity, palm anchors, and confidence semantics.
 #   2026-09-05 - Covered stable backend identifiers and display names.
@@ -206,6 +207,29 @@ class TrackerGeometryTests(unittest.TestCase):
         self.assertEqual(missing["tracking_path"], "hand_missing_path_unobservable")
         self.assertIsNone(missing["palm_detector_invoked"])
         self.assertEqual(missing["invalid_landmark_results_total"], 1)
+
+    def test_tracking_telemetry_times_loss_and_recovery_from_capture_timestamps(self):
+        telemetry = _TrackingTelemetry()
+        telemetry.observe(True, True, 1, timestamp=10.0, inference_ms=35.0)
+        first = telemetry.observe(False, None, None, timestamp=10.04, inference_ms=40.0)
+        second = telemetry.observe(False, True, 0, timestamp=10.08, inference_ms=72.0)
+        recovered = telemetry.observe(True, True, 1, timestamp=10.12, inference_ms=68.0)
+        self.assertAlmostEqual(first["current_tracking_loss_ms"], 40.0)
+        self.assertAlmostEqual(second["current_tracking_loss_ms"], 80.0)
+        self.assertTrue(recovered["tracking_recovered"])
+        self.assertAlmostEqual(recovered["recovery_gap_ms"], 120.0)
+        self.assertAlmostEqual(recovered["recovery_missing_span_ms"], 80.0)
+        self.assertAlmostEqual(recovered["last_recovery_inference_ms"], 68.0)
+        self.assertAlmostEqual(recovered["longest_tracking_loss_ms"], 80.0)
+
+    def test_tracking_telemetry_handles_missing_timestamps_without_inventing_latency(self):
+        telemetry = _TrackingTelemetry()
+        telemetry.observe(True, None, None)
+        missing = telemetry.observe(False, None, None)
+        recovered = telemetry.observe(True, None, None)
+        self.assertIsNone(missing["current_tracking_loss_ms"])
+        self.assertTrue(recovered["tracking_recovered"])
+        self.assertIsNone(recovered["recovery_gap_ms"])
 
     def test_tracking_roi_scale_is_bounded_before_graph_construction(self):
         tracker = object.__new__(tracker_module.MediaPipeTracker)

@@ -339,7 +339,10 @@ It also explains compatibility, package building, backups, and recovery.
 - **Camera missing:** open Glove Academy and wait for the camera view. The Controller
   host helper automatically enrolls the single UVC camera and its parent hub on
   first successful use, even if no camera was connected during installation.
-  After enrollment it makes one guarded reset attempt during a sustained outage.
+  After enrollment it makes one guarded recovery attempt during a sustained
+  outage. Supported hubs power-cycle only the camera port; other hubs use the
+  identity-checked whole-hub fallback. Success requires a real camera frame, not
+  merely a device returning to USB.
   If it remains missing, reconnect or power-cycle the camera and check the powered
   hub and cable; USB Ethernet may briefly disconnect during recovery.
 - **No controller in RetroArch:** finish pairing, select Start controller, and

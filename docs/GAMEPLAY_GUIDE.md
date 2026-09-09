@@ -183,8 +183,11 @@ once-per-round availability. If Zap does not work, check the
 complete wall of tiles, and follow the revealed arrows through the maze.
 
 **Nestopia (PowerGlove)** means the custom `lr-nestopia-powerglove` core.
-Use the controls below for your selected emulator; FCEUmm is the fallback.
-The V sign sends Start in both modes.
+Use the controls below for the emulator that actually starts; FCEUmm is the
+fallback. The RetroPie launch hook reports that running core automatically.
+Only Super Glove Ball running in `lr-nestopia-powerglove` uses native input.
+Starting the same ROM in FCEUmm—or in any other or unknown core—keeps joystick
+output active for the whole session. The V sign sends Start in both modes.
 
 | Do this | See it | Controller result |
 | --- | --- | --- |
@@ -201,8 +204,8 @@ With FCEUmm, use Select to take the exit. Do not rely on Select in
 Nestopia (PowerGlove); that action remains unconfirmed. **Latest coordinate** is
 the native movement default. It follows each newest valid palm point directly
 during continuous tracking and waits one fresh result only for a contradictory
-or unusually distant non-forward reacquisition. **Bounded speed curve** remains
-available for comparison. Continuous native movement is playable and has been
+or unusually distant non-forward reacquisition. Continuous native movement is
+playable and has been
 substantially tightened, although synchronized physical latency measurement is
 still pending. The
 [native compatibility record](super-glove-ball-native.md) contains the test

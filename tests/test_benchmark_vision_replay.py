@@ -27,7 +27,11 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
         samples = [
             {"path": "landmark_continuation", "ms": 10, "detected": True},
             {"path": "hand_missing_path_unobservable", "ms": 20, "detected": False},
-            {"path": "palm_reacquisition", "ms": 30, "detected": True},
+            {
+                "path": "palm_reacquisition", "ms": 30, "detected": True,
+                "recovery_gap_ms": 66.7, "recovery_missing_span_ms": 33.3,
+                "recovery_inference_ms": 30,
+            },
             {"path": "palm_detection_no_valid_hand", "ms": 40, "detected": False},
             {"path": "palm_detection_no_valid_hand", "ms": 50, "detected": False},
             {"path": "palm_detection_no_valid_hand", "ms": 60, "detected": False},
@@ -37,6 +41,9 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
         self.assertEqual(summary["short_missing_runs"], [1])
         self.assertEqual(summary["long_missing_runs"], [4])
         self.assertEqual(summary["paths"]["palm_detection_no_valid_hand"]["p95"], 70)
+        self.assertEqual(summary["recovery_gap_ms"]["p50"], 66.7)
+        self.assertEqual(summary["recovery_missing_span_ms"]["p50"], 33.3)
+        self.assertEqual(summary["recovery_inference_ms"]["p50"], 30)
 
     def test_shift_parser_accepts_research_candidates(self):
         self.assertEqual(BENCHMARK.parse_roi_shift("0.05,-0.10"), (.05, -.10))

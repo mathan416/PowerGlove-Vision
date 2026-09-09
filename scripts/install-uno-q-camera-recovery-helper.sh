@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Installed uhubctl for supported per-port camera power cycling.
 #   2026-09-05 - Added a camera-only installer separate from shutdown privileges.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -49,7 +50,9 @@ scp "${SSH_OPTIONS[@]}" "${PROJECT_DIR}/uno-q/powerglove-camera-recovery.py" "${
 scp "${SSH_OPTIONS[@]}" "${PROJECT_DIR}/uno-q/powerglove-camera-recovery.conf" "${UNO_TARGET}:${REMOTE_TMPFILES_CONFIG}"
 
 ssh -t "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "sudo install -m 0644 '${REMOTE_PATH_UNIT}' /etc/systemd/system/powerglove-camera-recovery.path && \
+  "sudo apt-get update && \
+   sudo apt-get install -y uhubctl && \
+   sudo install -m 0644 '${REMOTE_PATH_UNIT}' /etc/systemd/system/powerglove-camera-recovery.path && \
    sudo install -m 0644 '${REMOTE_SERVICE_UNIT}' /etc/systemd/system/powerglove-camera-recovery.service && \
    sudo install -m 0755 '${REMOTE_HELPER}' /usr/local/libexec/powerglove-camera-recovery && \
    sudo install -m 0644 '${REMOTE_TMPFILES_CONFIG}' /etc/tmpfiles.d/powerglove-camera-recovery.conf && \

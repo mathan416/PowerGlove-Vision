@@ -389,9 +389,12 @@ The built-in `qcom-venus-encoder` and `qcom-venus-decoder` video nodes are not
 webcams. A camera missing from the USB device list is below MediaPipe and OpenCV;
 preloading cannot resolve that condition. The installed host helper waits for a
 sustained outage before making one guarded reset of the camera's last observed
-parent hub. It disables autosuspend whenever the single UVC camera is present.
-If that one attempt does not restore USB enumeration, check the powered hub,
-cable, and camera connection.
+parent connection. It disables autosuspend whenever the single UVC camera is
+present. A `uhubctl`-reported switchable hub receives an exact per-port power
+cycle; otherwise the identity-checked whole-hub driver rebind is used. USB
+enumeration is only an intermediate result. The supervisor confirms recovery
+only when the restarted worker reads a frame. If that one attempt does not
+restore streaming, check the powered hub, cable, and camera connection.
 
 ### Glove Academy, calibration, and live readings
 
@@ -651,6 +654,14 @@ or exits.
 | `token_file` | Protected shared-token file. Keep the token out of this JSON file. |
 | `registry` | Active ROM-to-profile mapping. |
 | `timeout` | Seconds to wait for each acknowledgement. The hook retries up to three times and never prevents a game from launching. |
+
+After RetroArch starts, the detached session monitor detects the core from the
+running process and includes its normalized name in every authenticated profile
+renewal. The Controller derives `input_mode` from that observed core: only
+`super_glove_ball` with `lr-nestopia-powerglove` is `native`; FCEUmm, another
+core, or an unknown value is `joystick`. Changing cores clears retained output
+before the new mode is accepted. Dashboard and worker status expose both the
+reported `emulator` and resulting `input_mode` for troubleshooting.
 
 Validate changes before launching a game:
 
@@ -1135,18 +1146,26 @@ boot-time readiness rule:
 | `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/powerglove-system-shutdown.conf` | Recreates the unprivileged readiness marker at boot or after application replacement |
 
 The standard installer adds `powerglove-camera-recovery.path`, its fixed-purpose
-service, `/usr/local/libexec/powerglove-camera-recovery`, and a tmpfiles rule.
+service, `/usr/local/libexec/powerglove-camera-recovery`, the Debian `uhubctl`
+package, and a tmpfiles rule.
 Installation does not require a camera. If exactly one UVC camera is connected,
 the helper records it and its nearest external parent hub immediately; otherwise
 enrollment is deferred until vision first sees the camera successfully. The
 root-owned `/etc/powerglove-camera-recovery.json` allowlist stores the observed
-camera identity plus the hub identity and physical USB path. A later healthy
+camera identity plus the hub identity, physical USB path, and direct camera port.
+Version-1 enrollment files without a port remain valid and use the whole-hub
+fallback until the next healthy sighting upgrades them. A later healthy
 sighting updates the association automatically if the camera has moved.
 
 During an outage the unprivileged application can request only the helper's
-fixed operation. It validates the stored hub path and identity before resetting
-that hub, waits for one UVC camera to enumerate, updates the allowlist, and sets
-the camera and hub power policies to `on`. It never guesses among hubs. A
+fixed operation. It validates the stored hub path and identity first. When
+`uhubctl` lists the exact hub as per-port switchable, the helper cycles only the
+enrolled camera port; it never uses `--force`. If capability probing or cycling
+fails, it rebinds the allowlisted whole hub. It then requires the same camera
+and hub identities to enumerate and sets their power policies to `on`. The host
+result means only that this USB action completed; the supervisor declares
+recovery only after its restarted worker receives a frame. It never guesses
+among hubs. A
 root-owned 60-second cooldown and the application's one-request-per-outage rule
 prevent reset loops. Resetting the hub can briefly interrupt USB Ethernet and
 any other devices attached to it. Before the first successful camera sighting,
@@ -1310,9 +1329,9 @@ not automatically migrate active configuration.
 | `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/` | Boot-time shutdown readiness marker |
 | `uno-q/powerglove-camera-recovery.path` | `/etc/systemd/system/` | Watches the fixed camera-recovery request |
 | `uno-q/powerglove-camera-recovery.service` | `/etc/systemd/system/` | Runs the bounded camera recovery action |
-| `uno-q/powerglove-camera-recovery.py` | `/usr/local/libexec/powerglove-camera-recovery` | Enrolls one UVC camera and resets only its last observed, identity-checked parent hub |
+| `uno-q/powerglove-camera-recovery.py` | `/usr/local/libexec/powerglove-camera-recovery` | Enrolls one UVC camera; cycles its exact port on a capability-confirmed hub or uses the identity-checked whole-hub fallback |
 | `uno-q/powerglove-camera-recovery.conf` | `/etc/tmpfiles.d/` | Boot-time camera-recovery readiness marker |
-| Runtime camera allowlist | `/etc/powerglove-camera-recovery.json` | Root-owned camera identity and last successfully observed hub path and identity |
+| Runtime camera allowlist | `/etc/powerglove-camera-recovery.json` | Root-owned camera identity plus last successfully observed hub path, identity, and direct camera port |
 | `.github/workflows/quality.yml` | GitHub Actions | Automated tests and release verification |
 | `app.yaml` | PowerGlove Vision Controller application root | App Lab |
 | `sketch/sketch.yaml` | PowerGlove Vision Controller application sketch directory | Arduino build system |

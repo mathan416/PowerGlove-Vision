@@ -265,7 +265,13 @@ The same responsive mapping remains the explicit FCEUmm fallback. Headless tests
 using the same exact ROM show that both paths visibly activate and release every
 direction by frame 3. Their semantics differ: FCEUmm supplies held digital
 directions, while the native core supplies an absolute target position. The
-native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
+RetroPie launch hook reports the core that actually started on every signed
+profile heartbeat. Native input is selected only for the exact pairing of
+`super_glove_ball` and `lr-nestopia-powerglove`; choosing FCEUmm from the
+per-ROM launch menu keeps that entire session in joystick mode. Any other or
+unknown core also falls back safely to joystick output.
+
+The native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
 open/fist/index packet, and safe-neutralization tests. Live full-game play
 confirms grab/throw, index fire, and fist-plus-forward Power Punch. Native
 movement uses per-player reach calibration and the selected MediaPipe response
@@ -388,10 +394,14 @@ actual parent USB hub in a root-owned allowlist, disables autosuspend for both,
 and automatically updates that association if the camera is later moved to a
 different hub. If the camera remains missing for 15 seconds while vision is
 requested, PowerGlove Vision makes one guarded recovery attempt for that outage
-by resetting only the last successfully observed hub. This can briefly interrupt
-USB Ethernet; Wi-Fi remains available. If a camera has never been seen—or does
-not return after that attempt—reconnect or power-cycle it and check the hub and
-cable rather than repeatedly resetting it.
+with the narrowest proven action. If `uhubctl` confirms that the enrolled hub
+supports per-port power switching, only the camera's recorded port is power
+cycled. Otherwise the helper falls back to rebinding the identity-checked parent
+hub, which can briefly interrupt USB Ethernet; Wi-Fi remains available. USB
+reappearance means only that the host action finished. Recovery is confirmed
+only after the restarted vision worker reads a camera frame. If a camera has
+never been seen—or does not produce a frame after that attempt—reconnect or
+power-cycle it and check the hub and cable rather than repeatedly resetting it.
 
 **Stop controller** pauses delivery while leaving active tracking available.
 **Gestures off** closes the camera. **Shutdown** requests a Linux halt, but

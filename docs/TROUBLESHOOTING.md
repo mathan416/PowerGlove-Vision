@@ -48,8 +48,11 @@ can take longer than switching between active profiles.
 If no camera appears, check the powered USB hub, cable, and camera connection.
 On the Controller host, `lsusb` should show the camera. If it is absent there,
 the problem is below hand recognition. The documented helper attempts one
-controlled recovery for the enrolled camera; repeated setting changes will not
-repair a disconnected USB device. See [Camera selection](CONFIGURATION_REFERENCE.md#camera-selection).
+controlled recovery for the enrolled camera. A hub that proves per-port power
+support cycles only the saved camera port; other hubs use the guarded whole-hub
+fallback. The Controller does not report success until it reads a real frame.
+Repeated setting changes will not repair a disconnected USB device. See
+[Camera selection](CONFIGURATION_REFERENCE.md#camera-selection).
 
 ## The camera works but the hand is not recognized
 
@@ -111,8 +114,9 @@ change native Super Glove Ball X/Y travel or cure processing latency. Use reach
 controls under **Glove Academy → Tune gestures → Movement reach** for native
 screen coverage and the latency procedure below for delay. Smaller reach values
 need less physical hand travel. **Latest coordinate** is the tested default;
-try **Bounded speed curve** only as a comparison when diagnosing smoothness.
-Both modes clamp at the saved reach edges. If the Robo-Glove still jumps after
+it is the only live native movement behavior and clamps at the saved reach
+edges. Historical bounded-curve replay is an engineering tool, not a Dashboard
+setting. If the Robo-Glove still jumps after
 the hand leaves and re-enters the picture, confirm that the Controller and
 RetroPie are on the same current release before changing reach or smoothing.
 Version 0.4.0 guards one contradictory or unusually distant non-forward

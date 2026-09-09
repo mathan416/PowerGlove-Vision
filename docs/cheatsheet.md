@@ -160,7 +160,11 @@ scripts/install-uno-q-camera-recovery-helper.sh arduino@UNO-Q-NAME.local
 The camera does not need to be connected during installation. The first healthy
 camera sighting enrolls the one UVC camera and its actual parent hub. Moving the
 camera to another hub updates the association automatically the next time vision
-sees it. Until that first sighting, recovery intentionally has no hub to reset.
+sees it. The installer adds `uhubctl`; when the enrolled hub advertises genuine
+per-port switching, only the saved camera port is power-cycled. Otherwise the
+identity-checked whole-hub rebind remains the fallback. Recovery is confirmed
+only after a worker test frame, not USB enumeration. Until that first sighting,
+recovery intentionally has no hub or port to operate.
 
 The terminal prompts for the PowerGlove Vision Controller account password if needed. The helper
 requests a Linux halt; the tested board restarts afterward. See the shutdown
@@ -418,7 +422,10 @@ the games use standard NES controller input through FCEUmm.
 ### Super Glove Ball: choose native or FCEUmm
 
 Open RetroPie's launch menu while starting Super Glove Ball and choose the
-emulator for that ROM. RetroPie remembers the per-ROM choice.
+emulator for that ROM. RetroPie remembers the per-ROM choice. The launch hook
+reports the core that actually started, so only
+`super_glove_ball` + `lr-nestopia-powerglove` selects native input. FCEUmm and
+any other or unknown core select joystick output.
 
 - **`lr-nestopia-powerglove`** is the native path. It uses the shared camera center and safety behavior, but bypasses D-pad thresholds and sends continuous absolute X/Y across the saved reach. **Latest coordinate** uses MediaPipe Hands directly during continuous tracking and holds only one contradictory or unusually distant non-forward reacquisition for confirmation. Exact-ROM tests confirm controller detection, native Start, X/Y, signed Z, and open/fist/index packet values. Full-game cabinet play confirms grab/throw, index fire, and fist-plus-forward Power Punch. Wrist rotation and remaining unused native packet fields stay neutral.
 - **`lr-fceumm`** remains the complete fallback. It stays in standard joystick mode for the whole session and uses the same responsive movement, finger gestures, and buttons as other FCEUmm games.
@@ -524,9 +531,9 @@ for the recording recipes, neutral calibration, image-quality advice, and shared
 | PowerGlove Vision Controller readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
 | PowerGlove Vision Controller boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
 | PowerGlove Vision Controller camera recovery watcher | `powerglove-camera-recovery.path` |
-| PowerGlove Vision Controller camera recovery action | `powerglove-camera-recovery.service`; performs one guarded reset of the last observed parent hub |
-| PowerGlove Vision Controller camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use |
-| PowerGlove Vision Controller camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera and hub identity/path |
+| PowerGlove Vision Controller camera recovery action | `powerglove-camera-recovery.service`; power-cycles the enrolled camera port on a capability-confirmed hub, otherwise rebinds the allowlisted hub |
+| PowerGlove Vision Controller camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use and reports USB action separately from stream verification |
+| PowerGlove Vision Controller camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera identity plus hub identity/path and learned camera port |
 
 The boot rule creates the readiness marker; it does not initiate shutdown or
 prove that shutdown has completed. The watcher responds to a separate

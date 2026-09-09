@@ -54,16 +54,22 @@ only switching a direction on or off. That is why this path can offer more
 natural Robo-Glove positioning.
 
 MediaPipe Hands supplies every live coordinate. Geometry is validated and the
-point is clamped to the saved reach before either mode sees it. **Latest
+point is clamped to the saved reach before it is published. **Latest
 coordinate** uses each newest point directly during continuous tracking and is
-the production default; **Bounded speed curve** uses one
-two-dimensional noise-aware weight to stabilize rest and follow faster movement
-more directly. Both use the selected frame's capture time, saved center, and
-per-player reach. A short missed observation may hold only X/Y for up to 120 ms
+the only live native movement behavior. Historical bounded-curve tooling remains
+available for engineering replay, but it is not a Controller setting. Latest
+uses the selected frame's capture time, saved center, and per-player reach. A
+short missed observation may hold only X/Y for up to 120 ms
 while actions release. On recovery, Latest accepts aligned forward movement at
 once but holds one contradictory or unusually distant non-forward measurement
 for the next fresh result. This one-result guard rejects reacquisition jumps
 without predicting a position or smoothing ordinary motion.
+
+The running core, not merely the ROM profile, decides whether this packet path
+is active. RetroPie's launch hook detects the libretro core from the running
+process and includes it in the authenticated profile heartbeat. Only
+`super_glove_ball` with `lr-nestopia-powerglove` selects native input. FCEUmm,
+another core, or an unknown core selects the ordinary joystick path.
 
 | What you do | Native Super Glove Ball behavior confirmed in live play |
 | --- | --- |

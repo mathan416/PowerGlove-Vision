@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Reported capture-time tracking loss and recovery timing.
 #   2026-09-08 - Added fused-colour and fixed search-region comparison lanes.
 #   2026-09-07 - Retained temporary palm-anchor candidates for aggregate comparison.
 #   2026-09-05 - Kept aggregate means compatible with Python 3.7.
@@ -84,11 +85,32 @@ def tracking_path_summary(samples: list[dict]) -> dict:
             current_run = 0
     if current_run:
         missing_runs.append(current_run)
+    recovery_gaps = [sample["recovery_gap_ms"] for sample in samples
+                     if sample.get("recovery_gap_ms") is not None]
+    recovery_missing_spans = [sample["recovery_missing_span_ms"] for sample in samples
+                              if sample.get("recovery_missing_span_ms") is not None]
+    recovery_inference = [sample["recovery_inference_ms"] for sample in samples
+                          if sample.get("recovery_inference_ms") is not None]
     return {
         "paths": timing,
         "missing_runs": missing_runs,
         "short_missing_runs": [length for length in missing_runs if length <= 3],
         "long_missing_runs": [length for length in missing_runs if length > 3],
+        "recovery_gap_ms": {
+            "count": len(recovery_gaps),
+            "p50": percentile(recovery_gaps, .50),
+            "p95": percentile(recovery_gaps, .95),
+        },
+        "recovery_missing_span_ms": {
+            "count": len(recovery_missing_spans),
+            "p50": percentile(recovery_missing_spans, .50),
+            "p95": percentile(recovery_missing_spans, .95),
+        },
+        "recovery_inference_ms": {
+            "count": len(recovery_inference),
+            "p50": percentile(recovery_inference, .50),
+            "p95": percentile(recovery_inference, .95),
+        },
     }
 
 
@@ -170,6 +192,14 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
                 "path": result.diagnostics.get("tracking_path", "unavailable"),
                 "ms": (finished - started) * 1000,
                 "detected": result.observation.detected,
+                "recovery_gap_ms": result.diagnostics.get("recovery_gap_ms"),
+                "recovery_missing_span_ms": (
+                    result.diagnostics.get("recovery_missing_span_ms")
+                ),
+                "recovery_inference_ms": (
+                    result.diagnostics.get("last_recovery_inference_ms")
+                    if result.diagnostics.get("tracking_recovered") else None
+                ),
             })
             state = engine.update(result.observation)
             item = result.observation

@@ -84,11 +84,20 @@ warnings are advisory and do not change camera exposure automatically.
 
 The Controller looks for the saved camera whenever tracking starts. Supported
 camera settings are reapplied after a reconnect. The optional UNO Q recovery
-helper can reset the enrolled USB hub when a camera stream remains wedged even
-though the camera is still visible to USB.
+helper can recover a stream that remains wedged even though the camera is still
+visible to USB. It uses `uhubctl` only when that tool lists the exact enrolled
+hub as supporting per-port power control. In that case, it cycles only the
+camera's saved port. It never forces an unsupported hub. When port switching is
+unavailable, the existing identity-checked whole-hub rebind remains the fallback.
 
-Automatic camera selection is the portable behavior. Hub reset support depends
-on the UNO Q's USB topology and is deliberately allowlisted during enrollment.
+Seeing the camera return in USB is not considered successful recovery. The
+helper reports that the USB action has finished, the Controller restarts vision,
+and recovery is confirmed only after the worker receives a real video frame.
+The camera does not need to be attached during installation; its hub and direct
+port are learned on the first healthy use and updated after a move.
+
+Automatic camera selection is the portable behavior. Per-port cycling depends
+on the hub hardware; unsupported hubs continue to use the guarded fallback.
 
 ## Quick troubleshooting
 

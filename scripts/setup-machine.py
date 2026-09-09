@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Install uhubctl for capability-gated camera-port power cycling.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-03 - Added repeatable host installers with backups and explicit health reports.
 #   2026-09-03 - Install and check mDNS dependencies and boot service on both machines.
@@ -186,7 +187,7 @@ def install_unoq(peer):
     if (app / "data/shutdown-request").exists():
         raise ValueError("A pending shutdown request exists; remove it deliberately before setup")
     run("apt-get", "update")
-    run("apt-get", "install", "-y", "avahi-daemon", "libnss-mdns")
+    run("apt-get", "install", "-y", "avahi-daemon", "libnss-mdns", "uhubctl")
     run("python3", str(app / "scripts/configure-uno-q-avahi.py"))
     run("systemctl", "enable", "--now", "avahi-daemon")
     run("systemctl", "restart", "avahi-daemon")

@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Exposed capture-time tracking loss and recovery timing.
 #   2026-09-09 - Removed tuning locks from the inference-to-send boundary.
 #   2026-09-08 - Published frame-preparation and palm-reacquisition trace evidence.
 #   2026-09-08 - Added a same-descriptor manual-exposure full-pipeline test lane.
@@ -596,6 +597,13 @@ def _native_trace_fields(engine: GestureEngine, result, active: bool) -> dict:
         "palm_detection_count": result.diagnostics.get("palm_detection_count"),
         "palm_reacquired": bool(result.diagnostics.get("palm_reacquired", False)),
         "hand_missing_streak": result.diagnostics.get("hand_missing_streak", 0),
+        "tracking_recovered": bool(result.diagnostics.get("tracking_recovered", False)),
+        "recovery_gap_ms": result.diagnostics.get("recovery_gap_ms"),
+        "recovery_missing_span_ms": result.diagnostics.get("recovery_missing_span_ms"),
+        "recovery_inference_ms": (
+            result.diagnostics.get("tracking_inference_ms")
+            if result.diagnostics.get("tracking_recovered") else None
+        ),
         "frame_preparation": result.diagnostics.get("frame_preparation"),
     }
 
@@ -613,6 +621,15 @@ TRACKING_STATUS_FIELDS = (
     "palm_reacquisitions_total",
     "hand_missing_results_total",
     "invalid_landmark_results_total",
+    "tracking_recovered",
+    "tracking_inference_ms",
+    "current_tracking_loss_ms",
+    "recovery_gap_ms",
+    "recovery_missing_span_ms",
+    "last_recovery_gap_ms",
+    "last_recovery_missing_span_ms",
+    "last_recovery_inference_ms",
+    "longest_tracking_loss_ms",
     "directional_search_active",
     "directional_search_offset",
 )

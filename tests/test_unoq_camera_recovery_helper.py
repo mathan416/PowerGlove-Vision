@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered capability-gated camera-port cycling and schema migration.
 #   2026-09-08 - Verify present-but-wedged camera recovery and request validation.
 #   2026-09-05 - Added isolated helper enrollment, hub-move and reset tests.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -16,6 +17,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -56,6 +58,7 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
             patch.object(helper, "LOCK", self.lock),
             patch.object(helper, "STAMP", self.stamp),
             patch.object(helper, "_config_is_secure", return_value=True),
+            patch.object(helper.shutil, "which", return_value=None),
             patch.object(helper.os, "geteuid", return_value=0),
             patch.object(helper.time, "sleep"),
         ]
@@ -126,9 +129,13 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         self.request.write_text("enroll\n")
         with patch.object(helper, "_discover_cameras", return_value=[self.discovery(camera, hub)]):
             self.assertEqual(helper.main([]), 0)
-        self.assertEqual(json.loads(self.result.read_text())["status"], "ready")
+        self.assertEqual(
+            json.loads(self.result.read_text())["status"], "usb-action-complete"
+        )
         saved = json.loads(self.config.read_text())
+        self.assertEqual(saved["schema"], 2)
         self.assertEqual(saved["camera"]["vendor_id"], "1532")
+        self.assertEqual(saved["camera"]["hub_port"], "4")
         self.assertEqual(saved["hub"]["sysfs_name"], "2-1")
         self.assertEqual((camera / "power" / "control").read_text(), "on")
         self.assertEqual((hub / "power" / "control").read_text(), "on")
@@ -169,6 +176,87 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
             self.assertEqual(helper.main([]), 0)
         self.assertEqual((self.driver / "unbind").read_text(), "2-1")
         self.assertEqual((self.driver / "bind").read_text(), "2-1")
+
+    def test_supported_hub_power_cycles_only_the_enrolled_camera_port(self):
+        hub = self.device("2-1")
+        camera = self.device("2-1.4")
+        self.install_hub_link(hub)
+        discovery = self.discovery(camera, hub)
+        helper._write_config(discovery)
+        self.request.write_text("recover\n")
+        with (
+            patch.object(helper, "_discover_cameras", side_effect=[[discovery], [discovery]]),
+            patch.object(helper, "_power_cycle_camera_port", return_value=True) as cycle,
+        ):
+            self.assertEqual(helper.main([]), 0)
+        cycle.assert_called_once()
+        self.assertEqual((self.driver / "unbind").read_text(), "")
+        result = json.loads(self.result.read_text())
+        self.assertEqual(result["status"], "usb-action-complete")
+        self.assertEqual(result["method"], "port-power-cycle")
+
+    def test_uhubctl_probe_requires_exact_supported_hub_output(self):
+        supported = SimpleNamespace(
+            returncode=0,
+            stdout="Current status for hub 2-1 [0bda:0411 USB3.2 Hub]\n  Port 4: 0100 power",
+            stderr="",
+        )
+        with patch.object(helper.subprocess, "run", return_value=supported) as run:
+            self.assertTrue(helper._uhubctl_supports_port("/usr/sbin/uhubctl", "2-1", "4"))
+        self.assertEqual(
+            run.call_args.args[0],
+            ["/usr/sbin/uhubctl", "-l", "2-1", "-p", "4", "-e", "-N"],
+        )
+        unsupported = SimpleNamespace(returncode=0, stdout="No compatible hubs detected", stderr="")
+        with patch.object(helper.subprocess, "run", return_value=unsupported):
+            self.assertFalse(helper._uhubctl_supports_port("uhubctl", "2-1", "4"))
+
+    def test_port_cycle_uses_only_exact_enrolled_location_and_port(self):
+        hub = self.device("2-1")
+        camera = self.device("2-1.4")
+        config = helper._public_config(self.discovery(camera, hub))
+        completed = SimpleNamespace(returncode=0, stdout="", stderr="")
+        with (
+            patch.object(helper.shutil, "which", return_value="/usr/sbin/uhubctl"),
+            patch.object(helper, "_uhubctl_supports_port", return_value=True),
+            patch.object(helper.subprocess, "run", return_value=completed) as run,
+        ):
+            self.assertTrue(helper._power_cycle_camera_port(config, hub))
+        self.assertEqual(
+            run.call_args.args[0],
+            [
+                "/usr/sbin/uhubctl", "-l", "2-1", "-p", "4", "-e", "-N",
+                "-a", "cycle", "-d", "2",
+            ],
+        )
+
+    def test_recovery_rejects_a_different_camera_after_usb_action(self):
+        hub = self.device("2-1")
+        camera = self.device("2-1.4")
+        self.install_hub_link(hub)
+        enrolled = self.discovery(camera, hub)
+        replacement = self.discovery(camera, hub, camera_id=("046d", "0825"))
+        helper._write_config(enrolled)
+        self.request.write_text("recover\n")
+        with patch.object(helper, "_discover_cameras", side_effect=[[], [replacement]]):
+            with self.assertRaisesRegex(RuntimeError, "different camera or hub"):
+                helper.main([])
+        self.assertEqual(json.loads(self.result.read_text())["status"], "failed")
+
+    def test_version_one_enrollment_safely_uses_whole_hub_fallback(self):
+        hub = self.device("2-1")
+        camera = self.device("2-1.4")
+        self.install_hub_link(hub)
+        discovery = self.discovery(camera, hub)
+        legacy = helper._public_config(discovery)
+        legacy["schema"] = 1
+        legacy["camera"].pop("hub_port")
+        self.config.write_text(json.dumps(legacy))
+        self.request.write_text("recover\n")
+        with patch.object(helper, "_discover_cameras", side_effect=[[], [discovery]]):
+            self.assertEqual(helper.main([]), 0)
+        self.assertEqual((self.driver / "unbind").read_text(), "2-1")
+        self.assertEqual(json.loads(self.result.read_text())["method"], "hub-driver-rebind")
 
     def test_enumerated_camera_for_enrollment_is_not_reset(self):
         hub = self.device("2-1")

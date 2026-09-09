@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Required a real worker frame before confirming USB camera recovery.
 #   2026-09-08 - Added browser-safe labels for selectable camera devices.
 #   2026-09-08 - Distinguish healthy enrollment from present-but-wedged stream recovery.
 #   2026-09-05 - Added guarded host USB-recovery requests for sustained camera outages.
@@ -53,6 +54,10 @@ class CameraRecoveryRequester:
         self._requested = False
         self._was_available = False
         self._last_request_at: float | None = None
+        self._awaiting_test_frame = False
+        self._verification_started_at: float | None = None
+        self._host_recovery_method: str | None = None
+        self._verified_recovery_method: str | None = None
         self.last_action: str | None = None
 
     def _create_request(self, reason: str) -> None:
@@ -67,23 +72,51 @@ class CameraRecoveryRequester:
         temporary.replace(self.request)
         self.last_action = reason
 
-    def wait_for_recovery(self, timeout: float = 25.0) -> bool:
-        """Wait for the fixed-purpose host helper to finish one physical reset."""
+    def wait_for_recovery(self, timeout: float = 40.0) -> bool:
+        """Wait for the host USB action; a later worker frame proves recovery."""
         deadline = time.monotonic() + max(0.0, float(timeout))
         while time.monotonic() < deadline:
             try:
                 result = json.loads(self.result.read_text())
                 self.result.unlink()
-                return result.get("status") == "ready"
+                status = result.get("status")
+                completed = status in ("usb-action-complete", "ready")
+                if completed:
+                    method = result.get("method", "legacy-host-action")
+                    self._host_recovery_method = (
+                        method if isinstance(method, str) and method else "unknown"
+                    )
+                    self._awaiting_test_frame = True
+                    self._verification_started_at = self.clock()
+                return completed
             except FileNotFoundError:
                 time.sleep(0.1)
             except (OSError, ValueError, TypeError):
                 return False
         return False
 
+    def consume_verified_recovery(self) -> str | None:
+        """Return a recovery method once, only after a worker received a frame."""
+        method = self._verified_recovery_method
+        self._verified_recovery_method = None
+        return method
+
     def observe(self, status: Mapping[str, object]) -> bool:
         """Create one request after a sustained camera error; return when created."""
+        if (
+            self._awaiting_test_frame
+            and self._verification_started_at is not None
+            and self.clock() - self._verification_started_at >= self.retry_delay
+        ):
+            self._awaiting_test_frame = False
+            self._verification_started_at = None
+            self._host_recovery_method = None
         if bool(status.get("camera_available")):
+            if self._awaiting_test_frame:
+                self._awaiting_test_frame = False
+                self._verification_started_at = None
+                self._verified_recovery_method = self._host_recovery_method or "unknown"
+                self._host_recovery_method = None
             self._missing_since = None
             self._requested = False
             self._last_request_at = None
@@ -99,6 +132,9 @@ class CameraRecoveryRequester:
         state = str(status.get("vision_state", ""))
         error = str(status.get("vision_error", ""))
         if state == "idle":
+            self._awaiting_test_frame = False
+            self._verification_started_at = None
+            self._host_recovery_method = None
             self._missing_since = None
             self._requested = False
             return False

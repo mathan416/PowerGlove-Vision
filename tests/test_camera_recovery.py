@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Required a post-reset worker frame before recovery confirmation.
 #   2026-09-08 - Verify classified enrollment and stream-recovery requests.
 #   2026-09-05 - Added sustained-outage, single-request, idle, and recovery tests.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -57,14 +58,31 @@ class CameraRecoveryRequesterTests(unittest.TestCase):
         self.assertEqual(self.request.read_text(), "recover\n")
 
     def test_host_completion_result_is_consumed(self):
-        self.monitor.result.write_text('{"schema":1,"status":"ready"}\n')
+        self.monitor.result.write_text(
+            '{"schema":2,"status":"usb-action-complete","method":"port-power-cycle"}\n'
+        )
         self.assertTrue(self.monitor.wait_for_recovery(timeout=0.1))
         self.assertFalse(self.monitor.result.exists())
+        self.assertIsNone(self.monitor.consume_verified_recovery())
+        self.monitor.observe({"camera_available": False, "vision_state": "error"})
+        self.assertIsNone(self.monitor.consume_verified_recovery())
+        self.monitor.observe({"camera_available": True, "vision_state": "active"})
+        self.assertEqual(self.monitor.consume_verified_recovery(), "port-power-cycle")
+        self.assertIsNone(self.monitor.consume_verified_recovery())
 
     def test_host_failure_result_is_consumed(self):
         self.monitor.result.write_text('{"schema":1,"status":"failed"}\n')
         self.assertFalse(self.monitor.wait_for_recovery(timeout=0.1))
         self.assertFalse(self.monitor.result.exists())
+
+    def test_usb_action_is_not_verified_after_frame_deadline(self):
+        self.monitor.result.write_text(
+            '{"schema":2,"status":"usb-action-complete","method":"hub-driver-rebind"}\n'
+        )
+        self.assertTrue(self.monitor.wait_for_recovery(timeout=0.1))
+        self.now += 65.0
+        self.monitor.observe({"camera_available": True, "vision_state": "active"})
+        self.assertIsNone(self.monitor.consume_verified_recovery())
 
     def test_never_requests_without_installed_host_helper(self):
         self.monitor.observe(self.missing())

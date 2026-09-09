@@ -13,9 +13,32 @@ authoritative record for line-level and file-level history.
   statistics-on, and statistics-off lanes. It measures established-session UDP
   transmission, Dashboard housekeeping, full-iteration tails, and newest-only
   publication under a deliberately slow status consumer.
+- Added capture-timestamp tracking-loss and reacquisition telemetry. Diagnostics
+  now separate the duration since the last detected hand, the observed missing
+  span, the recovery inference time, and the longest loss instead of inferring
+  recovery cost from worker-loop timing.
 
 ### Changed
 
+- Made the active emulator part of RetroPie's authenticated, renewable game
+  heartbeat. Only the exact `super_glove_ball` plus
+  `lr-nestopia-powerglove` pairing selects native packets; FCEUmm and every
+  other or unknown core use joystick output. Changing cores is treated as a
+  controller transition so held native or joystick state cannot leak between
+  modes.
+- Coordinated guarded camera recovery with the vision worker: the worker closes
+  the camera before the enrolled hub reset, waits for the helper result, then
+  reopens and retries only after its cooldown. Recovery applies to any active
+  gesture profile, whether output is native or joystick. A headless Kiyo Pro
+  test confirmed the guarded stop/reset/restart sequence and USB
+  re-enumeration, but the camera still required a physical reconnect before it
+  produced frames; USB presence alone is not reported as stream recovery.
+- Added capability-detected camera-port power cycling through `uhubctl`. The
+  helper targets only the enrolled camera's exact port when the hub is listed as
+  per-port switchable and never forces unsupported hardware. Older enrollment
+  files and unsupported hubs retain the identity-checked whole-hub rebind.
+  Helper completion now means only that the USB action ended; recovery is
+  confirmed separately after the restarted worker receives a real frame.
 - Kept Dashboard work out of the controller-critical boundary. Tuning state is
   resolved before MediaPipe inference, gameplay state is sent before periodic
   handshake maintenance, browser status preparation is limited to 10 Hz while

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Measured tracking-loss gaps and recovery inference separately.
 #   2026-09-09 - Kept Dashboard preview out of MediaPipe frame preparation.
 #   2026-09-08 - Added replay-only conditional search and precise tracking-path evidence.
 #   2026-09-07 - Added an isolated image-landmark-only graph experiment.
@@ -202,6 +203,12 @@ class _TrackingTelemetry:
         self.palm_reacquisitions_total = 0
         self.hand_missing_results_total = 0
         self.invalid_landmark_results_total = 0
+        self.last_detected_timestamp: float | None = None
+        self.loss_started_timestamp: float | None = None
+        self.last_recovery_gap_ms: float | None = None
+        self.last_recovery_missing_span_ms: float | None = None
+        self.last_recovery_inference_ms: float | None = None
+        self.longest_tracking_loss_ms = 0.0
 
     def observe(
         self,
@@ -210,8 +217,26 @@ class _TrackingTelemetry:
         palm_detection_count: int | None,
         *,
         invalid_landmarks: bool = False,
+        timestamp: float | None = None,
+        inference_ms: float | None = None,
     ) -> dict:
-        """Record one graph result using direct evidence when it is exposed."""
+        """Record graph-path evidence and capture-time loss/recovery latency."""
+        missing_before = self.hand_missing_streak
+        tracking_recovered = bool(detected and self.ever_detected and missing_before)
+        recovery_gap_ms = None
+        recovery_missing_span_ms = None
+        if tracking_recovered and timestamp is not None:
+            if self.last_detected_timestamp is not None:
+                recovery_gap_ms = max(
+                    0.0, (timestamp - self.last_detected_timestamp) * 1000.0,
+                )
+                self.last_recovery_gap_ms = recovery_gap_ms
+            if self.loss_started_timestamp is not None:
+                recovery_missing_span_ms = max(
+                    0.0, (timestamp - self.loss_started_timestamp) * 1000.0,
+                )
+                self.last_recovery_missing_span_ms = recovery_missing_span_ms
+            self.last_recovery_inference_ms = inference_ms
         reacquired = False
         if palm_detector_invoked is True:
             self.palm_detection_packets_total += 1
@@ -243,11 +268,26 @@ class _TrackingTelemetry:
         if detected:
             self.ever_detected = True
             self.hand_missing_streak = 0
+            if timestamp is not None:
+                self.last_detected_timestamp = timestamp
+            self.loss_started_timestamp = None
         else:
             self.hand_missing_results_total += 1
             self.hand_missing_streak += 1
+            if self.loss_started_timestamp is None:
+                self.loss_started_timestamp = timestamp
         if invalid_landmarks:
             self.invalid_landmark_results_total += 1
+
+        current_loss_ms = None
+        if (not detected and timestamp is not None
+                and self.last_detected_timestamp is not None):
+            current_loss_ms = max(
+                0.0, (timestamp - self.last_detected_timestamp) * 1000.0,
+            )
+            self.longest_tracking_loss_ms = max(
+                self.longest_tracking_loss_ms, current_loss_ms,
+            )
 
         return {
             "tracking_path": path,
@@ -261,6 +301,15 @@ class _TrackingTelemetry:
             "palm_reacquisitions_total": self.palm_reacquisitions_total,
             "hand_missing_results_total": self.hand_missing_results_total,
             "invalid_landmark_results_total": self.invalid_landmark_results_total,
+            "tracking_recovered": tracking_recovered,
+            "tracking_inference_ms": inference_ms,
+            "current_tracking_loss_ms": current_loss_ms,
+            "recovery_gap_ms": recovery_gap_ms,
+            "recovery_missing_span_ms": recovery_missing_span_ms,
+            "last_recovery_gap_ms": self.last_recovery_gap_ms,
+            "last_recovery_missing_span_ms": self.last_recovery_missing_span_ms,
+            "last_recovery_inference_ms": self.last_recovery_inference_ms,
+            "longest_tracking_loss_ms": self.longest_tracking_loss_ms,
         }
 
 
@@ -689,6 +738,7 @@ class MediaPipeTracker:
         )
         if search_offset != (0.0, 0.0):
             rgb = _translate_tracker_input(rgb, search_offset, cv2, self.numpy)
+        inference_started = time.monotonic()
         if self._tasks:
             timestamp_ms = max(self._last_timestamp_ms + 1, int(now * 1000))
             self._last_timestamp_ms = timestamp_ms
@@ -698,12 +748,14 @@ class MediaPipeTracker:
         else:
             result = self.hands.process(rgb)
             detected = result.multi_hand_landmarks
+        tracking_inference_ms = (time.monotonic() - inference_started) * 1000.0
         palm_detector_invoked, palm_detection_count = _palm_detector_evidence(result)
         if not detected:
             if self.directional_search:
                 self._directional_search.reset()
             diagnostics = self._tracking_telemetry.observe(
                 False, palm_detector_invoked, palm_detection_count,
+                timestamp=now, inference_ms=tracking_inference_ms,
             )
             diagnostics["frame_preparation"] = frame_preparation
             diagnostics["directional_search_active"] = False
@@ -740,6 +792,7 @@ class MediaPipeTracker:
             diagnostics = self._tracking_telemetry.observe(
                 False, palm_detector_invoked, palm_detection_count,
                 invalid_landmarks=True,
+                timestamp=now, inference_ms=tracking_inference_ms,
             )
             diagnostics["frame_preparation"] = frame_preparation
             diagnostics["directional_search_active"] = False
@@ -792,6 +845,7 @@ class MediaPipeTracker:
             }
         diagnostics = self._tracking_telemetry.observe(
             True, palm_detector_invoked, palm_detection_count,
+            timestamp=now, inference_ms=tracking_inference_ms,
         )
         diagnostics["frame_preparation"] = frame_preparation
         diagnostics["directional_search_active"] = self._directional_search.active

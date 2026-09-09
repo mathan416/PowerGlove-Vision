@@ -351,7 +351,9 @@ At game launch, the RetroPie hook looks up the exact ROM basename. For a registe
 game it records a user-owned session marker, starts a detached monitor, and waits for
 RetroArch to exist before sending input context. The monitor sends a signed profile
 renewal every two seconds to UNO UDP 55356 while both RetroArch and the marker remain
-active. Each renewal carries a bounded six-second lease. The app-owned relay forwards
+active. It inspects the running RetroArch command line and includes the recognized
+libretro core in each renewal rather than trusting only the runcommand argument. Each
+renewal carries a bounded six-second lease. The app-owned relay forwards
 the bytes to the worker; the worker authenticates them and treats repeated renewals
 as lease refreshes rather than profile transitions. The acknowledgement travels back
 through the relay. The relay has no shared token and cannot declare a profile applied.
@@ -365,6 +367,14 @@ is stored separately: Stop remains sticky, while armed alone never authorizes ou
 Manual Dashboard profile selection provides an explicit testing context without
 pretending that a registered game is running. Unsupported or unregistered games do
 not gain a mapping merely because their filenames resemble a registered title.
+
+The worker selects native input only for the exact combination of the
+`super_glove_ball` profile and the reported `lr-nestopia-powerglove` core. The
+same ROM in FCEUmm, another core, or an unknown core uses joystick output. A
+reported core change is a profile transition even when the ROM profile is
+unchanged, so all retained recognition and controller state is cleared before
+the new output path becomes active. Worker status reports both `emulator` and
+the derived `input_mode`.
 
 Setup's Games editor uses a separate path: browser to UNO web API, then the paired
 UNO proxy to the RetroPie Games service on TCP 55358. Challenge/HMAC exchanges
@@ -454,7 +464,7 @@ checks. See the [Security policy](SECURITY.md) for the full trust model.
 | Hand tracking lost | Engine clears held states after its loss delay | Stops stale recognized actions; camera recovery is separate |
 | Controller packets stop | Receiver releases controls on socket timeout, default 250 ms | A receive timeout, not a measured end-to-end acknowledgement |
 | Hostname or UDP send failure | Sender reports error and throttles retries | Vision and local practice can continue |
-| Camera open/read failure | Worker reports starting/error and retries asynchronously; a sustained failure requests one classified hub recovery even when USB enumeration remains present | Healthy website can coexist with unavailable vision; `lsusb` alone does not prove the video stream is usable |
+| Camera open/read failure | Worker reports starting/error and retries asynchronously; a sustained failure requests one classified recovery even when USB enumeration remains present. A capability-confirmed hub cycles only the enrolled camera port; otherwise the identity-checked hub rebind is used. | The USB action and camera recovery are separate states. Recovery is confirmed only after the restarted worker receives a frame; `lsusb` alone does not prove the stream is usable. |
 | Worker exits | Supervisor reports failure and retries | Temporary in-memory Tune state is lost |
 | Tune browser disappears | Six-second lease expires | Preview and recordings discarded; saved pairs retained |
 | Calibration changes | Current Tune recordings/preview invalidated | Record new measurements against the new reference |

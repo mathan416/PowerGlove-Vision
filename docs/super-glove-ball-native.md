@@ -162,6 +162,15 @@ shared Super Glove Ball profile's D-pad, A, B, Start, and Select outputs and doe
 not read the native-state bridge. The native entry attaches device `517` and
 reads continuous coordinates instead.
 
+This switch is automatic after launch. The hook inspects the libretro core that
+actually started and includes that core in each authenticated renewable profile
+heartbeat. The Controller enables native output only when both the profile is
+`super_glove_ball` and the core is `lr-nestopia-powerglove`. FCEUmm, another
+core, or an unknown core selects joystick output. A core change invalidates the
+previous output state before the new mode begins, preventing a held direction or
+native sample from crossing the transition. Dashboard status exposes the
+reported emulator and the resulting `native` or `joystick` input mode.
+
 The launch-menu selection for a ROM is persistent, so a test session should be
 followed by choosing `lr-nestopia-powerglove` again if that is the desired saved
 default. The command-line selector below performs the same reversible per-ROM

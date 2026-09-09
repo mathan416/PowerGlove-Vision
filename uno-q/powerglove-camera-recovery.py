@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added capability-gated per-port power cycling and explicit USB-action results.
 #   2026-09-08 - Reset an enrolled hub when UVC streaming fails despite USB enumeration.
 #   2026-09-05 - Added guarded camera USB recovery and autosuspend prevention.
 #   2026-09-05 - Added first-use camera enrollment and automatic parent-hub updates.
@@ -19,6 +20,8 @@ import fcntl
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -35,6 +38,7 @@ LOCK = Path("/run/powerglove-camera-recovery.lock")
 STAMP = Path("/run/powerglove-camera-recovery.stamp")
 COOLDOWN_SECONDS = 60.0
 USB_NAME = re.compile(r"^[0-9]+-[0-9]+(?:\.[0-9]+)*$")
+USB_PORT = re.compile(r"^[1-9][0-9]*$")
 
 
 def _read(path: Path, default: str = "") -> str:
@@ -115,7 +119,22 @@ def _discover_cameras() -> list[dict[str, object]]:
 
 def _public_config(discovery: dict[str, object]) -> dict[str, object]:
     """Discard transient paths and retain only the validated enrollment record."""
-    return {"schema": 1, "camera": discovery["camera"], "hub": discovery["hub"]}
+    camera = dict(discovery["camera"])
+    camera["hub_port"] = _camera_hub_port(
+        discovery["camera_path"], discovery["hub_path"],
+    )
+    return {"schema": 2, "camera": camera, "hub": discovery["hub"]}
+
+
+def _camera_hub_port(camera: Path, hub: Path) -> str:
+    """Return the camera's direct port number on its nearest parent hub."""
+    prefix = hub.name + "."
+    if not camera.name.startswith(prefix):
+        raise RuntimeError("camera path is not below its enrolled parent hub")
+    port = camera.name[len(prefix):].split(".", 1)[0]
+    if not USB_PORT.fullmatch(port):
+        raise RuntimeError("camera has an unsafe parent-hub port")
+    return port
 
 
 def _validate_section(section: object, fields: tuple[str, ...]) -> dict[str, str]:
@@ -154,13 +173,19 @@ def _load_config(optional: bool = False) -> dict[str, object] | None:
         document = json.loads(CONFIG.read_text())
     except (OSError, json.JSONDecodeError) as error:
         raise RuntimeError(f"cannot read camera recovery configuration: {error}") from error
-    if not isinstance(document, dict) or document.get("schema") != 1:
+    if not isinstance(document, dict) or document.get("schema") not in (1, 2):
         raise RuntimeError("unsupported camera recovery configuration schema")
     camera = _validate_section(document.get("camera"), ("vendor_id", "product_id", "name"))
     hub = _validate_section(document.get("hub"), ("vendor_id", "product_id", "name", "sysfs_name"))
     if not USB_NAME.fullmatch(hub["sysfs_name"]):
         raise RuntimeError("camera recovery configuration has an unsafe hub path")
-    return {"schema": 1, "camera": camera, "hub": hub}
+    schema = document["schema"]
+    if schema == 2:
+        port = document["camera"].get("hub_port")
+        if not isinstance(port, str) or not USB_PORT.fullmatch(port):
+            raise RuntimeError("camera recovery configuration has an unsafe hub port")
+        camera["hub_port"] = port
+    return {"schema": schema, "camera": camera, "hub": hub}
 
 
 def _write_config(discovery: dict[str, object]) -> None:
@@ -208,6 +233,17 @@ def _approved_hub(config: dict[str, object]) -> Path:
     return hub
 
 
+def _matches_enrollment(discovery: dict[str, object], config: dict[str, object]) -> bool:
+    """Require the returned camera and hub to match the allowlisted identities."""
+    return (
+        discovery["camera"]["vendor_id"] == config["camera"]["vendor_id"]
+        and discovery["camera"]["product_id"] == config["camera"]["product_id"]
+        and discovery["hub"]["vendor_id"] == config["hub"]["vendor_id"]
+        and discovery["hub"]["product_id"] == config["hub"]["product_id"]
+        and discovery["hub"]["sysfs_name"] == config["hub"]["sysfs_name"]
+    )
+
+
 def _keep_awake(device: Path) -> None:
     """Disable USB autosuspend for one enrolled device when supported."""
     control = device / "power" / "control"
@@ -230,7 +266,7 @@ def _consume_request() -> str | None:
         return None
 
 
-def _publish_result(status: str) -> None:
+def _publish_result(status: str, method: str | None = None) -> None:
     """Atomically tell the unprivileged supervisor that the guarded action ended."""
     APP_DATA.mkdir(parents=True, exist_ok=True)
     temporary = RESULT.with_name(RESULT.name + "." + str(os.getpid()) + ".tmp")
@@ -238,7 +274,10 @@ def _publish_result(status: str) -> None:
     descriptor = os.open(str(temporary), flags, 0o644)
     try:
         with os.fdopen(descriptor, "w") as stream:
-            json.dump({"schema": 1, "status": status}, stream)
+            result = {"schema": 2, "status": status}
+            if method is not None:
+                result["method"] = method
+            json.dump(result, stream)
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
@@ -258,7 +297,62 @@ def _within_cooldown(now: float) -> bool:
         return False
 
 
-def _recover() -> int:
+def _uhubctl_supports_port(binary: str, hub_name: str, port: str) -> bool:
+    """Ask uhubctl whether one exact hub location exposes switchable port power."""
+    try:
+        completed = subprocess.run(
+            [binary, "-l", hub_name, "-p", port, "-e", "-N"],
+            check=False, capture_output=True, text=True, timeout=8.0,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    output = completed.stdout + "\n" + completed.stderr
+    return (
+        completed.returncode == 0
+        and re.search(
+            r"(?:Current status for hub|Hub)\s+" + re.escape(hub_name) + r"(?:\s|\[|$)",
+            output,
+        ) is not None
+    )
+
+
+def _power_cycle_camera_port(config: dict[str, object], hub: Path) -> bool:
+    """Power-cycle only the enrolled camera port when the hub proves support."""
+    port = config["camera"].get("hub_port")
+    if not isinstance(port, str) or not USB_PORT.fullmatch(port):
+        return False
+    binary = shutil.which("uhubctl")
+    if binary is None or not _uhubctl_supports_port(binary, hub.name, port):
+        return False
+    try:
+        completed = subprocess.run(
+            [
+                binary, "-l", hub.name, "-p", port, "-e", "-N",
+                "-a", "cycle", "-d", "2",
+            ],
+            check=False, capture_output=True, text=True, timeout=15.0,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return completed.returncode == 0
+
+
+def _rebind_hub(hub: Path) -> None:
+    """Use the established identity-checked whole-hub driver fallback."""
+    hub_name = hub.name
+    unbound = False
+    try:
+        (USB_DRIVER / "unbind").write_text(hub_name)
+        unbound = True
+        time.sleep(2.0)
+        (USB_DRIVER / "bind").write_text(hub_name)
+        unbound = False
+    finally:
+        if unbound:
+            (USB_DRIVER / "bind").write_text(hub_name)
+
+
+def _recover() -> str:
     """Handle one request by enrolling a healthy camera or resetting its hub."""
     APP_DATA.mkdir(parents=True, exist_ok=True)
     with LOCK.open("w") as lock:
@@ -286,7 +380,7 @@ def _recover() -> int:
             _keep_awake(discovery["hub_path"])
             if reason != "recover":
                 print("PowerGlove camera recovery: camera present; autosuspend disabled")
-                return 0
+                return "enrollment"
 
         config = _load_config(optional=True)
         if config is None:
@@ -296,32 +390,37 @@ def _recover() -> int:
         now = time.monotonic()
         if _within_cooldown(now):
             print("PowerGlove camera recovery: request ignored during cooldown")
-            return 0
+            return "cooldown"
         hub = _approved_hub(config)
         hub_name = hub.name
         _keep_awake(hub)
         STAMP.write_text(str(now))
-        unbound = False
-        try:
-            (USB_DRIVER / "unbind").write_text(hub_name)
-            unbound = True
-            time.sleep(2.0)
-            (USB_DRIVER / "bind").write_text(hub_name)
-            unbound = False
-        finally:
-            if unbound:
-                (USB_DRIVER / "bind").write_text(hub_name)
+        if _power_cycle_camera_port(config, hub):
+            method = "port-power-cycle"
+            print(
+                "PowerGlove camera recovery: power-cycled camera port "
+                f"{config['camera']['hub_port']} on {hub_name}"
+            )
+        else:
+            method = "hub-driver-rebind"
+            _rebind_hub(hub)
 
         deadline = time.monotonic() + 12.0
         while time.monotonic() < deadline:
             cameras = _discover_cameras()
             if len(cameras) == 1:
                 discovery = cameras[0]
+                if not _matches_enrollment(discovery, config):
+                    raise RuntimeError(
+                        "a different camera or hub appeared after recovery; refusing enrollment"
+                    )
                 _write_config(discovery)
                 _keep_awake(discovery["camera_path"])
                 _keep_awake(discovery["hub_path"])
-                print(f"PowerGlove camera recovery: {hub_name} reset; camera returned")
-                return 0
+                print(
+                    f"PowerGlove camera recovery: {method} completed; camera enumerated"
+                )
+                return method
             if len(cameras) > 1:
                 raise RuntimeError(f"hub reset returned {len(cameras)} UVC cameras; refusing enrollment")
             time.sleep(0.25)
@@ -338,12 +437,12 @@ def main(argv: list[str] | None = None) -> int:
     if arguments:
         raise SystemExit("usage: powerglove-camera-recovery [--configure|--configure-if-present]")
     try:
-        result = _recover()
+        method = _recover()
     except Exception:
         _publish_result("failed")
         raise
-    _publish_result("ready")
-    return result
+    _publish_result("usb-action-complete", method)
+    return 0
 
 
 if __name__ == "__main__":

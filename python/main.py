@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Verify camera recovery only after the restarted worker receives a frame.
 #   2026-09-07 - Pass optional direct capture and capability-checked exposure settings.
 #   2026-09-07 - Pass an explicit validated MediaPipe inference thread count.
 #   2026-09-06 - Support measured opt-in Kiyo Pro capture controls and buffer count.
@@ -224,7 +225,16 @@ def main() -> int:
                         status = json.load(response)
                     control.update_worker(status)
                     control.update_firmware(matrix.firmware_identity())
-                    if camera_recovery.observe(status):
+                    recovery_requested = camera_recovery.observe(status)
+                    verified_method = camera_recovery.consume_verified_recovery()
+                    if verified_method is not None:
+                        print(
+                            "PowerGlove Vision: camera recovery verified by a test frame "
+                            f"after {verified_method}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                    if recovery_requested:
                         print(
                             "PowerGlove Vision: requested guarded USB camera preparation/recovery",
                             file=sys.stderr,
@@ -258,8 +268,12 @@ def main() -> int:
                 control.update_supervisor(camera=False, running=True)
                 recovered = camera_recovery.wait_for_recovery()
                 print(
-                    "PowerGlove Vision: guarded USB camera recovery "
-                    + ("completed" if recovered else "did not confirm completion"),
+                    (
+                        "PowerGlove Vision: guarded USB action completed; "
+                        "waiting for a camera test frame"
+                        if recovered else
+                        "PowerGlove Vision: guarded USB action did not complete"
+                    ),
                     file=sys.stderr,
                     flush=True,
                 )

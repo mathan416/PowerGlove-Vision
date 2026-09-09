@@ -215,6 +215,28 @@ replace or prepend project ownership over an upstream header. Keep upstream
 notices and licenses with source and binary distributions. The guarded build
 stops if the protected Nestopia Power Glove header changes.
 
+## uhubctl
+
+The PowerGlove Vision Controller host installer uses the distribution-provided
+`uhubctl` command to detect and operate genuine USB per-port power switching.
+The helper never bundles or modifies this utility, and it never forces it to
+operate on a hub that it does not report as supported.
+
+| Property | Value |
+| --- | --- |
+| Component | `uhubctl` USB hub per-port power control utility |
+| Upstream project | <https://github.com/mvp/uhubctl> |
+| License | GNU General Public License, version 2 |
+| Installed by | Debian package manager on the PowerGlove Vision Controller host |
+| Tested repository candidate | Debian 13 ARM64 `uhubctl` 2.6.0-1 |
+| Distribution boundary | Not copied into PowerGlove Vision source or release archives |
+
+The root helper first asks `uhubctl` about the exact allowlisted hub location
+and camera port without using its force option. Only a positive capability
+result permits a port cycle. Unsupported hardware retains the project's
+identity-checked whole-hub driver fallback. Debian remains responsible for the
+installed binary and accompanying copyright and license files.
+
 ## External RetroPie emulator dependencies
 
 PowerGlove Vision uses RetroPie-provided emulator software but does not include

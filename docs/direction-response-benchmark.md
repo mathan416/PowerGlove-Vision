@@ -878,6 +878,23 @@ development Mac. Open-preview JPEG encoding measured 0.68/0.74 ms p50/p95 on
 its separate worker. These are replay computation times, not UNO Q or physical
 hand-to-display latency.
 
+The tracker now records loss and recovery against each selected frame's capture
+timestamp. On the same 402-frame direction-aware lane, 383 results followed the
+landmark-continuation path, 14 missed the hand, one was the initial palm
+detection, and four were palm reacquisitions. The misses formed runs of 1, 9, 1,
+and 3 frames. Landmark continuation measured 3.92/4.67 ms p50/p95, while
+reacquisition measured 9.57/9.74 ms. The complete last-good-to-recovered gaps
+were 96.19/434.10 ms p50/p95; the first-missing-to-recovered spans were
+62.96/418.14 ms. This demonstrates that the damaging tail is the missed-frame
+run, not the recovery inference alone.
+
+A camera-free palm-detector thread sweep on that clip compared 1, 2, and 4
+threads. All three retained 96.52% continuity. Their overall inference p50/p95
+was 3.74/4.68, 3.97/4.93, and 3.98/4.97 ms respectively on the development Mac.
+The small host-only difference is insufficient to change the Controller's
+four-thread production setting; a thread-count change requires a repeatable UNO
+Q improvement without worse continuity or thermal behavior.
+
 A new camera-free synthetic benchmark then exercised 100,000 established-session
 controller states in statistics-off, statistics-on, statistics-off order. Signed
 UDP send p95 was 0.0179 ms in all three lanes. Full-iteration p95 was 0.0261,

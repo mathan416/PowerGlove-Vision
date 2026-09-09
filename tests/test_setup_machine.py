@@ -107,7 +107,9 @@ class SetupTests(unittest.TestCase):
                 setup.install_unoq(None)
                 first = compose.read_text()
                 setup.install_unoq(None)
-            command.assert_any_call("apt-get", "install", "-y", "avahi-daemon", "libnss-mdns")
+            command.assert_any_call(
+                "apt-get", "install", "-y", "avahi-daemon", "libnss-mdns", "uhubctl"
+            )
             command.assert_any_call("systemctl", "enable", "--now", "avahi-daemon")
             self.assertEqual(first, compose.read_text())
             self.assertEqual(first.count("target: /run/avahi-daemon"), 1)
