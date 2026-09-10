@@ -302,6 +302,10 @@ Setup also provides Pixel Pal's **Find the best camera settings** wizard for a
 new or changed camera. It compares only capability-supported reader, frame-rate,
 buffer, and exposure choices, protects hand continuity when ranking latency,
 retains no images, and changes nothing until the player accepts its recommendation.
+Its temporary mirrored live view and centre/edge guides make hand placement
+visible during the hold, corner-sweep, and edge-return steps.
+The same one- or two-buffer choice is available directly in Setup for manual
+testing and camera-specific maintenance.
 The optional [PowerGlove Calibration Test](docs/direction-response-benchmark.md#direct-output-dot-test)
 appears as a ROM-free game in RetroPie's **Ports** list when selected during
 installation. Its separate `lr-powerglove-dot` core displays the receiver's

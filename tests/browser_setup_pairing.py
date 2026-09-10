@@ -15,6 +15,7 @@
 Requires Playwright and Chrome; never connects to real pairing endpoints.
 """
 import asyncio
+import re
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -27,7 +28,7 @@ async def main():
     """Test user-visible state transitions against controlled HTTP responses."""
     config = dict(receiver='RETROPIE-NAME.local', port=55355, profile='off',
                   glove_color='none', camera='auto', camera_fps='auto', matrix_attract='on',
-                  camera_backend='opencv', camera_exposure='auto',
+                  camera_buffers=2, camera_backend='opencv', camera_exposure='auto',
                   camera_manual_exposure=78, camera_manual_gain=96,
                   camera_options=[
                       dict(value='auto', label='Automatic — choose the connected camera'),
@@ -61,7 +62,7 @@ async def main():
                 if r.request.method=='POST':
                     action=r.request.post_data_json['action']
                     if action=='begin':camera_profile.update(active=True,phase='measuring',candidate=1,instruction='Hold your open hand comfortably near the centre.')
-                    elif action=='cancel':camera_profile.update(active=False,phase='cancelled',instruction='Your original camera settings are restored.')
+                    elif action in ('cancel','stop'):camera_profile.update(active=False,phase='cancelled',instruction='Your original camera settings are restored. You can start a new test.',error=None,results=[])
                     elif action=='apply':
                         config.update(camera_profile['recommendation']['settings'])
                         return await r.fulfill(json=config)
@@ -82,6 +83,7 @@ async def main():
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
             if path=='/status':return await r.fulfill(json=worker_status)
+            if path=='/stream':return await r.fulfill(body="<svg xmlns='http://www.w3.org/2000/svg' width='640' height='480'/>",content_type='image/svg+xml')
             if path=='/api/games':return await r.fulfill(json={'document':'{"games": {}}','revision':'test','profiles':['off'],'has_backup':False})
             if path.startswith('/assets/'):
                 f=ROOT/path.lstrip('/')
@@ -121,6 +123,15 @@ async def main():
         await page.locator('#camera-profile-start').click()
         await expect(page.locator('#camera-profile-cancel')).to_be_visible()
         await expect(page.locator('#camera-profile-instruction')).to_contain_text('Hold your open hand')
+        await expect(page.locator('#camera-profile-view')).to_be_visible()
+        await expect(page.locator('#camera-profile-frame')).to_have_attribute('src',re.compile(r'^/stream\?t='))
+        await expect(page.locator('#camera-profile-cue')).to_contain_text('centre')
+        camera_profile['instruction']='Sweep your hand smoothly between opposite corners.'
+        await expect(page.locator('#camera-profile-view')).to_have_attribute('data-cue','sweep')
+        await expect(page.locator('#camera-profile-cue')).to_contain_text('opposite corners')
+        camera_profile['instruction']='Move briefly to an edge, then return to the centre.'
+        await expect(page.locator('#camera-profile-view')).to_have_attribute('data-cue','edge')
+        await expect(page.locator('#camera-profile-cue')).to_contain_text('return to centre')
         await expect(page.locator('#camera-save')).to_be_disabled()
         recommended=dict(camera_backend='opencv',capture_isolation='thread',camera_fps=30,camera_buffers=1,camera_exposure='low-latency')
         camera_profile.update(active=False,phase='complete',candidate=2,
@@ -128,10 +139,20 @@ async def main():
                               results=[dict(name='OpenCV test',continuity=1,sample_age_p95_ms=68,valid=True)],
                               recommendation=dict(name='OpenCV recommended',settings=recommended))
         await expect(page.locator('#camera-profile-apply')).to_be_visible(timeout=3000)
+        await expect(page.locator('#camera-profile-view')).to_be_hidden()
+        await expect(page.locator('#camera-profile-frame')).not_to_have_attribute('src',re.compile(r'.+'))
         await page.locator('#camera-profile-apply').click()
         await expect(page.locator('#camera-profile-recommendation')).to_contain_text('saved')
+        camera_profile.update(active=False,phase='error',error='The camera disconnected during the test.')
+        await page.reload()
+        await expect(page.locator('#camera-profile-cancel')).to_be_visible()
+        await expect(page.locator('#camera-profile-cancel')).to_have_text('Stop test')
+        await expect(page.locator('#camera-profile-start')).to_be_hidden()
+        await page.locator('#camera-profile-cancel').click()
+        await expect(page.locator('#camera-profile-start')).to_be_visible()
+        await expect(page.locator('#camera-profile-cancel')).to_be_hidden()
         self_profile = camera_profile
-        assert self_profile['results'][0]['continuity']==1
+        assert self_profile['phase']=='cancelled'
         await expect(page.locator('.connection-indicators li')).to_have_count(6)
         await expect(page.locator('#connection-status-note')).to_contain_text('Console checked 1 seconds ago')
         await expect(page.locator('#connection-status-note')).to_contain_text('do not confirm that a game received input')

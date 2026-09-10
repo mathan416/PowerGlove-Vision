@@ -97,6 +97,7 @@ from camera frames and controller packets, which remain newest-state-only.
 | Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
 | Camera | Automatic | Setup lists the currently discovered usable cameras. Prefer **Automatic — choose the connected camera**; choose a named camera only when more than one is attached or automatic selection is wrong. A saved disconnected camera remains visible as unavailable, and the list refreshes while Setup is open. |
 | Camera frame rate | Automatic | Tries 30 fps first, then accepts the camera driver's usable rate if necessary. Explicit 30- and 60-fps requests are available for comparison and fall back safely when unsupported. The live negotiated rate appears below the setting while tracking is active. |
+| Camera buffers | `1` | Selects one or two driver capture buffers. One minimizes queue depth; two may improve delivery continuity on some cameras. The latest-frame owner still discards superseded frames. Pixel Pal's camera test compares supported choices. |
 | Camera reader | Recommended — OpenCV | The portable, gameplay-validated capture path. **Engineering comparison — Direct V4L2** is an opt-in Linux 64-bit, 640×480 MJPEG experiment that drains to the newest driver buffer and falls back to OpenCV if its requirements are not met. |
 | Exposure behavior | Automatic — no camera changes | Leave cameras untouched by default. **Low latency — standard UVC** keeps automatic exposure and requests fixed frame rate only when those controls are advertised. **Razer Kiyo Pro — tested low latency** adds the Kiyo's volatile HDR-off request. **Manual exposure and gain** is available with Direct V4L2 after capability and range checks. |
 | Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
@@ -518,6 +519,7 @@ A typical device configuration file contains the following fields:
   "glove_color": "none",
   "camera": "auto",
   "camera_fps": "auto",
+  "camera_buffers": 1,
   "camera_backend": "opencv",
   "capture_isolation": "thread",
   "inference_threads": 4,
@@ -528,7 +530,9 @@ A typical device configuration file contains the following fields:
 ```
 
 `camera_fps` is `auto`, `30`, or `60`; Automatic prefers 30 and then accepts a
-usable driver rate. Production `inference_threads` accepts 1, 2, or 4. The 0.4.0
+usable driver rate. `camera_buffers` is `1` or `2`; invalid values are rejected
+instead of silently changing the capture policy. Production `inference_threads`
+accepts 1, 2, or 4. The 0.4.0
 baseline uses four threads, `tracking_confidence` 0.35, and
 `tracking_roi_scale` 2.25.
 Direction-aware fast-sweep search is always active in the production MediaPipe
@@ -546,7 +550,10 @@ restore marker contains the exact private pre-test configuration and is mode
 recorded under `camera_profiles`, keyed by a one-way physical-camera identity.
 The browser receives only the camera label, USB vendor/product identifiers,
 whether a serial was available, and the hashed key—not the serial itself. No
-frames, images, or video are retained by this test.
+frames, images, or video are retained by this test. During an active measurement,
+Setup opens the ordinary mirrored landmark stream with centre and camera-edge
+guides. It disconnects that optional stream between candidates and when the
+test completes, stops, or needs recovery.
 
 `capture_isolation` is `thread` by default and is the gameplay-validated path.
 The opt-in `process` engineering comparison is

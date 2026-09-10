@@ -9,6 +9,8 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Added an on-demand, mirrored live view with centre and edge guides to Pixel
+  Pal's camera-settings test so players can verify hand placement during sweeps.
 - Added Pixel Pal's **Find the best camera settings** wizard to Setup. It safely
   compares the current camera configuration with supported reader, frame-rate,
   buffer, and exposure choices; rejects reader fallbacks and unsupported rates;
@@ -16,6 +18,13 @@ authoritative record for line-level and file-level history.
   recommendation for the same physical camera. Trials retain aggregate timing
   only—never video or images—and restore the exact original configuration after
   completion, cancellation, or an interrupted Controller restart.
+- Added a persistent **Stop test** recovery control to the camera wizard. It
+  remains available after a camera disconnect, restores any pending exact
+  pre-test configuration, restarts normal vision, and returns the wizard to a
+  clean state so the camera test can be started again.
+- Added an explicit one- or two-buffer camera setting to Setup. Manual camera
+  saves and Pixel Pal's camera recommendation now expose the same validated
+  capture-buffer choice.
 
 ### Changed
 

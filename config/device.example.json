@@ -5,6 +5,7 @@
   "glove_color": "none",
   "camera": "auto",
   "camera_fps": "auto",
+  "camera_buffers": 1,
   "camera_backend": "opencv",
   "capture_isolation": "thread",
   "camera_exposure": "auto",

@@ -98,6 +98,17 @@ def _camera_fps(value: Any, *, strict: bool = False) -> str | int:
     return "auto"
 
 
+def _camera_buffers(value: Any, *, strict: bool = False) -> int:
+    """Normalize the supported one- or two-buffer camera capture policy."""
+    if type(value) is int and value in (1, 2):
+        return value
+    if isinstance(value, str) and value in ("1", "2"):
+        return int(value)
+    if strict:
+        raise ValueError("Choose one or two camera buffers.")
+    return 1
+
+
 def _choice(value: Any, choices: tuple[str, ...], fallback: str, message: str,
             *, strict: bool = False) -> str:
     """Normalize one public fixed-choice setting."""
@@ -441,6 +452,7 @@ class ControlState:
             "camera": str(config.get("camera", "auto")),
             "camera_options": camera_device_options(),
             "camera_fps": _camera_fps(config.get("camera_fps", "auto")),
+            "camera_buffers": _camera_buffers(config.get("camera_buffers", 1)),
             "camera_backend": _choice(
                 config.get("camera_backend", "opencv"),
                 ("opencv", "direct-v4l2"), "opencv", "Choose a camera reader.",
@@ -548,14 +560,54 @@ class ControlState:
             thread.start()
         return self.camera_profile_snapshot()
 
-    def cancel_camera_profile(self) -> dict[str, Any]:
-        """Request cancellation; the worker thread always restores saved settings."""
+    def stop_camera_profile(self) -> dict[str, Any]:
+        """Stop a comparison or reset an already-restored failed comparison."""
         with self.lock:
             if self._camera_profile.get("active"):
                 self._camera_profile_cancel.set()
                 self._camera_profile["phase"] = "restoring"
                 self._camera_profile["instruction"] = "Restoring your camera settings…"
+                return json.loads(json.dumps(self._camera_profile))
+
+        # A failed lane restores the saved document in the profiler's finally
+        # block before publishing its error.  Restart the ordinary worker once
+        # more after the operator reconnects the camera, then clear the failed
+        # wizard state so a new test can start deterministically.
+        with self.config_lock:
+            marker = self._camera_profile_marker
+            if marker.exists():
+                if marker.is_symlink() or not marker.is_file():
+                    raise ValueError("The camera restore record is not a regular file.")
+                try:
+                    document = json.loads(marker.read_text())
+                    original = document.get("original")
+                    if not isinstance(original, dict):
+                        raise ValueError
+                except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "The original camera settings could not be verified; restart the Controller before testing again."
+                    ) from exc
+                self._restore_camera_profile_config(original)
+                marker.unlink(missing_ok=True)
+            else:
+                with self.lock:
+                    self.worker_status = {}
+                    self.revision += 1
+            with self.lock:
+                self._camera_profile.update({
+                    "active": False,
+                    "phase": "cancelled",
+                    "candidate": 0,
+                    "instruction": "Your original camera settings are restored. You can start a new test.",
+                    "results": [],
+                    "recommendation": None,
+                    "error": None,
+                })
         return self.camera_profile_snapshot()
+
+    def cancel_camera_profile(self) -> dict[str, Any]:
+        """Retain the original API name as a compatibility alias."""
+        return self.stop_camera_profile()
 
     def _candidate_ready(self, lane: dict[str, Any]) -> bool:
         """Confirm the requested lane started, including a measurable safe fallback."""
@@ -752,6 +804,10 @@ class ControlState:
             incoming.get("camera_fps", current.get("camera_fps", "auto")),
             strict=True,
         )
+        camera_buffers = _camera_buffers(
+            incoming.get("camera_buffers", current.get("camera_buffers", 1)),
+            strict=True,
+        )
         camera_backend = _choice(
             incoming.get("camera_backend", current.get("camera_backend", "opencv")),
             ("opencv", "direct-v4l2"), "opencv",
@@ -780,6 +836,7 @@ class ControlState:
             "receiver": receiver, "port": port, "token": token,
             "profile": profile, "glove_color": glove_color,
             "camera": camera, "camera_fps": camera_fps,
+            "camera_buffers": camera_buffers,
             "camera_backend": camera_backend, "camera_exposure": camera_exposure,
             "camera_manual_exposure": manual_exposure,
             "camera_manual_gain": manual_gain,
@@ -1022,8 +1079,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                         action = incoming.get("action")
                         if action == "begin":
                             result = state.begin_camera_profile()
-                        elif action == "cancel":
-                            result = state.cancel_camera_profile()
+                        elif action in ("stop", "cancel"):
+                            result = state.stop_camera_profile()
                         elif action == "apply":
                             result = state.apply_camera_profile()
                         else:

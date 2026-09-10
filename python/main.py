@@ -66,6 +66,7 @@ def load_device_config() -> dict:
         "tracking_confidence": 0.35,
         "tracking_roi_scale": 2.25,
         "camera_fps": "auto",
+        "camera_buffers": 1,
         "camera_backend": "opencv",
         "capture_isolation": "thread",
         "camera_exposure": "auto",

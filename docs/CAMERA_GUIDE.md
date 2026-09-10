@@ -16,6 +16,7 @@ Use these settings first:
 
 - **Camera:** Automatic
 - **Camera frame rate:** Automatic
+- **Camera buffers:** 1 buffer
 - **Camera reader:** Compatible - OpenCV
 - **Exposure behavior:** Automatic
 
@@ -30,6 +31,12 @@ one open hand visible, and follow the centre, corner-sweep, and edge cues. The
 test takes about one to two minutes because it repeats the same short movements with each
 safe setting supported by the attached camera.
 
+A mirrored live view shows the normal hand landmarks, a centre target, and
+camera-edge guides. Use it to keep the whole hand visible during the centre
+hold, corner sweeps, and edge check. The view opens only while a candidate is
+being measured and closes between candidates and when the test ends. Frames are
+displayed temporarily; they are not recorded or saved.
+
 Pixel Pal compares the current settings with supported frame rates, buffering,
 camera readers, and automatic-exposure choices. A setting is not recommended if
 the requested reader fell back, the requested high frame rate was not actually
@@ -38,12 +45,23 @@ remaining choices, lower camera-to-controller age wins.
 
 Controller output is stopped during the test. The original camera settings are
 restored before results appear, and nothing changes permanently until you choose
-**Use recommended settings**. Cancellation and a Controller restart also restore
+**Use recommended settings**. Choose **Stop test** at any time to restore normal
+operation. If the camera disconnects, reconnect it and choose **Stop test**;
+Setup restores any pending original settings, restarts normal vision, and then
+offers a clean **Start camera test** action. A Controller restart also restores
 the exact original settings. The test stores aggregate rates and timings only;
 it does not retain camera frames, pictures, or video.
 
 Recommendations belong to the tested physical camera. If the connected camera
 changes before saving, Setup asks you to run the test again.
+
+## Camera buffers
+
+Setup can explicitly save **1 buffer** or **2 buffers**. One buffer minimizes
+the driver's queue depth; two can provide steadier delivery on some cameras and
+hubs. Neither choice creates a software frame queue—PowerGlove Vision still
+keeps only the newest captured frame. Start with one buffer, or use Pixel Pal's
+camera test to compare both choices with the attached camera.
 
 ## Camera selection
 

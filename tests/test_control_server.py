@@ -214,12 +214,15 @@ class ControlStateTests(unittest.TestCase):
         self.assertNotIn("token", public)
         self.assertTrue(public["paired"])
 
-    def test_setup_contains_guided_camera_profiler_without_video_capture(self):
+    def test_setup_contains_guided_camera_profiler_with_unsaved_live_view(self):
         self.assertIn(b"Find the best camera settings", SETUP)
         self.assertIn(b"id=camera-profile-start", SETUP)
+        self.assertIn(b"id=camera-profile-cancel hidden>Stop test", SETUP)
         self.assertIn(b"id=camera-profile-apply", SETUP)
         self.assertIn(b"No video or images are saved", SETUP)
-        self.assertNotIn(b"camera-profile-frame", SETUP)
+        self.assertIn(b"id=camera-profile-frame data-src=/stream", SETUP)
+        self.assertIn(b"id=camera-profile-cue", SETUP)
+        self.assertIn(b"frame.removeAttribute('src')", SETUP)
 
     def test_camera_profile_apply_changes_only_recommended_fields(self):
         identity = {
@@ -261,6 +264,44 @@ class ControlStateTests(unittest.TestCase):
         self.assertEqual(restored["camera_buffers"], 2)
         self.assertEqual(restored["profile"], "bad_street_brawler")
         self.assertEqual(restored["token"], "private-token")
+        self.assertFalse(marker.exists())
+
+    def test_camera_profile_stop_after_disconnect_restarts_normal_worker(self):
+        original = self.state.load_config()
+        self.state.worker_status = {"vision_state": "error", "camera_available": False}
+        self.state._camera_profile.update({
+            "active": False,
+            "phase": "error",
+            "candidate": 2,
+            "error": "The camera disconnected during the test.",
+            "results": [{"name": "temporary"}],
+        })
+        revision = self.state.revision
+        result = self.state.stop_camera_profile()
+        self.assertEqual(result["phase"], "cancelled")
+        self.assertIn("start a new test", result["instruction"])
+        self.assertIsNone(result["error"])
+        self.assertEqual(result["results"], [])
+        self.assertEqual(self.state.worker_status, {})
+        self.assertEqual(self.state.revision, revision + 1)
+        self.assertEqual(self.state.load_config(), original)
+
+    def test_camera_profile_stop_during_lane_requests_safe_restore(self):
+        self.state._camera_profile.update({"active": True, "phase": "measuring"})
+        result = self.state.stop_camera_profile()
+        self.assertTrue(self.state._camera_profile_cancel.is_set())
+        self.assertTrue(result["active"])
+        self.assertEqual(result["phase"], "restoring")
+
+    def test_camera_profile_stop_retries_a_pending_exact_restore(self):
+        original = self.state.load_config()
+        marker = self.path.with_name("camera-profile-restore.json")
+        marker.write_text(json.dumps({"schema": 1, "original": original}))
+        self.path.write_text(json.dumps(dict(original, camera_fps=60)))
+        self.state._camera_profile.update({"active": False, "phase": "error"})
+        result = self.state.stop_camera_profile()
+        self.assertEqual(result["phase"], "cancelled")
+        self.assertEqual(self.state.load_config(), original)
         self.assertFalse(marker.exists())
 
     def test_camera_profile_route_requires_browser_action_header(self):
@@ -340,6 +381,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b'id=camera_fps', SETUP)
         self.assertIn(b'Automatic \xe2\x80\x94 prefer 30 fps', SETUP)
         self.assertIn(b'id=camera-rate-status', SETUP)
+        self.assertIn(b'id=camera_buffers', SETUP)
         self.assertIn(b'id=camera_backend', SETUP)
         self.assertIn(b'<select id=camera name=camera>', SETUP)
         self.assertIn(b'Automatic \xe2\x80\x94 choose the connected camera', SETUP)
@@ -354,6 +396,7 @@ class ControlStateTests(unittest.TestCase):
             "receiver": "arcade.local", "port": 55357,
             "profile": "program_i", "glove_color": "white", "camera": "2",
             "camera_fps": "60",
+            "camera_buffers": "1",
             "camera_backend": "direct-v4l2",
             "camera_exposure": "low-latency",
         })
@@ -365,7 +408,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertEqual(saved["camera_exposure"], "low-latency")
         self.assertEqual(saved["camera_manual_exposure"], 78)
         self.assertEqual(saved["camera_manual_gain"], 96)
-        self.assertEqual(saved["camera_buffers"], 2)
+        self.assertEqual(saved["camera_buffers"], 1)
         self.assertEqual(saved["tracking_confidence"], 0.45)
         self.assertEqual(self.state.revision, 1)
 
@@ -401,6 +444,15 @@ class ControlStateTests(unittest.TestCase):
                 "camera": "auto", "camera_fps": 24,
             })
         self.assertEqual(self.path.read_bytes(), before)
+
+    def test_invalid_camera_buffers_are_rejected_without_changing_settings(self):
+        before = self.path.read_bytes()
+        for value in (0, 3, True, 1.5, "auto"):
+            settings = self.state.public_config()
+            settings["camera_buffers"] = value
+            with self.assertRaisesRegex(ValueError, "one or two camera buffers"):
+                self.state.save_config(settings)
+            self.assertEqual(self.path.read_bytes(), before)
 
     def test_invalid_profile_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "supported gesture profile"):
