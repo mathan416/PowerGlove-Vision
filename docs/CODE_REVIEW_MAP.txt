@@ -1,6 +1,6 @@
 POWERGLOVE VISION - FILE HIERARCHY AND CODE REVIEW MAP
 ===================================================
-Updated: September 7, 2026 (America/Toronto)
+Updated: September 10, 2026 (America/Toronto)
 Source: /Users/mathan/Developer/PowerGlove
 Snapshot: dev, version 0.4.0, including the native-movement efficiency,
 camera-rate, lightweight-preview, and Dashboard-statistics work. Git history is
@@ -130,16 +130,15 @@ COMPLETE SOURCE INVENTORY
 |   |-- CODE_REVIEW_MAP.txt
 |   |-- CONFIGURATION_REFERENCE.md
 |   |-- CONTRIBUTING.md
+|   |-- ENGINEERING_JOURNEY.md
 |   |-- GAMEPLAY_GUIDE.md
 |   |-- INSTALL_README.md
 |   |-- MATRIX_GUIDE.md
 |   |-- NATIVE_EMULATION_EXPLAINED.md
 |   |-- SECURITY.md
 |   |-- TROUBLESHOOTING.md
-|   |-- bad-street-brawler-programs.md
 |   |-- cheatsheet.md
 |   |-- direction-response-benchmark.md
-|   |-- motion-smoothing-analysis.md
 |   |-- extra-digit-hunt.json
 |   |-- images
 |   |   |-- architecture
@@ -301,7 +300,8 @@ COMPLETE SOURCE INVENTORY
 |   |-- power-glove-rom-input-audit.md
 |   `-- super-glove-ball-native.md
 |-- licenses
-|   `-- Apache-2.0.txt
+|   |-- Apache-2.0.txt
+|   `-- GPL-2.0.txt
 |-- models
 |   |-- SHA256SUMS
 |   `-- hand_landmarker.task
@@ -313,33 +313,25 @@ COMPLETE SOURCE INVENTORY
 |   |-- app-lab
 |   |   `-- PowerGlove-Vision-Uno-Q.zip.sha256
 |   `-- pdf
-|       |-- Bad-Street-Brawler-Power-Glove-Programs.pdf
-|       |-- Nestopia-PowerGlove-Changes.pdf
-|       |-- Nestopia-PowerGlove-Core-Guide.pdf
 |       |-- PowerGlove-Vision-Architecture.pdf
 |       |-- PowerGlove-Vision-Build-Your-Own.pdf
+|       |-- PowerGlove-Vision-Camera-Guide.pdf
 |       |-- PowerGlove-Vision-Changelog.pdf
 |       |-- PowerGlove-Vision-Configuration-Reference.pdf
 |       |-- PowerGlove-Vision-Contributing.pdf
 |       |-- PowerGlove-Vision-Direction-Response.pdf
-|       |-- PowerGlove-Vision-Dot-Test.pdf
-|       |-- PowerGlove-Vision-Early-Startup.pdf
+|       |-- PowerGlove-Vision-Engineering-Journey.pdf
 |       |-- PowerGlove-Vision-Gameplay-Guide.pdf
 |       |-- PowerGlove-Vision-Guide.pdf
-|       |-- PowerGlove-Vision-Guide-Asset-Reference.pdf
 |       |-- PowerGlove-Vision-Input-Audit.pdf
 |       |-- PowerGlove-Vision-Matrix-Guide.pdf
-|       |-- PowerGlove-Vision-Motion-Analysis.pdf
 |       |-- PowerGlove-Vision-Native-Emulation.pdf
 |       |-- PowerGlove-Vision-Overview.pdf
 |       |-- PowerGlove-Vision-Quick-Reference.pdf
 |       |-- PowerGlove-Vision-Security.pdf
-|       |-- PowerGlove-Vision-Setup-Code-Review.pdf
 |       |-- PowerGlove-Vision-Super-Glove-Ball-Native.pdf
-|       |-- PowerGlove-Vision-Third-Party-Components.pdf
 |       |-- PowerGlove-Vision-Third-Party-Notices.pdf
-|       |-- PowerGlove-Vision-Troubleshooting.pdf
-|       `-- PowerGlove-Vision-Web-Illustrations.pdf
+|       `-- PowerGlove-Vision-Troubleshooting.pdf
 |-- pyproject.toml
 |-- python
 |   |-- main.py

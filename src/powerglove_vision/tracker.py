@@ -873,7 +873,6 @@ class MediaPipeTracker:
                 return TrackingResult(HandObservation(now, False), frame, diagnostics)
             return TrackingResult(
                 HandObservation(now, False), frame, diagnostics,
-                preview_overlay={"message": "Show one hand to the camera"},
             )
 
         if self._tasks:
@@ -953,7 +952,6 @@ class MediaPipeTracker:
             preview_overlay = {
                 "connections": CONNECTIONS,
                 "landmarks": [(float(point.x), float(point.y)) for point in landmarks],
-                "label": f"{hand_label} {hand_score:.2f}  glove hint: {self.glove_color}",
             }
         diagnostics = self._tracking_telemetry.observe(
             True, palm_detector_invoked, palm_detection_count,

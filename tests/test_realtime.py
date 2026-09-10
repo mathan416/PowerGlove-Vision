@@ -293,7 +293,7 @@ class RealtimePipelineTests(unittest.TestCase):
         finally:
             encoder.close()
 
-    def test_preview_encoder_draws_landmarks_off_the_gameplay_thread(self):
+    def test_preview_encoder_draws_only_landmarks_off_the_gameplay_thread(self):
         published = threading.Event()
         encoder = LatestPreviewEncoder(lambda _payload: published.set())
         cv2 = FakeCv2()
@@ -301,7 +301,7 @@ class RealtimePipelineTests(unittest.TestCase):
         overlay = {
             "landmarks": [(0.25, 0.5), (0.75, 0.5)],
             "connections": ((0, 1),),
-            "label": "Right 0.99",
+            "label": "technical label intentionally ignored",
         }
         try:
             self.assertTrue(encoder.submit(
@@ -310,7 +310,11 @@ class RealtimePipelineTests(unittest.TestCase):
             self.assertTrue(published.wait(1))
             self.assertIn((frame, "line", (160, 240), (480, 240)), cv2.drawn)
             self.assertIn((frame, "circle", (160, 240)), cv2.drawn)
-            self.assertIn((frame, "Right 0.99"), cv2.drawn)
+            self.assertFalse(any(
+                item[1] == "technical label intentionally ignored"
+                for item in cv2.drawn
+            ))
+            self.assertFalse(any(item[1] == "SUPER GLOVE BALL" for item in cv2.drawn))
         finally:
             encoder.close()
 

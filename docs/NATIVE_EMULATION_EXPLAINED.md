@@ -25,6 +25,22 @@ The Dashboard is an observer of this path. Its preview and optional statistics
 can be turned off without changing the coordinates or controller packets sent
 to RetroPie.
 
+### Camera reader and buffer choices
+
+OpenCV and Direct V4L2 change only how a camera frame enters the shared
+MediaPipe path. OpenCV is the compatible, gameplay-validated default. Direct
+V4L2 is a Linux engineering comparison that can expose the driver's frame time
+and manual controls when the camera supplies the required MJPEG format. It may
+fall back to OpenCV and is not inherently lower latency.
+
+One camera buffer minimizes how much captured work can wait. Two buffers can
+improve continuity on some camera and hub combinations. In either case,
+PowerGlove Vision owns one latest-frame slot: a newer capture replaces an older
+frame that inference has not started. The choice affects joystick and native
+games equally because it occurs before the emulator paths split. Use Setup's
+camera test to compare supported choices with the actual camera rather than
+assuming that the more technical reader or larger buffer count is faster.
+
 ## Joystick-style input: directions and buttons
 
 With FCEUmm, RetroPie exposes the **PowerGlove Vision** virtual gamepad. A profile
@@ -59,7 +75,7 @@ coordinate** uses each newest point directly during continuous tracking and is
 the only live native movement behavior. Historical bounded-curve tooling remains
 available for engineering replay, but it is not a Controller setting. Latest
 uses the selected frame's capture time, saved center, and per-player reach. A
-short missed observation may hold only X/Y for up to 120 ms
+short missed observation may hold only X/Y for up to 180 ms
 while actions release. On recovery, Latest accepts aligned forward movement at
 once but holds one contradictory or unusually distant non-forward measurement
 for the next fresh result. This one-result guard rejects reacquisition jumps
@@ -146,7 +162,7 @@ available for setup and recovery.
 
 Deterministic headless comparisons establish input handling in the emulator and
 game. They do not include exposure time, inference, the real network, or cabinet
-display latency. Live native movement is playable and substantially improved. A
+display latency. Live native movement is playable and substantially improved.
 The selected MediaPipe 0.10.35 runtime preserved 97.96% continuity on the same
 736-frame fast-sweep clip while reducing inference p95 from 60.18 to 46.60 ms
 and palm-reacquisition p95 from 149.48 to 120.16 ms versus the former runtime.

@@ -484,6 +484,182 @@ pixels, startup animations, and the full display reference.
 
 <!-- PAGEBREAK -->
 
+## Programs A-I
+
+The original Power Glove could load nine reusable mappings from Bad Street
+Brawler and retain one while the player changed cartridges. PowerGlove Vision
+keeps all nine available at once: choose one on Dashboard or let RetroPie select
+one from the registered ROM filename. These mappings produce ordinary NES
+controller inputs, so they can be tried with games beyond the tested play cards.
+
++## Where the programs came from
+
+Bad Street Brawler contained nine configuration programs labelled A through I.
+The player loaded one into the Power Glove, switched off the NES, swapped to a
+different cartridge within roughly 30 seconds, and kept using the downloaded
+mapping.
+
+These programs were not replacement firmware. They were small configurations
+for the glove's resident gesture interpreter. Each program mapped hand position, depth, wrist angle, and finger bends to
+ordinary NES controller inputs. The
+next game therefore did not need special Power Glove support.
+
+PowerGlove Vision keeps all nine profiles ready at once. Select one on
+Dashboard or let RetroPie choose it when a game launches. You do not need to
+open Bad Street Brawler first.
+
+## Quick selector
+
+| Program | See it | Best fit | Main controls |
+| --- | --- | --- | --- |
+| **A** | <img src="images/matrix/A.jpg" alt="A matrix display" width="104"> | Pinball | Two finger flippers, wrist tilt, combined-flipper mode |
+| **B** | <img src="images/matrix/programs/B.png" alt="B matrix display illustration" width="104"> | Joust | Steer by position; curl a finger to flap |
+| **C** | <img src="images/matrix/programs/C.png" alt="C matrix display illustration" width="104"> | Gyruss | Rotate by wrist angle; fire and bomb gestures |
+| **D** | <img src="images/matrix/programs/D.png" alt="D matrix display illustration" width="104"> | Challenge mode | Reversed directions with thumb/index buttons |
+| **E** | <img src="images/matrix/programs/E.png" alt="E matrix display illustration" width="104"> | Defender II | Ship movement, fire, smart bomb, evasive movement |
+| **F** | <img src="images/matrix/programs/F.png" alt="F matrix display illustration" width="104"> | Sesame Street 1-2-3 | Open-hand Yes and closed-hand No |
+| **G** | <img src="images/matrix/programs/G.png" alt="G matrix display illustration" width="104"> | Gun Smoke | Walk by position; combine index curl and a forward push to fire |
+| **H** | <img src="images/matrix/programs/H.png" alt="H matrix display illustration" width="104"> | Training / general play | Familiar controls with pulsed buttons |
+| **I** | <img src="images/matrix/programs/I.png" alt="I matrix display illustration" width="104"> | Knight Rider / driving | Wrist steering, throttle, brake, and turbo |
+
+<!-- PAGEBREAK -->
+
+## Program cards
+
+### A - Pinball rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Curl the index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Right flipper / A |
+| Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Left flipper / Up |
+| Roll the wrist left or right | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist" width="96"> | Tilt / B |
+| Pull the hand away from the camera | <img src="images/gestures/v2/pull-away-from-camera.png" alt="Pull the hand away from the camera" width="72"> | Toggle combined-flipper behaviour |
+
+Use this profile for pinball tables and games that benefit from two independent
+finger actions.
+
+### B - Joust rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the hand left or right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Steer left or right |
+| Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | B button; see the [Joust play card](GAMEPLAY_GUIDE.md#joust) for its in-game use |
+| Curl the index or middle finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Pulsed flap input |
+
+Use this profile for Joust and any game where rhythmic, repeated presses matter.
+
+### C - Gyruss rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Roll the wrist left or right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Rotate counter-clockwise or clockwise |
+| Keep the index finger straight | <img src="images/gestures/actions/keep-index-straight.png" alt="Keep the index finger straight" width="72"> | Continuous fire |
+| Pull the hand away from the camera | <img src="images/gestures/v2/pull-away-from-camera.png" alt="Pull the hand away from the camera" width="72"> | Launch a bomb |
+
+Use this profile for circular shooters and games with rotation plus rapid fire.
+
+### D - Mirror-world rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the hand left or right | <img src="images/gestures/actions/horizontal-movement.png" alt="Move the whole hand left or right" width="96"> | Reversed right or left direction |
+| Raise or lower the hand | <img src="images/gestures/actions/vertical-movement.png" alt="Raise or lower the whole hand" width="96"> | Reversed down or up direction |
+| Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | First action button |
+| Curl the index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Second action button |
+
+Use this profile for deliberate chaos, party challenges, or accessibility
+experiments that need inverted direction mappings.
+
+### E - Defender rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Move the ship |
+| Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Fire |
+| Roll the wrist left or right | <img src="images/gestures/actions/wrist-roll.png" alt="Rotate the wrist" width="96"> | Smart bomb |
+| Curl the ring finger | <img src="images/gestures/actions/finger-curl.png" alt="Six-digit glove curling a finger" width="72"> | Rapid horizontal movement |
+
+Use this profile for Defender II and multi-action shooters.
+
+### F - Yes / No rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Close every finger into a fist | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing all fingers" width="72"> | No |
+| Move an open hand in any direction | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move an open hand in any direction" width="96"> | Yes |
+
+Use this profile for Sesame Street 1-2-3 and simple choice-driven games.
+
+### G - Gun Smoke rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Walk using horizontal and vertical hand movement |
+| Curl the index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Fire |
+| Roll the wrist | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Add left or right movement |
+| Curl the thumb and ring finger | <img src="images/gestures/actions/menu-guard.png" alt="Menu guard with thumb and ring finger curled" width="96"> | Suppress all ordinary controller output |
+
+A forward push sends B. Combine it with index curl (A) to send A+B.
+
+Use this profile for Gun Smoke and shooters with movement plus directional fire.
+
+### H - Training rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Move the whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | Conventional directions |
+| Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Pulsed B |
+| Curl the index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Pulsed A |
+| Return the hand to center | <img src="images/gestures/actions/whole-hand-movement.png" alt="Return the whole hand to center" width="96"> | Release directional input |
+
+Use this profile for learning the system or giving an unmapped game a sensible
+general-purpose starting point.
+
+### I - Driving rig
+
+| Gesture | See it | Controller result |
+| --- | --- | --- |
+| Roll the wrist left or right | <img src="images/gestures/actions/wrist-roll.png" alt="Roll the wrist left or right" width="96"> | Steer |
+| Curl the index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | Throttle |
+| Lower the hand | <img src="images/gestures/v2/move-down.png" alt="Lower the whole hand" width="72"> | Brake |
+| Push the hand toward the camera | <img src="images/gestures/v2/push-toward-camera.png" alt="Push the hand toward the camera" width="72"> | Turbo |
+| Curl the thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | Auxiliary action |
+
+Use this profile for Knight Rider and driving games that need steering, speed, and
+one extra action.
+
+## How PowerGlove Vision selects a program
+
+Choose the current profile on Dashboard; choose the saved startup profile on
+Setup. Automatic selection matches the complete ROM filename, including its
+extension but excluding its folder path, against `/etc/powerglove/games.json`
+on RetroPie. Matching ignores letter case.
+
+The launch hook sends an authenticated profile request. The PowerGlove Vision Controller releases held
+controls, changes the mapping, reuses the saved calibration, and acknowledges
+the new profile on its blue matrix. If no valid calibration is saved, it collects
+an initial reference while you hold your open hand still in a comfortable
+resting position. It uses 24 geometrically valid observations; repeating
+the same center, distance, and wrist pose produces a similar rather than
+bit-for-bit identical reference.
+
+```json
+{
+  "games": {
+    "Joust (USA).zip": "program_b",
+    "Gyruss (USA).nes": "program_c",
+    "Gun.Smoke (USA).7z": "program_g"
+  }
+}
+```
+
+Merge entries into the existing `games` object; do not replace other registered
+games. The matrix displays `A` through `I`. When an unknown game starts, the launch hook turns gesture control off so
+the previous game's mapping does not remain active.
+
+
+<!-- PAGEBREAK -->
+
 ## Take PowerGlove Vision off-script
 
 You can use the included profiles with games beyond the eight listed in this
@@ -532,9 +708,7 @@ profile to the game's mechanics, not to the title printed on the cartridge.
 > fun is a successful experiment. Record the exact ROM filename and profile so
 > somebody else can reproduce it.
 
-For every Program A–I gesture, see the illustrated
-[Programs A–I manual](bad-street-brawler-programs.md). For registry validation
-and manual profile commands, see the
+For registry validation and manual profile commands, see the
 [Configuration Reference](CONFIGURATION_REFERENCE.md).
 
 <!-- PAGEBREAK -->
@@ -568,11 +742,11 @@ their respective owners. No ROM images or original game artwork are distributed.
 
 <img src="images/gestures/v2/pixel-pal.png" alt="Pixel Pal reveals the Extra-Digit Hunt answer" width="180">
 
-**Pixel Pal's answer: 11 six-digit hands.**
+**Pixel Pal's answer: 14 six-digit hands.**
 
 They appear once each in the Bad Street Brawler, Joust, Defender II, Sesame
 Street 1-2-3, and Gun Smoke play cards; twice in the native Super Glove Ball
 gesture table; three times in the gesture reference (middle curl, ring curl,
 and closed hand); and once in the
-**Start with A, D, and H** table. Every appearance counts, even when the same
-artwork returns.
+**Start with A, D, and H** table. Three more appear in the Program B, E, and F
+cards. Every appearance counts, even when the same artwork returns.

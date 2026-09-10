@@ -293,27 +293,6 @@ class LatestPreviewEncoder:
                         (int(point[0] * width), int(point[1] * height)),
                         3, (20, 255, 120), -1,
                     )
-                top_label = job.overlay.get("label")
-                if top_label:
-                    job.cv2.putText(
-                        frame, top_label, (20, 32),
-                        job.cv2.FONT_HERSHEY_SIMPLEX, 0.65, (20, 240, 100), 2,
-                    )
-                message = job.overlay.get("message")
-                if message:
-                    job.cv2.putText(
-                        frame, message, (20, 36),
-                        job.cv2.FONT_HERSHEY_SIMPLEX, 0.75, (30, 80, 255), 2,
-                    )
-                job.cv2.putText(
-                    frame,
-                    job.label,
-                    (20, frame.shape[0] - 24),
-                    job.cv2.FONT_HERSHEY_SIMPLEX,
-                    0.65,
-                    job.color,
-                    2,
-                )
                 encoded, jpeg = job.cv2.imencode(
                     ".jpg", frame, [job.cv2.IMWRITE_JPEG_QUALITY, 78]
                 )

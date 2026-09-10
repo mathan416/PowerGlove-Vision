@@ -35,8 +35,9 @@ from pathlib import Path
 from unittest import mock
 
 from powerglove_vision.control_server import (
-    DASHBOARD, LEARN, LOGO_PATH, PLAY, SETUP, ControlState, help_document_page,
-    help_index_page, start_control_server,
+    CAMERA_PROFILE_MEASURE_SECONDS, CAMERA_PROFILE_READY_SECONDS,
+    CAMERA_PROFILE_STAGES, DASHBOARD, LEARN, LOGO_PATH, PLAY, SETUP,
+    ControlState, help_document_page, help_index_page, start_control_server,
 )
 from powerglove_vision.debug_server import SharedDebugState
 from powerglove_vision.help_content import guide_pdf, help_asset, render_markdown
@@ -222,7 +223,18 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"No video or images are saved", SETUP)
         self.assertIn(b"id=camera-profile-frame data-src=/stream", SETUP)
         self.assertIn(b"id=camera-profile-cue", SETUP)
+        self.assertIn(b"id=camera-profile-countdown", SETUP)
+        self.assertIn(b"id=camera-profile-time", SETUP)
+        self.assertIn(b"about three minutes", SETUP)
         self.assertIn(b"frame.removeAttribute('src')", SETUP)
+
+    def test_camera_profile_gives_each_visible_cue_enough_time(self):
+        self.assertEqual(CAMERA_PROFILE_READY_SECONDS, 3)
+        self.assertEqual(
+            [(cue, seconds) for cue, seconds, _instruction in CAMERA_PROFILE_STAGES],
+            [("centre", 5), ("sweep", 9), ("edge", 6)],
+        )
+        self.assertEqual(CAMERA_PROFILE_MEASURE_SECONDS, 20)
 
     def test_camera_profile_apply_changes_only_recommended_fields(self):
         identity = {
@@ -555,12 +567,12 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Pixel Pal&#x27;s Extra-Digit Hunt", page)
         self.assertIn(b"<details class=extra-digit-answer>", page)
         self.assertIn(b"<summary>Reveal Pixel Pal's answer</summary>", page)
-        self.assertIn(b"Pixel Pal&#x27;s answer: 11 six-digit hands.", page)
+        self.assertIn(b"Pixel Pal&#x27;s answer: 14 six-digit hands.", page)
 
         programs = help_document_page("programs")
         self.assertIsNotNone(programs)
         assert programs is not None
-        self.assertIn(b"Pixel Pal&#x27;s answer: 3 six-digit hands.", programs)
+        self.assertIn(b"Pixel Pal&#x27;s answer: 14 six-digit hands.", programs)
 
     def test_extra_digit_answer_is_collapsed_and_omitted_from_contents(self):
         rendered, headings = render_markdown(
@@ -573,7 +585,7 @@ class ControlStateTests(unittest.TestCase):
         self.assertNotIn("Pixel Pal's Extra-Digit Hunt answer", [title for _level, _anchor, title in headings])
 
     def test_help_guides_keep_only_the_shared_header_logo(self):
-        for slug, width in (("gameplay", 680), ("programs", 620), ("installation", 680)):
+        for slug, width in (("gameplay", 680), ("installation", 680)):
             with self.subTest(slug=slug):
                 page = help_document_page(slug)
                 self.assertEqual(page.count(b"/assets/powerglove-vision-logo.png"), 1)
@@ -718,9 +730,18 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"Camera unavailable. Check that it is connected", LEARN)
         self.assertIn(b"Camera image unavailable. Reconnecting", LEARN)
         self.assertIn(b"$('learn-camera').onerror", LEARN)
+        self.assertIn(b"id=learn-camera-target", LEARN)
+        self.assertIn(b"$('learn-camera-target').hidden=false", LEARN)
         self.assertIn(b"cameraRetryAt=Date.now()+1000", LEARN)
         self.assertNotIn(b"/api/controller", LEARN)
         self.assertIn(b"Lesson 1 of 16", LEARN)
+
+    def test_live_camera_pages_share_the_center_target(self):
+        self.assertIn(b"id=camera-centre-target", DASHBOARD)
+        self.assertIn(b"id=learn-camera-target", LEARN)
+        self.assertIn(b"id=rps-camera-target", PLAY)
+        self.assertIn(b".camera-centre-target", DASHBOARD)
+        self.assertIn(b"cameraImageReady", DASHBOARD)
 
     @mock.patch("powerglove_vision.control_server.urllib.request.urlopen")
     def test_calibration_request_is_forwarded_to_worker(self, open_worker):

@@ -9,6 +9,12 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Added an Engineering Journey that records the one-week development process,
+  measurement discipline, CPU/GPU investigations, discarded movement paths,
+  reliability work, and lessons behind the current architecture.
+- Added the complete GNU GPL version 2 licence text required by the distributed
+  Nestopia-derived patch and clarified exactly which third-party components are
+  bundled, built on the target, installed from Debian, or supplied by RetroPie.
 - Added an on-demand, mirrored live view with centre and edge guides to Pixel
   Pal's camera-settings test so players can verify hand placement during sweeps.
 - Added Pixel Pal's **Find the best camera settings** wizard to Setup. It safely
@@ -28,6 +34,15 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Reworked Architecture as a current-system reference and moved historical
+  movement, runtime, GPU, and reacquisition discussion into Engineering Journey.
+- Consolidated the Programs A–I handbook into the Gameplay Guide, reordered its
+  discovery flow, and retired the redundant standalone Programs PDF.
+- Updated Installation, Camera, Configuration, Native Emulation, and Super
+  Glove Ball Native guides for the current OpenCV default, optional Direct V4L2
+  path, one/two-buffer choice, Pixel Pal camera test, 180 ms X/Y-only brief-loss
+  hold, and MediaPipe 0.10.35 CPU runtime. First-time setup now emphasizes safe
+  defaults and links to detail instead of presenting driver choices as required.
 - Extended only native continuous X/Y's brief missed-observation hold from 120
   to 180 ms, covering roughly one additional MediaPipe result during an extreme
   corner-to-corner sweep. Buttons, finger states, depth, roll, and D-pad output

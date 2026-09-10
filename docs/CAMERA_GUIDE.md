@@ -84,11 +84,18 @@ the actual delivered rate below the camera controls.
 
 ## Camera reader
 
-- **Recommended - OpenCV** is the portable, gameplay-validated default.
-- **Engineering comparison - Direct V4L2** is an optional Linux path for
-  supported 64-bit, 640x480 MJPEG cameras. It consumes the newest camera buffer
-  and falls back to OpenCV when its requirements are unavailable. On the tested
-  Kiyo Pro, live Super Glove Ball play felt slower than OpenCV.
+Think of the camera reader as the route a picture takes from the camera into
+PowerGlove Vision:
+
+- **Recommended - OpenCV** works with the widest range of cameras and was the
+  smoothest choice in live gameplay. Start here.
+- **Engineering comparison - Direct V4L2** talks more directly to compatible
+  Linux cameras. It can expose better driver timing and manual controls, but it
+  requires a 64-bit, 640×480 MJPEG stream and is not automatically faster. On
+  the tested Kiyo Pro, Super Glove Ball felt slower with this route.
+
+If Direct V4L2 is not supported, the Controller returns safely to OpenCV and
+reports the fallback. No gesture or calibration is changed.
 
 Direct V4L2 does not change MediaPipe recognition, gestures, calibration, or
 controller mappings.

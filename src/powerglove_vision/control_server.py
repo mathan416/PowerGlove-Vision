@@ -35,6 +35,7 @@ from __future__ import annotations
 import html
 import json
 import hashlib
+import math
 import os
 import secrets
 import socket
@@ -78,6 +79,13 @@ from .pairing import PAIRING_PORT, certificate_identity, generate_certificate, p
 
 WORKER_URL = "http://127.0.0.1:8089"
 HTTPS_PORT = 8443
+CAMERA_PROFILE_READY_SECONDS = 3.0
+CAMERA_PROFILE_STAGES = (
+    ("centre", 5.0, "Hold your open hand comfortably near the centre."),
+    ("sweep", 9.0, "Sweep your hand smoothly between opposite corners."),
+    ("edge", 6.0, "Touch an edge, then return to the centre."),
+)
+CAMERA_PROFILE_MEASURE_SECONDS = sum(stage[1] for stage in CAMERA_PROFILE_STAGES)
 LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "powerglove-vision-logo.png"
 PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
@@ -223,7 +231,8 @@ class ControlState:
         self._camera_profile = {
             "active": False, "phase": "idle", "candidate": 0, "total": 0,
             "instruction": "", "results": [], "recommendation": None,
-            "error": None,
+            "error": None, "cue": None, "cue_remaining": 0,
+            "candidate_remaining": 0, "candidate_progress": 0.0,
         }
         self._restore_interrupted_camera_profile()
 
@@ -549,7 +558,8 @@ class ControlState:
                 "active": True, "phase": "starting", "candidate": 0,
                 "total": len(lanes), "instruction": "Show Pixel Pal one open hand.",
                 "results": [], "recommendation": None, "error": None,
-                "camera": identity,
+                "camera": identity, "cue": None, "cue_remaining": 0,
+                "candidate_remaining": 0, "candidate_progress": 0.0,
             }
             thread = threading.Thread(
                 target=self._run_camera_profile,
@@ -602,6 +612,10 @@ class ControlState:
                     "results": [],
                     "recommendation": None,
                     "error": None,
+                    "cue": None,
+                    "cue_remaining": 0,
+                    "candidate_remaining": 0,
+                    "candidate_progress": 0.0,
                 })
         return self.camera_profile_snapshot()
 
@@ -634,6 +648,8 @@ class ControlState:
                 self._set_camera_profile_state(
                     phase="starting", candidate=index,
                     instruction=f"Preparing test {index} of {len(lanes)}…",
+                    cue=None, cue_remaining=0,
+                    candidate_remaining=0, candidate_progress=0.0,
                 )
                 temporary = dict(lane)
                 temporary["profile"] = "bad_street_brawler"
@@ -658,24 +674,55 @@ class ControlState:
                     if not camera_present:
                         raise ValueError("The camera disconnected during the test. Reconnect it and try again.")
                     continue
+                ready_started = time.monotonic()
+                while (time.monotonic() - ready_started < CAMERA_PROFILE_READY_SECONDS
+                       and not self._camera_profile_cancel.is_set()):
+                    remaining = max(
+                        1,
+                        math.ceil(
+                            CAMERA_PROFILE_READY_SECONDS
+                            - (time.monotonic() - ready_started)
+                        ),
+                    )
+                    self._set_camera_profile_state(
+                        phase="countdown", cue="ready",
+                        instruction="Get ready with one open hand in the camera view.",
+                        cue_remaining=remaining,
+                        candidate_remaining=math.ceil(CAMERA_PROFILE_MEASURE_SECONDS),
+                        candidate_progress=0.0,
+                    )
+                    time.sleep(.1)
+                if self._camera_profile_cancel.is_set():
+                    break
                 samples = []
                 started = time.monotonic()
-                while (time.monotonic() - started < 10
+                while (time.monotonic() - started < CAMERA_PROFILE_MEASURE_SECONDS
                        and not self._camera_profile_cancel.is_set()):
                     elapsed = time.monotonic() - started
-                    instruction = (
-                        "Hold your open hand comfortably near the centre."
-                        if elapsed < 3 else
-                        "Sweep your hand smoothly between opposite corners."
-                        if elapsed < 8 else
-                        "Move briefly to an edge, then return to the centre."
-                    )
+                    stage_started = 0.0
+                    cue, duration, instruction = CAMERA_PROFILE_STAGES[-1]
+                    for candidate_cue, candidate_duration, candidate_instruction in CAMERA_PROFILE_STAGES:
+                        if elapsed < stage_started + candidate_duration:
+                            cue, duration, instruction = (
+                                candidate_cue, candidate_duration,
+                                candidate_instruction,
+                            )
+                            break
+                        stage_started += candidate_duration
+                    cue_remaining = max(1, math.ceil(duration - (elapsed - stage_started)))
                     with self.lock:
                         sample = dict(self.worker_status)
                     if not sample.get("detected"):
                         instruction = "Pixel Pal cannot see your whole hand. Move it into the camera frame."
                     self._set_camera_profile_state(
-                        phase="measuring", instruction=instruction,
+                        phase="measuring", instruction=instruction, cue=cue,
+                        cue_remaining=cue_remaining,
+                        candidate_remaining=max(
+                            1, math.ceil(CAMERA_PROFILE_MEASURE_SECONDS - elapsed)
+                        ),
+                        candidate_progress=min(
+                            1.0, elapsed / CAMERA_PROFILE_MEASURE_SECONDS
+                        ),
                     )
                     self.request_statistics(1)
                     samples.append(sample)
@@ -685,12 +732,17 @@ class ControlState:
                 )
                 result["name"] = camera_profile_display_name(lane)
                 results.append(result)
-                self._set_camera_profile_state(results=list(results))
+                self._set_camera_profile_state(
+                    results=list(results), cue=None, cue_remaining=0,
+                    candidate_remaining=0, candidate_progress=1.0,
+                )
         except Exception as exc:
             error = str(exc)
         finally:
             self._set_camera_profile_state(
-                phase="restoring", instruction="Restoring your camera settings…"
+                phase="restoring", instruction="Restoring your camera settings…",
+                cue=None, cue_remaining=0, candidate_remaining=0,
+                candidate_progress=1.0,
             )
             try:
                 self._restore_camera_profile_config(original)
@@ -715,6 +767,8 @@ class ControlState:
                     "No safe recommendation was available. Your settings are unchanged."
                 ),
                 results=results, recommendation=recommendation, error=error,
+                cue=None, cue_remaining=0, candidate_remaining=0,
+                candidate_progress=1.0,
             )
 
     def apply_camera_profile(self) -> dict[str, Any]:

@@ -3,10 +3,10 @@
 A camera-to-controller system for the **PowerGlove Vision Controller (Arduino
 UNO Q)** and RetroPie.
 
-This guide describes the implementation reviewed on September 9, 2026, including
-three-step tuning, optional personal hand setup, shared gameplay thresholds, the
-matching Glove Academy/Tune matrix animations, and the verified Arduino sketch build.
-It is a map of current behaviour, not a proposed redesign or a hardware test report.
+This guide describes the current implementation reviewed on September 10, 2026.
+It is a map of production responsibilities, data flows, interfaces, and failure
+behavior—not a chronology of experiments. The decisions and discarded paths
+that led here are recorded in the [Engineering Journey](ENGINEERING_JOURNEY.md).
 
 ## Read this first
 
@@ -154,7 +154,7 @@ preserving recognition behavior, so they remain engineering research rather
 than selectable gameplay runtimes. The model graph is the connected palm-
 detection and landmark-computation pipeline; it is broader than either neural
 network alone. Research details and promotion gates are consolidated in
-[Recognition and movement pipeline analysis](motion-smoothing-analysis.md).
+[Engineering Journey](ENGINEERING_JOURNEY.md).
 
 Optional manual exposure and gain are applied through the Direct V4L2 stream's
 existing file descriptor after the camera advertises compatible controls. This
@@ -551,7 +551,7 @@ it does not claim every path has been independently security-audited.
 | Supervisor, worker launch, matrix ownership | `python/main.py` |
 | Camera lifecycle and frame-to-send loop | `src/powerglove_vision/vision_app.py`, `realtime.py` |
 | Capture selection, Kiyo controls, and landmark measurements | `src/powerglove_vision/camera.py`, `kiyo_camera.py`, `tracker.py` |
-| Experimental native movement tracking | `src/powerglove_vision/motion.py` |
+| Current native X/Y and archived movement experiments | `src/powerglove_vision/motion.py`, `realtime.py` |
 | Observation/state data objects | `src/powerglove_vision/model.py` |
 | Calibration, thresholds, held gestures, mappings | `src/powerglove_vision/gesture.py` |
 | Recording, suggestions, previews, persistence | `src/powerglove_vision/tuning.py` |
@@ -568,11 +568,11 @@ it does not claim every path has been independently security-audited.
 
 ## Validation boundaries
 
-Code inspection establishes the flows described here. The prior work also
-compiled the Arduino sketch and deployed the matrix firmware, checked application health and
-bridge responses, and verified saved configuration preservation. Those checks
-are different from visually observing the physical matrix or validating real
-hands in a running game.
+Automated tests establish data contracts, safety behavior, configuration
+persistence, and deterministic input handling. Hardware checks establish camera,
+matrix, bridge, receiver, and emulator integration. Live gameplay establishes
+that recognized movement and gestures remain usable as one end-to-end system.
+No one category substitutes for the others.
 
 Before releasing recognition changes, exercise optional hand setup and individual
 tuning without setup; V-sign and thumbs-up with different curl ranges; incorrect

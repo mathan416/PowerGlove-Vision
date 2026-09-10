@@ -44,7 +44,9 @@ async def main():
     flags = dict(load_error=False, save_error=False, begin_error=False,
                  pair_error=False, abort_pair=False, expiry=120, pair_delay=.15)
     camera_profile = dict(active=False, phase='idle', candidate=0, total=2,
-                          instruction='', results=[], recommendation=None, error=None)
+                          instruction='', results=[], recommendation=None, error=None,
+                          cue=None, cue_remaining=0, candidate_remaining=0,
+                          candidate_progress=0)
     async with async_playwright() as pw:
         browser = await pw.webkit.launch(headless=True) if '--webkit' in sys.argv else await pw.chromium.launch(channel='chrome', headless=True)
         page = await browser.new_page(viewport={'width':1280,'height':1000})
@@ -61,7 +63,7 @@ async def main():
             if path=='/api/camera-profile':
                 if r.request.method=='POST':
                     action=r.request.post_data_json['action']
-                    if action=='begin':camera_profile.update(active=True,phase='measuring',candidate=1,instruction='Hold your open hand comfortably near the centre.')
+                    if action=='begin':camera_profile.update(active=True,phase='countdown',candidate=1,instruction='Get ready with one open hand in the camera view.',cue='ready',cue_remaining=3,candidate_remaining=20)
                     elif action in ('cancel','stop'):camera_profile.update(active=False,phase='cancelled',instruction='Your original camera settings are restored. You can start a new test.',error=None,results=[])
                     elif action=='apply':
                         config.update(camera_profile['recommendation']['settings'])
@@ -122,14 +124,18 @@ async def main():
         page.on('dialog',lambda dialog:asyncio.create_task(dialog.accept()))
         await page.locator('#camera-profile-start').click()
         await expect(page.locator('#camera-profile-cancel')).to_be_visible()
-        await expect(page.locator('#camera-profile-instruction')).to_contain_text('Hold your open hand')
+        await expect(page.locator('#camera-profile-instruction')).to_contain_text('Get ready')
         await expect(page.locator('#camera-profile-view')).to_be_visible()
         await expect(page.locator('#camera-profile-frame')).to_have_attribute('src',re.compile(r'^/stream\?t='))
+        await expect(page.locator('#camera-profile-cue')).to_contain_text('Get ready')
+        await expect(page.locator('#camera-profile-countdown')).to_have_text('3')
+        camera_profile.update(phase='measuring',cue='centre',cue_remaining=5,candidate_remaining=20,candidate_progress=.01,instruction='Hold your open hand comfortably near the centre.')
         await expect(page.locator('#camera-profile-cue')).to_contain_text('centre')
-        camera_profile['instruction']='Sweep your hand smoothly between opposite corners.'
+        await expect(page.locator('#camera-profile-time')).to_contain_text('5 seconds left')
+        camera_profile.update(cue='sweep',cue_remaining=9,candidate_remaining=15,candidate_progress=.25,instruction='Sweep your hand smoothly between opposite corners.')
         await expect(page.locator('#camera-profile-view')).to_have_attribute('data-cue','sweep')
         await expect(page.locator('#camera-profile-cue')).to_contain_text('opposite corners')
-        camera_profile['instruction']='Move briefly to an edge, then return to the centre.'
+        camera_profile.update(cue='edge',cue_remaining=6,candidate_remaining=6,candidate_progress=.7,instruction='Touch an edge, then return to the centre.')
         await expect(page.locator('#camera-profile-view')).to_have_attribute('data-cue','edge')
         await expect(page.locator('#camera-profile-cue')).to_contain_text('return to centre')
         await expect(page.locator('#camera-save')).to_be_disabled()

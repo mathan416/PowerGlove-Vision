@@ -6,7 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-07 - Required one PDF edition for every consolidated Markdown document.
+#   2026-09-10 - Consolidated Programs into Gameplay and registered the Engineering Journey.
 #   2026-09-05 - Kept Pixel Pal's Extra-Digit Hunt counts synchronized with guide art.
 #   2026-09-04 - Guarded the Nestopia revision and patch digest in third-party records.
 #   2026-09-04 - Limited Help coverage checks to guides directly under docs.
@@ -56,14 +56,13 @@ PDF_EDITIONS = {
     "docs/NATIVE_EMULATION_EXPLAINED.md": "PowerGlove-Vision-Native-Emulation.pdf",
     "docs/TROUBLESHOOTING.md": "PowerGlove-Vision-Troubleshooting.pdf",
     "docs/CAMERA_GUIDE.md": "PowerGlove-Vision-Camera-Guide.pdf",
-    "docs/motion-smoothing-analysis.md": "PowerGlove-Vision-Motion-Analysis.pdf",
+    "docs/ENGINEERING_JOURNEY.md": "PowerGlove-Vision-Engineering-Journey.pdf",
 
     "docs/MATRIX_GUIDE.md": "PowerGlove-Vision-Matrix-Guide.pdf",
     "docs/ARCHITECTURE.md": "PowerGlove-Vision-Architecture.pdf",
     "README.md": "PowerGlove-Vision-Overview.pdf",
     "docs/INSTALL_README.md": "PowerGlove-Vision-Guide.pdf",
     "docs/cheatsheet.md": "PowerGlove-Vision-Quick-Reference.pdf",
-    "docs/bad-street-brawler-programs.md": "Bad-Street-Brawler-Power-Glove-Programs.pdf",
     "docs/CHANGELOG.md": "PowerGlove-Vision-Changelog.pdf",
     "docs/CONFIGURATION_REFERENCE.md": "PowerGlove-Vision-Configuration-Reference.pdf",
     "docs/SECURITY.md": "PowerGlove-Vision-Security.pdf",

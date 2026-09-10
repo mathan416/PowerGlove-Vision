@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
-#   2026-09-09 - Renamed the consolidated recognition and movement analysis guide.
+#   2026-09-10 - Consolidated Programs into Gameplay and added the Engineering Journey.
 #   2026-09-07 - Added PDFs for the remaining public technical guides.
 #   2026-09-06 - Made Rock Paper Scissors and live native validation discoverable in Help.
 #   2026-09-06 - Added the local Rock Paper Scissors page to cabinet links.
@@ -38,7 +38,6 @@ HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
     {'slug': 'cabinet', 'title': 'This console', 'file': None, 'description': 'Live PowerGlove Vision Controller links and the active RetroPie connection, generated for this cabinet.', 'group': 'User manuals'},
     {'slug': 'gameplay', 'title': 'Game and gesture guide', 'file': 'GAMEPLAY_GUIDE.md', 'description': 'Illustrated Rock Paper Scissors instructions, configured-game controls, and play tips.', 'group': 'User manuals'},
-    {'slug': 'programs', 'title': 'Programs A-I', 'file': 'bad-street-brawler-programs.md', 'description': 'The original Power Glove programs and their camera-based equivalents.', 'group': 'User manuals'},
     {'slug': 'matrix', 'title': 'Matrix display guide', 'file': 'MATRIX_GUIDE.md', 'description': 'Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.', 'group': 'User manuals'},
     {'slug': 'build-your-own', 'title': 'Build your own: parts, cost, and difficulty', 'file': 'BUILD_YOUR_OWN.md', 'description': 'Parts, planning costs, tested hardware, and a staged first build.', 'group': 'User manuals'},
     {'slug': 'installation', 'title': 'Installation and setup', 'file': 'INSTALL_README.md', 'description': 'Installation, secure pairing, the Play Checklist, updates, and troubleshooting.', 'group': 'User manuals'},
@@ -51,14 +50,18 @@ HELP_GUIDES = (
     {'slug': 'configuration', 'title': 'Configuration reference', 'file': 'CONFIGURATION_REFERENCE.md', 'description': 'Every public setting, template, generated file, and installed location.', 'group': 'Technical documentation'},
     {'slug': 'input-audit', 'title': 'Power Glove game input audit', 'file': 'power-glove-rom-input-audit.md', 'description': 'ROM-level evidence separating native Power Glove input from standard controller mappings.', 'group': 'Technical documentation'},
     {'slug': 'direction-response', 'title': 'Native movement validation', 'file': 'direction-response-benchmark.md', 'description': 'Native latency, jitter, dot-core isolation, software traces, video evidence, and headless measurements.', 'group': 'Technical documentation'},
-    {'slug': 'motion-smoothing', 'title': 'Recognition and movement pipeline analysis', 'file': 'motion-smoothing-analysis.md', 'description': 'CPU runtime, GPU research, reacquisition, optical flow, and native X/Y response evidence.', 'group': 'Technical documentation'},
+    {'slug': 'engineering-journey', 'title': 'Engineering journey', 'file': 'ENGINEERING_JOURNEY.md', 'description': 'How one week of hypotheses, measurements, experiments, and play tests produced the current system.', 'group': 'Technical documentation'},
     {'slug': 'security', 'title': 'Security and privacy', 'file': 'SECURITY.md', 'description': 'Pairing boundaries, safe network use, shutdown permissions, and reporting.', 'group': 'Technical documentation'},
     {'slug': 'components', 'title': 'Third-party notices', 'file': '../THIRD_PARTY_NOTICES.md', 'description': 'MediaPipe, model, emulator, license, checksum, modification, and runtime provenance.', 'group': 'Technical documentation'},
     {'slug': 'contributing', 'title': 'Contributing', 'file': 'CONTRIBUTING.md', 'description': 'Source formatting, tests, documentation, packaging, and review expectations.', 'group': 'Technical documentation'},
     {'slug': 'changelog', 'title': 'Changelog', 'file': 'CHANGELOG.md', 'description': 'User-visible additions, fixes, security changes, and documentation updates.', 'group': 'Technical documentation'},
 )
 GUIDES_BY_SLUG = {str(guide["slug"]): guide for guide in HELP_GUIDES}
-LEGACY_SLUGS = {"field-guide": "installation"}
+LEGACY_SLUGS = {
+    "field-guide": "installation",
+    "programs": "gameplay",
+    "motion-smoothing": "engineering-journey",
+}
 SLUG_BY_FILE = {
     str(guide["file"]): str(guide["slug"])
     for guide in HELP_GUIDES
@@ -75,11 +78,10 @@ HELP_PDFS = {
     "input-audit": "PowerGlove-Vision-Input-Audit.pdf",
     "native-super-glove-ball": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
     "direction-response": "PowerGlove-Vision-Direction-Response.pdf",
-    "motion-smoothing": "PowerGlove-Vision-Motion-Analysis.pdf",
+    "engineering-journey": "PowerGlove-Vision-Engineering-Journey.pdf",
     "overview": "PowerGlove-Vision-Overview.pdf",
     "installation": "PowerGlove-Vision-Guide.pdf",
     "gameplay": "PowerGlove-Vision-Gameplay-Guide.pdf",
-    "programs": "Bad-Street-Brawler-Power-Glove-Programs.pdf",
     "configuration": "PowerGlove-Vision-Configuration-Reference.pdf",
     "security": "PowerGlove-Vision-Security.pdf",
     "components": "PowerGlove-Vision-Third-Party-Notices.pdf",

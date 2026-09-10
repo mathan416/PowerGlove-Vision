@@ -4,7 +4,7 @@
 
 # PowerGlove Vision
 
-**Current project version: 0.4.0; public candidate: v0.4.0-rc.1.** This candidate promotes the tested
+**Current project version: 0.4.0; public candidate: v0.4.0-rc.3.** This candidate promotes the tested
 MediaPipe efficiency work: newest-frame capture, four inference threads,
 30-fps-first camera negotiation, off-thread lightweight preview rendering, and
 Latest-coordinate native movement with guarded reacquisition. Optional,
@@ -92,8 +92,8 @@ On Dashboard, **Center hand** saves the resting reference for the selected playe
 | Choose a camera, frame rate, or exposure setting | [Camera Guide](docs/CAMERA_GUIDE.md) |
 | Find a command or connection reminder | [Quick Reference](docs/cheatsheet.md) |
 | Learn a game's gestures and try a short challenge | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) |
-| Choose or experiment with Programs A–I | [Programs A–I manual](docs/bad-street-brawler-programs.md) |
-| Join Pixel Pal's suspiciously well-fingered scavenger hunt | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) and [Programs A–I manual](docs/bad-street-brawler-programs.md) |
+| Choose or experiment with Programs A–I | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md#programs-a-i) |
+| Join Pixel Pal's suspiciously well-fingered scavenger hunt | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) |
 | Recognize matrix animations and letters | [Matrix display guide](docs/MATRIX_GUIDE.md) |
 
 ### Technical documentation
@@ -106,7 +106,7 @@ On Dashboard, **Center hand** saves the resting reference for the selected playe
 | Review Super Glove Ball packet and gameplay evidence | [Native compatibility record](docs/super-glove-ball-native.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
-| Review recognition-runtime and movement experiments | [Recognition and movement pipeline analysis](docs/motion-smoothing-analysis.md) |
+| Review how the system was developed and measured | [Engineering Journey](docs/ENGINEERING_JOURNEY.md) |
 | Measure native X/Y or isolate it from Super Glove Ball behavior | [Native movement validation](docs/direction-response-benchmark.md#direct-output-dot-test) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
@@ -241,7 +241,7 @@ effect depends on the game. A pulsed button repeatedly presses and releases.
 
 Programs A, D, and H have no default ROM assignment. Choose one on Dashboard
 to try it, then register the exact game filename if you want automatic
-selection. The [Programs manual](docs/bad-street-brawler-programs.md) includes
+selection. The [Gameplay Guide](docs/GAMEPLAY_GUIDE.md#programs-a-i) includes
 illustrations; the [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) adds objectives and tips.
 
 ### Bad Street Brawler

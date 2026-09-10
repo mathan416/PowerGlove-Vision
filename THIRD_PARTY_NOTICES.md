@@ -7,6 +7,23 @@ PowerGlove Vision's original source code and associated documentation are
 licensed under the repository's MIT License. That license does not replace the
 licenses or terms that apply to third-party software and model files.
 
+## What an ordinary release distributes
+
+| Item | Included in release | Licence and notice |
+| --- | --- | --- |
+| PowerGlove Vision source, documentation, and original artwork | Yes | MIT; see `LICENSE` |
+| MediaPipe 0.10.35 ARM64/Python 3.12 wheel | Yes | Apache 2.0; the wheel retains its own licence and the release includes `licenses/Apache-2.0.txt` |
+| Google Hand Landmarker model | Yes | Apache 2.0; see `licenses/Apache-2.0.txt` and the model record below |
+| PowerGlove Vision Nestopia patch and reproducible build recipe | Yes | GNU GPL version 2; see `licenses/GPL-2.0.txt` |
+| Compiled `lr-nestopia-powerglove` core | Built on RetroPie when the user selects native support; not bundled in the Controller archive | GNU GPL version 2; the installer preserves upstream copying information with the installed core |
+| `uhubctl` | Installed from Debian only when the camera-recovery option is used; not bundled | GNU GPL version 2 or later, under the Debian package's own notices |
+| RetroArch, FCEUmm, stock Nestopia, and RetroPie | Already supplied by or installed through RetroPie; not bundled | Their respective upstream licences |
+| Arduino platform and libraries listed below | Downloaded by the Arduino toolchain; not bundled in the Controller archive | Their respective upstream licences |
+
+Keep `LICENSE`, this notice, `licenses/Apache-2.0.txt`, and
+`licenses/GPL-2.0.txt` with redistributed copies. The application does not
+distribute ROM images, original game artwork, or Nintendo software.
+
 ## MediaPipe 0.10.35 ARM64 wheel
 
 A wheel (`.whl`) is an installable Python package. PowerGlove Vision ships one
@@ -34,7 +51,7 @@ Apache 2.0 license at
 `mediapipe-0.10.35+powerglove.cpu1.dist-info/licenses/LICENSE`. The build keeps
 the established MediaPipe Hands graph used by PowerGlove Vision and includes
 the narrow Linux compatibility and GPU-research support recorded in the
-[recognition and movement pipeline analysis](docs/motion-smoothing-analysis.md).
+[Engineering Journey](docs/ENGINEERING_JOURNEY.md).
 Production selects the four-thread XNNPACK CPU graph; the slower GPU lanes are
 not selected during gameplay.
 
@@ -111,6 +128,7 @@ The optional `lr-nestopia-powerglove` core is built from libretro Nestopia
 revision `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`. Nestopia identifies its
 license as the GNU General Public License, version 2. PowerGlove Vision's MIT
 license does not replace the license of Nestopia or the resulting modified core.
+The corresponding licence text is distributed as `licenses/GPL-2.0.txt`.
 
 | Property | Value |
 | --- | --- |

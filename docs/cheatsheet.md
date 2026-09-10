@@ -498,7 +498,7 @@ same filename, including spaces, punctuation, and `.nes`, `.zip`, or `.7z`.
 Confirm the selected profile on Dashboard after restarting the game.
 
 See the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game-specific instructions and
-the [Programs A–I manual](bad-street-brawler-programs.md) for all reusable mappings.
+the [Gameplay Guide](GAMEPLAY_GUIDE.md#programs-a-i) for all reusable mappings.
 
 A **profile queued** launch message means the PowerGlove Vision Controller accepted the request for
 processing. Confirm the active profile and game name on Dashboard. For timeouts,

@@ -1677,7 +1677,7 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--width PIXELS` | `640` | Requested capture width; the camera may negotiate another size. |
 | `--height PIXELS` | `480` | Requested capture height. |
 | `--fps NUMBER` | `0` (Automatic) | `0` tries 30 fps first and then accepts the driver-selected rate if necessary; explicit choices are 30 or 60. A requested rate is not a guarantee of effective tracking or game frame rate. |
-| `--camera-buffers NUMBER` | `1` | One or two capture buffers; the measured UNO Q Kiyo candidate uses two. |
+| `--camera-buffers NUMBER` | `1` | One or two capture buffers. One is the portable low-queue default; Pixel Pal's camera test can recommend two when a particular camera delivers more continuously. |
 | `--kiyo-hdr-off` | Off | Identity-checked volatile Kiyo Pro HDR-off with automatic fixed-rate exposure. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
 | `--capture-backend VALUE` | `opencv` | `opencv` is the recommended, gameplay-validated reader. `direct-v4l2` is an engineering newest-driver-buffer comparison and falls back to OpenCV when unsupported. |
@@ -2595,4 +2595,4 @@ comparison, but a maximum above `1.00` no longer extrapolates native output.
 Use `benchmark-vision-replay.py` followed by
 `benchmark-native-motion-curve.py` to compare the old deployed experiment, its
 safely capped form, the bounded speed curve, and unsmoothed latest coordinates.
-See [offline analysis](motion-smoothing-analysis.md).
+See the [Engineering Journey](ENGINEERING_JOURNEY.md).

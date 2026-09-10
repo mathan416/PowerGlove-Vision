@@ -570,6 +570,8 @@ def build(source: Path, destination: Path, title: str, subtitle: str, kind: str)
 def main():
     """Build every maintained PDF edition and report the generation date."""
     obsolete = {
+        "Bad-Street-Brawler-Power-Glove-Programs.pdf",
+        "PowerGlove-Vision-Motion-Analysis.pdf",
         "Nestopia-PowerGlove-Changes.pdf",
         "Nestopia-PowerGlove-Core-Guide.pdf",
         "PowerGlove-Vision-Dot-Test.pdf",
@@ -587,7 +589,6 @@ def main():
     overview = ROOT / "README.md"
     install = docs / "INSTALL_README.md"
     cheatsheet = docs / "cheatsheet.md"
-    programs = docs / "bad-street-brawler-programs.md"
     third_party = ROOT / "THIRD_PARTY_NOTICES.md"
     changelog = docs / "CHANGELOG.md"
     configuration = docs / "CONFIGURATION_REFERENCE.md"
@@ -614,12 +615,6 @@ def main():
         "Power Glove Vision Quick Reference",
         "Current cabinet addresses, services, controls, and maintenance commands.",
         "Cabinet cheat sheet",
-    )
-    build(
-        programs, OUTPUT / "Bad-Street-Brawler-Power-Glove-Programs.pdf",
-        "Programs A-I",
-        "The cartridge-free field manual for Power Glove Vision profiles.",
-        "Profile handbook",
     )
     build(
         third_party, OUTPUT / "PowerGlove-Vision-Third-Party-Notices.pdf",
@@ -685,9 +680,9 @@ def main():
           "Troubleshooting by symptom", "Find the first failing stage, from the camera to the displayed game.", "Community guide")
     build(docs / "CAMERA_GUIDE.md", OUTPUT / "PowerGlove-Vision-Camera-Guide.pdf",
           "PowerGlove Vision Camera Guide", "Choose, tune, and troubleshoot a camera without changing gesture recognition.", "User guide")
-    build(docs / "motion-smoothing-analysis.md", OUTPUT / "PowerGlove-Vision-Motion-Analysis.pdf",
-          "Recognition and Movement Pipeline Analysis", "CPU runtime, GPU research, reacquisition, and native X/Y evidence.", "Engineering analysis")
-    print(f"Built 20 PDF guides on {date.today().isoformat()}")
+    build(docs / "ENGINEERING_JOURNEY.md", OUTPUT / "PowerGlove-Vision-Engineering-Journey.pdf",
+          "PowerGlove Vision Engineering Journey", "One week of hypotheses, measurements, experiments, and play tests.", "Engineering history")
+    print(f"Built 19 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":
