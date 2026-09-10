@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-10 - Added privacy-safe physical-camera identity for saved recommendations.
 #   2026-09-09 - Required a real worker frame before confirming USB camera recovery.
 #   2026-09-08 - Added browser-safe labels for selectable camera devices.
 #   2026-09-08 - Distinguish healthy enrollment from present-but-wedged stream recovery.
@@ -19,6 +20,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import time
 from pathlib import Path
 from typing import Callable, Mapping
@@ -235,6 +237,53 @@ def camera_device_options(
         description = " ".join(description.split()) or "Camera"
         options.append({"value": value, "label": f"{description} — camera {value}"})
     return options
+
+
+def camera_device_identity(
+    selection: str,
+    dev_root: Path = Path("/dev"),
+    sys_root: Path = Path("/sys/class/video4linux"),
+) -> dict[str, object] | None:
+    """Return a stable, browser-safe identity for the selected physical camera."""
+    choices = camera_candidates(selection, dev_root, sys_root)
+    if not choices:
+        return None
+    choice = choices[0]
+    node = dev_root / f"video{choice}" if isinstance(choice, int) else Path(choice)
+    try:
+        resolved = node.resolve(strict=True)
+    except OSError:
+        return None
+    video = sys_root / resolved.name
+    try:
+        current = (video / "device").resolve(strict=True)
+    except OSError:
+        current = None
+    usb = None
+    if current is not None:
+        for candidate in (current, *current.parents):
+            if (candidate / "idVendor").is_file() and (candidate / "idProduct").is_file():
+                usb = candidate
+                break
+    def read(path: Path, fallback: str = "") -> str:
+        """Read and normalize one optional sysfs property."""
+        try:
+            return " ".join(path.read_text().split())
+        except OSError:
+            return fallback
+    vendor = read(usb / "idVendor").lower() if usb else ""
+    product = read(usb / "idProduct").lower() if usb else ""
+    serial = read(usb / "serial") if usb else ""
+    label = read(video / "name", "Camera")
+    stable = f"{vendor}:{product}:{serial or label}"
+    return {
+        "key": hashlib.sha256(stable.encode()).hexdigest()[:24],
+        "label": label,
+        "vendor_id": vendor,
+        "product_id": product,
+        "has_serial": bool(serial),
+        "direct_v4l2": resolved.name.startswith("video"),
+    }
 
 
 def camera_candidates(

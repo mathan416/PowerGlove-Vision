@@ -23,6 +23,28 @@ Connect one ordinary UVC camera, place the whole hand in view, and check the
 Dashboard. Change advanced settings only to solve a visible problem or compare
 latency.
 
+## Find the best camera settings
+
+Setup includes a Pixel Pal-guided camera test. Choose **Start camera test**, keep
+one open hand visible, and follow the centre, corner-sweep, and edge cues. The
+test takes about one to two minutes because it repeats the same short movements with each
+safe setting supported by the attached camera.
+
+Pixel Pal compares the current settings with supported frame rates, buffering,
+camera readers, and automatic-exposure choices. A setting is not recommended if
+the requested reader fell back, the requested high frame rate was not actually
+delivered, or hand continuity fell materially below the best trial. Among the
+remaining choices, lower camera-to-controller age wins.
+
+Controller output is stopped during the test. The original camera settings are
+restored before results appear, and nothing changes permanently until you choose
+**Use recommended settings**. Cancellation and a Controller restart also restore
+the exact original settings. The test stores aggregate rates and timings only;
+it does not retain camera frames, pictures, or video.
+
+Recommendations belong to the tested physical camera. If the connected camera
+changes before saving, Setup asks you to run the test again.
+
 ## Camera selection
 
 **Automatic** discovers a usable camera when tracking starts. The camera does
@@ -123,6 +145,8 @@ on the hub hardware; unsupported hubs continue to use the guarded fallback.
   exposes the required UVC controls.
 - **Tracking jumps at an edge:** check framing, center, and Movement reach before
   changing exposure.
+- **Unsure which advanced settings suit a new camera:** run **Find the best
+  camera settings** in Setup with your usual lighting and playing position.
 
 For symptom-by-symptom recovery, see the
 [Troubleshooting guide](TROUBLESHOOTING.md). For every stored field and installed

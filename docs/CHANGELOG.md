@@ -7,7 +7,23 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Added
+
+- Added Pixel Pal's **Find the best camera settings** wizard to Setup. It safely
+  compares the current camera configuration with supported reader, frame-rate,
+  buffer, and exposure choices; rejects reader fallbacks and unsupported rates;
+  protects hand continuity before ranking latency; and saves only an accepted
+  recommendation for the same physical camera. Trials retain aggregate timing
+  only—never video or images—and restore the exact original configuration after
+  completion, cancellation, or an interrupted Controller restart.
+
 ### Changed
+
+- Extended only native continuous X/Y's brief missed-observation hold from 120
+  to 180 ms, covering roughly one additional MediaPipe result during an extreme
+  corner-to-corner sweep. Buttons, finger states, depth, roll, and D-pad output
+  still release on the first missed native observation. MediaPipe tracking confidence,
+  direction-aware search, and the validated reacquisition logic are unchanged.
 
 - Extended the output-paused camera benchmark for sustained UNO Q runs. It now
   separates driver dequeue age, MJPEG decode, recognition pickup, graph time,

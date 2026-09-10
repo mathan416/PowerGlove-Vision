@@ -42,6 +42,8 @@ async def main():
                          camera_fps_requested='auto')
     flags = dict(load_error=False, save_error=False, begin_error=False,
                  pair_error=False, abort_pair=False, expiry=120, pair_delay=.15)
+    camera_profile = dict(active=False, phase='idle', candidate=0, total=2,
+                          instruction='', results=[], recommendation=None, error=None)
     async with async_playwright() as pw:
         browser = await pw.webkit.launch(headless=True) if '--webkit' in sys.argv else await pw.chromium.launch(channel='chrome', headless=True)
         page = await browser.new_page(viewport={'width':1280,'height':1000})
@@ -55,6 +57,15 @@ async def main():
                 if flags[flag]:flags[flag]=False;return await r.fulfill(status=503,json={'error':'Temporary settings failure'})
                 if post:config.update(r.request.post_data_json);config['connection_configured']=True
                 return await r.fulfill(json=config)
+            if path=='/api/camera-profile':
+                if r.request.method=='POST':
+                    action=r.request.post_data_json['action']
+                    if action=='begin':camera_profile.update(active=True,phase='measuring',candidate=1,instruction='Hold your open hand comfortably near the centre.')
+                    elif action=='cancel':camera_profile.update(active=False,phase='cancelled',instruction='Your original camera settings are restored.')
+                    elif action=='apply':
+                        config.update(camera_profile['recommendation']['settings'])
+                        return await r.fulfill(json=config)
+                return await r.fulfill(json=camera_profile)
             if path.startswith('/api/pair/'):
                 calls.append((path,r.request.post_data_json))
                 if flags['abort_pair'] and not path.endswith('/begin'):
@@ -106,6 +117,21 @@ async def main():
         await expect(page.locator('#camera-rate-status')).to_contain_text('30')
         await expect(page.locator('#camera option')).to_have_count(2)
         await expect(page.locator('#camera')).to_have_value('auto')
+        page.on('dialog',lambda dialog:asyncio.create_task(dialog.accept()))
+        await page.locator('#camera-profile-start').click()
+        await expect(page.locator('#camera-profile-cancel')).to_be_visible()
+        await expect(page.locator('#camera-profile-instruction')).to_contain_text('Hold your open hand')
+        await expect(page.locator('#camera-save')).to_be_disabled()
+        recommended=dict(camera_backend='opencv',capture_isolation='thread',camera_fps=30,camera_buffers=1,camera_exposure='low-latency')
+        camera_profile.update(active=False,phase='complete',candidate=2,
+                              instruction='Pixel Pal found the best measured settings for this camera.',
+                              results=[dict(name='OpenCV test',continuity=1,sample_age_p95_ms=68,valid=True)],
+                              recommendation=dict(name='OpenCV recommended',settings=recommended))
+        await expect(page.locator('#camera-profile-apply')).to_be_visible(timeout=3000)
+        await page.locator('#camera-profile-apply').click()
+        await expect(page.locator('#camera-profile-recommendation')).to_contain_text('saved')
+        self_profile = camera_profile
+        assert self_profile['results'][0]['continuity']==1
         await expect(page.locator('.connection-indicators li')).to_have_count(6)
         await expect(page.locator('#connection-status-note')).to_contain_text('Console checked 1 seconds ago')
         await expect(page.locator('#connection-status-note')).to_contain_text('do not confirm that a game received input')

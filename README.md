@@ -282,9 +282,9 @@ unknown core also falls back safely to joystick output.
 The native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
 open/fist/index packet, and safe-neutralization tests. Live full-game play
 confirms grab/throw, index fire, and fist-plus-forward Power Punch. Native
-movement uses per-player reach calibration and the selected MediaPipe response
-mode. A brief missed observation holds only the last X/Y coordinate for up to
-120 ms, while actions release immediately. On recovery, Latest accepts the new
+movement uses per-player reach calibration and MediaPipe Latest coordinate. A
+brief missed observation holds only the last X/Y coordinate for up to
+180 ms, while actions release immediately on their original safety timing. On recovery, Latest accepts the new
 measurement immediately unless it contradicts established motion or is an
 unusually distant non-forward jump; only that questionable result waits for one
 fresh confirmation. A longer loss neutralizes the native sample. Wrist rotation
@@ -298,6 +298,10 @@ FCEUmm and the same global recognition settings.
 For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
 collects fresh timing observations without changing camera settings or controls.
 It keeps Controller software timing separate from network, emulator, and display delay.
+Setup also provides Pixel Pal's **Find the best camera settings** wizard for a
+new or changed camera. It compares only capability-supported reader, frame-rate,
+buffer, and exposure choices, protects hand continuity when ranking latency,
+retains no images, and changes nothing until the player accepts its recommendation.
 The optional [PowerGlove Calibration Test](docs/direction-response-benchmark.md#direct-output-dot-test)
 appears as a ROM-free game in RetroPie's **Ports** list when selected during
 installation. Its separate `lr-powerglove-dot` core displays the receiver's

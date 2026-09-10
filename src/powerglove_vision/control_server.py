@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Added Pixel Pal's safe camera-settings profiler.
 #   2026-09-09 - Exposed direction-aware tracking as an independent experimental setting.
 #   2026-09-08 - Listed discovered cameras in Setup while preserving Automatic selection.
 #   2026-09-08 - Added portable automatic/manual exposure and gain settings.
@@ -59,7 +60,14 @@ from .academy_web import LEARN
 from . import __version__
 from .versioning import current_identity
 from .resolver import resolve_ipv4
-from .camera import camera_device_options
+from .camera import camera_device_identity, camera_device_options
+from .camera_profile import (
+    PROFILE_FIELDS as CAMERA_PROFILE_FIELDS,
+    candidates as camera_profile_candidates,
+    display_name as camera_profile_display_name,
+    recommend as recommend_camera_profile,
+    summarize as summarize_camera_profile,
+)
 
 from .help_content import (
     cabinet_reference_content, help_asset, help_document_content,
@@ -198,6 +206,15 @@ class ControlState:
         self.firmware_identity = None
         self.connection_probe = None
         self._statistics_until = 0.0
+        self._camera_profile_marker = config_path.with_name("camera-profile-restore.json")
+        self._camera_profile_cancel = threading.Event()
+        self._camera_profile_thread: threading.Thread | None = None
+        self._camera_profile = {
+            "active": False, "phase": "idle", "candidate": 0, "total": 0,
+            "instruction": "", "results": [], "recommendation": None,
+            "error": None,
+        }
+        self._restore_interrupted_camera_profile()
 
     def request_statistics(self, seconds: float = 1.0) -> None:
         """Lease detailed worker telemetry while a visible Dashboard requests it."""
@@ -410,6 +427,12 @@ class ControlState:
     def public_config(self) -> dict[str, Any]:
         """Return browser-safe settings with all secrets removed."""
         config = self.load_config()
+        identity = camera_device_identity(str(config.get("camera", "auto")))
+        camera_profiles = config.get("camera_profiles", {})
+        saved_camera_profile = (
+            camera_profiles.get(identity["key"])
+            if identity and isinstance(camera_profiles, dict) else None
+        )
         return {
             "receiver": config.get("receiver", ""),
             "port": int(config.get("port", 55355)),
@@ -438,7 +461,241 @@ class ControlState:
             "paired": bool(config.get("receiver") and config.get("token")),
             "connection_configured": bool(str(config.get("receiver", "")).strip() and config.get("token")),
             "controller_enabled": self.controller_enabled(),
+            "camera_identity": identity,
+            "saved_camera_profile": saved_camera_profile,
         }
+
+    def _restore_interrupted_camera_profile(self) -> None:
+        """Restore camera fields after a restart during a temporary comparison."""
+        marker = self._camera_profile_marker
+        if not marker.is_file() or marker.is_symlink():
+            return
+        try:
+            document = json.loads(marker.read_text())
+            original = document.get("original")
+            if not isinstance(original, dict):
+                raise ValueError
+            from .game_registry import atomic_write
+            atomic_write(self.config_path, json.dumps(original, indent=2) + "\n")
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            # Never guess at private settings from a malformed restore marker.
+            return
+        marker.unlink(missing_ok=True)
+
+    def camera_profile_snapshot(self) -> dict[str, Any]:
+        """Return image-free progress for Pixel Pal's camera wizard."""
+        with self.lock:
+            return json.loads(json.dumps(self._camera_profile))
+
+    def _set_camera_profile_state(self, **changes: Any) -> None:
+        """Publish an atomic image-free camera wizard progress update."""
+        with self.lock:
+            self._camera_profile.update(changes)
+
+    def _write_camera_profile_fields(self, fields: dict[str, Any]) -> None:
+        """Apply temporary fields and restart vision without touching player data."""
+        from .game_registry import atomic_write
+        with self.config_lock:
+            current = self.load_config()
+            current.update(fields)
+            atomic_write(self.config_path, json.dumps(current, indent=2) + "\n")
+            with self.lock:
+                self.worker_status = {}
+                self.revision += 1
+
+    def _restore_camera_profile_config(self, original: dict[str, Any]) -> None:
+        """Restore the exact pre-test document after blocking concurrent saves."""
+        from .game_registry import atomic_write
+        with self.config_lock:
+            atomic_write(self.config_path, json.dumps(original, indent=2) + "\n")
+            with self.lock:
+                self.worker_status = {}
+                self.revision += 1
+
+    def begin_camera_profile(self) -> dict[str, Any]:
+        """Start one guarded, reversible comparison for the attached camera."""
+        with self.config_lock:
+            with self.lock:
+                if self._camera_profile.get("active"):
+                    raise ValueError("Camera profiling is already running.")
+            config = self.load_config()
+            identity = camera_device_identity(str(config.get("camera", "auto")))
+            if identity is None:
+                raise ValueError("Connect a camera before starting the test.")
+            original = dict(config)
+            marker = {"schema": 1, "camera_key": identity["key"], "original": original}
+            from .game_registry import atomic_write
+            atomic_write(
+                self._camera_profile_marker,
+                json.dumps(marker, indent=2) + "\n",
+                mode=0o600,
+            )
+            self._set_controller_enabled(False)
+            lanes = camera_profile_candidates(identity, config)
+            self._camera_profile_cancel.clear()
+            self._camera_profile = {
+                "active": True, "phase": "starting", "candidate": 0,
+                "total": len(lanes), "instruction": "Show Pixel Pal one open hand.",
+                "results": [], "recommendation": None, "error": None,
+                "camera": identity,
+            }
+            thread = threading.Thread(
+                target=self._run_camera_profile,
+                args=(lanes, original),
+                name="camera-profile", daemon=True,
+            )
+            self._camera_profile_thread = thread
+            thread.start()
+        return self.camera_profile_snapshot()
+
+    def cancel_camera_profile(self) -> dict[str, Any]:
+        """Request cancellation; the worker thread always restores saved settings."""
+        with self.lock:
+            if self._camera_profile.get("active"):
+                self._camera_profile_cancel.set()
+                self._camera_profile["phase"] = "restoring"
+                self._camera_profile["instruction"] = "Restoring your camera settings…"
+        return self.camera_profile_snapshot()
+
+    def _candidate_ready(self, lane: dict[str, Any]) -> bool:
+        """Confirm the requested lane started, including a measurable safe fallback."""
+        with self.lock:
+            status = dict(self.worker_status)
+        return bool(
+            status.get("camera_available")
+            and status.get("capture_backend_requested") == lane["camera_backend"]
+            and status.get("capture_isolation") == lane["capture_isolation"]
+            and status.get("camera_fps_requested") == lane["camera_fps"]
+            and status.get("camera_buffers_requested") == lane["camera_buffers"]
+            and status.get("camera_exposure_mode") == lane["camera_exposure"]
+        )
+
+    def _run_camera_profile(self, lanes: list[dict[str, Any]],
+                            original: dict[str, Any]) -> None:
+        """Compare candidates from newest status only and restore configuration."""
+        results = []
+        error = None
+        try:
+            for index, lane in enumerate(lanes, 1):
+                if self._camera_profile_cancel.is_set():
+                    break
+                self._set_camera_profile_state(
+                    phase="starting", candidate=index,
+                    instruction=f"Preparing test {index} of {len(lanes)}…",
+                )
+                temporary = dict(lane)
+                temporary["profile"] = "bad_street_brawler"
+                self._write_camera_profile_fields(temporary)
+                deadline = time.monotonic() + 15
+                ready = False
+                while time.monotonic() < deadline and not self._camera_profile_cancel.is_set():
+                    if self._candidate_ready(lane):
+                        ready = True
+                        break
+                    time.sleep(.1)
+                if self._camera_profile_cancel.is_set():
+                    break
+                if not ready:
+                    result = summarize_camera_profile(lane, [], .001)
+                    result["name"] = camera_profile_display_name(lane)
+                    result["error"] = "This camera setting did not start."
+                    results.append(result)
+                    self._set_camera_profile_state(results=list(results))
+                    with self.lock:
+                        camera_present = bool(self.worker_status.get("camera_available"))
+                    if not camera_present:
+                        raise ValueError("The camera disconnected during the test. Reconnect it and try again.")
+                    continue
+                samples = []
+                started = time.monotonic()
+                while (time.monotonic() - started < 10
+                       and not self._camera_profile_cancel.is_set()):
+                    elapsed = time.monotonic() - started
+                    instruction = (
+                        "Hold your open hand comfortably near the centre."
+                        if elapsed < 3 else
+                        "Sweep your hand smoothly between opposite corners."
+                        if elapsed < 8 else
+                        "Move briefly to an edge, then return to the centre."
+                    )
+                    with self.lock:
+                        sample = dict(self.worker_status)
+                    if not sample.get("detected"):
+                        instruction = "Pixel Pal cannot see your whole hand. Move it into the camera frame."
+                    self._set_camera_profile_state(
+                        phase="measuring", instruction=instruction,
+                    )
+                    self.request_statistics(1)
+                    samples.append(sample)
+                    time.sleep(.1)
+                result = summarize_camera_profile(
+                    lane, samples, max(.001, time.monotonic() - started)
+                )
+                result["name"] = camera_profile_display_name(lane)
+                results.append(result)
+                self._set_camera_profile_state(results=list(results))
+        except Exception as exc:
+            error = str(exc)
+        finally:
+            self._set_camera_profile_state(
+                phase="restoring", instruction="Restoring your camera settings…"
+            )
+            try:
+                self._restore_camera_profile_config(original)
+                self._camera_profile_marker.unlink(missing_ok=True)
+            except Exception as exc:
+                error = error or f"Camera settings could not be restored: {exc}"
+            recommendation = recommend_camera_profile(results)
+            if recommendation is not None:
+                recommendation = dict(recommendation)
+                recommendation["name"] = camera_profile_display_name(
+                    recommendation["settings"]
+                )
+            cancelled = self._camera_profile_cancel.is_set()
+            self._set_camera_profile_state(
+                active=False,
+                phase="cancelled" if cancelled else ("error" if error else "complete"),
+                instruction=(
+                    "Your original camera settings are restored."
+                    if cancelled else
+                    "Pixel Pal found the best measured settings for this camera."
+                    if recommendation else
+                    "No safe recommendation was available. Your settings are unchanged."
+                ),
+                results=results, recommendation=recommendation, error=error,
+            )
+
+    def apply_camera_profile(self) -> dict[str, Any]:
+        """Save only the explicit recommendation for the same attached camera."""
+        with self.config_lock:
+            snapshot = self.camera_profile_snapshot()
+            if snapshot.get("active") or snapshot.get("phase") != "complete":
+                raise ValueError("Finish the camera test before saving its recommendation.")
+            recommendation = snapshot.get("recommendation")
+            camera = snapshot.get("camera")
+            if not isinstance(recommendation, dict) or not isinstance(camera, dict):
+                raise ValueError("No camera recommendation is available.")
+            current = self.load_config()
+            identity = camera_device_identity(str(current.get("camera", "auto")))
+            if identity is None or identity.get("key") != camera.get("key"):
+                raise ValueError("The connected camera changed; run the test again.")
+            settings = recommendation.get("settings")
+            if not isinstance(settings, dict):
+                raise ValueError("The camera recommendation is incomplete.")
+            for field in CAMERA_PROFILE_FIELDS:
+                current[field] = settings[field]
+            profiles = current.get("camera_profiles")
+            profiles = dict(profiles) if isinstance(profiles, dict) else {}
+            profiles[identity["key"]] = {
+                "label": identity["label"],
+                **{field: settings[field] for field in CAMERA_PROFILE_FIELDS},
+            }
+            current["camera_profiles"] = profiles
+            from .game_registry import atomic_write
+            atomic_write(self.config_path, json.dumps(current, indent=2) + "\n")
+            with self.lock:
+                self.revision += 1
+        return self.public_config()
 
     def save_attract(self, incoming):
         """Serialize preference updates with connection saves."""
@@ -447,6 +704,9 @@ class ControlState:
 
     def _save_attract(self, incoming):
         """Persist an idle display preference without restarting or arming the worker."""
+        with self.lock:
+            if self._camera_profile.get("active"):
+                raise ValueError("Wait for the camera test to finish before saving settings.")
         from .game_registry import atomic_write
         mode = incoming.get("mode")
         if mode not in ("on", "dim", "off"):
@@ -463,6 +723,9 @@ class ControlState:
 
     def _save_config(self, incoming: dict[str, Any]) -> dict[str, Any]:
         """Validate and persist browser-submitted non-secret device settings."""
+        with self.lock:
+            if self._camera_profile.get("active"):
+                raise ValueError("Wait for the camera test to finish before saving settings.")
         receiver = str(incoming.get("receiver", "")).strip()
         if len(receiver) > 253 or any(ch.isspace() for ch in receiver):
             raise ValueError("Enter a valid console hostname or IP address.")
@@ -731,6 +994,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 _send(self, 200, json.dumps(state.connection_status()).encode(), "application/json")
             elif path == "/api/config":
                 _send(self, 200, json.dumps(state.public_config()).encode(), "application/json")
+            elif path == "/api/camera-profile":
+                _send(self, 200, json.dumps(state.camera_profile_snapshot()).encode(), "application/json")
             elif path == "/stream":
                 self.proxy_stream()
             else:
@@ -743,7 +1008,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 if (self.headers.get("Sec-Fetch-Site", "").lower() == "cross-site" or
                         (origin and origin not in ("http://"+self.headers.get("Host", ""), "https://"+self.headers.get("Host", "")))):
                     raise ForbiddenActionError("Open this control from the Controller website.")
-                if path in ("/api/games", "/api/tuning", "/api/players", "/api/attract"):
+                if path in ("/api/games", "/api/tuning", "/api/players", "/api/attract", "/api/camera-profile"):
                     expected = path.rsplit("/", 1)[-1]
                     origin = self.headers.get("Origin")
                     if (self.headers.get("X-PowerGlove-Action") != expected
@@ -753,6 +1018,16 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     incoming = self.json_body(require_json=True)
                     if path == "/api/attract":
                         result = state.save_attract(incoming)
+                    elif path == "/api/camera-profile":
+                        action = incoming.get("action")
+                        if action == "begin":
+                            result = state.begin_camera_profile()
+                        elif action == "cancel":
+                            result = state.cancel_camera_profile()
+                        elif action == "apply":
+                            result = state.apply_camera_profile()
+                        else:
+                            raise ValueError("Unknown camera test action.")
                     elif path == "/api/games":
                         action = incoming.get("action")
                         if action in ("validate", "format"):

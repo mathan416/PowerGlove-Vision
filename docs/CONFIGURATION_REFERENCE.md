@@ -229,9 +229,10 @@ flow. Historical flow diagnostics and trace readers remain useful for analyzing
 already-recorded experiments.
 
 When MediaPipe misses the hand briefly, the engine holds the last native X/Y for
-up to the configured `loss_release_ms` (120 ms by default) to avoid an edge
-departure/re-entry jump. Buttons, fingers, Z, roll, and D-pad state release
-immediately during that hold. Continued loss, stale data, calibration changes,
+up to `native_xy_loss_hold_ms` (180 ms by default) to bridge roughly one extra
+inference result during an extreme sweep. Buttons, fingers, Z, roll, and D-pad
+release on the first missed native observation and do not inherit the X/Y hold.
+Continued loss, stale data, calibration changes,
 or profile changes neutralize native X/Y and clear retained coordinate history.
 On recovery, Latest normally accepts the first fresh coordinate. If established
 motion is followed by one contradictory result, or the new point is unusually
@@ -537,6 +538,15 @@ changing reach, gestures, mappings, or Latest-coordinate output. The former
 installations require no migration.
 Latest coordinate is the only live native X/Y behavior. Older
 `native_xy_mode` values are accepted in existing files but ignored.
+
+Setup's **Find the best camera settings** wizard temporarily compares the
+current configuration with capability-supported combinations. Its crash-safe
+restore marker contains the exact private pre-test configuration and is mode
+`0600`; it is removed after restoration. Accepted recommendations are also
+recorded under `camera_profiles`, keyed by a one-way physical-camera identity.
+The browser receives only the camera label, USB vendor/product identifiers,
+whether a serial was available, and the hashed key—not the serial itself. No
+frames, images, or video are retained by this test.
 
 `capture_isolation` is `thread` by default and is the gameplay-validated path.
 The opt-in `process` engineering comparison is
@@ -1015,6 +1025,7 @@ useful for understanding the defaults; personal tuning is managed through Glove 
 | `depth_motion_delta` | Minimum normalized palm-scale travel toward or away from the camera | Smaller apparent-size changes can qualify as depth actions |
 | `pulse_hz` | Repetition rate for profiles that pulse an action | Repeated actions become slower |
 | `loss_release_ms` | Tracking-loss delay before all controls release | Controls release sooner after the hand disappears |
+| `native_xy_loss_hold_ms` | Maximum time native X/Y alone retains its last visible position through a brief miss | Extreme sweeps can show a neutral-position interruption sooner |
 
 For each gesture, keep the `_off` value lower than its `_on` value. The gap is
 hysteresis: it prevents a value near the activation point from rapidly turning
@@ -1033,8 +1044,8 @@ The supplied shared recognition defaults are:
   "motion_noise_multiplier": 1.25,
   "motion_noise_floor": 0.003,
   "motion_noise_exit_ratio": 1.50,
-  "motion_slow_follow": 0.70,
-  "motion_full_speed": 1.50,
+  "motion_slow_follow": 0.55,
+  "motion_full_speed": 2.50,
   "motion_follow_reference_ms": 100.0,
   "curl_on": 0.50,
   "curl_off": 0.35,
@@ -1046,7 +1057,8 @@ The supplied shared recognition defaults are:
   "depth_motion_window_ms": 250,
   "depth_motion_delta": 0.10,
   "pulse_hz": 7.0,
-  "loss_release_ms": 120
+  "loss_release_ms": 120,
+  "native_xy_loss_hold_ms": 180
 }
 ```
 

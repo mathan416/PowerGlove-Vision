@@ -525,11 +525,15 @@ class NativeMotionTests(unittest.TestCase):
         self.assertEqual(lost.axes['roll'], 0)
         self.assertFalse(any(lost.dpad.values()))
         self.assertFalse(any(lost.buttons.values()))
-        expired = self.engine.update_native_motion(HandObservation(10.13, False))
+        one_extra_interval = self.engine.update_native_motion(HandObservation(10.13, False))
+        self.assertTrue(one_extra_interval.detected)
+        self.assertEqual(one_extra_interval.axes['x'], active.axes['x'])
+        self.assertFalse(any(one_extra_interval.buttons.values()))
+        expired = self.engine.update_native_motion(HandObservation(10.19, False))
         self.assertFalse(expired.detected)
         self.assertFalse(any(expired.buttons.values()))
         self.assertFalse(any(expired.axes.values()))
-        recovered = replace(self.pose, timestamp=10.14)
+        recovered = replace(self.pose, timestamp=10.20)
         self.assertTrue(self.engine.update_native_motion(recovered, recovered).detected)
 
     def test_brief_loss_recovery_resumes_from_fresh_latest_coordinate(self):

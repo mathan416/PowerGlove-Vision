@@ -109,9 +109,10 @@ and the former bounded speed curve remains in historical test tooling; neither
 is routed by the supervisor nor exposed as a live configuration.
 
 Native coordinates use each player's calibrated center and optional asymmetric
-comfortable-reach spans. A missed observation shorter than `loss_release_ms`
-holds only the last X/Y
-position; buttons, fingers, depth, roll, and digital directions release at once.
+comfortable-reach spans. A missed observation shorter than
+`native_xy_loss_hold_ms` (180 ms by default) holds only the last X/Y position;
+buttons, fingers, depth, roll, and digital directions release on the first
+missed native observation without inheriting the X/Y hold.
 After that brief gap, Latest immediately accepts a strongly aligned forward
 measurement. One contradictory or unusually distant non-forward result instead
 holds the last reliable point until the next fresh measurement confirms the

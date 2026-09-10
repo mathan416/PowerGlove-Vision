@@ -4,7 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Bridged one extra native X/Y inference gap without extending actions.
 #   2026-09-07 - Made bounded native X/Y coherent, edge-clamped, and noise-aware.
 #   2026-09-07 - Corrected native smoothing cadence and saturated legacy jitter handling.
 #   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
@@ -17,7 +19,6 @@
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Corrected Program I throttle and turbo output for Knight Rider.
 #   2026-09-03 - Persist and restore neutral-hand calibration.
-# Full history: docs/CHANGELOG.md and Git history.
 
 """Convert calibrated hand observations into stable gamepad states for supported gesture profiles."""
 
@@ -129,6 +130,10 @@ class GestureConfig:
     depth_motion_delta: float = 0.10
     pulse_hz: float = 7.0
     loss_release_ms: int = 120
+    # Native continuous X/Y may retain its last visible position for one extra
+    # inference interval during a fast sweep. Actions still release using the
+    # shorter general loss guard above, and reacquisition remains unchanged.
+    native_xy_loss_hold_ms: int = 180
     thresholds: dict = field(default_factory=dict)
 
     def pair(self, channel: str) -> tuple[float, float]:
@@ -781,8 +786,12 @@ class GestureEngine:
         previous_x, previous_y = self._filtered_palm_x, self._filtered_palm_y
         if not observation.detected:
             lost_ms = (observation.timestamp - self._last_seen) * 1000
+            native_hold_ms = max(
+                self.config.loss_release_ms,
+                min(250, max(0, self.config.native_xy_loss_hold_ms)),
+            )
             if (self._last_state is not None and self._last_state.detected
-                    and 0 <= lost_ms < self.config.loss_release_ms):
+                    and 0 <= lost_ms < native_hold_ms):
                 # Hold the visible edge coordinate for this brief dropout, but
                 # discard its history so reacquisition begins at the first new
                 # clamped measurement rather than travelling from the held edge.
@@ -806,7 +815,7 @@ class GestureEngine:
                     events=[],
                 )
                 return self._last_state
-            self._last_seen = observation.timestamp - self.config.loss_release_ms / 1000 - 1
+            self._last_seen = observation.timestamp - native_hold_ms / 1000 - 1
             self._reset_native_motion()
             return self.update(observation)
         if gesture is not None:

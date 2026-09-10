@@ -16,7 +16,8 @@ import unittest
 from pathlib import Path
 
 from powerglove_vision.camera import (
-    camera_candidates, camera_device_options, discover_camera_devices,
+    camera_candidates, camera_device_identity, camera_device_options,
+    discover_camera_devices,
 )
 
 
@@ -76,6 +77,23 @@ class CameraDiscoveryTests(unittest.TestCase):
 
     def test_explicit_camera_index_is_preserved(self) -> None:
         self.assertEqual(camera_candidates("7", self.root, self.root), [7])
+
+    def test_camera_identity_is_stable_and_contains_no_serial(self) -> None:
+        camera = _video_device(self.dev, self.sys, 4, "Razer Kiyo Pro")
+        usb = self.root / "usb" / "2-1"
+        usb.mkdir(parents=True)
+        (usb / "idVendor").write_text("1532\n")
+        (usb / "idProduct").write_text("0E05\n")
+        (usb / "serial").write_text("private-camera-serial\n")
+        (self.sys / "video4" / "device").symlink_to(usb, target_is_directory=True)
+
+        identity = camera_device_identity("4", self.dev, self.sys)
+
+        self.assertEqual(identity["vendor_id"], "1532")
+        self.assertEqual(identity["product_id"], "0e05")
+        self.assertTrue(identity["has_serial"])
+        self.assertNotIn("private-camera-serial", str(identity))
+        self.assertEqual(identity, camera_device_identity("4", self.dev, self.sys))
 
 
 if __name__ == "__main__":

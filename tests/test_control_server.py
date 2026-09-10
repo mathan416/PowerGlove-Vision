@@ -214,6 +214,71 @@ class ControlStateTests(unittest.TestCase):
         self.assertNotIn("token", public)
         self.assertTrue(public["paired"])
 
+    def test_setup_contains_guided_camera_profiler_without_video_capture(self):
+        self.assertIn(b"Find the best camera settings", SETUP)
+        self.assertIn(b"id=camera-profile-start", SETUP)
+        self.assertIn(b"id=camera-profile-apply", SETUP)
+        self.assertIn(b"No video or images are saved", SETUP)
+        self.assertNotIn(b"camera-profile-frame", SETUP)
+
+    def test_camera_profile_apply_changes_only_recommended_fields(self):
+        identity = {
+            "key": "camera-key", "label": "Test Camera", "vendor_id": "1234",
+            "product_id": "5678", "has_serial": False, "direct_v4l2": True,
+        }
+        settings = {
+            "camera_backend": "direct-v4l2", "capture_isolation": "thread",
+            "camera_fps": 30, "camera_buffers": 1, "camera_exposure": "auto",
+        }
+        before = self.state.load_config()
+        self.state._camera_profile = {
+            "active": False, "phase": "complete", "camera": identity,
+            "recommendation": {"settings": settings}, "results": [],
+        }
+        with mock.patch("powerglove_vision.control_server.camera_device_identity", return_value=identity):
+            self.state.apply_camera_profile()
+        after = self.state.load_config()
+        for key, value in before.items():
+            if key not in settings:
+                self.assertEqual(after[key], value)
+        for key, value in settings.items():
+            self.assertEqual(after[key], value)
+        self.assertEqual(after["camera_profiles"]["camera-key"]["label"], "Test Camera")
+
+    def test_camera_profile_crash_marker_restores_original_fields(self):
+        original = self.state.load_config()
+        marker = self.path.with_name("camera-profile-restore.json")
+        marker.write_text(json.dumps({
+            "schema": 1,
+            "original": original,
+        }))
+        changed = dict(original, camera_backend="direct-v4l2", camera_fps=60,
+                       camera_buffers=1, profile="super_glove_ball")
+        self.path.write_text(json.dumps(changed))
+        restored = ControlState(self.path).load_config()
+        self.assertEqual(restored["camera_backend"], "opencv")
+        self.assertEqual(restored["camera_fps"], "auto")
+        self.assertEqual(restored["camera_buffers"], 2)
+        self.assertEqual(restored["profile"], "bad_street_brawler")
+        self.assertEqual(restored["token"], "private-token")
+        self.assertFalse(marker.exists())
+
+    def test_camera_profile_route_requires_browser_action_header(self):
+        servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            port = servers.servers[0].server_address[1]
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+            connection.request(
+                "POST", "/api/camera-profile", json.dumps({"action": "cancel"}),
+                {"Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 403)
+            connection.close()
+        finally:
+            servers.shutdown()
+
     def test_attract_persists_without_restarting_or_changing_controls(self):
         self.state.set_controller_enabled(True)
         original = json.loads(self.path.read_text())

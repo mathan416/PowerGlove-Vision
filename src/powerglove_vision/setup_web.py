@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Added Pixel Pal's camera-settings profiler.
 #   2026-09-09 - Distinguished armed idle output from receiver unavailability.
 #   2026-09-09 - Made validated fast-sweep tracking standard and removed its switch.
 #   2026-09-08 - Replaced free-form camera entry with a live discovered-camera list.
@@ -62,9 +63,20 @@ SETUP_CONTENT = """<style>main a{color:var(--cyan)}#players{margin-bottom:14px}#
 <div id=pair-success hidden><h3 id=pair-success-heading tabindex=-1>Pairing complete</h3><p>The RetroPie receiver was restarted. The matrix resumes its normal display; when idle, it follows your attract setting. Open Dashboard to start controller output when you are ready. Pairing does not verify that a game received input.</p><a class=button href=/dashboard>Open Dashboard</a></div>
 <p id=pair-notice role=status aria-live=polite aria-atomic=true tabindex=-1></p></div></section>"""
 
+_CAMERA_PROFILE_STYLE = """.camera-profiler{margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:12px}.camera-profiler h3{margin-top:0}.camera-profile-coach{display:flex;align-items:center;gap:14px}.camera-profile-coach img{width:72px;height:80px;object-fit:contain}.camera-profile-progress{width:100%;height:12px}.camera-profile-results{padding-left:22px}.camera-profile-results li{margin:7px 0}.camera-profile-good{color:var(--green)}"""
+SETUP_CONTENT = SETUP_CONTENT.replace("</style>", _CAMERA_PROFILE_STYLE + "</style>", 1)
+SETUP_CONTENT = SETUP_CONTENT.replace(
+    "<div class=controls><button type=submit id=camera-save>Save camera settings</button></div><p class=notice id=camera-notice role=status aria-live=polite></p>",
+    """<div class=controls><button type=submit id=camera-save>Save camera settings</button></div><p class=notice id=camera-notice role=status aria-live=polite></p>
+<div class=camera-profiler><div class=camera-profile-coach><img src=/help-assets/gestures/v2/pixel-pal-web.png alt=\"Pixel Pal\"><div><h3>Find the best camera settings</h3><p>Pixel Pal can compare safe settings for this camera. Keep one hand visible and follow the short movement cues. No video or images are saved.</p></div></div>
+<div class=controls><button type=button id=camera-profile-start>Start camera test</button><button type=button class=secondary id=camera-profile-cancel hidden>Cancel test</button></div>
+<div id=camera-profile-panel hidden aria-live=polite><p><strong id=camera-profile-step></strong></p><p id=camera-profile-instruction></p><progress class=camera-profile-progress id=camera-profile-progress max=1 value=0></progress><ul class=camera-profile-results id=camera-profile-results></ul><p id=camera-profile-recommendation></p><button type=button id=camera-profile-apply hidden>Use recommended settings</button></div></div>""",
+    1,
+)
+
 SETUP_SCRIPT = r"""(()=>{
 const $=id=>document.getElementById(id), secure=location.protocol==='https:';
-let prepared=null, savedConfig=null, settingsBusy=false, pairingBusy=false;
+let prepared=null, savedConfig=null, settingsBusy=false, pairingBusy=false,cameraProfileActive=false,cameraProfileTimer=null;
 let pairStep=1, lockedUntil=0, retryConfirmation=false;
 const settingsFields=['receiver','port','profile','glove_color','camera','camera_fps','camera_backend','camera_exposure','camera_manual_exposure','camera_manual_gain'];
 function syncCameraOptions(options,selected){const menu=$('camera'),wanted=String(selected??menu.value??'auto'),items=Array.isArray(options)?options:[];menu.replaceChildren();for(const item of items){if(!item||typeof item.value!=='string'||typeof item.label!=='string')continue;const option=document.createElement('option');option.value=item.value;option.textContent=item.label;menu.append(option)}if(!menu.options.length){const option=document.createElement('option');option.value='auto';option.textContent='Automatic — choose the connected camera';menu.append(option)}if(!Array.from(menu.options).some(option=>option.value===wanted)){const option=document.createElement('option');option.value=wanted;option.textContent=`Saved camera ${wanted} — currently unavailable`;menu.append(option)}menu.value=wanted}
@@ -72,6 +84,7 @@ function syncExposureFields(){const manual=$('camera_exposure').value==='manual'
 async function api(path,payload,timeoutMs=0){
   const options=payload===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)};
   if(path==='/api/attract')options.headers['X-PowerGlove-Action']='attract';
+  if(path==='/api/camera-profile'&&payload!==undefined)options.headers['X-PowerGlove-Action']='camera-profile';
   const controller=timeoutMs?new AbortController():null;
   const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
   if(controller)options.signal=controller.signal;
@@ -170,6 +183,7 @@ function renderPairing(){
  if($('pair-submit').textContent!==submitLabel)$('pair-submit').textContent=submitLabel;
  $('pair-review').disabled=pairingBusy;
  // Keep the live status outside any aria-busy region so progress is announced immediately.
+ for(const id of ['camera','camera_fps','camera_backend','camera_exposure','camera_manual_exposure','camera_manual_gain','glove_color','camera-save'])$(id).disabled=cameraProfileActive;
 }
 function expirePairing(){
  if(pairingBusy)return;
@@ -218,6 +232,32 @@ $('pair-submit').onclick=async()=>{
 window.addEventListener('pagehide',()=>{clearSecrets();prepared=null;retryConfirmation=true;pairStep=2});
 window.addEventListener('pageshow',()=>{expirePairing()});
 setInterval(expirePairing,500);
+function cameraResultText(result){
+ const age=Number.isFinite(result.sample_age_p95_ms)?`${result.sample_age_p95_ms} ms response`:'response unavailable',continuity=Math.round((result.continuity||0)*100);
+ const weak=result.valid&&continuity<80;
+ return `${result.name}: ${continuity}% hand continuity, ${age}${result.valid&&!weak?'':` — not recommended${result.error?`: ${result.error}`:weak?': hand visibility was too low':''}`}`;
+}
+function renderCameraProfile(state){
+ const panel=$('camera-profile-panel'),results=$('camera-profile-results'),recommendation=state.recommendation;
+ cameraProfileActive=state.active===true;panel.hidden=state.phase==='idle';$('camera-profile-start').hidden=cameraProfileActive;$('camera-profile-cancel').hidden=!cameraProfileActive;
+ $('camera-profile-step').textContent=cameraProfileActive?`Camera test ${state.candidate||0} of ${state.total||0}`:state.phase==='complete'?'Camera test complete':state.phase==='cancelled'?'Camera test cancelled':state.phase==='error'?'Camera test needs attention':'';
+ $('camera-profile-instruction').textContent=state.error||state.instruction||'';
+ const total=Math.max(1,Number(state.total)||1),candidate=Math.max(0,Number(state.candidate)||0);$('camera-profile-progress').value=state.phase==='complete'?1:Math.min(1,candidate/total);
+ results.replaceChildren();for(const result of state.results||[]){const item=document.createElement('li');item.textContent=cameraResultText(result);if(result.valid&&(result.continuity||0)>=.8)item.className='camera-profile-good';results.append(item)}
+ $('camera-profile-recommendation').textContent=recommendation?`Pixel Pal recommends ${recommendation.name}. Your previous settings are still active until you choose Use recommended settings.`:state.phase==='complete'?'Pixel Pal did not find a safe improvement. Your camera settings were left unchanged.':'';
+ $('camera-profile-apply').hidden=!(state.phase==='complete'&&recommendation);renderPairing();
+}
+async function pollCameraProfile(){
+ if(cameraProfileTimer!==null){clearTimeout(cameraProfileTimer);cameraProfileTimer=null}
+ try{const state=await api('/api/camera-profile');renderCameraProfile(state);if(state.active)cameraProfileTimer=setTimeout(pollCameraProfile,600)}catch(e){$('camera-profile-instruction').textContent='Camera test status is temporarily unavailable. Your saved settings are protected.'}
+}
+$('camera-profile-start').onclick=async()=>{
+ if(cameraProfileActive||settingsBusy||!confirm('Start a camera test? Controller output will stop while Pixel Pal compares settings for about one to two minutes.'))return;
+ try{renderCameraProfile(await api('/api/camera-profile',{action:'begin'}));cameraProfileTimer=setTimeout(pollCameraProfile,600)}catch(e){$('camera-profile-panel').hidden=false;$('camera-profile-instruction').textContent=e.message||'The camera test could not start.'}
+};
+$('camera-profile-cancel').onclick=async()=>{try{renderCameraProfile(await api('/api/camera-profile',{action:'cancel'}));cameraProfileTimer=setTimeout(pollCameraProfile,600)}catch(e){$('camera-profile-instruction').textContent=e.message||'Cancellation could not be confirmed.'}};
+$('camera-profile-apply').onclick=async()=>{try{await api('/api/camera-profile',{action:'apply'});$('camera-profile-recommendation').textContent='Recommended settings saved. Tracking is restarting.';$('camera-profile-apply').hidden=true;await load(true)}catch(e){$('camera-profile-recommendation').textContent=e.message||'The recommendation could not be saved.'}};
+pollCameraProfile();
 $('form').onsubmit=e=>{e.preventDefault();if(settingsBusy||pairingBusy||windowActive())return;if($('rotate_token').checked&&!confirm('Replace the pairing key and stop controller output? You must pair with RetroPie again.'))return;const noticeId=e.submitter?.id==='camera-save'?'camera-notice':'notice';$(noticeId==='notice'?'camera-notice':'notice').textContent='';settingsBusy=true;action(e.submitter,noticeId,async()=>{
  try{const payload={receiver:$('receiver').value.trim(),port:Number($('port').value),profile:$('profile').value,glove_color:$('glove_color').value,camera:$('camera').value.trim(),camera_fps:$('camera_fps').value,camera_backend:$('camera_backend').value,camera_exposure:$('camera_exposure').value,camera_manual_exposure:Number($('camera_manual_exposure').value),camera_manual_gain:Number($('camera_manual_gain').value),rotate_token:$('rotate_token').checked};
  renderPairing();await api('/api/config',payload);$('rotate_token').checked=false;$(noticeId).textContent=noticeId==='camera-notice'?'Camera settings saved. Tracking is restarting.':'Connection and startup saved. Tracking is restarting.';await load(true);
