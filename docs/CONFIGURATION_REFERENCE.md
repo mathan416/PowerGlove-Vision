@@ -519,7 +519,6 @@ A typical device configuration file contains the following fields:
   "inference_threads": 4,
   "tracking_confidence": 0.35,
   "tracking_roi_scale": 2.25,
-  "directional_search": false,
   "matrix_attract": "on"
 }
 ```
@@ -527,10 +526,11 @@ A typical device configuration file contains the following fields:
 `camera_fps` is `auto`, `30`, or `60`; Automatic prefers 30 and then accepts a
 usable driver rate. `inference_threads` accepts 1, 2, or 4. The 0.4.0 baseline
 uses four threads, `tracking_confidence` 0.35, and `tracking_roi_scale` 2.25.
-`directional_search` is an experimental boolean under **Pair with RetroPie**.
-When enabled, it applies the measured gentle next-frame search translation;
-disable it to use MediaPipe's ordinary search. It does not change reach,
-gestures, mappings, or Latest-coordinate output.
+Direction-aware fast-sweep search is always active in the production MediaPipe
+path. It applies the measured gentle next-frame search translation without
+changing reach, gestures, mappings, or Latest-coordinate output. The former
+`directional_search` device-file value is accepted but ignored so existing
+installations require no migration.
 Latest coordinate is the only live native X/Y behavior. Older
 `native_xy_mode` values are accepted in existing files but ignored.
 

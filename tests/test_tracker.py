@@ -54,6 +54,7 @@ class TrackerGeometryTests(unittest.TestCase):
 
     def test_directional_search_uses_measured_gentle_gain_by_default(self):
         parameters = inspect.signature(tracker_module.MediaPipeTracker).parameters
+        self.assertTrue(parameters["directional_search"].default)
         self.assertEqual(parameters["directional_search_gain"].default, .275)
         self.assertEqual(parameters["directional_search_recovery_frames"].default, 0)
 

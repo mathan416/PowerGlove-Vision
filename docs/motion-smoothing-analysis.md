@@ -137,7 +137,7 @@ The packaged wheel was rebuilt from upstream MediaPipe commit
 unused JAX and JAXLIB dependencies and pins headless OpenCV 4.11.0.86. The
 rebuilt integrity record has SHA-256
 `3f09815d9f6c41d828cd71c9ba477c24a63850908876dfc8b095a882c790e562`.
-An isolated ARM64 import confirmed MediaPipe `0.10.35+powerglove.gpu2`, OpenCV
+An isolated ARM64 import confirmed MediaPipe `0.10.35+powerglove.cpu1`, OpenCV
 `4.11.0`, and no installed JAX module.
 
 ### Why production still uses the CPU

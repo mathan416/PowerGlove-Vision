@@ -7,6 +7,18 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Changed
+
+- Promoted the validated direction-aware fast-sweep search to standard
+  MediaPipe behavior. Removed its Setup checkbox and guarded save endpoint;
+  older `directional_search` device-file values are now harmlessly ignored.
+- Renamed the packaged CPU runtime from the misleading `powerglove.gpu2` local
+  version to `powerglove.cpu1`. Its selected graph and behavior remain the same;
+  the new name makes clear that production inference uses XNNPACK on the CPU.
+- Corrected Setup's Controller output flag so an armed Controller waiting for a
+  game is shown as ready instead of falsely reporting **Receiver unavailable**.
+  Genuine delivery failure remains red during an active game context.
+
 ## [0.4.0-rc.3] - 2026-09-09
 
 ### Added
@@ -73,8 +85,7 @@ authoritative record for line-level and file-level history.
   recursive controller-state copy with an explicit signed-wire mapping. These
   changes preserve authenticated delivery and receiver-restart recovery.
 - Aligned the example Controller configuration with the shipped four-thread,
-  0.35 tracking-confidence, 2.25 search-area defaults and documented the
-  experimental direction-aware search switch.
+  0.35 tracking-confidence and 2.25 search-area defaults.
 
 - Made Latest coordinate the only live Super Glove Ball native X/Y behavior.
   Removed the Dashboard movement selector and its restart endpoint; older saved

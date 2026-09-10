@@ -871,9 +871,10 @@ without interpreting USB enumeration alone as camera health.
 
 ## Direction-aware search and post-inference boundary - September 9, 2026
 
-The optional direction-aware search retained the gentler selected settings:
+The direction-aware search retained the gentler selected settings:
 gain `0.275`, activation speed `0.50`, and maximum translated offset `0.04`.
-It remains an experimental Setup switch rather than an installation default.
+After live validation it became standard production behavior; the former Setup
+switch and device preference were removed.
 The saved 402-frame sweep produced 96.52% detection continuity with the switch
 enabled versus 95.52% without it, reduced counted reacquisitions from six to
 four, and retained the same nine-frame long missing run. This is useful but does

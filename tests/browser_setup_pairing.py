@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered armed-idle and genuine receiver-unavailable status.
 #   2026-09-08 - Capture and verify the discovered-camera Setup controls.
 #   2026-09-07 - Kept help-asset fixtures compatible with Python 3.7.
 #   2026-09-06 - Cover guided pairing, expiry, retries, responsive layouts, and screenshots.
@@ -28,13 +29,17 @@ async def main():
                   glove_color='none', camera='auto', camera_fps='auto', matrix_attract='on',
                   camera_backend='opencv', camera_exposure='auto',
                   camera_manual_exposure=78, camera_manual_gain=96,
-                  directional_search=True,
                   camera_options=[
                       dict(value='auto', label='Automatic — choose the connected camera'),
                       dict(value='2', label='Razer Kiyo Pro — camera 2'),
                   ],
                   connection_configured=True, controller_enabled=False)
     calls = []
+    worker_status = dict(worker_running=True, vision_state='idle',
+                         controller_enabled=False, controller_context_active=False,
+                         receiver_available=False, profile='off', vision_profile='off',
+                         version='0.4.0', camera_fps=30.0,
+                         camera_fps_requested='auto')
     flags = dict(load_error=False, save_error=False, begin_error=False,
                  pair_error=False, abort_pair=False, expiry=120, pair_delay=.15)
     async with async_playwright() as pw:
@@ -64,9 +69,8 @@ async def main():
                 if r.request.post_data_json['action']=='export':state['backup']=dict(format='powerglove-hand-setup',version=2,name='Iain')
                 return await r.fulfill(json=state)
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
-            if path=='/api/directional-search':config['directional_search']=r.request.post_data_json['enabled'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
-            if path=='/status':return await r.fulfill(json=dict(worker_running=True,vision_state='idle',controller_enabled=False,version='0.4.0',camera_fps=30.0,camera_fps_requested='auto'))
+            if path=='/status':return await r.fulfill(json=worker_status)
             if path=='/api/games':return await r.fulfill(json={'document':'{"games": {}}','revision':'test','profiles':['off'],'has_backup':False})
             if path.startswith('/assets/'):
                 f=ROOT/path.lstrip('/')
@@ -102,13 +106,25 @@ async def main():
         await expect(page.locator('#camera-rate-status')).to_contain_text('30')
         await expect(page.locator('#camera option')).to_have_count(2)
         await expect(page.locator('#camera')).to_have_value('auto')
-        await expect(page.locator('#directional-search')).to_be_checked()
         await expect(page.locator('.connection-indicators li')).to_have_count(6)
         await expect(page.locator('#connection-status-note')).to_contain_text('Console checked 1 seconds ago')
         await expect(page.locator('#connection-status-note')).to_contain_text('do not confirm that a game received input')
         await expect(page.locator('#connection-status-note')).not_to_contain_text('Green:')
         await expect(page.locator('#status-tracking')).to_have_attribute('data-state','unknown')
         await expect(page.locator('#status-output')).to_have_attribute('data-state','unknown')
+        worker_status.update(controller_enabled=True,controller_context_active=False,
+                             receiver_available=False)
+        await page.reload()
+        await expect(page.locator('#status-output')).to_have_attribute('data-state','good')
+        await expect(page.locator('#status-output strong')).to_have_text('Armed — waiting for game')
+        worker_status.update(profile='super_glove_ball',vision_profile='super_glove_ball',
+                             controller_context_active=True)
+        await page.reload()
+        await expect(page.locator('#status-output')).to_have_attribute('data-state','bad')
+        await expect(page.locator('#status-output strong')).to_have_text('Receiver unavailable')
+        worker_status.update(controller_enabled=False,controller_context_active=False,
+                             profile='off',vision_profile='off')
+        await page.reload()
         await expect(page.locator('#connection-section')).to_be_visible()
         await expect(page.locator('#camera-section')).to_be_visible()
         await page.get_by_text('Players and hand-setup backups',exact=True).click()
@@ -222,10 +238,6 @@ async def main():
             await page.get_by_role('button',name='Save attract mode',exact=True).click()
             await expect(page.locator('#attract-notice')).to_contain_text('saved')
             assert config['matrix_attract']==mode
-        await page.locator('#directional-search').uncheck()
-        await page.get_by_role('button',name='Save experimental tracking',exact=True).click()
-        await expect(page.locator('#directional-search-notice')).to_contain_text('Tracking is restarting')
-        assert config['directional_search'] is False
         n=len(calls);await page.goto('http://pairing.test/setup')
         await expect(page.locator('#pair-wizard')).to_be_hidden()
         await expect(page.get_by_role('link',name='Open secure Setup')).to_be_visible()

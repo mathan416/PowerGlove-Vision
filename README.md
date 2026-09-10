@@ -319,8 +319,12 @@ The production Controller runs the validated CPU MediaPipe Hands 0.10.35 path at
 with four explicitly selected inference threads, a `0.35` tracking-confidence
 threshold, and a `2.25` next-frame hand search area. The larger search area
 recovered five of nine previously missed fast-sweep frames in repeatable replay
-without a material latency or false-activation cost. Camera rate defaults to
-Automatic, which tries the measured 30 fps
+without a material latency or false-activation cost. Direction-aware fast-sweep
+search is standard: after two aligned
+fast observations it gently translates only MediaPipe's next search input,
+then maps the landmarks back before publishing the direct Latest coordinate.
+It does not predict or smooth the robo-glove position.
+Camera rate defaults to Automatic, which tries the measured 30 fps
 path before safely accepting the driver's supported rate. An isolated Adreno GPU probe
 successfully created a delegate but the first MediaPipe Tasks graph was much
 slower than the CPU path, so GPU execution remains research. MediaPipe 0.10.35

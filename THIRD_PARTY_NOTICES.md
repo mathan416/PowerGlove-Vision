@@ -15,7 +15,7 @@ not build MediaPipe during installation. The `cp312-cp312` tags identify
 CPython 3.12 and its binary interface; `linux_aarch64` identifies ARM64 Linux.
 
 ```text
-python/worker-wheels/mediapipe-0.10.35+powerglove.gpu2-cp312-cp312-linux_aarch64.whl
+python/worker-wheels/mediapipe-0.10.35+powerglove.cpu1-cp312-cp312-linux_aarch64.whl
 ```
 
 | Property | Value |
@@ -24,14 +24,14 @@ python/worker-wheels/mediapipe-0.10.35+powerglove.gpu2-cp312-cp312-linux_aarch64
 | Upstream project | <https://github.com/google-ai-edge/mediapipe> |
 | Upstream source commit | `f8ef212d5c962c0e853db7e59d217056b187084b` |
 | License | Apache License 2.0 |
-| PowerGlove packaged-wheel SHA-256 | `3f09815d9f6c41d828cd71c9ba477c24a63850908876dfc8b095a882c790e562` |
+| PowerGlove packaged-wheel SHA-256 | `6d29bfc33daebd8e47ff9a75d09ae8c032cdcc74445ba365c5aa78a85a6a2d2e` |
 
 ### Modification notice
 
 The ARM64/Python 3.12 wheel was built from the identified upstream source for
 the UNO Q environment. It retains upstream source headers and MediaPipe's full
 Apache 2.0 license at
-`mediapipe-0.10.35+powerglove.gpu2.dist-info/licenses/LICENSE`. The build keeps
+`mediapipe-0.10.35+powerglove.cpu1.dist-info/licenses/LICENSE`. The build keeps
 the established MediaPipe Hands graph used by PowerGlove Vision and includes
 the narrow Linux compatibility and GPU-research support recorded in the
 [recognition and movement pipeline analysis](docs/motion-smoothing-analysis.md).
@@ -47,7 +47,7 @@ integrity list was rebuilt after these metadata changes:
 
 Removing unused JAX dependencies avoids a large first-start download and
 reduces pressure on the Controller's storage. The rebuilt wheel was imported on
-the ARM64 Controller, reported MediaPipe `0.10.35+powerglove.gpu2` and OpenCV
+the ARM64 Controller, reported MediaPipe `0.10.35+powerglove.cpu1` and OpenCV
 `4.11.0`, and confirmed that JAX was absent. Do not substitute another wheel
 without repeating dependency, camera, recognition, replay, and thermal tests.
 

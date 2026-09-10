@@ -465,7 +465,7 @@ class NativeMotionTests(unittest.TestCase):
             with self.assertRaises(StopIteration):
                 command = worker_command({}, Path('/tmp/model'))
 
-    def test_directional_search_defaults_off_and_requires_a_real_boolean(self):
+    def test_directional_search_device_preference_is_ignored(self):
         import runpy
         from pathlib import Path
         root = Path(__file__).resolve().parents[1]
@@ -475,7 +475,7 @@ class NativeMotionTests(unittest.TestCase):
             '--directional-search',
             worker_command({'directional_search': 'true'}, Path('/tmp/model')),
         )
-        self.assertIn(
+        self.assertNotIn(
             '--directional-search',
             worker_command({'directional_search': True}, Path('/tmp/model')),
         )

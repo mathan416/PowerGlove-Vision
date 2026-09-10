@@ -204,7 +204,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--tracker-graph", choices=("full", "lean-image"), default="full",
         help="MediaPipe graph output set; lean-image is an output-paused experiment",
     )
-    parser.add_argument("--directional-search", action="store_true", help=argparse.SUPPRESS)
+    # Retain the former command-line spelling for compatibility. Direction-aware
+    # search is now the standard MediaPipe behavior, including when this option
+    # is absent.
+    parser.add_argument(
+        "--directional-search", action="store_true", default=True,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument(
         "--preview-fps", type=float, default=5.0,
         help="maximum diagnostic camera-preview rate",

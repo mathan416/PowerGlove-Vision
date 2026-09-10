@@ -222,7 +222,7 @@ def archive_errors(path: Path) -> list[str]:
                 if "/python/worker-wheels/mediapipe-" in name and name.endswith(".whl")
             }
             required_wheels = {
-                "mediapipe-0.10.35+powerglove.gpu2-cp312-cp312-linux_aarch64.whl"
+                "mediapipe-0.10.35+powerglove.cpu1-cp312-cp312-linux_aarch64.whl"
             }
             if wheels != required_wheels:
                 errors.append(

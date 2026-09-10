@@ -6,7 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
-#   2026-09-09 - Added an independent experimental fast-sweep tracking control.
+#   2026-09-09 - Distinguished armed idle output from receiver unavailability.
+#   2026-09-09 - Made validated fast-sweep tracking standard and removed its switch.
 #   2026-09-08 - Replaced free-form camera entry with a live discovered-camera list.
 #   2026-09-08 - Added capability-checked manual exposure and gain controls.
 #   2026-09-07 - Added advanced camera reader and exposure choices.
@@ -59,8 +60,7 @@ SETUP_CONTENT = """<style>main a{color:var(--cyan)}#players{margin-bottom:14px}#
 </fieldset><div class=controls><button id=pair-submit type=button disabled>Pair with RetroPie</button><button id=pair-review type=button class=secondary>Review Controller confirmation</button></div></div>
 <div id=pair-pending hidden><h3 id=pair-pending-heading tabindex=-1>Pairing in progress</h3><p>Sending the pairing request to RetroPie. Keep this page open while we wait for its response.</p><p>SSH pairing can take a few minutes. Pairing does not start controller output.</p></div>
 <div id=pair-success hidden><h3 id=pair-success-heading tabindex=-1>Pairing complete</h3><p>The RetroPie receiver was restarted. The matrix resumes its normal display; when idle, it follows your attract setting. Open Dashboard to start controller output when you are ready. Pairing does not verify that a game received input.</p><a class=button href=/dashboard>Open Dashboard</a></div>
-<p id=pair-notice role=status aria-live=polite aria-atomic=true tabindex=-1></p></div></section>
-<section id=experimental-tracking-section class=card style="margin-bottom:14px"><style>#directional-search-notice:empty{display:none}</style><h2>Experimental fast-sweep tracking</h2><form id=directional-search-form><label class=check><input id=directional-search type=checkbox> Follow the direction of fast hand movement</label><p>May help the Controller keep up during quick sweeps. Turn it off if movement feels jittery or occasionally stutters.</p><button type=submit>Save experimental tracking</button></form><p class=notice id=directional-search-notice role=status aria-live=polite></p></section>"""
+<p id=pair-notice role=status aria-live=polite aria-atomic=true tabindex=-1></p></div></section>"""
 
 SETUP_SCRIPT = r"""(()=>{
 const $=id=>document.getElementById(id), secure=location.protocol==='https:';
@@ -72,7 +72,6 @@ function syncExposureFields(){const manual=$('camera_exposure').value==='manual'
 async function api(path,payload,timeoutMs=0){
   const options=payload===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)};
   if(path==='/api/attract')options.headers['X-PowerGlove-Action']='attract';
-  if(path==='/api/directional-search')options.headers['X-PowerGlove-Action']='directional-search';
   const controller=timeoutMs?new AbortController():null;
   const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
   if(controller)options.signal=controller.signal;
@@ -88,7 +87,7 @@ async function action(button,notice,work){
 async function load(updateFields=false){
   const c=await api('/api/config');
   if(c.camera_manual_exposure==null)c.camera_manual_exposure=78;if(c.camera_manual_gain==null)c.camera_manual_gain=96;
-  if(updateFields){syncCameraOptions(c.camera_options,c.camera);for(const k of settingsFields)$(k).value=String(c[k]??'');syncExposureFields();$('matrix-attract').value=c.matrix_attract||'on';$('directional-search').checked=c.directional_search===true;$('connection-fields').disabled=false;$('camera-fields').disabled=false;}
+  if(updateFields){syncCameraOptions(c.camera_options,c.camera);for(const k of settingsFields)$(k).value=String(c[k]??'');syncExposureFields();$('matrix-attract').value=c.matrix_attract||'on';$('connection-fields').disabled=false;$('camera-fields').disabled=false;}
   $('paired').textContent=c.connection_configured?'Connection and pairing key saved. Use pairing below if RetroPie has not received this key.':'Enter your console address and pair with RetroPie. Local play and Glove Academy work without pairing.';
   $('status-destination').textContent=c.receiver||'Not configured';
   savedConfig=c;
@@ -98,6 +97,12 @@ async function load(updateFields=false){
 async function initialLoad(){$('notice').textContent='Loading saved settings…';$('camera-notice').textContent='';try{await load(true);$('notice').textContent=''}catch(e){$('notice').textContent='Could not load saved settings. '+e.message;$('setup-retry').hidden=false}}
 $('setup-retry').onclick=initialLoad;initialLoad();
 function indicator(id,state,label){const item=$(id);item.dataset.state=state;item.querySelector('strong').textContent=label}
+function controllerOutputStatus(w){
+  const waitingForGame=w.controller_enabled&&!w.controller_context_active,outputPaused=w.practice_mode||w.profile==='off'||w.vision_profile==='off';
+  const label=w.controller_request_pending?'Request pending':w.practice_mode?'Paused for practice':!w.controller_enabled?'Stopped':waitingForGame?'Armed — waiting for game':outputPaused?'Ready when gestures resume':w.receiver_available===false?'Receiver unavailable':w.receiver_available===true?'Delivering':'Starting';
+  const state=w.controller_enabled&&(w.receiver_available===true||waitingForGame||outputPaused)?'good':w.controller_enabled&&w.receiver_available===false?'bad':'unknown';
+  return {label,state};
+}
 async function refreshStatus(){
   if(document.hidden)return;
   const [connections,worker,cameras]=await Promise.allSettled([api('/api/connection-status',undefined,3500),api('/status',undefined,3500),api('/api/config',undefined,3500)]);
@@ -118,8 +123,8 @@ async function refreshStatus(){
     const w=worker.value;
     const trackingLabel=({active:'Active',starting:'Starting',idle:'Idle',error:'Needs attention'}[w.vision_state]||(w.worker_running?'Starting':'Unavailable'));
     indicator('status-tracking',w.vision_state==='active'?'good':w.vision_state==='error'||!w.worker_running?'bad':'unknown',trackingLabel);
-    const outputLabel=w.controller_request_pending?'Request pending':w.practice_mode?'Paused for practice':w.controller_enabled?(w.receiver_available===false?'Receiver unavailable':w.receiver_available===true?'Delivering':'Starting'):'Stopped';
-    indicator('status-output',w.controller_enabled&&w.receiver_available===true?'good':w.controller_enabled&&w.receiver_available===false?'bad':'unknown',outputLabel);
+    const output=controllerOutputStatus(w);
+    indicator('status-output',output.state,output.label);
     const actual=Number(w.camera_fps),requested=w.camera_fps_requested;
     const backend=w.capture_backend==='direct-v4l2'?'Direct V4L2':w.capture_backend==='opencv'?'OpenCV':'—',fallback=w.capture_backend_fallback?` Direct mode fell back safely: ${w.capture_backend_fallback}.`:'';
     let exposure;if(w.camera_exposure_mode==='manual'||w.camera_exposure_mode==='manual-test')exposure=w.camera_exposure_applied?`manual exposure ${w.camera_manual_exposure}, gain ${w.camera_manual_gain} applied`:`manual settings unavailable; automatic fallback${w.camera_control_error?` (${w.camera_control_error})`:''}`;else exposure=w.camera_exposure_mode==='auto'?'automatic exposure':w.camera_exposure_applied?'automatic fixed-rate exposure applied':'automatic fixed-rate exposure unavailable';
@@ -220,7 +225,6 @@ $('form').onsubmit=e=>{e.preventDefault();if(settingsBusy||pairingBusy||windowAc
 })};
 $('test').onclick=()=>action($('test'),'notice',async()=>{const x=await api('/api/test-connection',{receiver:$('receiver').value.trim()});$('notice').textContent=`Address resolved: ${x.receiver} → ${x.address}. Pairing and controller delivery have not been tested.`});
 $('attract-form').onsubmit=e=>{e.preventDefault();action(e.submitter,'attract-notice',async()=>{await api('/api/attract',{mode:$('matrix-attract').value});$('attract-notice').textContent='Attract mode saved. Tracking was not restarted.'})};
-$('directional-search-form').onsubmit=e=>{e.preventDefault();action(e.submitter,'directional-search-notice',async()=>{const result=await api('/api/directional-search',{enabled:$('directional-search').checked});if(savedConfig)savedConfig.directional_search=result.directional_search;$('directional-search-notice').textContent='Experimental tracking saved. Tracking is restarting.'})};
 renderPairing();
 })();"""
 

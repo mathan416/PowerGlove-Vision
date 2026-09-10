@@ -63,7 +63,6 @@ def load_device_config() -> dict:
         "inference_threads": 4,
         "tracking_confidence": 0.35,
         "tracking_roi_scale": 2.25,
-        "directional_search": False,
         "camera_fps": "auto",
         "camera_backend": "opencv",
         "camera_exposure": "auto",
@@ -117,8 +116,6 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
             or float(tracking_roi_scale) not in (2.0, 2.25)):
         tracking_roi_scale = 2.25
     command.extend(["--tracking-roi-scale", str(float(tracking_roi_scale))])
-    if settings.get("directional_search") is True:
-        command.append("--directional-search")
     camera_fps = settings.get("camera_fps", "auto")
     if camera_fps == "auto":
         requested_fps = 0

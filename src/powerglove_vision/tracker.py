@@ -687,7 +687,7 @@ class MediaPipeTracker:
         palm_inference_threads: int | None = None,
         tracking_roi_scale_x: float | None = None,
         tracking_roi_scale_y: float | None = None,
-        directional_search: bool = False,
+        directional_search: bool = True,
         directional_search_gain: float = .275,
         directional_search_min_speed: float = .5,
         directional_search_max_offset: float = .04,

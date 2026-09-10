@@ -229,37 +229,22 @@ class ControlStateTests(unittest.TestCase):
         self.state.save_config(original)
         self.assertEqual(self.state.public_config()['matrix_attract'],'dim')
 
-    def test_directional_search_is_an_independent_boolean_setting(self):
-        self.assertFalse(self.state.public_config()["directional_search"])
-        before = self.state.load_config()
-        result = self.state.save_directional_search({"enabled": True})
-        after = self.state.load_config()
-        self.assertEqual(result, {"directional_search": True})
-        self.assertTrue(after.pop("directional_search"))
-        before.pop("directional_search")
-        self.assertEqual(after, before)
-        self.assertEqual(self.state.revision, 1)
-        with self.assertRaisesRegex(ValueError, "On or Off"):
-            self.state.save_directional_search({"enabled": "true"})
-        self.assertTrue(self.state.public_config()["directional_search"])
-
-    def test_directional_search_route_requires_its_action_header(self):
+    def test_legacy_directional_search_is_not_public_or_editable(self):
+        self.assertNotIn("directional_search", self.state.public_config())
         servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
         try:
             port = servers.servers[0].server_address[1]
-            for headers, expected in (
-                ({"Content-Type": "application/json"}, 403),
-                ({"Content-Type": "application/json",
-                  "X-PowerGlove-Action": "directional-search"}, 200),
-            ):
-                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
-                connection.request("POST", "/api/directional-search",
-                                   json.dumps({"enabled": True}), headers)
-                response = connection.getresponse()
-                response.read()
-                self.assertEqual(response.status, expected)
-                connection.close()
-            self.assertTrue(state.public_config()["directional_search"])
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
+            connection.request(
+                "POST", "/api/directional-search", json.dumps({"enabled": False}),
+                {"Content-Type": "application/json",
+                 "X-PowerGlove-Action": "directional-search"},
+            )
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 404)
+            connection.close()
+            self.assertFalse(state.load_config()["directional_search"])
         finally:
             servers.shutdown()
 
@@ -298,9 +283,8 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b'id=camera_manual_exposure', SETUP)
         self.assertIn(b'id=camera_manual_gain', SETUP)
         self.assertIn(b'Manual exposure and gain', SETUP)
-        self.assertIn(b'id=experimental-tracking-section', SETUP)
-        self.assertIn(b'id=directional-search', SETUP)
-        self.assertIn(b'Save experimental tracking', SETUP)
+        self.assertNotIn(b'id=experimental-tracking-section', SETUP)
+        self.assertNotIn(b'id=directional-search', SETUP)
         self.state.save_config({
             "receiver": "arcade.local", "port": 55357,
             "profile": "program_i", "glove_color": "white", "camera": "2",
