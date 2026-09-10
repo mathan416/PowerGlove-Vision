@@ -19,7 +19,8 @@ async def main():
         for engine in ('chromium', 'webkit'):
             browser = await getattr(pw, engine).launch(**({'channel':'chrome'} if engine=='chromium' else {}))
             page = await browser.new_page(viewport={'width':390,'height':844})
-            state=dict(active='default',generation=1,players=[dict(id='default',name='Iain')],joystick={d:dict(on=.28,off=.14) for d in ('left','right','up','down')})
+            state=dict(active='default',generation=1,players=[dict(id='default',name='Iain')],
+                       joystick=dict(deadzone=.28,effective_deadzone=.33,jitter_protected=True))
             calls=[]; errors=[]; flags={'fail':False, 'tracking':True}
             page.on('pageerror',lambda e:errors.append(str(e)))
             async def route(r):
@@ -32,11 +33,13 @@ async def main():
                         calls.append(data)
                         if flags['fail']:return await r.fulfill(status=400,json={'error':'Save failed; retry.'})
                         state['generation']+=1
-                        state['joystick']={d:dict(on=data['value'],off=data['value']/2) for d in state['joystick']}
+                        state['joystick']=dict(deadzone=data['value'],effective_deadzone=data['value'],jitter_protected=False)
                     return await r.fulfill(json=state)
                 return await r.fulfill(status=404)
             await page.route('**/*',route);await page.goto('http://joystick.test/setup')
             await expect(page.locator('#joystick-size')).to_be_enabled()
+            await expect(page.locator('label[for=joystick-size]')).to_have_text('Center box size: Small ↔ Large')
+            await expect(page.locator('#joystick-value')).to_contain_text('Effective size: 33%')
             await expect(page.locator('[data-direction=left]')).to_have_text('Left: pressed')
             await page.locator('#joystick-size').focus();await page.keyboard.press('Home')
             for _ in range(36):await page.keyboard.press('ArrowRight')

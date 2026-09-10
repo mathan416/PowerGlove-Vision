@@ -38,7 +38,7 @@ class PlayerTests(unittest.TestCase):
         restored = TuningManager(self.path)
         self.assertEqual(restored.player_snapshot()["players"][0]["name"], "Alex")
         self.assertEqual(restored.saved, self.manager.saved)
-        self.assertEqual(json.loads(self.path.read_text())["version"], 4)
+        self.assertEqual(json.loads(self.path.read_text())["version"], 5)
 
     def test_version_two_player_data_migrates_with_progress_and_backup(self):
         saved={'version':2,'active':'default','generation':4,'players':{'default':{
@@ -48,7 +48,7 @@ class PlayerTests(unittest.TestCase):
         self.command('rename',name='Iain B')
         self.assertEqual(self.manager.player_snapshot()['progress']['completed'],[0,1])
         self.assertEqual(json.loads(self.path.with_name('gesture-tuning-v2-backup.json').read_text()),saved)
-        self.assertEqual(json.loads(self.path.read_text())['version'],4)
+        self.assertEqual(json.loads(self.path.read_text())['version'],5)
 
     def test_players_isolate_tuning_and_progress(self):
         self.command("progress", progress={"course":1,"completed":[0,1],"lesson":2})
@@ -70,7 +70,7 @@ class PlayerTests(unittest.TestCase):
 
     def test_export_is_allowlisted_and_restore_requires_fresh_center(self):
         backup=self.command("export")["backup"]
-        self.assertEqual(set(backup),{"format","version","name","thresholds","calibration","effective_thresholds","source"})
+        self.assertEqual(set(backup),{"format","version","name","thresholds","joystick_deadzone","calibration","effective_thresholds","source"})
         backup["thresholds"]={"thumb":{"on":.7,"off":.4}}
         self.command("restore",backup=backup)
         self.assertTrue(self.manager.needs_center())
@@ -86,7 +86,7 @@ class PlayerTests(unittest.TestCase):
         path=self.path.with_name('calibration.json')
         save_calibration(path,reference)
         backup=self.command('export')['backup']
-        self.assertEqual(backup['version'],2)
+        self.assertEqual(backup['version'],3)
         self.assertEqual(backup['calibration']['neutral']['palm_x'],.4)
         backup['name']='Iain'
         self.command('restore',backup=backup,reuse_calibration=True)
@@ -122,9 +122,39 @@ class PlayerTests(unittest.TestCase):
 
     def test_original_version_two_backups_remain_supported(self):
         backup=self.command('export')['backup']
-        del backup['effective_thresholds'];del backup['source']
+        backup['version']=2
+        del backup['joystick_deadzone'];del backup['effective_thresholds'];del backup['source']
         self.command('restore',backup=backup)
         self.assertTrue(self.manager.needs_center())
+
+    def test_version_four_store_migrates_largest_activation_and_discards_releases(self):
+        saved={'version':4,'active':'default','generation':1,'calibration_restore':None,
+               'players':{'default':{'name':'Iain','thresholds':{
+                   'left':{'on':.31,'off':.12},'right':{'on':.47,'off':.15},
+                   'up':{'on':.35,'off':.2},'down':{'on':.4,'off':.1},
+                   'index':{'on':.6,'off':.3}},
+                   'progress':{'course':1,'completed':[],'lesson':0},
+                   'needs_center':False,'calibration':None}}}
+        self.path.write_text(json.dumps(saved))
+        manager=TuningManager(self.path)
+        self.assertEqual(manager.players.active['joystick_deadzone'],.47)
+        self.assertEqual(manager.saved,{'index':{'on':.6,'off':.3}})
+        state=manager.player_snapshot()
+        manager.player_command({'action':'rename','player':state['active'],
+                                'generation':state['generation'],'name':'Iain B'})
+        self.assertEqual(json.loads(self.path.read_text())['version'],5)
+        self.assertEqual(json.loads(self.path.with_name('gesture-tuning-v4-backup.json').read_text()),saved)
+
+    def test_version_two_backup_migrates_largest_activation(self):
+        backup=self.command('export')['backup']
+        backup['version']=2
+        del backup['joystick_deadzone'];del backup['effective_thresholds'];del backup['source']
+        backup['thresholds'].update({
+            'left':{'on':.34,'off':.1},'right':{'on':.52,'off':.2},
+            'up':{'on':.41,'off':.2},'down':{'on':.38,'off':.1}})
+        self.command('restore',backup=backup)
+        self.assertEqual(self.manager.players.active['joystick_deadzone'],.52)
+        self.assertNotIn('left',self.manager.saved)
 
     def test_player_selection_automatically_restores_its_isolated_center(self):
         from powerglove_vision.model import Calibration

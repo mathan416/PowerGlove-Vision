@@ -225,10 +225,13 @@ the interface; they are not saved gesture recordings.
 
 Optional hand setup measures all five fingers; gesture tuning measures selected
 components. Both use three short sets of numerical samples in memory. The
-version-4 `data/gesture-tuning.json` file stores player names, activation/release
-pairs shared across game profiles for each player, Academy progress, and a
+version-5 `data/gesture-tuning.json` file stores player names, one joystick center-box
+size, gesture activation/release pairs shared across game profiles for each player, Academy progress, and a
 required-center flag and separate saved calibration, plus a bounded pending reference during a calibration
-restore. Internal versions 1, 2, and 3 migrate with private backups. Portable hand-setup backups start at version 2; version 1 is rejected. Exports contain a name, personal and complete threshold pairs, software identity, and a neutral reference. They exclude
+restore. Internal versions 1–4 migrate with private backups. Portable hand-setup
+exports use version 3; version 2 remains importable and version 1 is rejected.
+Exports contain a name, center-box size, personal and complete gesture threshold
+pairs, software identity, and a neutral reference. They exclude
 camera images, landmarks, Wi-Fi credentials, pairing tokens, and lesson progress.
 Restoring calibration requires an explicit same-position confirmation and strict
 finite field validation. A persisted restore resumes after interruption with

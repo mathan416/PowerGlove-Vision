@@ -299,7 +299,7 @@ internal version-1 store migration with a retained backup, isolated player setti
 stale-tab rejection after player changes or progress resets, and controller
 suppression throughout tuning. Check that player selection automatically restores that player’s saved center,
 missing centers require centering, and hand-setting imports retain explicit calibration reuse;
-Start controller remains required. Verify complete and earlier version-2 backup round trips,
+Start controller remains required. Verify version-3 round trips, version-2 center-box migration,
 portable version-1 rejection,
 invalid calibration rejection, and restart recovery between both restore writes. Automatic
 suggestions must check separation and a simultaneous full-pose match in at least

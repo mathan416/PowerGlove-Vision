@@ -54,7 +54,8 @@ class TuningTests(unittest.TestCase):
         self.assertGreater(accidental['on'], standard['on'])
         self.assertGreater(accidental['off'], standard['off'])
         self.assertEqual(tuning_recipe('push')['durations'], [2.0, 6.0, 2.0])
-        self.assertEqual(tuning_recipe('left')['kind'], 'movement')
+        self.assertNotIn('left', self.manager.snapshot()['gestures'])
+        self.assertEqual(tuning_recipe('roll_left')['kind'], 'movement')
         self.assertEqual(tuning_recipe('start')['kind'], 'pose')
 
     def test_wizard_requires_stable_hand_and_guided_test_before_save(self):

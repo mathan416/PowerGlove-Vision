@@ -153,7 +153,7 @@ The four optional `calibration.neutral` fields `reach_left`, `reach_right`,
 `reach_up`, and `reach_down` are normalized image distances from the saved center.
 All four zero (or omitted in older backups) use the original camera-boundary
 mapping. Otherwise all four must be finite numbers at least `0.05` and fit inside
-the image around that center. Player presets and version-2 hand-setup backups
+the image around that center. Player presets and version-3 hand-setup backups
 preserve them. New reach-bearing backups require reach-aware software on import.
 **Center hand preserves valid reach spans** because neutral centering and
 comfortable travel are separate adjustments. If a new center would place an
@@ -866,10 +866,10 @@ repeated filenames. Keep a clearly named copy for every player you want to recov
 ### Backup contents and restore choices
 
 **Back up hand setup** downloads `<player>-powerglove-hand-setup.json` with format
-`powerglove-hand-setup` and version `2`. Fields are `name`, personal `thresholds`,
-`calibration`, `effective_thresholds`, and `source` (`version`, `commit`). Empty
+`powerglove-hand-setup` and version `3`. Fields are `name`, personal `thresholds`,
+`joystick_deadzone`, `calibration`, `effective_thresholds`, and `source` (`version`, `commit`). Empty
 personal thresholds mean no personal overrides. Effective thresholds contain
-all thirteen activation/release pairs, including the supplied defaults in use.
+all nine gesture activation/release pairs, including the supplied defaults in use.
 They let a later restore retain those sensitivity values when defaults change.
 Game mappings, recognition algorithms, and all other software behavior are not
 frozen by a hand backup.
@@ -887,9 +887,11 @@ to restore personal adjustments with the installed defaults. Independently,
 check **My camera position and playing position match this backup** to reuse
 calibration. Otherwise set a fresh center. Controls stay paused until Start.
 
-Version 2 is the first supported portable backup format. Existing version-2
-files without `effective_thresholds` or `source` still restore their personal
-adjustments and calibration. Version-1 `powerglove-hand-settings` exports are
+Version 3 is the current portable backup format. Existing version-2 files remain
+supported: the largest of their four directional activation values becomes the
+single center-box size and their obsolete directional release values are discarded.
+Version-2 files without `effective_thresholds` or `source` still restore their
+personal adjustments and calibration. Version-1 `powerglove-hand-settings` exports are
 rejected without changing anything. Cancel closes the review without changes.
 
 ![Review before restoring a complete hand setup](images/hand-setup-restore.png)
@@ -900,9 +902,9 @@ device configuration files, and files larger than 8 KB are rejected. The API
 requires boolean `reuse_calibration: true` for backup calibration reuse and
 `use_effective_thresholds: true` for complete sensitivity restoration.
 
-`data/gesture-tuning.json` version 4 stores `version`, `active`, `generation`,
+`data/gesture-tuning.json` version 5 stores `version`, `active`, `generation`,
 `players`, and nullable `calibration_restore`. Each player has `name`,
-`thresholds`, `progress` (`course`, `completed`, `lesson`), `needs_center`, and
+`thresholds`, one `joystick_deadzone`, `progress` (`course`, `completed`, `lesson`), `needs_center`, and
 nullable `calibration`. Course version 1 uses sixteen zero-based lesson indices.
 Generations reject stale writes after switches/restores/resets. The active
 working reference is mirrored in `data/calibration.json`; individual references
@@ -915,11 +917,13 @@ and centering gate. An interrupted restore resumes after restart; a failed write
 leaves output paused. Switching players cancels an unapplied reference. Export
 waits until a pending restore finishes.
 
-Internal store versions 1–3 migrate without losing names, sensitivity, or progress.
+Internal store versions 1–4 migrate without losing names, sensitivity, or progress.
+Version 4 directional activation values migrate using their largest value and
+directional release values are retired.
 Before the first write, `data/gesture-tuning-vN-backup.json` retains the old
 store, where N is its version. This internal recovery migration is separate from
 the unsupported version-1 portable export format. Files use mode `0600` and
-survive upgrades. Older apps cannot read version 4; stop the app and restore the
+survive upgrades. Older apps cannot read version 5; stop the app and restore the
 appropriate private store backup when deliberately rolling back.
 
 `POST /api/players` supports `read`, `progress`, `reset_progress`, `create`,
@@ -954,9 +958,11 @@ values. The numerical table and diagnostic capture are collapsed under
 **Advanced thresholds and diagnostics**. The matrix
 shows a scanning **T** while tuning and a matching scanning **L** in ordinary practice.
 
-Activation is the point where a gesture begins; release is the lower point where
-it stops. Separate values prevent rapid on/off flickering. Gameplay movement mappings use these same held states, including wrist steering, push, pull-back, and braking; game-specific button assignments and pulses still apply. Directions and fingers
-can be adjusted independently. Compound gestures share component thresholds, so
+Activation is the point where a non-positional gesture begins; release is the lower point where
+it stops. Separate values prevent rapid on/off flickering. Wrist steering, push,
+pull-back, fingers, and braking use these held states; game-specific button assignments
+and pulses still apply. Positional directions instead use Setup's single square center
+box and are not gesture-personalization channels. Compound gestures share component thresholds, so
 changing a finger also affects other gestures that use it. Suggested menu-pose
 adjustments tune the closed fingers; already extended fingers retain their existing
 settings from hand setup or existing personal/default values. Button assignments and menu hold timing
@@ -980,7 +986,7 @@ migrate as described above; this legacy example remains readable:
 ```
 
 Each pair must contain finite numbers with `0 <= off < on`. Finger and pull
-activation cannot exceed `1`; wrist rotation cannot exceed `2`; movement and push
+activation cannot exceed `1`; wrist rotation cannot exceed `2`; push
 cannot exceed `4`. These are normalized measurements, not distances in centimetres.
 
 Tuning pauses controller delivery. A game launch may update the selected game but
@@ -1009,8 +1015,8 @@ useful for understanding the defaults; personal tuning is managed through Glove 
 
 | Field | What it measures | Effect of lowering the value |
 | --- | --- | --- |
-| `move_on` | Palm displacement from center, normalized by palm size | Movement activates sooner |
-| `move_off` | Palm displacement at which active movement releases | Movement stays active farther back toward center |
+| `joystick_deadzone` | Half-width of the per-player square center box, normalized by palm size | Positional directions begin closer to center |
+| `move_on` / `move_off` | Legacy configuration compatibility fields | Imported only when `joystick_deadzone` is absent; `move_on` supplies the box size and `move_off` is ignored |
 | `coordinate_edge_margin` | Camera margin excluded from native X/Y travel | Native travel reaches its edge closer to the camera boundary |
 | `coordinate_smoothing_min` | Minimum weight assigned to the newest native coordinate | Small native movements respond more immediately but may show more jitter |
 | `coordinate_smoothing_max` | Maximum newest-coordinate weight during deliberate travel | Large native movements catch up less quickly |
@@ -1034,7 +1040,7 @@ useful for understanding the defaults; personal tuning is managed through Glove 
 | `loss_release_ms` | Tracking-loss delay before all controls release | Controls release sooner after the hand disappears |
 | `native_xy_loss_hold_ms` | Maximum time native X/Y alone retains its last visible position through a brief miss | Extreme sweeps can show a neutral-position interruption sooner |
 
-For each gesture, keep the `_off` value lower than its `_on` value. The gap is
+For each non-positional gesture, keep the `_off` value lower than its `_on` value. The gap is
 hysteresis: it prevents a value near the activation point from rapidly turning
 on and off. A very large gap can make the control feel sticky.
 
@@ -1042,8 +1048,7 @@ The supplied shared recognition defaults are:
 
 ```json
 {
-  "move_on": 0.28,
-  "move_off": 0.14,
+  "joystick_deadzone": 0.28,
   "coordinate_edge_margin": 0.08,
   "coordinate_smoothing_min": 0.70,
   "coordinate_smoothing_max": 1.00,
@@ -1069,11 +1074,13 @@ The supplied shared recognition defaults are:
 }
 ```
 
-The `recognition` object applies to every game profile. During neutral calibration,
-the worker records ordinary X/Y jitter and raises only the relevant movement
-thresholds when necessary; it never lowers the `0.28` activation or `0.14` release
-baselines. Programs A-I and dedicated game profiles only decide how those shared
-recognition states map to controller output.
+The `recognition` object applies to every game profile. FCEUmm positional movement
+uses a stateless 3×3 grid around the calibrated center. Positions inside or exactly
+on the square produce no positional D-pad bits; side regions produce cardinals and
+corner regions produce diagonals. Neutral calibration records ordinary X/Y jitter
+and can safely enlarge the effective square beyond the player's chosen value. Setup
+shows both values when this protection is active. Programs A–I and dedicated game
+profiles only decide how shared recognition states map to controller output.
 
 Native stabilization treats a saturated `1.0` calibration jitter measurement as
 unusable. It keeps that calibration's center, scale, and wrist values but uses
@@ -1083,8 +1090,8 @@ jump. A normal measured jitter value continues to raise the native noise floor.
 When adjusting numeric values in Tune, change one pair at a time in steps of approximately `0.02` to `0.05`, then test
 from the same camera position. Useful adjustments include:
 
-- Recalibrate first if directional movement requires too much travel or moves at rest.
-- Keep `move_off` below `move_on` so a direction releases promptly near center.
+- Recalibrate first if directional movement requires too much travel or moves at rest,
+  then adjust **Setup → Joystick dead zone** rather than gesture thresholds.
 - Raise an `_on` value when an action triggers unintentionally.
 - Increase `pulse_hz` when a repeating action is too slow.
 - Keep `loss_release_ms` short enough to release safely but long enough to tolerate a few missed camera frames.
@@ -1357,8 +1364,8 @@ not automatically migrate active configuration.
 | Gestures off shows a blinking X | Update PowerGlove Vision; Gestures off should show the glove attract animation and must not open the camera. |
 | Camera disappears after reboot | Check `lsusb` and `/dev/v4l/by-id/`, reconnect the camera or hub if absent, and keep Camera set to **Automatic** unless selecting a specific listed device. See [startup diagnostics](#vision-startup-and-timing). |
 | First activation is slow | Allow background preloading to finish and inspect the startup stage logs before attributing the delay to the camera. |
-| Movement triggers too late | Recalibrate neutral first and verify the hand is steady; all profiles share the responsive movement thresholds. |
-| Direction remains stuck | Recalibrate neutral, verify return toward center and tracking-loss release, then review the shared `move_off` value. |
+| Movement triggers too late | Recalibrate neutral first and verify the hand is steady; then reduce the selected player's **Joystick dead zone** center-box size. |
+| Direction remains stuck | Recalibrate neutral, return inside the Setup center box, and verify tracking-loss release. Adjust **Joystick dead zone** if the resting box is too small. |
 | Pairing suddenly fails after a Setup change | A rotated token invalidates the old pairing; run the pairing flow again. |
 | EmulationStation pauses or another USB device behaves unexpectedly at boot | Verify receiver startup is controlled by the 45-second timer and the service is not independently enabled at boot. |
 

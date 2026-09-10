@@ -655,6 +655,16 @@ class ControlStateTests(unittest.TestCase):
             self.assertEqual(asset[0], (root / "web/gestures" / name).read_bytes())
             self.assertLess(len(asset[0]), 40000)
             self.assertLess(len(asset[0]), (root / "gestures" / name).stat().st_size // 4)
+        for name in (
+            "v2/pixel-pal-coach.png", "v2/pixel-pal-ready.png",
+            "v2/pixel-pal-thinking.png", "v2/pixel-pal-safety.png",
+            "v2/pixel-pal-success.png",
+        ):
+            asset = help_asset("gestures/" + name)
+            self.assertEqual(asset[1], "image/png")
+            self.assertEqual(asset[0], (root / "web/gestures" / name).read_bytes())
+            self.assertLess(len(asset[0]), 180000)
+            self.assertLess(len(asset[0]), (root / "gestures" / name).stat().st_size // 4)
 
     def test_help_pdfs_are_allowlisted_and_exclude_the_cabinet_reference(self):
         document = guide_pdf("gameplay")
@@ -871,6 +881,14 @@ class ControlStateTests(unittest.TestCase):
         self.assertEqual(first["app_started_at"], self.state.started_at)
         self.assertEqual(first["app_started_at"], second["app_started_at"])
         self.assertEqual(first["version"], __version__)
+
+    def test_pixel_pal_poses_match_each_page_purpose(self):
+        self.assertIn(b"pixel-pal-web.png", DASHBOARD)
+        self.assertIn(b"pixel-pal-ready.png", PLAY)
+        self.assertIn(b"pixel-pal-coach.png", LEARN)
+        self.assertIn(b"pixel-pal-thinking.png", SETUP)
+        self.assertIn(b"pixel-pal-success.png", SETUP)
+        self.assertIn(b"pixel-pal-web.png", help_index_page())
 
     def test_learn_has_gesture_images_and_accepts_held_menu_recognition(self):
         self.assertIn(b"id=lesson-image", LEARN)

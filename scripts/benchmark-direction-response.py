@@ -177,10 +177,10 @@ def observation(timestamp: float, dx: float = 0.0, dy: float = 0.0) -> HandObser
 
 
 def recognition_results() -> dict:
-    """Prove activation at 0.29 and release at 0.13 for every shared direction."""
+    """Prove each side activates and the centre box releases on the next sample."""
     result = {}
     vectors = {"left": (-.29, 0), "right": (.29, 0), "up": (0, -.29), "down": (0, .29)}
-    releases = {"left": (-.13, 0), "right": (.13, 0), "up": (0, -.13), "down": (0, .13)}
+    releases = {"left": (-.28, 0), "right": (.28, 0), "up": (0, -.28), "down": (0, .28)}
     calibration = Calibration(.5, .5, .2, 0, 0, 0)
     for direction in DIRECTION_IDS:
         engine = GestureEngine("program_g", calibration=calibration)
@@ -191,7 +191,7 @@ def recognition_results() -> dict:
         result[direction] = {
             "activation_displacement": .29,
             "activated": activated[direction],
-            "release_displacement": .13,
+            "release_displacement": .28,
             "released": not any(released.values()),
         }
     return result

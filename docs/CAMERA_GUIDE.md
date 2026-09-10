@@ -4,6 +4,8 @@ Your camera is how PowerGlove Vision sees your hand. This guide helps you choose
 a camera, get a clear and responsive picture, and recover quickly when the
 camera is disconnected or unavailable.
 
+<img src="images/gestures/v2/pixel-pal-thinking.png" alt="Pixel Pal inspects the camera setup with a magnifying glass" width="150">
+
 Begin with the automatic settings. They work with ordinary USB cameras and are
 the best starting point for most families. The advanced frame-rate, reader,
 exposure, and gain controls are available when you need to improve a particular

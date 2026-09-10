@@ -612,11 +612,11 @@ Each player retains a separate center. Selecting a player in Glove Academy immed
 loads their sensitivity, progress, and saved center. Use **Center hand** for a new
 player or after moving the camera or changing playing position. Controller output remains paused until Start.
 
-Portable backups start at version 2. New exports include personal and complete
-sensitivity, software identity, and the player's saved calibration. Restore
+Portable backups now use version 3. New exports include the center-box size,
+personal and complete gesture sensitivity, software identity, and the player's saved calibration. Restore
 separately confirms complete sensitivity and calibration reuse. Earlier version-2
 files remain supported; version-1 exports are rejected. Internal player stores
-migrate to version 4 with a private recovery backup.
+migrate to version 5 with a private recovery backup.
 
 Off attract mode shows four faint pixels: app, console service, authenticated
 console, and independent Wi-Fi link. Setup distinguishes disconnected Wi-Fi from

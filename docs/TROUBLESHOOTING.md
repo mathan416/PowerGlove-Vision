@@ -4,6 +4,8 @@ Start at the first stage that fails: camera, recognition, Controller delivery,
 RetroPie reception, emulator selection, then the displayed game. Keep a normal
 gamepad available. Change one setting at a time so you know what fixed the issue.
 
+<img src="images/gestures/v2/pixel-pal-safety.png" alt="Pixel Pal gives a friendly stop-and-check signal" width="150">
+
 The **PowerGlove Vision Controller (Arduino UNO Q)** hosts Setup, Glove Academy,
 and Help. Use **Help → This console** for addresses specific to your installation.
 The examples below use placeholders, not addresses that every build shares.
@@ -113,9 +115,11 @@ If ordinary movement is correct but a gesture is unreliable, use **Glove Academy
 → Tune gestures** and describe that symptom to Pixel Pal.
 
 For FCEUmm digital directions, Setup's **Joystick dead zone** adjusts how far
-the selected player moves before all four directions activate; release remains
-half that distance. Start with **Use standard size**, then save one small change
-at a time while watching the live direction indicators. This setting does not
+the selected player moves beyond the square center box. Inside or on its boundary,
+all positional directions release; beyond a side is a cardinal direction and beyond
+a corner is a diagonal. Start with **Use standard size**, then save one small change
+at a time while watching the live direction indicators. If neutral jitter needs a
+larger safe box, Setup shows both the chosen and effective sizes. This setting does not
 change native Super Glove Ball X/Y travel or cure processing latency. Use reach
 controls under **Glove Academy → Tune gestures → Movement reach** for native
 screen coverage and the latency procedure below for delay. Smaller reach values
@@ -159,8 +163,9 @@ progress. Your browser usually puts it in Downloads with a player-based name,
 such as `alex-powerglove-hand-setup.json`.
 
 Restore updates the selected player after review. An empty personal-threshold
-object can simply mean defaults are in use; version-2 backups also carry the
-effective sensitivity. See [backup locations and restore choices](CONFIGURATION_REFERENCE.md#where-player-settings-and-backup-files-live).
+object can simply mean defaults are in use. Version-3 backups carry the center-box
+size and effective gesture sensitivity; version-2 backups are migrated on import.
+See [backup locations and restore choices](CONFIGURATION_REFERENCE.md#where-player-settings-and-backup-files-live).
 
 ## What to include when asking for help
 

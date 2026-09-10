@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Rotate routine payload backups while preserving named engineering evidence.
 #   2026-09-06 - Avoid reinstalling an identical enabled Wi-Fi sampler during updates.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Verified the Rock Paper Scissors page during deployment.
@@ -44,6 +45,7 @@ Environment overrides:
   UNO_Q_SSH_TARGET  SSH destination
   UNO_Q_SSH_IDENTITY  Optional private-key path for this UNO Q
   UNO_Q_APP_DIR     Remote App Lab application directory
+  POWERGLOVE_DEPLOY_BACKUPS_KEEP  Routine payload backups to retain (default: 12)
 USAGE
   exit 0
 fi
@@ -58,6 +60,13 @@ if [[ $# -eq 1 ]]; then
 fi
 
 readonly UNO_TARGET REMOTE_APP_DIR
+DEPLOY_BACKUPS_KEEP="${POWERGLOVE_DEPLOY_BACKUPS_KEEP:-12}"
+if [[ ! "${DEPLOY_BACKUPS_KEEP}" =~ ^[0-9]+$ ]] \
+    || (( DEPLOY_BACKUPS_KEEP < 2 || DEPLOY_BACKUPS_KEEP > 100 )); then
+  echo "error: POWERGLOVE_DEPLOY_BACKUPS_KEEP must be an integer from 2 to 100" >&2
+  exit 2
+fi
+readonly DEPLOY_BACKUPS_KEEP
 readonly UNO_HOST="${UNO_TARGET#*@}"
 readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
 readonly REMOTE_ARCHIVE="/tmp/powerglove-vision-deploy.tar"
@@ -103,7 +112,7 @@ python3 "${SCRIPT_DIR}/application-payload.py" "${LOCAL_METADATA_DIR}" --include
 COPYFILE_DISABLE=1 tar -C "${LOCAL_METADATA_DIR}" -cf "${LOCAL_ARCHIVE}" .
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "set -eu; stage=\$(mktemp -d /tmp/powerglove-payload.XXXXXX); trap 'rm -rf \"\$stage\"' EXIT; tar --warning=no-unknown-keyword -C \"\$stage\" -xf '${REMOTE_ARCHIVE}'; python3 \"\$stage/scripts/installation-manifest.py\" '${REMOTE_APP_DIR}' --source \"\$stage\" --backup \"\$HOME/powerglove-backups/payload-\$(date +%Y%m%d-%H%M%S)-\$\$\"; rm -f '${REMOTE_ARCHIVE}'"
+  "set -eu; stage=\$(mktemp -d /tmp/powerglove-payload.XXXXXX); trap 'rm -rf \"\$stage\"' EXIT; tar --warning=no-unknown-keyword -C \"\$stage\" -xf '${REMOTE_ARCHIVE}'; python3 \"\$stage/scripts/installation-manifest.py\" '${REMOTE_APP_DIR}' --source \"\$stage\" --backup \"\$HOME/powerglove-backups/payload-\$(date +%Y%m%d-%H%M%S)-\$\$\"; python3 \"\$stage/scripts/rotate-deployment-backups.py\" \"\$HOME/powerglove-backups\" --keep '${DEPLOY_BACKUPS_KEEP}' || echo 'warning: routine deployment-backup rotation did not complete' >&2; rm -f '${REMOTE_ARCHIVE}'"
 
 echo "Ensuring the secure setup port is published..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
@@ -178,7 +187,7 @@ GAMEPLAY_HTML="$(curl --location --max-redirs 3 --fail --silent --show-error --m
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/gameplay")"
 PROGRAMS_HTML="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/programs")"
-for EXPECTED_IMAGE in v2/v-sign.png v2/thumbs-up.png v2/curl-index.png v2/wrist-roll-left.png v2/push-toward-camera.png v2/pixel-pal-web.png actions/finger-curl.png actions/close-all-fingers.png actions/wrist-roll.png; do
+for EXPECTED_IMAGE in v2/v-sign.png v2/thumbs-up.png v2/curl-index.png v2/wrist-roll-left.png v2/push-toward-camera.png v2/pixel-pal-ready.png actions/finger-curl.png actions/close-all-fingers.png actions/wrist-roll.png; do
   if [[ "${GAMEPLAY_HTML}" != *"/help-assets/gestures/${EXPECTED_IMAGE}"* ]]; then
     echo "error: gameplay Help is missing ${EXPECTED_IMAGE}" >&2
     exit 1
@@ -192,15 +201,23 @@ curl --insecure --location --max-redirs 3 --fail --silent --show-error --max-tim
   "https://${UNO_HEALTH_AUTHORITY}:8443/setup" >/dev/null
 
 for PAL_PAGE in dashboard play learn setup help; do
+  case "${PAL_PAGE}" in
+    play) PAL_IMAGE="pixel-pal-ready.png" ;;
+    learn) PAL_IMAGE="pixel-pal-coach.png" ;;
+    setup) PAL_IMAGE="pixel-pal-thinking.png" ;;
+    *) PAL_IMAGE="pixel-pal-web.png" ;;
+  esac
   PAL_HTML="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/${PAL_PAGE}")"
-  if [[ "${PAL_HTML}" != *"/help-assets/gestures/v2/pixel-pal-web.png"* ]]; then
-    echo "error: ${PAL_PAGE} is missing Pixel Pal" >&2
+  if [[ "${PAL_HTML}" != *"/help-assets/gestures/v2/${PAL_IMAGE}"* ]]; then
+    echo "error: ${PAL_PAGE} is missing its ${PAL_IMAGE} Pixel Pal pose" >&2
     exit 1
   fi
 done
-curl --location --max-redirs 3 --fail --silent --show-error --max-time 10 \
-  "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/v2/pixel-pal-web.png" >/dev/null
+for PAL_IMAGE in pixel-pal-web.png pixel-pal-coach.png pixel-pal-ready.png pixel-pal-thinking.png pixel-pal-safety.png pixel-pal-success.png pixel-pal-gold-cup.png; do
+  curl --location --max-redirs 3 --fail --silent --show-error --max-time 10 \
+    "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/v2/${PAL_IMAGE}" >/dev/null
+done
 
 echo "Deployment complete."
 echo "  Play:   http://${UNO_HOST}:8088/play"

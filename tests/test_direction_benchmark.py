@@ -46,14 +46,14 @@ class DirectionBenchmarkTests(unittest.TestCase):
         self.assertEqual(result["first_video_divergence_ms_at_60hz"], 33.3)
         self.assertTrue(result["libretro_input_polled_on_frame_1"])
 
-    def test_shared_recognition_activates_short_moves_and_releases_near_center(self):
+    def test_shared_recognition_activates_short_moves_and_releases_at_box_boundary(self):
         result = benchmark.recognition_results()
         self.assertEqual(set(result), {"left", "right", "up", "down"})
         for direction in result.values():
             self.assertTrue(direction["activated"])
             self.assertTrue(direction["released"])
             self.assertEqual(direction["activation_displacement"], .29)
-            self.assertEqual(direction["release_displacement"], .13)
+            self.assertEqual(direction["release_displacement"], .28)
 
     def test_native_coordinate_filter_reaches_90_percent_inside_150_ms(self):
         result = benchmark.coordinate_filter_results()

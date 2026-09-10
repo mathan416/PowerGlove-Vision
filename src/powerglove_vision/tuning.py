@@ -27,8 +27,9 @@ from .academy_diagnostics import AcademyDiagnostics
 from .players import PlayerSettings, calibration_value
 from .gesture import load_calibration, save_calibration, GestureConfig, MENU_FINGERS, MENU_GUARD_FINGERS, finger_pose_feedback
 
-CHANNELS = ("left", "right", "up", "down", "thumb", "index", "middle", "ring", "pinky",
-            "roll_left", "roll_right", "push", "pull")
+DIRECTION_CHANNELS = ("left", "right", "up", "down")
+CHANNELS = ("thumb", "index", "middle", "ring", "pinky", "roll_left", "roll_right", "push", "pull")
+LEGACY_CHANNELS = DIRECTION_CHANNELS + CHANNELS
 REACH_DIRECTIONS = ("left", "right", "up", "down")
 FINGERS = ("thumb", "index", "middle", "ring", "pinky")
 GESTURES = {key: {key: True} for key in CHANNELS}
@@ -54,7 +55,7 @@ SUGGESTION_BIAS = {
     "accidental": (.75, .40),
 }
 DEPTH_GESTURES = {"push", "pull"}
-MOVEMENT_GESTURES = {"left", "right", "up", "down", "roll_left", "roll_right"}
+MOVEMENT_GESTURES = {"roll_left", "roll_right"}
 
 
 def tuning_recipe(gesture: str) -> dict:
@@ -82,6 +83,24 @@ def validate_overrides(values: dict) -> dict:
         if not 0 <= pair["off"] < pair["on"] <= maximum:
             raise ValueError("Release must be below activation; values must be between zero and " + str(maximum))
     return copy.deepcopy(values)
+
+
+def validate_legacy_overrides(values: dict) -> dict:
+    """Accept old directional pairs only while migrating stores and backups."""
+    if not isinstance(values, dict) or set(values) - set(LEGACY_CHANNELS):
+        raise ValueError("Unknown gesture threshold.")
+    active, directions = {}, {}
+    for key, value in values.items():
+        (directions if key in DIRECTION_CHANNELS else active)[key] = value
+    clean = validate_overrides(active)
+    for channel, pair in directions.items():
+        if (not isinstance(pair, dict) or set(pair) != {"on", "off"}
+                or any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v)
+                       for v in pair.values())
+                or not 0 <= pair["off"] < pair["on"] <= 4.0):
+            raise ValueError("Legacy direction thresholds are invalid.")
+        clean[channel] = copy.deepcopy(pair)
+    return clean
 
 
 def measurements(observation, calibration):
@@ -169,7 +188,8 @@ class TuningManager:
     def __init__(self, path, clock=time.monotonic):
         self.path, self.clock = Path(path), clock
         self.lock = threading.RLock()
-        self.players = PlayerSettings(self.path, validate_overrides, CHANNELS)
+        self.players = PlayerSettings(self.path, validate_overrides, CHANNELS,
+                                      validate_legacy_overrides, LEGACY_CHANNELS)
         if not self.players.error and not self.players.active["needs_center"] and self.players.active["calibration"] is None:
             reference = load_calibration(self.path.with_name("calibration.json"))
             if reference is not None:
@@ -210,9 +230,19 @@ class TuningManager:
         """Read player state under the same lock as recognition settings."""
         with self.lock:
             result = self.players.snapshot()
-            config = replace(self.base_config, thresholds=copy.deepcopy(self.saved))
-            result["joystick"] = {d: dict(zip(("on", "off"), config.pair(d)))
-                                  for d in ("left", "right", "up", "down")}
+            config = replace(self.base_config, thresholds=copy.deepcopy(self.saved),
+                             joystick_deadzone=self.players.active["joystick_deadzone"])
+            reference = self.calibration
+            if reference is None and self.players.active["calibration"] is not None:
+                from .model import Calibration
+                reference = Calibration(**self.players.active["calibration"]["neutral"])
+            chosen = config.chosen_joystick_deadzone()
+            effective = config.effective_joystick_deadzone(reference) if reference else chosen
+            result["joystick"] = {
+                "deadzone": chosen,
+                "effective_deadzone": effective,
+                "jitter_protected": effective > chosen + 1e-9,
+            }
             return result
 
     def player_command(self, data):
@@ -240,14 +270,14 @@ class TuningManager:
                 import json
                 configured = json.loads(config_path.read_text()) if config_path.exists() else {}
                 base = GestureConfig(**configured.get("recognition", configured.get("program_defaults", {})))
-                effective = replace(base, thresholds=copy.deepcopy(self.saved))
+                effective = replace(base, thresholds=copy.deepcopy(self.saved),
+                                    joystick_deadzone=self.players.active["joystick_deadzone"])
                 backup.update(calibration=copy.deepcopy(reference),
                     effective_thresholds={key:dict(zip(("on","off"),effective.pair(key))) for key in CHANNELS},
                     source={"version":str(identity.get("version", "unknown")) + ("+modified" if identity.get("dirty") else ""), "commit":identity.get("commit") or "unknown"})
                 return result
             result = self.players.command(data)
             if data.get("action") == "joystick_deadzone":
-                self.saved = copy.deepcopy(self.players.active["thresholds"])
                 self.revision += 1
                 return self.player_snapshot()
             if data.get("action") == "read":
@@ -406,7 +436,10 @@ class TuningManager:
                 return self._configuration_cache[1]
             values = dict(self.saved)
             values.update(self.preview or {})
-            configured = replace(config, thresholds=copy.deepcopy(values)) if values else config
+            deadzone = self.players.active["joystick_deadzone"]
+            configured = config
+            if values or deadzone != config.chosen_joystick_deadzone():
+                configured = replace(config, thresholds=copy.deepcopy(values), joystick_deadzone=deadzone)
             self._configuration_cache = (cache_key, configured)
             return configured
 

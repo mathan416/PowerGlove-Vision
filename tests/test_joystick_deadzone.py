@@ -32,12 +32,13 @@ class JoystickTests(unittest.TestCase):
         state = self.command('joystick_deadzone', value=.5)
         after = self.manager.players.active
         for key in before:
-            if key != 'thresholds':
+            if key != 'joystick_deadzone':
                 self.assertEqual(before[key], after[key])
         self.assertEqual(old.pair('left'), (.28, .14))
-        self.assertEqual(self.manager.configuration(GestureConfig()).pair('left'), (.5, .25))
+        self.assertEqual(self.manager.configuration(GestureConfig()).chosen_joystick_deadzone(), .5)
         self.assertEqual(TuningManager(self.path).player_snapshot()['joystick'], state['joystick'])
-        self.assertEqual(self.command('export')['backup']['thresholds']['down'], {'on': .5, 'off': .25})
+        self.assertEqual(self.command('export')['backup']['joystick_deadzone'], .5)
+        self.assertNotIn('down', self.command('export')['backup']['thresholds'])
 
     def test_invalid_and_stale_requests_do_not_write(self):
         original = self.manager.player_snapshot()
@@ -48,7 +49,7 @@ class JoystickTests(unittest.TestCase):
         self.command('joystick_deadzone', value=.4)
         with self.assertRaises(ValueError):
             self.manager.player_command(dict(action='joystick_deadzone', player=original['active'], generation=original['generation'], value=.8))
-        self.assertEqual(self.manager.saved['left']['on'], .4)
+        self.assertEqual(self.manager.players.active['joystick_deadzone'], .4)
 
     def test_player_isolation_and_tuning_exclusion(self):
         first = self.manager.player_snapshot()['active']
@@ -56,11 +57,19 @@ class JoystickTests(unittest.TestCase):
         self.command('create', name='Second')
         self.command('joystick_deadzone', value=.6)
         self.command('select', id=first)
-        self.assertEqual(self.manager.saved['down'], {'on': .4, 'off': .2})
+        self.assertEqual(self.manager.players.active['joystick_deadzone'], .4)
         self.manager.session = 'active-test'
         self.manager.expires = self.manager.clock() + 30
         with self.assertRaises(ValueError):
             self.command('joystick_deadzone', value=.7)
+
+    def test_snapshot_reports_chosen_and_jitter_protected_effective_size(self):
+        from powerglove_vision.model import Calibration
+        self.manager.calibration = Calibration(.5, .5, .2, 0, noise_x=.31, noise_y=.02)
+        state = self.manager.player_snapshot()['joystick']
+        self.assertEqual(state['deadzone'], .28)
+        self.assertAlmostEqual(state['effective_deadzone'], .36)
+        self.assertTrue(state['jitter_protected'])
 
 if __name__ == '__main__':
     unittest.main()

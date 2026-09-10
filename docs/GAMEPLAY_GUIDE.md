@@ -53,7 +53,7 @@ confidence. Dashboard's D-pad, button, and axis readings show the controls your
 hand produces. Keep your whole hand visible and use small, comfortable movements.
 If your resting hand causes unwanted movement, recalibrate in that position.
 
-<img src="images/gestures/v2/pixel-pal-web.png" alt="Pixel Pal, your arcade practice buddy" width="112">
+<img src="images/gestures/v2/pixel-pal-ready.png" alt="Pixel Pal takes a ready-to-play stance" width="150">
 
 > **Pixel Pal's Extra-Digit Hunt:** Some glove illustrations have five fingers
 > plus a thumb. Count every six-digit hand once per appearance, including
@@ -96,6 +96,10 @@ tracks your bare hand.
 | Move right | <img src="images/gestures/v2/move-right.png" alt="Move right" width="88"> | Slide your whole hand right. |
 | Move up | <img src="images/gestures/v2/move-up.png" alt="Move up" width="88"> | Raise your whole hand. |
 | Move down | <img src="images/gestures/v2/move-down.png" alt="Move down" width="88"> | Lower your whole hand. |
+
+With an ordinary FCEUmm joystick profile, combine horizontal and vertical movement
+for diagonals. Your saved center box is the ninth region: inside it—or exactly on
+its boundary—all positional directions stop immediately. Change its size in Setup.
 
 ### Wrist and depth movements
 
@@ -191,7 +195,7 @@ output active for the whole session. The V sign sends Start in both modes.
 
 | Do this | See it | Controller result |
 | --- | --- | --- |
-| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in four directions" width="96"> | FCEUmm: held digital steering. Nestopia (PowerGlove): continuous hand positioning. |
+| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in eight directions" width="96"> | FCEUmm: eight-direction digital steering. Nestopia (PowerGlove): continuous hand positioning. |
 | Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | FCEUmm: A, move the glove into the room. |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | FCEUmm: B, punch, grab, or launch a new ball. |
 | Open hand | <img src="images/gestures/actions/show-your-hand.png" alt="Open hand" width="72"> | Nestopia (PowerGlove): release or throw a held ball. |
@@ -398,12 +402,13 @@ loads all three automatically and pauses controller output. Use **Center hand**
 for players without a saved centre or after moving the camera or changing playing position.
 
 Use **Setup → Players → Players and hand-setup backups → Back up hand setup** to save the player's
-name, personal and complete sensitivity, software identity, and calibration.
+name, center-box size, personal and complete gesture sensitivity, software identity, and calibration.
 During restore, choose whether to keep the complete saved sensitivity, including
 the defaults used when the backup was made, or just personal adjustments. Reuse
 calibration only with the same camera and playing position; otherwise set a fresh
-centre. Backups do not include credentials or Academy progress. Version-2 backups
-are supported; older version-1 sensitivity-only files are rejected.
+centre. Backups do not include credentials or Academy progress. New exports are
+version 3; version-2 backups migrate their largest directional activation value
+into the center box. Older version-1 sensitivity-only files are rejected.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as

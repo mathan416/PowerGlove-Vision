@@ -407,7 +407,9 @@ startup sequence. An animation does not prove that shutdown has finished.
 Add and manage players in **Setup → Players**. Choose the active player on Dashboard or in Glove Academy before practicing or playing. Progress and hand
 sensitivity persist across restarts and normal upgrades. Selecting a player immediately loads their sensitivity, progress, and saved center. Use **Center hand** for a new player or after moving the camera or changing playing position. Restoring a hand-setup backup requires centering unless you explicitly
 reuse its calibration with the same camera and playing positions. Backups include
-name, personal and effective sensitivity, source software identity, and calibration. Version-2 is the first supported portable format; version-1 sensitivity-only files are rejected. The web footer reports
+name, center-box size, personal and effective gesture sensitivity, source software
+identity, and calibration. New exports use version 3; version-2 backups remain
+importable and version-1 sensitivity-only files are rejected. The web footer reports
 exact software and running firmware identities; older firmware may report unavailable.
 
 Choose each player in turn and select **Back up hand setup** to download a

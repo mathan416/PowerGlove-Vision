@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-10 - Covered the selected-profile play card shown in place of statistics.
 #   2026-09-07 - Added statistics visibility, safety, and persistence coverage.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -60,6 +61,16 @@ return target[key];}});};}return response;};""")
         await page.wait_for_timeout(650)
         assert not await page.locator('#show-statistics').is_checked()
         assert not await page.locator('#dashboard-statistics').is_visible()
+        assert await page.locator('#dashboard-program').is_visible()
+        assert await page.locator('#program-title').inner_text() == 'Super Glove Ball'
+        assert 'Close hand' in await page.locator('#program-mappings').inner_text()
+        await page.evaluate("displayProgram('program_a')")
+        assert await page.locator('#program-title').inner_text() == 'Program A — Pinball'
+        assert 'Toggle combined flippers' in await page.locator('#program-mappings').inner_text()
+        await page.evaluate("displayProgram('<img src=x onerror=alert(1)>')")
+        assert await page.locator('#program-title').inner_text() == '<img src=x onerror=alert(1)>'
+        assert await page.locator('#dashboard-program img').count() == 0
+        await page.evaluate("displayProgram('super_glove_ball')")
         assert await page.evaluate('diagnosticReads') == 0
         assert await page.evaluate('statusReads') > 1
         assert await page.locator('#controller-toggle').is_enabled()
@@ -67,6 +78,7 @@ return target[key];}});};}return response;};""")
         await page.locator('#show-statistics').check()
         await page.wait_for_timeout(350)
         assert await page.locator('#dashboard-statistics').is_visible()
+        assert not await page.locator('#dashboard-program').is_visible()
         assert '12' in await page.locator('#performance').inner_text()
         assert 'glove_zap' in await page.locator('#events').inner_text()
         assert await page.locator('#events b').count() == 0
@@ -84,6 +96,7 @@ return target[key];}});};}return response;};""")
         assert await page.locator('#events').inner_text() == ''
         assert await page.locator('#performance').inner_text() == ''
         assert not await page.locator('#dashboard-statistics').is_visible()
+        assert await page.locator('#dashboard-program').is_visible()
 
         await page.reload()
         assert not await page.locator('#show-statistics').is_checked()

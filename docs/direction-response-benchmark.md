@@ -116,8 +116,9 @@ requested only libretro device `1`, the standard joypad, confirming that the
 native state file is not part of that lane. The native lane publishes one
 coherent state immediately before every emulated frame; the custom core's packet
 trace is the separate evidence that this state is sampled once per frame. The shared recognition check proves
-all four directions activate at `0.29` normalized displacement and release at
-`0.13`, on the responsive side of the configured `0.28`/`0.14` boundaries.
+all four cardinal directions activate just beyond the `0.28` center-box boundary
+and release on the next fresh sample at that boundary. Runtime tests separately
+cover all four diagonal corner regions and exact-boundary inclusion.
 It also drives the bounded native coordinate curve directly. Motion speed is
 calculated from consecutive raw selected coordinates and capture timestamps,
 normalized by directional calibrated reach and combined into one vector follow

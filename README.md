@@ -44,7 +44,7 @@ standard-joystick fallback and remains the safe default. The separately named
 `lr-nestopia-powerglove` core supplies native absolute X/Y and Z coordinates plus
 open-hand, closed-hand/fist, and index-point states. Exact-ROM traces and
 deterministic headless tests confirm their packet bytes alongside detection,
-Start, four-direction activation/release, small continuous movement, and safe
+Start, eight-direction joystick classification, small continuous movement, and safe
 neutralization. Live cabinet play now confirms every implemented Super Glove
 Ball action: native Start, open-hand release/throw, closed-hand grab/catch,
 index-point Robo-Bullet fire, and fist-plus-forward Power Punch. Corrected Y
@@ -128,7 +128,7 @@ because it is far too funny to fix.
 
 The web footer shows exact software and running matrix firmware identities.
 Glove Academy supports twelve player presets, saved lesson progress, and portable
-version-2 hand-setup backups containing name, personal and effective sensitivity, software identity, and per-player calibration. Selecting a player immediately loads their sensitivity, progress, and saved center, with output paused. Use **Center hand** for new players or after changing the physical setup. Version-1 portable backups are no longer accepted. Navigation
+version-3 hand-setup backups containing name, center-box size, personal and effective gesture sensitivity, software identity, and per-player calibration. Version-2 backups remain importable and migrate their largest directional activation value into the center box. Selecting a player immediately loads their settings, progress, and saved center, with output paused. Use **Center hand** for new players or after changing the physical setup. Version-1 portable backups are no longer accepted. Navigation
 and controls adapt to phone and tablet widths.
 
 ## Quick start
@@ -198,11 +198,13 @@ calibrate, maintain, or update PowerGlove Vision.
 ## Controls
 
 Calibration records the resting hand position that the app treats as the
-centre of movement. Move away from that position to give a direction and
-return to it to release that direction. Recalibrate after moving the camera or
-changing your playing position. Direction activation and release are shared by
-all FCEUmm profiles and automatically rise above measured resting-hand jitter;
-you do not normally calibrate each direction. Some profiles replace ordinary hand movement
+centre of movement. FCEUmm positional control divides the space into nine regions:
+the center box stops movement, four sides give cardinal directions, and four corners
+give diagonals. Every fresh hand position is classified independently, so returning
+to or touching the box releases positional movement immediately. Recalibrate after
+moving the camera or changing your playing position. The per-player box is measured
+in calibrated palm sizes and enlarges automatically only when neutral jitter requires
+more resting room. Some profiles replace ordinary hand movement
 with wrist steering or other controls, as shown below.
 
 Calibration accepts 24 geometrically valid hand observations. MediaPipe Hands'
@@ -345,11 +347,13 @@ error or thermal throttling.
 
 Setup includes **Joystick dead zone**, saved separately for each player. Small
 requires less hand movement to press a direction; Large gives more room around
-center. **Use standard size** selects the existing 0.28 activation / 0.14 release
-pair; select **Save dead zone** to apply. The slider sets all four directions
-together, without changing center or native Super Glove Ball reach. Live direction
-indicators work while tracking is active. Separate directional thresholds remain
-under Glove Academy → Tune gestures → Advanced thresholds and diagnostics.
+center. **Use standard size** selects a center-box half-width of 0.28 calibrated
+palm sizes; select **Save dead zone** to apply. Positions inside or exactly on the
+box stop movement, side regions give one direction, and corner regions give a
+diagonal. The page shows both chosen and effective sizes if jitter protection must
+enlarge the box. It does not change center or native Super Glove Ball reach. Live
+direction indicators work while tracking is active; gesture personalization no
+longer includes positional directions.
 
 The Controller website uses the logo’s hand-and-target emblem for browser tabs
 and saved home-screen shortcuts.

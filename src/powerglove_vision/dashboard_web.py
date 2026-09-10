@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Show the selected profile's play card when statistics are hidden.
 #   2026-09-07 - Request detailed worker telemetry only while statistics are shown.
 #   2026-09-07 - Identified the active native X/Y coordinate source.
 #   2026-09-06 - Add opt-in independent native hand movement tracking.
@@ -36,7 +37,12 @@ DASHBOARD = _page(
  <section class=card><h2>Finger curl</h2><div id=fingers></div></section>
  <section class=card><h2>Performance</h2><div id=performance>Waiting for samples…</div></section>
  <section class='card events-card'><h2>Recent events</h2><div class=events id=events><div>Waiting for tracker…</div></div></section>
-</div></div>""",
+</div>
+<section class='card program-card' id=dashboard-program aria-live=polite>
+ <div class=label>Current program</div><h2 id=program-title>Gestures off</h2><p class=program-purpose id=program-purpose>Camera gesture controls are paused.</p>
+ <p class=program-summary id=program-summary>Select a profile above or start a registered game on RetroPie.</p><ul class=program-mappings id=program-mappings></ul>
+ <a class=program-help href=/help/gameplay>Open the Gameplay Guide</a>
+</section></div>""",
     STATISTICS_SCRIPT + VISION_STARTUP_SCRIPT + r"""const $=id=>document.getElementById(id);
 function buttonText(b,text){if(b.textContent!==text)b.textContent=text;}
 let controllerBusy=false;
@@ -50,14 +56,31 @@ async function calibrate(){if(calibrationPending)return;calibrationPending=true;
 const bits=(id,obj)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<span class="bit ${v?'on':''}">${k.toUpperCase()}</span>`).join('')||'<span class=bit>None</span>'};
 const bars=(id,obj,max=32767)=>{$(id).innerHTML=Object.entries(obj||{}).map(([k,v])=>`<div class=label>${k}: ${v}</div><div class=meter><i style="width:${Math.min(100,Math.abs(v)/max*100)}%"></i></div>`).join('')||'—'};
 const performance=s=>{const p=s.performance||{},inference=p.inference_ms||{},age=p.capture_age_ms||{},sample=p.sample_age_ms||{},transition=p.controller_transition_age_ms||{},source=s.native_xy_source==='mediapipe'?'MediaPipe — Latest coordinate':'Inactive';return [`Model: ${s.tracker_backend_label||s.tracker_backend||'—'}`,`Native X/Y: ${source}`,`Inference: ${s.inference_hz??'—'} Hz`,`Inference p50 / p95: ${inference.p50??'—'} / ${inference.p95??'—'} ms`,`Camera read → send p50 / p95: ${sample.p50??'—'} / ${sample.p95??'—'} ms`,`Changed control → send p50 / p95: ${transition.p50??'—'} / ${transition.p95??'—'} ms`,`Frame waiting before inference p50 / p95: ${age.p50??'—'} / ${age.p95??'—'} ms`,`Superseded camera frames: ${s.capture_skipped_total??0}`,`Preview encode: ${s.preview_encode_ms??'—'} ms`].map(x=>`<div class=label style="margin:5px 0">${x}</div>`).join('')};
+const programDetails={
+ bad_street_brawler:{title:'Bad Street Brawler',purpose:'Power Glove moves tuned for the cartridge.',summary:'Hand position handles movement. Wrist rolls, finger curls and a forward Glove Zap provide the fighting actions.',mappings:[['Move hand','Eight-direction movement'],['Roll wrist','Left or right attack'],['Curl middle finger','A + B attack'],['Curl thumb','Turbo B'],['Glove Zap','Power punch']]},
+ super_glove_ball:{title:'Super Glove Ball',purpose:'Continuous Robo-Glove control with a joystick fallback.',summary:'The custom Nestopia core follows your hand continuously. Other NES cores use the same profile as an eight-direction joystick.',mappings:[['Move hand','Continuous X/Y or D-pad'],['Curl index','A'],['Curl thumb','B'],['Close hand','Grab / close Robo-Glove'],['Point index','Robo-Bullet']]},
+ off:{title:'Gestures off',purpose:'Camera gesture controls are paused.',summary:'Select a profile above or start a registered game on RetroPie.',mappings:[]},
+ program_a:{title:'Program A — Pinball',purpose:'Independent flippers with wrist tilt.',summary:'Designed for pinball tables and games that benefit from two separate finger actions.',mappings:[['Curl index','A / right flipper'],['Curl thumb','Up / left flipper'],['Roll wrist','B / tilt'],['Pull Back','Toggle combined flippers']]},
+ program_b:{title:'Program B — Joust',purpose:'Position steering with rhythmic flap input.',summary:'Move horizontally to steer, then curl a finger for a pulsed flap.',mappings:[['Move left / right','Steer'],['Curl index or middle','Turbo A / flap'],['Curl thumb','B']]},
+ program_c:{title:'Program C — Gyruss',purpose:'Wrist rotation, continuous fire and bombs.',summary:'Roll your wrist around the playfield, keep the index finger straight to fire and Pull Back for a bomb.',mappings:[['Roll wrist','Rotate left / right'],['Keep index straight','A / fire'],['Pull Back','B / bomb']]},
+ program_d:{title:'Program D — Challenge',purpose:'A mirror-world control challenge.',summary:'Hand movement is reversed while the thumb and index finger operate the action buttons.',mappings:[['Move hand','Reversed directions'],['Curl thumb','A'],['Curl index','B']]},
+ program_e:{title:'Program E — Defender II',purpose:'Ship movement with fire and evasive actions.',summary:'Position moves the ship, while finger and wrist gestures handle its weapons.',mappings:[['Move hand','Eight-direction movement'],['Curl thumb','A / fire'],['Roll wrist','B / smart bomb'],['Curl ring finger','Rapid evasive movement']]},
+ program_f:{title:'Program F — Sesame Street',purpose:'Simple open-hand Yes and closed-hand No.',summary:'A friendly two-choice program for simple games and younger players.',mappings:[['Move open hand','A / Yes'],['Close hand','B / No']]},
+ program_g:{title:'Program G — Gun Smoke',purpose:'Move and fire with natural hand gestures.',summary:'Hand position controls walking. Index curl and forward push provide the two firing actions.',mappings:[['Move hand','Eight-direction movement'],['Curl index','A / fire'],['Glove Zap','B / fire'],['Roll wrist','Add left / right movement']]},
+ program_h:{title:'Program H — General',purpose:'Familiar controls for learning and general play.',summary:'A useful starting point for an unmapped game, with ordinary movement and pulsed action buttons.',mappings:[['Move hand','Eight-direction movement'],['Curl index','Turbo A'],['Curl thumb','Turbo B']]},
+ program_i:{title:'Program I — Knight Rider',purpose:'Wrist steering, throttle, brake and turbo.',summary:'A driving layout that moves steering to the wrist and speed controls to hand gestures.',mappings:[['Roll wrist','Steer left / right'],['Curl index','Up / throttle'],['Move down','Down / brake'],['Glove Zap','Up + A / turbo'],['Curl thumb','B']]}
+};
+let displayedProgram='';
+function displayProgram(profile){if(profile===displayedProgram)return;displayedProgram=profile;const p=programDetails[profile]||{title:profile||'Unknown profile',purpose:'Custom controller profile',summary:'See the Gameplay Guide for this profile’s controls.',mappings:[]};$('program-title').textContent=p.title;$('program-purpose').textContent=p.purpose;$('program-summary').textContent=p.summary;const rows=p.mappings.map(([gesture,result])=>{const row=document.createElement('li'),strong=document.createElement('strong'),span=document.createElement('span');strong.textContent=gesture;span.textContent=result;row.append(strong,span);return row});$('program-mappings').replaceChildren(...rows)}
 let seen=[],switching=false,desiredProfile='',cameraImageReady=false;
 $('camera').onload=()=>{cameraImageReady=true;$('camera-centre-target').hidden=false};
 $('camera').onerror=()=>{cameraImageReady=false;$('camera-centre-target').hidden=true;$('camera').removeAttribute('src')};
-function displayStatistics(){const enabled=window.dashboardStatisticsEnabled();$('dashboard-statistics').hidden=!enabled;$('dashboard-workspace').classList.toggle('statistics-off',!enabled);if(!enabled){seen=[];for(const id of ['dpad','buttons','axes','fingers','performance','events'])$(id).textContent='';}}
+function displayStatistics(){const enabled=window.dashboardStatisticsEnabled();$('dashboard-statistics').hidden=!enabled;$('dashboard-program').hidden=enabled;if(!enabled){seen=[];for(const id of ['dpad','buttons','axes','fingers','performance','events'])$(id).textContent='';}}
 window.addEventListener('statisticschange',displayStatistics);displayStatistics();
 async function update(){if(document.hidden)return;try{const statusPath=window.dashboardStatisticsEnabled()?'/status?statistics=1':'/status',s=await(await fetch(statusPath,{cache:'no-store'})).json(),active=s.active_profile||s.configured_profile,idle=s.vision_state==='idle'||active==='off',starting=s.vision_state==='starting',ready=s.vision_state==='active',startup=startupMessage(s);
 $('system').textContent=idle?'Gestures idle':(s.vision_state==='error'?(s.vision_error||'Vision unavailable'):(s.vision_state==='starting'?'Starting vision':s.worker_running?(s.detected?'Tracking':'Ready'):(s.camera_available?'Starting tracker':'Camera not found'))); $('system').className='value '+(s.vision_state==='error'?'bad':(idle||ready?'good':'warn'));
 if(switching&&active===desiredProfile){switching=false;$('profile-selector').disabled=false}if(!switching)$('profile-selector').value=active;$('profile-source').textContent=s.profile_source||'Startup'; $('game').textContent=s.game||'Startup default';
+$('dashboard-program').dataset.profile=active;displayProgram(active);
 $('game-session').textContent=s.game_session_active?'Registered game active':(s.profile_source==='Dashboard'?'Manual profile':'No registered game');$('game-session').className='label '+(s.game_session_active?'good':'');
 $('camera').style.display=idle||starting?'none':'block';$('camera-idle').style.display=idle||starting?'flex':'none';$('camera-idle').textContent=starting?startup:'POWER GLOVE VISION — Gestures are paused. Select a profile to resume.';if(idle||starting){cameraImageReady=false;$('camera-centre-target').hidden=true;$('camera').removeAttribute('src')}else if(!$('camera').getAttribute('src')){cameraImageReady=false;$('camera-centre-target').hidden=true;$('camera').src=$('camera').dataset.src+'?t='+Date.now()}else $('camera-centre-target').hidden=!cameraImageReady;updateCalibration(s);
 $('receiver').textContent=!s.connection_configured?'Set up Connection':s.controller_request_pending?'Waiting for tracker':s.controller_enabled?(!s.controller_context_active?'Armed — waiting for game':starting?'Waiting for vision':idle?'Ready when gestures resume':(s.launch_guard_active?'Launch delay':(s.receiver_available===true?'Sending controls':'Waiting for console'))):'Stopped'; $('receiver').className='value '+(s.receiver_available===true||idle||s.controller_enabled&&!s.controller_context_active?'good':'warn');

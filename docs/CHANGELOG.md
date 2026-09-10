@@ -9,6 +9,13 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
+- Added five context-specific Pixel Pal stances for coaching, play, inspection,
+  safety, and success. The website and friendly guides now choose his pose by
+  purpose while preserving the existing welcome and Glove Master trophy art.
+- Added a per-player square center-box control for FCEUmm joystick movement,
+  including all four diagonals, immediate center release, live direction feedback,
+  and automatic neutral-jitter protection.
+
 - Added an Engineering Journey that records the one-week development process,
   measurement discipline, CPU/GPU investigations, discarded movement paths,
   reliability work, and lessons behind the current architecture.
@@ -33,6 +40,15 @@ authoritative record for line-level and file-level history.
   capture-buffer choice.
 
 ### Changed
+
+- Replaced positional activation/release hysteresis with the original-style
+  nine-region layout: center, four cardinal directions, and four diagonals. Every
+  fresh position is classified independently; native Super Glove Ball X/Y,
+  Menu Guard, tracking-loss safety, and Program-specific mappings are unchanged.
+- Upgraded the player store to version 5 and portable hand-setup backups to
+  version 3. Older stores and version-2 backups migrate the largest directional
+  activation value into the new scalar center box and discard obsolete releases.
+  Positional directions are no longer offered as gesture-personalization channels.
 
 - Reworked Architecture as a current-system reference and moved historical
   movement, runtime, GPU, and reacquisition discussion into Engineering Journey.

@@ -24,6 +24,30 @@ from .model import Calibration
 COURSE = 1
 LESSONS = 16
 MAX_PLAYERS = 12
+DEFAULT_JOYSTICK_DEADZONE = 0.28
+DIRECTION_CHANNELS = ("left", "right", "up", "down")
+
+
+def joystick_deadzone(value):
+    """Validate the one saved centre-box half-width."""
+    if (isinstance(value, bool) or not isinstance(value, (int, float))
+            or not math.isfinite(value) or not 0.14 <= value <= 1.0):
+        raise ValueError("Choose a joystick dead zone between 0.14 and 1.00.")
+    return float(value)
+
+
+def migrated_deadzone(thresholds):
+    """Derive a safe scalar from old per-direction activation pairs."""
+    values = [thresholds[name]["on"] for name in DIRECTION_CHANNELS if name in thresholds]
+    if not values:
+        return DEFAULT_JOYSTICK_DEADZONE
+    return min(1.0, max(0.14, max(values)))
+
+
+def without_directions(thresholds):
+    """Discard obsolete positional activation/release threshold pairs."""
+    return {key: copy.deepcopy(value) for key, value in thresholds.items()
+            if key not in DIRECTION_CHANNELS}
 
 
 def calibration_value(data):
@@ -74,15 +98,18 @@ def blank_progress():
 
 class PlayerSettings:
     """Keep imported data narrow and commit memory only after the disk write."""
-    def __init__(self, path, validate, channels):
+    def __init__(self, path, validate, channels, legacy_validate=None, legacy_channels=None):
         self.path, self.validate = path, validate
         self.channels = set(channels)
+        self.legacy_validate = legacy_validate or validate
+        self.legacy_channels = set(legacy_channels or channels)
         self.error = None
         self.legacy_backup = None
         self.legacy_backup_version = 1
-        self.data = {"version": 4, "active": "default", "generation": 0,
+        self.data = {"version": 5, "active": "default", "generation": 0,
                      "calibration_restore": None,
                      "players": {"default": {"name": "Player 1", "thresholds": {},
+                         "joystick_deadzone": DEFAULT_JOYSTICK_DEADZONE,
                          "progress": blank_progress(), "needs_center": False, "calibration": None}}}
         try:
             if path.exists():
@@ -92,11 +119,13 @@ class PlayerSettings:
                 if not isinstance(saved, dict):
                     raise ValueError("Invalid player settings object")
                 if saved.get("version") == 1:
-                    self.data["players"]["default"]["thresholds"] = validate(saved["thresholds"])
-                    self.legacy_backup = json.dumps({"version": 1, "thresholds": self.active["thresholds"]}, indent=2) + "\n"
+                    legacy = self.legacy_validate(saved["thresholds"])
+                    self.data["players"]["default"]["joystick_deadzone"] = migrated_deadzone(legacy)
+                    self.data["players"]["default"]["thresholds"] = self.validate(without_directions(legacy))
+                    self.legacy_backup = json.dumps(saved, indent=2) + "\n"
                 else:
                     self.data = self.validate_store(saved)
-                    if saved.get("version") in (2, 3):
+                    if saved.get("version") in (2, 3, 4):
                         self.legacy_backup = json.dumps(saved, indent=2) + "\n"
                         self.legacy_backup_version = saved["version"]
         except (OSError, ValueError, KeyError, TypeError):
@@ -116,7 +145,17 @@ class PlayerSettings:
                 if not isinstance(item, dict):
                     raise ValueError("Invalid player record")
                 item["calibration"] = None
-        if not isinstance(data, dict) or set(data) != {"version", "active", "generation", "players", "calibration_restore"} or type(data["version"]) is not int or data["version"] != 4:
+        if isinstance(data, dict) and data.get("version") == 4:
+            if not isinstance(data.get("players"), dict):
+                raise ValueError("Invalid players")
+            for item in data["players"].values():
+                if not isinstance(item, dict) or "thresholds" not in item:
+                    raise ValueError("Invalid player record")
+                legacy = self.legacy_validate(item["thresholds"])
+                item["joystick_deadzone"] = migrated_deadzone(legacy)
+                item["thresholds"] = without_directions(legacy)
+            data["version"] = 5
+        if not isinstance(data, dict) or set(data) != {"version", "active", "generation", "players", "calibration_restore"} or type(data["version"]) is not int or data["version"] != 5:
             raise ValueError("Unsupported player settings")
         players = data["players"]
         if not isinstance(players, dict) or not 1 <= len(players) <= MAX_PLAYERS or data["active"] not in players:
@@ -126,10 +165,11 @@ class PlayerSettings:
         for key, item in players.items():
             if not isinstance(key, str) or not 1 <= len(key) <= 32 or not key.isalnum():
                 raise ValueError("Invalid player identifier")
-            if not isinstance(item, dict) or set(item) != {"name", "thresholds", "progress", "needs_center", "calibration"} or type(item["needs_center"]) is not bool:
+            if not isinstance(item, dict) or set(item) != {"name", "thresholds", "joystick_deadzone", "progress", "needs_center", "calibration"} or type(item["needs_center"]) is not bool:
                 raise ValueError("Invalid player record")
             item["name"] = player_name(item["name"])
             item["thresholds"] = self.validate(item["thresholds"])
+            item["joystick_deadzone"] = joystick_deadzone(item["joystick_deadzone"])
             item["progress"] = progress(item["progress"])
             if item["calibration"] is not None:
                 item["calibration"] = calibration_value(item["calibration"])
@@ -202,21 +242,16 @@ class PlayerSettings:
         if action == "export":
             if self.error:
                 raise ValueError(self.error)
-            return {"backup": {"format": "powerglove-hand-setup", "version": 2,
+            return {"backup": {"format": "powerglove-hand-setup", "version": 3,
                     "name": self.active["name"], "thresholds": copy.deepcopy(self.active["thresholds"]),
+                    "joystick_deadzone": self.active["joystick_deadzone"],
                     "calibration": copy.deepcopy(self.active["calibration"])}}
         data = copy.deepcopy(self.data)
         item = data["players"][data["active"]]
         if action in ("create", "select", "delete", "restore"):
             data["calibration_restore"] = None
         if action == "joystick_deadzone":
-            value = request.get("value")
-            if type(value) not in (int, float) or not 0.14 <= value <= 1.0:
-                raise ValueError("Choose a joystick dead zone between 0.14 and 1.00.")
-            item["thresholds"].update(self.validate({
-                direction: {"on": value, "off": value / 2}
-                for direction in ("left", "right", "up", "down")
-            }))
+            item["joystick_deadzone"] = joystick_deadzone(request.get("value"))
             data["generation"] += 1
         elif action == "progress":
             incoming = progress(request.get("progress"))
@@ -231,6 +266,7 @@ class PlayerSettings:
             name = player_name(request.get("name"))
             key = uuid.uuid4().hex
             data["players"][key] = {"name": name, "thresholds": copy.deepcopy(item["thresholds"]),
+                "joystick_deadzone": item["joystick_deadzone"],
                 "progress": blank_progress(), "needs_center": True, "calibration": None}
             data["active"] = key
             data["generation"] += 1
@@ -264,17 +300,21 @@ class PlayerSettings:
             backup = request.get("backup")
             if not isinstance(backup, dict) or type(backup.get("version")) is not int:
                 raise ValueError("Choose a PowerGlove hand-setup backup.")
-            complete = backup.get("format") == "powerglove-hand-setup" and backup["version"] == 2
+            complete = backup.get("format") == "powerglove-hand-setup" and backup["version"] in (2, 3)
             required = {"format", "version", "name", "thresholds", "calibration"}
+            if backup.get("version") == 3:
+                required.add("joystick_deadzone")
             optional = {"effective_thresholds", "source"}
             if not complete or not required <= set(backup) or set(backup) - required - optional:
-                raise ValueError("Choose a version-2 hand-setup backup. Version-1 and device/pairing files are not supported.")
+                raise ValueError("Choose a version-2 or version-3 hand-setup backup. Version-1 and device/pairing files are not supported.")
             name = player_name(backup["name"])
             reference = calibration_value(backup["calibration"]) if backup["calibration"] is not None else None
             effective = backup.get("effective_thresholds")
             if effective is not None:
-                effective = self.validate(effective)
-                if set(effective) != self.channels:
+                validator = self.legacy_validate if backup["version"] == 2 else self.validate
+                effective = validator(effective)
+                expected = self.legacy_channels if backup["version"] == 2 else self.channels
+                if set(effective) != expected:
                     raise ValueError("Effective thresholds must include every hand channel.")
             source = backup.get("source")
             if source is not None:
@@ -287,8 +327,12 @@ class PlayerSettings:
             reuse = request.get("reuse_calibration", False)
             if type(reuse) is not bool or (reuse and reference is None):
                 raise ValueError("This backup has no usable calibration to reuse.")
-            overrides = self.validate(backup["thresholds"])
-            item["thresholds"] = effective if use_effective else overrides
+            validator = self.legacy_validate if backup["version"] == 2 else self.validate
+            overrides = validator(backup["thresholds"])
+            selected = effective if use_effective else overrides
+            item["thresholds"] = self.validate(without_directions(selected))
+            item["joystick_deadzone"] = (migrated_deadzone(selected) if backup["version"] == 2
+                                         else joystick_deadzone(backup["joystick_deadzone"]))
             item["name"] = name
             item["calibration"] = reference
             item["needs_center"] = True

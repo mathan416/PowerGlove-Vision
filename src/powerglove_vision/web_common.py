@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Give Pixel Pal context-specific poses across the web interface.
 #   2026-09-06 - Separate maintained web modules without changing rendered pages.
 
 """Render the shared page shell, profile options, and camera startup behavior."""
@@ -40,13 +41,21 @@ def _profile_options() -> str:
 
 def _page(title: str, content: str, script: str) -> bytes:
     """Assemble a complete branded HTML page as UTF-8 bytes."""
-    if title in ("Dashboard", "Rock Paper Scissors", "Glove Academy", "Setup", "Help"):
+    pal_poses = {
+        "Dashboard": ("pixel-pal-web.png", "Pixel Pal waving hello"),
+        "Rock Paper Scissors": ("pixel-pal-ready.png", "Pixel Pal ready to play"),
+        "Glove Academy": ("pixel-pal-coach.png", "Pixel Pal points toward the lesson"),
+        "Setup": ("pixel-pal-thinking.png", "Pixel Pal carefully checks the setup"),
+        "Help": ("pixel-pal-web.png", "Pixel Pal waving hello"),
+    }
+    if title in pal_poses:
         introduction, separator, remainder = content.partition("</p>")
         if separator:
+            pal_image, pal_alt = pal_poses[title]
             content = (
                 "<div class=pal-intro><div>" + introduction + separator + "</div>"
-                "<img class=pixel-pal src=/help-assets/gestures/v2/pixel-pal-web.png "
-                "alt='Pixel Pal waving hello' width=112 height=112></div>" + remainder
+                f"<img class=pixel-pal src=/help-assets/gestures/v2/{pal_image} "
+                f"alt='{pal_alt}' width=112 height=112></div>" + remainder
             )
     started = "<span id=app-started>Application last started: checking…</span>" if title in ("Glove Academy", "Setup") else ""
     metadata_script = """(()=>{const el=document.getElementById('app-started');async function refresh(){try{const r=await fetch('/status',{cache:'no-store'});if(!r.ok)throw Error();const s=await r.json();const b=s.build||{},f=s.firmware||{};const info=document.getElementById('build-identity');if(info){info.textContent='Software: '+(b.release||s.version||'unknown')+' · '+(b.commit||'commit unavailable')+(b.dirty?' · modified source':'')+' | Matrix firmware: '+(f.running||'unavailable — older firmware or bridge offline')+(f.state==='different'?' · update available':'');}if(!el)return;const date=new Date(s.app_started_at*1000);if(!s.app_started_at||isNaN(date.getTime()))throw Error();el.textContent='Application last started: '+new Intl.DateTimeFormat(undefined,{dateStyle:'medium',timeStyle:'long'}).format(date);el.title='Application start time, shown in your browser time zone';}catch(e){if(el)el.textContent='Application last started: unavailable'}}refresh();setInterval(refresh,30000)})();"""
@@ -67,7 +76,8 @@ main{{padding:16px 0 30px}}h1{{font:900 clamp(28px,5vw,42px)/1 system-ui;margin:
 .status-grid{{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}}.status-grid .card{{padding:12px;min-height:82px}}.status-grid .value{{font-size:17px}}
 .label{{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1.5px}}.value{{font:800 21px system-ui;margin-top:6px;overflow-wrap:anywhere}}.good{{color:var(--green)}}.warn{{color:#ffd75e}}.bad{{color:#ff6f75}}
 .camera{{width:100%;aspect-ratio:4/3;object-fit:contain;background:#050608;border:1px solid var(--line);border-radius:14px;margin-top:14px}}
-.dashboard-workspace{{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(430px,.95fr);gap:14px;align-items:start;margin-top:14px}}.dashboard-workspace .camera{{height:min(38vh,340px);aspect-ratio:auto;margin:0}}.dashboard-workspace.statistics-off{{grid-template-columns:minmax(0,1fr)}}.dashboard-controls{{margin:10px 0 0}}
+.dashboard-workspace{{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(430px,.95fr);gap:14px;align-items:start;margin-top:14px}}.dashboard-workspace .camera{{height:min(38vh,340px);aspect-ratio:auto;margin:0}}.dashboard-controls{{margin:10px 0 0}}
+.program-card h2{{margin-bottom:4px}}.program-card .program-purpose{{color:var(--cyan);font:800 16px system-ui;margin:0 0 14px}}.program-card .program-summary{{color:var(--muted);margin:0 0 14px}}.program-mappings{{display:grid;gap:7px;margin:0 0 16px;padding:0;list-style:none}}.program-mappings li{{display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,1.2fr);gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}}.program-mappings strong{{color:var(--ink)}}.program-mappings span{{color:var(--muted)}}.program-help{{color:var(--cyan)}}
 .camera-stage{{position:relative}}.camera-centre-target{{position:absolute;inset:7%;border:2px solid rgba(73,231,183,.7);border-radius:8px;pointer-events:none;z-index:1}}.camera-centre-target::before,.camera-centre-target::after{{content:"";position:absolute;background:rgba(73,231,183,.8)}}.camera-centre-target::before{{left:50%;top:42%;width:2px;height:16%;transform:translateX(-1px)}}.camera-centre-target::after{{top:50%;left:44%;height:2px;width:12%;transform:translateY(-1px)}}.camera-idle{{display:none;height:min(38vh,340px);align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:30px;background:radial-gradient(circle,#17284b,#050608 62%);border:1px solid var(--line);border-radius:14px;color:var(--cyan);font:900 24px/1.25 system-ui}}.camera-idle small{{display:block;margin-top:10px;color:var(--muted);font:14px/1.45 ui-monospace,monospace}}.profile-select{{margin-top:6px;padding:7px 9px;font:800 15px system-ui}}
 .diagnostic-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.diagnostic-grid .card{{padding:10px}}.diagnostic-grid h2{{font-size:15px;margin-bottom:6px}}.diagnostic-grid .label{{font-size:9px}}.diagnostic-grid .bits{{gap:5px;margin-top:6px}}.diagnostic-grid .bit{{padding:3px 5px;font-size:12px}}.diagnostic-grid .meter{{height:6px;margin-top:4px}}.diagnostic-grid .events{{height:110px}}
 .controls{{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}}button,.button{{border:0;border-radius:8px;padding:12px 16px;background:var(--blue);color:white;font:800 15px system-ui;cursor:pointer;text-decoration:none}}button.secondary{{background:#272d3c}}button.danger{{background:var(--red)}}button:disabled{{opacity:.5;cursor:wait}}button:active,.button:active{{transform:translateY(2px);filter:brightness(.75)}}button:focus-visible,.button:focus-visible{{outline:3px solid #8edfff;outline-offset:3px}}button.danger:disabled{{opacity:1}}.dashboard-controls{{gap:8px}}.dashboard-controls button,.dashboard-controls .button{{padding:11px 12px;font-size:14px;white-space:nowrap}}

@@ -199,22 +199,47 @@ class GestureTests(unittest.TestCase):
             self.assertFalse(state.buttons["select"])
             self.assertNotEqual(engine.menu_feedback()["pose"], "select")
 
-    def test_direction_uses_hysteresis(self):
+    def test_center_box_classifies_all_eight_directions_and_releases_immediately(self):
         engine = calibrated_engine()
-        self.assertFalse(engine.update(hand(0.1, palm_x=0.55)).dpad["right"])
-        self.assertTrue(engine.update(hand(0.2, palm_x=0.56)).dpad["right"])
-        self.assertTrue(engine.update(hand(0.3, palm_x=0.53)).dpad["right"])
-        self.assertFalse(engine.update(hand(0.4, palm_x=0.52)).dpad["right"])
+        positions = {
+            "left": (.43, .50, {"left"}), "right": (.57, .50, {"right"}),
+            "up": (.50, .43, {"up"}), "down": (.50, .57, {"down"}),
+            "up_left": (.43, .43, {"up", "left"}),
+            "up_right": (.57, .43, {"up", "right"}),
+            "down_left": (.43, .57, {"down", "left"}),
+            "down_right": (.57, .57, {"down", "right"}),
+        }
+        for index, (name, (x, y, expected)) in enumerate(positions.items(), 1):
+            with self.subTest(region=name):
+                state = engine.update(hand(index / 10, palm_x=x, palm_y=y))
+                self.assertEqual({key for key, value in state.dpad.items() if value}, expected)
+                self.assertFalse(any(engine.update(hand(index / 10 + .01)).dpad.values()))
 
-    def test_calibration_noise_raises_only_unsafe_movement_thresholds(self):
+    def test_center_box_boundary_is_inside_and_reversal_has_no_memory(self):
+        engine = calibrated_engine()
+        self.assertFalse(any(engine.update(hand(.1, palm_x=.556, palm_y=.444)).dpad.values()))
+        self.assertTrue(engine.update(hand(.2, palm_x=.57)).dpad["right"])
+        reversed_state = engine.update(hand(.3, palm_x=.43))
+        self.assertTrue(reversed_state.dpad["left"])
+        self.assertFalse(reversed_state.dpad["right"])
+
+    def test_legacy_direction_pairs_do_not_override_the_center_box(self):
+        engine = calibrated_engine()
+        engine.config = GestureConfig(
+            joystick_deadzone=.28,
+            thresholds={"right": {"on": .9, "off": .8}},
+        )
+        self.assertTrue(engine.update(hand(.1, palm_x=.57)).dpad["right"])
+
+    def test_calibration_noise_safely_enlarges_the_whole_center_box(self):
         engine = GestureEngine("program_h", calibration_frames=5)
         for t, x in enumerate((.47, .53, .48, .52, .50)):
             engine.update(hand(t / 30, palm_x=x))
         self.assertGreater(engine.calibration.noise_x, .1)
-        on, off = engine.config.movement_pair("right", engine.calibration)
-        self.assertGreaterEqual(on, engine.calibration.noise_x + .05)
-        self.assertGreater(off, engine.config.move_off)
-        self.assertEqual(engine.config.movement_pair("up", engine.calibration), (.28, .14))
+        effective = engine.config.effective_joystick_deadzone(engine.calibration)
+        self.assertGreaterEqual(effective, engine.calibration.noise_x + .05)
+        self.assertEqual(effective, max(.28, engine.calibration.noise_x + .05,
+                                        engine.calibration.noise_y + .05))
 
     def test_middle_finger_is_a_plus_b(self):
         state = calibrated_engine().update(hand(0.1, middle_curl=0.9))
@@ -372,7 +397,7 @@ class GestureTests(unittest.TestCase):
         steering = engine.update(hand(0.50, roll=-1.2))
         self.assertTrue(steering.dpad["left"])
 
-    def test_game_movements_hold_between_personal_activation_and_release(self):
+    def test_nonpositional_game_movements_hold_between_personal_activation_and_release(self):
         import math
         # Exercise every mapping that previously bypassed movement release.
         cases = [
@@ -386,9 +411,8 @@ class GestureTests(unittest.TestCase):
             ("program_g", "push", "buttons", "b"),
             ("program_i", "roll_left", "dpad", "left"),
             ("program_i", "roll_right", "dpad", "right"),
-            ("program_i", "down", "dpad", "down"),
             ("program_i", "push", "buttons", "a"),
-        ] + [("program_f", direction, "buttons", "a") for direction in ("left", "right", "up", "down")]
+        ]
         for profile, channel, output, button in cases:
             with self.subTest(profile=profile, channel=channel):
                 engine = calibrated_engine(profile)

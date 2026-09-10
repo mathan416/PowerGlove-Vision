@@ -50,5 +50,25 @@
   {
     "name": "pixel-pal",
     "prompt": "Use case: illustration-story. Create one cute original arcade helper mascot for PowerGlove Vision's friendly game manuals, inspired by the attached style reference's white/navy/cyan/magenta palette and crisp cartoon outlines. A charming small chibi robot with a rounded white arcade-cabinet body, navy screen face with two expressive cyan eyes and a happy smile, small cyan chest light, short legs and oversized white futuristic gloves. One hand waves hello with exactly five clear digits, other relaxed at side. Magenta pixel-shaped antenna accent, navy outlines, restrained cel shading, welcoming playful personality, original design rather than an existing franchise character. Full body centered on square canvas, ample clear margins, no text, no branding, no frame. Genuinely transparent background with alpha; no drawn checkerboard. Same clean friendly illustrated finish as the reference."
+  },
+  {
+    "name": "pixel-pal-coach",
+    "prompt": "Use case: illustration-story. Preserve the established Pixel Pal robot design exactly. Create one full-body friendly coaching stance, pointing clearly to the side with one hand and resting the other at the hip. Transparent background, complete silhouette, no text, no extra character or prop."
+  },
+  {
+    "name": "pixel-pal-ready",
+    "prompt": "Use case: illustration-story. Preserve the established Pixel Pal robot design exactly. Create one full-body ready-to-play stance with bent knees, both hands held ready, and a cheerful determined expression. Transparent background, complete silhouette, no text or prop."
+  },
+  {
+    "name": "pixel-pal-thinking",
+    "prompt": "Use case: illustration-story. Preserve the established Pixel Pal robot design exactly. Create one full-body thinking and inspecting stance with one hand at the chin and a small magnifying glass in the other. Transparent background, complete silhouette, no text or other prop."
+  },
+  {
+    "name": "pixel-pal-safety",
+    "prompt": "Use case: illustration-story. Preserve the established Pixel Pal robot design exactly. Create one full-body friendly stop and safety stance with one open gloved palm held toward the viewer and a reassuring expression. Transparent background, complete silhouette, no text or prop."
+  },
+  {
+    "name": "pixel-pal-success",
+    "prompt": "Use case: illustration-story. Preserve the established Pixel Pal robot design exactly. Create one full-body cheerful success stance giving a prominent thumbs-up, winking, with the other hand at the hip. Transparent background, complete silhouette, no text or prop."
   }
 ]

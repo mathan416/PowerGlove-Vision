@@ -118,10 +118,12 @@ measurement. One contradictory or unusually distant non-forward result instead
 holds the last reliable point until the next fresh measurement confirms the
 location. The guard never invents a forward coordinate or smooths normal motion.
 Longer tracking loss or stale input neutralizes the native sample and clears the
-coordinate history. Digital FCEUmm directions instead use the player's
-shared activation thresholds; Setup's **Joystick dead zone** changes all four
-direction thresholds together and sets release to half of activation. It does
-not alter native reach, finger gestures, or game mappings. Re-centering clears
+coordinate history. Digital FCEUmm directions instead classify every fresh hand
+position in a 3×3 grid around the calibrated center. The center square releases
+all positional directions, its four side regions produce cardinals, and its four
+corner regions produce diagonals. Setup's **Joystick dead zone** saves the square's
+half-width per player; measured neutral jitter may enlarge the effective square.
+It does not alter native reach, finger gestures, or game mappings. Re-centering clears
 saved reach spans because they belong to the old center.
 
 The worker sends authenticated controller state immediately after recognition.
@@ -323,7 +325,10 @@ validate range and scope, not recorded pose quality. Live testing is still neede
 
 The candidate is temporary until the same recognition path observes two complete
 activation/release cycles and three neutral seconds. Only then can the wizard
-atomically merge selected pairs into the active player’s version-4 record. Raw controls remain
+atomically merge selected pairs into the active player’s version-5 record. Positional
+movement is not a gesture-tuning channel: one per-player center-box scalar drives a
+stateless 3×3 classification, and calibration jitter may enlarge its effective size.
+Raw gesture controls remain
 inside Advanced. Normal personalization retains no camera recording. The separate
 diagnostic path deletes its temporary AVI after producing an aggregate-only report.
 
@@ -440,14 +445,14 @@ emulator consumption. See [Setup status](CONFIGURATION_REFERENCE.md#independent-
 Player operations pass through the bounded same-origin `/api/players` endpoint
 into the worker. Its tuning lock owns one atomic player/settings/progress file.
 Generations reject stale writes. Each player retains a saved calibration;
-selection automatically applies the selected player’s saved center through the durable restore path, with output paused; players without a saved center require centering. Version-2
-portable backups include personal and effective sensitivity, source software
-identity, name, and the player's neutral reference. They exclude credentials and
-Academy progress. Version-1 portable backups are rejected; earlier version-2
-files remain supported. A version-4 player store journals confirmed calibration
+selection automatically applies the selected player’s saved center through the durable restore path, with output paused; players without a saved center require centering. Version-3
+portable backups include the center-box size, personal and effective gesture sensitivity,
+source software identity, name, and the player's neutral reference. They exclude credentials and
+Academy progress. Version-1 portable backups are rejected; version-2 files remain
+supported through directional-threshold migration. A version-5 player store journals confirmed calibration
 reuse; the worker writes `calibration.json` before clearing the pending reference
 and centering gate. Output remains paused until Start controller. The journal
-resumes after crashes; internal version-1/2/3 stores migrate with recovery backups
+resumes after crashes; internal version-1/2/3/4 stores migrate with recovery backups
 and unchanged progress. Progress writes occur on lesson transitions, not frames.
 
 Hostname resolution for controller sends runs in one background thread with a

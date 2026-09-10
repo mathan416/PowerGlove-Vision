@@ -83,6 +83,9 @@ RECOGNITION_PROFILES = SUPPORTED_PROFILES + ("practice",)
 @dataclass(frozen=True)
 class GestureConfig:
     """Hold movement, curl, roll, depth, pulse, and tracking-loss thresholds."""
+    # One half-width for the square joystick centre region. ``None`` keeps old
+    # profile files working by migrating their movement activation value.
+    joystick_deadzone: float | None = None
     move_on: float = 0.28
     move_off: float = 0.14
     # Retained so older profile files remain loadable; native X/Y now use the
@@ -151,13 +154,17 @@ class GestureConfig:
         """Keep legacy menu cutoffs until this finger has a personal adjustment."""
         return self.pair(finger)[0 if closed else 1] if finger in self.thresholds else default
 
-    def movement_pair(self, channel: str, calibration: Calibration) -> tuple[float, float]:
-        """Protect responsive shared movement thresholds from measured neutral jitter."""
-        on, off = self.pair(channel)
-        noise = calibration.noise_x if channel in ("left", "right") else calibration.noise_y
-        effective_on = max(on, noise + 0.05)
-        effective_off = min(effective_on - 0.02, max(off, noise + 0.02))
-        return effective_on, max(0.0, effective_off)
+    def chosen_joystick_deadzone(self) -> float:
+        """Return the scalar centre-box size, including legacy profile fallback."""
+        return self.move_on if self.joystick_deadzone is None else self.joystick_deadzone
+
+    def effective_joystick_deadzone(self, calibration: Calibration) -> float:
+        """Enlarge the centre box only when measured neutral jitter requires it."""
+        return min(1.0, max(
+            self.chosen_joystick_deadzone(),
+            calibration.noise_x + 0.05,
+            calibration.noise_y + 0.05,
+        ))
 
 
 MENU_FINGERS = {
@@ -358,6 +365,8 @@ class GestureEngine:
         self._switches = {
             name: Hysteresis()
             for name in (
+                # Direction switches remain as current-value holders for
+                # Programs F/I; joystick classification itself is stateless.
                 "left",
                 "right",
                 "up",
@@ -963,12 +972,19 @@ class GestureEngine:
                     cfg.coordinate_smoothing_max,
                 )
                 setattr(self, name, previous + alpha * (value - previous))
+        # The original glove's joystick-compatible layout is a stateless 3x3
+        # grid. The square boundary belongs to centre, so returning to it
+        # releases positional directions on this very inference result.
+        deadzone = cfg.effective_joystick_deadzone(reference)
+        outside = deadzone + 1e-9
         dpad = {
-            "left": self._switches["left"].negative(dx, *cfg.movement_pair("left", reference)),
-            "right": self._switches["right"].positive(dx, *cfg.movement_pair("right", reference)),
-            "up": self._switches["up"].negative(dy, *cfg.movement_pair("up", reference)),
-            "down": self._switches["down"].positive(dy, *cfg.movement_pair("down", reference)),
+            "left": dx < -outside,
+            "right": dx > outside,
+            "up": dy < -outside,
+            "down": dy > outside,
         }
+        for name in ("left", "right", "up", "down"):
+            self._switches[name].active = dpad[name]
         thumb = self._switches["thumb"].positive(
             observation.thumb_curl, *cfg.pair("thumb")
         )
