@@ -97,7 +97,7 @@ from camera frames and controller packets, which remain newest-state-only.
 | Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
 | Camera | Automatic | Setup lists the currently discovered usable cameras. Prefer **Automatic — choose the connected camera**; choose a named camera only when more than one is attached or automatic selection is wrong. A saved disconnected camera remains visible as unavailable, and the list refreshes while Setup is open. |
 | Camera frame rate | Automatic | Tries 30 fps first, then accepts the camera driver's usable rate if necessary. Explicit 30- and 60-fps requests are available for comparison and fall back safely when unsupported. The live negotiated rate appears below the setting while tracking is active. |
-| Camera reader | Compatible — OpenCV | The normal portable capture path. **Low latency — Direct V4L2** is an opt-in Linux 64-bit, 640×480 MJPEG experiment that drains to the newest driver buffer and falls back to OpenCV if its requirements are not met. |
+| Camera reader | Recommended — OpenCV | The portable, gameplay-validated capture path. **Engineering comparison — Direct V4L2** is an opt-in Linux 64-bit, 640×480 MJPEG experiment that drains to the newest driver buffer and falls back to OpenCV if its requirements are not met. |
 | Exposure behavior | Automatic — no camera changes | Leave cameras untouched by default. **Low latency — standard UVC** keeps automatic exposure and requests fixed frame rate only when those controls are advertised. **Razer Kiyo Pro — tested low latency** adds the Kiyo's volatile HDR-off request. **Manual exposure and gain** is available with Direct V4L2 after capability and range checks. |
 | Replace the pairing key when saving | Off | Rotates the shared secret. This immediately breaks the existing pairing until RetroPie is paired again. |
 
@@ -393,7 +393,8 @@ preloading cannot resolve that condition. The installed host helper waits for a
 sustained outage before making one guarded reset of the camera's last observed
 parent connection. It disables autosuspend whenever the single UVC camera is
 present. A `uhubctl`-reported switchable hub receives an exact per-port power
-cycle; otherwise the identity-checked whole-hub driver rebind is used. USB
+cycle; otherwise an identity-checked whole-hub driver rebind is used only when
+the hub does not carry networking. USB
 enumeration is only an intermediate result. The supervisor confirms recovery
 only when the restarted worker reads a frame. If that one attempt does not
 restore streaming, check the powered hub, cable, and camera connection.
@@ -516,6 +517,8 @@ A typical device configuration file contains the following fields:
   "glove_color": "none",
   "camera": "auto",
   "camera_fps": "auto",
+  "camera_backend": "opencv",
+  "capture_isolation": "thread",
   "inference_threads": 4,
   "tracking_confidence": 0.35,
   "tracking_roi_scale": 2.25,
@@ -524,8 +527,9 @@ A typical device configuration file contains the following fields:
 ```
 
 `camera_fps` is `auto`, `30`, or `60`; Automatic prefers 30 and then accepts a
-usable driver rate. `inference_threads` accepts 1, 2, or 4. The 0.4.0 baseline
-uses four threads, `tracking_confidence` 0.35, and `tracking_roi_scale` 2.25.
+usable driver rate. Production `inference_threads` accepts 1, 2, or 4. The 0.4.0
+baseline uses four threads, `tracking_confidence` 0.35, and
+`tracking_roi_scale` 2.25.
 Direction-aware fast-sweep search is always active in the production MediaPipe
 path. It applies the measured gentle next-frame search translation without
 changing reach, gestures, mappings, or Latest-coordinate output. The former
@@ -533,6 +537,13 @@ changing reach, gestures, mappings, or Latest-coordinate output. The former
 installations require no migration.
 Latest coordinate is the only live native X/Y behavior. Older
 `native_xy_mode` values are accepted in existing files but ignored.
+
+`capture_isolation` is `thread` by default and is the gameplay-validated path.
+The opt-in `process` engineering comparison is
+accepted only with `camera_backend: "direct-v4l2"`; it moves camera ownership,
+MJPEG decoding, and the single latest-frame slot outside the MediaPipe worker.
+It adds no frame queue. Unsupported combinations remain on the proven threaded
+path, and a failed isolated startup falls back with its reason in status.
 
 `matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
 or `off` (four faint app/console/paired-console/Networking indicators). Change it using
@@ -1163,14 +1174,16 @@ During an outage the unprivileged application can request only the helper's
 fixed operation. It validates the stored hub path and identity first. When
 `uhubctl` lists the exact hub as per-port switchable, the helper cycles only the
 enrolled camera port; it never uses `--force`. If capability probing or cycling
-fails, it rebinds the allowlisted whole hub. It then requires the same camera
+fails, it rebinds the allowlisted whole hub only when that hub does not also
+carry a network interface. Ethernet below the hub makes recovery fail safely
+instead of disconnecting the Controller. It then requires the same camera
 and hub identities to enumerate and sets their power policies to `on`. The host
 result means only that this USB action completed; the supervisor declares
 recovery only after its restarted worker receives a frame. It never guesses
 among hubs. A
 root-owned 60-second cooldown and the application's one-request-per-outage rule
-prevent reset loops. Resetting the hub can briefly interrupt USB Ethernet and
-any other devices attached to it. Before the first successful camera sighting,
+prevent reset loops. A permitted whole-hub reset can briefly interrupt other
+non-network devices attached to it. Before the first successful camera sighting,
 there is deliberately no reset target; reconnect or power-cycle the camera once
 to let automatic enrollment complete.
 
@@ -1348,7 +1361,7 @@ not automatically migrate active configuration.
 | `uno-q/powerglove-system-shutdown.conf` | `/etc/tmpfiles.d/` | Boot-time shutdown readiness marker |
 | `uno-q/powerglove-camera-recovery.path` | `/etc/systemd/system/` | Watches the fixed camera-recovery request |
 | `uno-q/powerglove-camera-recovery.service` | `/etc/systemd/system/` | Runs the bounded camera recovery action |
-| `uno-q/powerglove-camera-recovery.py` | `/usr/local/libexec/powerglove-camera-recovery` | Enrolls one UVC camera; cycles its exact port on a capability-confirmed hub or uses the identity-checked whole-hub fallback |
+| `uno-q/powerglove-camera-recovery.py` | `/usr/local/libexec/powerglove-camera-recovery` | Enrolls one UVC camera; cycles its exact port on a capability-confirmed hub or uses a non-networking, identity-checked whole-hub fallback |
 | `uno-q/powerglove-camera-recovery.conf` | `/etc/tmpfiles.d/` | Boot-time camera-recovery readiness marker |
 | Runtime camera allowlist | `/etc/powerglove-camera-recovery.json` | Root-owned camera identity plus last successfully observed hub path, identity, and direct camera port |
 | `.github/workflows/quality.yml` | GitHub Actions | Automated tests and release verification |
@@ -1648,7 +1661,8 @@ before using it. Normal PowerGlove Vision Controller use should start through Ap
 | `--camera-buffers NUMBER` | `1` | One or two capture buffers; the measured UNO Q Kiyo candidate uses two. |
 | `--kiyo-hdr-off` | Off | Identity-checked volatile Kiyo Pro HDR-off with automatic fixed-rate exposure. |
 | `--camera-format VALUE` | `MJPG` | Requested V4L2 format, either `MJPG` or `YUYV`. Keep `MJPG` for normal use; compare both only with the performance readings on hardware that advertises them. |
-| `--capture-backend VALUE` | `opencv` | `opencv` is the compatible reader. `direct-v4l2` is the optional newest-driver-buffer experiment and falls back to OpenCV when unsupported. |
+| `--capture-backend VALUE` | `opencv` | `opencv` is the recommended, gameplay-validated reader. `direct-v4l2` is an engineering newest-driver-buffer comparison and falls back to OpenCV when unsupported. |
+| `--capture-isolation VALUE` | `thread` | `thread` is the production default. `process` is an engineering comparison requiring Direct V4L2; it isolates camera draining from long MediaPipe calls while retaining one replaceable newest frame. |
 | `--camera-exposure VALUE` | `auto` | `auto` makes no exposure changes; `low-latency` uses only advertised standard V4L2 controls; `kiyo-low-latency` adds the USB-identity-checked Kiyo HDR-off request; `manual` applies capability-checked exposure and gain through Direct V4L2. |
 | `--camera-manual-exposure NUMBER` | `78` | Requested manual exposure. Used only with `--camera-exposure manual`; the active camera's advertised range and step remain authoritative. |
 | `--camera-manual-gain NUMBER` | `96` | Requested manual gain. Used only with `--camera-exposure manual`; the active camera's advertised range and step remain authoritative. |
@@ -1734,10 +1748,10 @@ they may still perform their normal work.
 | `scripts/benchmark-direction-response.py` | Paths to both cores and the exact Super Glove Ball ROM, scratch path, optional FCEUmm reference ROM, frame count, and JSON output | Runs matched-savestate activation and release comparisons for the same ROM in native and FCEUmm modes. The optional reference lane uses Gun Smoke. ROMs and scratch output remain outside the project. |
 | `scripts/record-vision-benchmark.py` | Optional camera, output, size, and frame-rate flags | Records a fixed 30-second, local-only cue sequence for near/far recognition, X/Y travel, jitter, depth, and recovery comparisons. It is never run by installation or used for training. |
 | `scripts/guided-vision-benchmark.py` | Optional camera, output, bind address, port, size, frame rate, protocol, reader, buffer count, manual exposure, and manual gain | Serves a temporary live-preview page for user-paced, per-step recording, including a focused fast-sweep protocol. Each selected step has a two-second countdown; pauses are not recorded. Production-matched Direct V4L2 capture retries brief invalid frames, records the applied capture settings, restores camera automation, and releases the camera on completion. Output stays local and is not training data. |
-| `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, optional Tasks model path, and research lane parameters | Replays the same full frames through MediaPipe Hands at 1, 2, and 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, preview cost, tracking paths, and cue-labelled losses. The research-only directional recovery parameter compares immediate reset with at most one carried search frame; its default is zero. |
+| `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, optional Tasks model path, and research lane parameters | Replays the same full frames through MediaPipe Hands at 1, 2, 3, or 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, preview cost, tracking paths, and cue-labelled losses. Three threads is retained only as a reproducible scheduling comparison; the Controller setting remains four. The research-only directional recovery parameter compares immediate reset with at most one carried search frame; its default is zero. |
 | `scripts/benchmark-post-inference.py` | Optional `--iterations` (default 100000), `--slow-publisher-ms` (default 5), and `--output` | Runs camera-free established-session signed UDP and Dashboard-housekeeping lanes in off/on/off order. Reports p50/p95/p99/max send, housekeeping, and full-iteration times; a slow newest-only status consumer proves Dashboard backpressure cannot queue controller input. |
 | `scripts/benchmark-native-motion-curve.py` | Version-2 vision replay JSON, optional lane index, and required new output path | Compares the former overshooting experiment, capped error curve, actual bounded speed curve, and unsmoothed coordinates. Sweeps 27 bounded candidates and reports jitter, lag, medium response, fast pickup, reversals, overshoot, continuity, and available source age without controlling a game. |
-| `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH` and `--seconds 5..30` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership, compares one/two/one V4L2 buffers, performs fixed-frame profiling, keeps images in memory, and prints progress plus the final numeric report to standard output. It does not change camera controls or player settings. |
+| `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH`, `--seconds 5..600`, `--buffers 1 2`, `--capture-isolation thread process`, `--inference-threads 1..4`, `--aggregate-only`, `--skip-replay`, `--tracking-evidence`, and `--output PATH` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership and can compare selected V4L2 buffer counts, the current capture thread, or a benchmark-only latest-frame capture process. Aggregate mode reports driver dequeue age, decode, recognition pickup, graph, post-graph, Linux task scheduling, sequence cadence, skips, stalls, and compact correlated tail events without retaining frames. Lightweight tracking evidence attributes palm and landmark paths. Three-thread inference and process-isolated capture remain research comparisons; neither changes the production setting. It does not change camera controls or player settings. |
 | `scripts/benchmark-palm-anchors.py` | Version-2 replay JSON and required new output path | Compares the five-point baseline, four-knuckle centroid, palm-polygon center, and weighted wrist/knuckle center for pose shift, travel retention, continuity, and reacquisition. It reports evidence but does not change the live anchor. |
 | `scripts/benchmark-frame-preprocessing.py` | Camera or clip input and required new output path | Output-paused comparison of mirrored-frame preparation and reusable buffers. It cannot change handedness or preview conventions. |
 | `scripts/benchmark-staggered-trackers.py` | Camera or clip input and required new output path | Isolated two-tracker newest-sequence experiment. It never arms controller output and is not a gameplay backend. |
@@ -2147,7 +2161,7 @@ This usually indicates USB enumeration or power trouble. Keep the powered hub
 energized before starting the PowerGlove Vision Controller, try another cable, and avoid passive
 adapters. The app first retries an ordinary camera reopen. With the standard
 host helper installed, a camera that remains absent for 15 seconds receives one
-guarded hub-reset attempt; USB Ethernet can disconnect briefly. A camera still
+guarded recovery attempt. Network-bearing hubs are never reset as a unit. A camera still
 absent afterward needs its physical connection checked.
 
 ### First installation takes several minutes

@@ -6,6 +6,10 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added benchmark-only process-isolated latest-frame capture.
+#   2026-09-09 - Added Linux scheduler and CPU-pressure evidence.
+#   2026-09-09 - Added a three-thread scheduling-tail comparison lane.
+#   2026-09-09 - Added aggregate sustained-load dequeue, frame-age, and stall evidence.
 #   2026-09-07 - Added full-versus-lean MediaPipe graph comparison.
 #   2026-09-07 - Added inference-thread and tracking-confidence comparison controls.
 #   2026-09-06 - Added exclusive, output-paused camera pipeline measurements.
@@ -22,17 +26,20 @@ exported after capture stops. Native profiler files are temporary and private.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import ctypes as C
 import errno
 import fcntl
 import json
 import math
 import mmap
+import multiprocessing
 import os
 from pathlib import Path
 import select
 import sys
 import tempfile
+import threading
 import time
 
 
@@ -72,6 +79,65 @@ REQ, QUERY, QBUF, DQBUF = 0xc0145608, 0xc0585609, 0xc058560f, 0xc0585611
 STREAMON, STREAMOFF = 0x40045612, 0x40045613
 
 
+def task_scheduling_snapshot(pid=None, tid=None):
+    """Read cumulative Linux task scheduling counters without changing policy."""
+    pid = os.getpid() if pid is None else int(pid)
+    tid = getattr(threading, 'get_native_id', threading.get_ident)() if tid is None else int(tid)
+    try:
+        fields = Path(f'/proc/{pid}/task/{tid}/schedstat').read_text().split()
+        status = Path(f'/proc/{pid}/task/{tid}/status').read_text().splitlines()
+        switches = {}
+        for line in status:
+            if line.startswith(('voluntary_ctxt_switches:', 'nonvoluntary_ctxt_switches:')):
+                name, value = line.split(':', 1)
+                switches[name] = int(value.strip())
+        return {
+            'runtime_ns': int(fields[0]),
+            'runqueue_wait_ns': int(fields[1]),
+            'timeslices': int(fields[2]),
+            **switches,
+        }
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def cpu_pressure_snapshot(path=Path('/proc/pressure/cpu')):
+    """Read cumulative Linux CPU pressure totals when PSI is available."""
+    try:
+        result = {}
+        for line in path.read_text().splitlines():
+            fields = line.split()
+            result[fields[0]] = {
+                item.split('=', 1)[0]: float(item.split('=', 1)[1])
+                for item in fields[1:]
+            }
+        return result
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def counter_delta(before, after):
+    """Subtract compatible cumulative counter snapshots."""
+    if not before or not after:
+        return None
+    return {
+        key: after[key] - before[key]
+        for key in before.keys() & after.keys()
+        if isinstance(before[key], (int, float)) and isinstance(after[key], (int, float))
+    }
+
+
+def pressure_delta(before, after):
+    """Return only cumulative PSI time deltas; rolling averages cannot be subtracted."""
+    if not before or not after:
+        return None
+    return {
+        level: {'total_us': after[level]['total'] - before[level]['total']}
+        for level in before.keys() & after.keys()
+        if 'total' in before[level] and 'total' in after[level]
+    }
+
+
 def stats(values):
     """Return compact distribution statistics for one numeric sequence."""
     values = sorted(values)
@@ -88,6 +154,158 @@ def driver_age_ms(row, at_ns):
         return None
     delta = at_ns - row['driver_ns']
     return delta / 1e6 if delta >= 0 else None
+
+
+def interval_ms(rows, field):
+    """Return nonnegative intervals between adjacent monotonic timestamps."""
+    values = []
+    previous = None
+    for row in rows:
+        current = row.get(field)
+        if current is not None and previous is not None and current >= previous:
+            values.append((current - previous) / 1e6)
+        previous = current
+    return values
+
+
+def lane_summary(lane):
+    """Reduce a camera lane to image-free timing and scheduling evidence."""
+    samples, capture = lane['samples'], lane['capture']
+    capture_intervals = interval_ms(capture, 'dequeued_ns')
+    driver_intervals = interval_ms(capture, 'driver_ns')
+    recognition_intervals = interval_ms(samples, 'start_ns')
+    driver_to_dequeue = [driver_age_ms(row, row['dequeued_ns']) for row in capture]
+    driver_to_dequeue = [value for value in driver_to_dequeue if value is not None]
+    decode = [(row['decoded_ns'] - row['requeued_ns']) / 1e6 for row in capture]
+    decoded_to_recognition = [
+        (row['start_ns'] - row['decoded_ns']) / 1e6 for row in samples
+        if row['start_ns'] >= row['decoded_ns']
+    ]
+    sequence_steps = [
+        int(current['driver_sequence']) - int(previous['driver_sequence'])
+        for previous, current in zip(capture, capture[1:])
+        if int(current['driver_sequence']) > int(previous['driver_sequence'])
+    ]
+    nominal_sequence_step = (
+        Counter(sequence_steps).most_common(1)[0][0] if sequence_steps else None
+    )
+    sequence_nonmodal_steps = sum(
+        step != nominal_sequence_step for step in sequence_steps
+    ) if nominal_sequence_step is not None else 0
+    sequence_forward_skips = sum(
+        max(0, step - nominal_sequence_step) for step in sequence_steps
+    ) if nominal_sequence_step is not None else 0
+    origin_ns = capture[0]['dequeued_ns'] if capture else 0
+    tail_events = []
+    for previous, current in zip(capture, capture[1:]):
+        dequeue_gap = (current['dequeued_ns'] - previous['dequeued_ns']) / 1e6
+        dequeue_age = driver_age_ms(current, current['dequeued_ns'])
+        decode_ms = (current['decoded_ns'] - current['requeued_ns']) / 1e6
+        if (dequeue_gap > 50 or (dequeue_age is not None and dequeue_age > 75)
+                or decode_ms > 20):
+            tail_events.append({
+                'boundary': 'capture',
+                'elapsed_s': round((current['dequeued_ns'] - origin_ns) / 1e9, 3),
+                'driver_sequence': int(current['driver_sequence']),
+                'dequeue_interval_ms': round(dequeue_gap, 3),
+                'driver_to_dequeue_ms': (
+                    None if dequeue_age is None else round(dequeue_age, 3)
+                ),
+                'decode_ms': round(decode_ms, 3),
+            })
+    previous_start = None
+    for current in samples:
+        recognition_gap = (
+            None if previous_start is None
+            else (current['start_ns'] - previous_start) / 1e6
+        )
+        previous_start = current['start_ns']
+        pickup_wait = (current['start_ns'] - current['decoded_ns']) / 1e6
+        coordinate_age = current['driver_to_coordinates_ms']
+        if (pickup_wait > 50 or current['graph_ms'] > 150
+                or (recognition_gap is not None and recognition_gap > 150)
+                or (coordinate_age is not None and coordinate_age > 220)):
+            tail_events.append({
+                'boundary': 'recognition',
+                'elapsed_s': round((current['start_ns'] - origin_ns) / 1e9, 3),
+                'driver_sequence': int(current['driver_sequence']),
+                'recognition_interval_ms': (
+                    None if recognition_gap is None else round(recognition_gap, 3)
+                ),
+                'decoded_to_recognition_start_ms': round(pickup_wait, 3),
+                'graph_ms': round(current['graph_ms'], 3),
+                'tracking_path': current.get('tracking_path'),
+                'palm_detector_invoked': current.get('palm_detector_invoked'),
+                'palm_detection_count': current.get('palm_detection_count'),
+                'driver_to_coordinates_ms': (
+                    None if coordinate_age is None else round(coordinate_age, 3)
+                ),
+            })
+    tail_events.sort(key=lambda item: item['elapsed_s'])
+    tail_event_count = len(tail_events)
+    path_graph_ms = {}
+    for row in samples:
+        path_graph_ms.setdefault(
+            row.get('tracking_path') or 'unavailable', []
+        ).append(row['graph_ms'])
+    def stalls(values):
+        """Count latency-tail samples beyond each diagnostic boundary."""
+        return {f'over_{limit}_ms': sum(value > limit for value in values)
+                for limit in (50, 75, 100, 150)}
+    return {
+        'buffers': lane['buffers'],
+        'capture_isolation': lane.get('capture_isolation', 'thread'),
+        'scheduling': lane.get('scheduling'),
+        'recognition_samples': len(samples),
+        'detected_samples': sum(bool(row.get('detected')) for row in samples),
+        'tracking_paths': dict(Counter(
+            row.get('tracking_path') or 'unavailable' for row in samples
+        )),
+        'captured_frames': len(capture),
+        'failed_reads': lane['failed_reads'],
+        'errors': lane['errors'],
+        'application_skipped_frames': sum(
+            max(0, int(row['skipped_application_frames'])) for row in samples
+        ),
+        'driver_sequence_step': stats(sequence_steps),
+        'driver_nominal_sequence_step': nominal_sequence_step,
+        # Retain the version-3 field, but count only forward gaps. A step below
+        # the modal cadence means the reader captured additional frames.
+        'driver_sequence_discontinuities': sequence_forward_skips,
+        'driver_sequence_nonmodal_steps': sequence_nonmodal_steps,
+        'driver_sequence_forward_skips': sequence_forward_skips,
+        'capture_dequeue_interval_ms': stats(capture_intervals),
+        'driver_frame_interval_ms': stats(driver_intervals),
+        'driver_to_dequeue_ms': stats(driver_to_dequeue),
+        'mjpeg_decode_ms': stats(decode),
+        'decoded_to_recognition_start_ms': stats(decoded_to_recognition),
+        'recognition_start_interval_ms': stats(recognition_intervals),
+        'driver_to_recognition_ms': stats([
+            row['driver_to_recognition_ms'] for row in samples
+            if row['driver_to_recognition_ms'] is not None
+        ]),
+        'driver_to_coordinates_ms': stats([
+            row['driver_to_coordinates_ms'] for row in samples
+            if row['driver_to_coordinates_ms'] is not None
+        ]),
+        'preprocessing_ms': stats([row['preprocessing_ms'] for row in samples]),
+        'graph_ms': stats([row['graph_ms'] for row in samples]),
+        'tracking_path_graph_ms': {
+            path: stats(values) for path, values in sorted(path_graph_ms.items())
+        },
+        'post_graph_ms': stats([
+            row['landmark_conversion_and_wrapper_ms'] + row['gesture_and_axes_ms']
+            for row in samples
+        ]),
+        'stalls': {
+            'capture_dequeue_interval': stalls(capture_intervals),
+            'decoded_to_recognition_start': stalls(decoded_to_recognition),
+            'recognition_start_interval': stalls(recognition_intervals),
+        },
+        'tail_events': tail_events[:100],
+        'tail_events_total': tail_event_count,
+        'tail_events_truncated': tail_event_count > 100,
+    }
 
 
 class RawCamera:
@@ -172,7 +390,7 @@ class RawCamera:
             row['decoded_ns'] = time.monotonic_ns()
             if image is None or row['flags'] & 0x40:
                 raise RuntimeError('Camera error flag or invalid MJPEG image')
-            if len(self.rows) >= 6000:
+            if len(self.rows) >= 60000:
                 raise RuntimeError('Diagnostic capture capacity reached')
             self.rows.append(row)
             return True, (image, row)
@@ -199,6 +417,124 @@ class RawCamera:
         if self.fd >= 0:
             os.close(self.fd)
             self.fd = -1
+
+
+def process_capture_worker(path, buffers, frame_bytes, metadata, lock, stop, report):
+    """Own capture/decode in a benchmark-only process and publish one latest frame."""
+    import cv2
+    import numpy as np
+    raw = None
+    scheduling_before = task_scheduling_snapshot()
+    try:
+        raw = RawCamera(path, buffers, cv2, np)
+        target = np.frombuffer(frame_bytes, dtype=np.uint8).reshape((480, 640, 3))
+        while not stop.is_set():
+            ok, payload = raw.read()
+            if not ok:
+                continue
+            frame, row = payload
+            if frame.shape != target.shape or frame.dtype != np.uint8:
+                raw.failed_reads += 1
+                if len(raw.errors) < 20:
+                    raw.errors.append(f'Unexpected decoded frame {frame.shape} {frame.dtype}')
+                continue
+            with lock:
+                target[:] = frame
+                metadata[1] = 1
+                metadata[2] = int(row['driver_ns'])
+                metadata[3] = int(row['driver_sequence'])
+                metadata[4] = int(row['flags'])
+                metadata[5] = int(row['dequeued_ns'])
+                metadata[6] = int(row['requeued_ns'])
+                metadata[7] = int(row['decoded_ns'])
+                metadata[8] = int(row['drained'])
+                metadata[0] += 1
+    except BaseException as exc:
+        with lock:
+            metadata[1] = 0
+            metadata[0] += 1
+        if raw is None:
+            rows, errors, failed_reads = [], [str(exc)], 1
+        else:
+            if len(raw.errors) < 20:
+                raw.errors.append(str(exc))
+            rows, errors, failed_reads = raw.rows, raw.errors, raw.failed_reads + 1
+    else:
+        rows, errors, failed_reads = raw.rows, raw.errors, raw.failed_reads
+    finally:
+        scheduling_after = task_scheduling_snapshot()
+        if raw is not None:
+            raw.close()
+        try:
+            report.send({
+                'capture': rows,
+                'errors': errors,
+                'failed_reads': failed_reads,
+                'scheduling': counter_delta(scheduling_before, scheduling_after),
+            })
+        finally:
+            report.close()
+
+
+class ProcessLatestCapture:
+    """Expose a process-isolated camera through the LatestFrameCapture contract."""
+
+    def __init__(self, path, buffers, np):
+        from powerglove_vision.realtime import CapturedFrame
+        self._captured_frame = CapturedFrame
+        self._np = np
+        context = multiprocessing.get_context('spawn')
+        self._frame = context.RawArray('B', 640 * 480 * 3)
+        self._metadata = context.RawArray('q', 9)
+        self._lock = context.Lock()
+        self._stop = context.Event()
+        self._parent_report, child_report = context.Pipe(duplex=False)
+        self._process = context.Process(
+            target=process_capture_worker,
+            args=(path, buffers, self._frame, self._metadata, self._lock,
+                  self._stop, child_report),
+            name='powerglove-camera-sidecar', daemon=True,
+        )
+        self._process.start()
+        child_report.close()
+        self.report = None
+
+    def latest_after(self, sequence):
+        """Copy a coherent newest frame only when its shared sequence advances."""
+        with self._lock:
+            current = int(self._metadata[0])
+            if current <= sequence:
+                return None
+            ok = bool(self._metadata[1])
+            values = tuple(int(self._metadata[index]) for index in range(2, 9))
+            frame = None
+            if ok:
+                frame = self._np.frombuffer(self._frame, dtype=self._np.uint8).reshape(
+                    (480, 640, 3)
+                ).copy()
+        driver_ns, driver_sequence, flags, dequeued_ns, requeued_ns, decoded_ns, drained = values
+        metadata = dict(driver_ns=driver_ns, driver_sequence=driver_sequence,
+                        flags=flags, dequeued_ns=dequeued_ns,
+                        requeued_ns=requeued_ns, decoded_ns=decoded_ns,
+                        drained=drained)
+        captured_at = decoded_ns / 1e9 if decoded_ns else time.monotonic()
+        return self._captured_frame(current, captured_at, ok,
+                                    (frame, metadata) if ok else None,
+                                    time.monotonic())
+
+    def release(self):
+        """Stop the child, receive its bounded numeric/capture report, and join."""
+        self._stop.set()
+        if self._parent_report.poll(5):
+            self.report = self._parent_report.recv()
+        self._process.join(timeout=3)
+        if self._process.is_alive():
+            self._process.terminate()
+            self._process.join(timeout=2)
+            raise RuntimeError('Camera sidecar did not stop cleanly')
+        if self.report is None:
+            raise RuntimeError(f'Camera sidecar exited without a report ({self._process.exitcode})')
+        self._parent_report.close()
 
 
 class TimedCalls:
@@ -235,6 +571,10 @@ def measure_frame(tracker, engine, frame):
     prep = sum(tracker.cv2.times.values())
     graph = sum(tracker.hands.times.values())
     return result, dict(start_ns=begin, end_ns=end, detected=result.observation.detected,
+                       tracking_path=result.diagnostics.get('tracking_path'),
+                       palm_detector_invoked=result.diagnostics.get('palm_detector_invoked'),
+                       palm_detection_count=result.diagnostics.get('palm_detection_count'),
+                       hand_presence_score=result.diagnostics.get('hand_presence_score'),
                        preprocessing_ms=prep / 1e6, graph_ms=graph / 1e6,
                        landmark_conversion_and_wrapper_ms=(tracked - begin - prep - graph) / 1e6,
                        gesture_and_axes_ms=(end - tracked) / 1e6,
@@ -248,14 +588,25 @@ def wrap_tracker(tracker):
     tracker.hands = TimedCalls(tracker.hands, {'process'})
 
 
-def camera_lane(path, buffers, seconds, tracker, engine):
-    """Measure one exclusive live-camera lane with a requested buffer count."""
+def camera_lane(path, buffers, seconds, tracker, engine, isolation='thread'):
+    """Measure one exclusive live-camera lane with selected capture isolation."""
     from powerglove_vision.realtime import LatestFrameCapture
     import cv2
     import numpy as np
-    raw = RawCamera(path, buffers, cv2, np)
-    capture = LatestFrameCapture(raw)
+    if isolation == 'process':
+        raw = None
+        capture = ProcessLatestCapture(path, buffers, np)
+    else:
+        raw = RawCamera(path, buffers, cv2, np)
+        capture = LatestFrameCapture(raw)
     rows, selected, last_detected = [], 0, None
+    psi_before = cpu_pressure_snapshot()
+    inference_before = task_scheduling_snapshot()
+    capture_before = None
+    if isolation == 'thread':
+        capture_before = task_scheduling_snapshot(
+            os.getpid(), getattr(capture._thread, 'native_id', None)
+        )
     started = time.monotonic()
     warmup_until, deadline = started + 2, started + 2 + seconds
     try:
@@ -278,14 +629,46 @@ def camera_lane(path, buffers, seconds, tracker, engine):
                     driver_to_recognition_ms=driver_age_ms(metadata, timing['start_ns']),
                     driver_to_coordinates_ms=driver_age_ms(metadata, timing['end_ns'])))
     finally:
+        inference_after = task_scheduling_snapshot()
+        capture_after = None
+        if isolation == 'thread':
+            capture_after = task_scheduling_snapshot(
+                os.getpid(), getattr(capture._thread, 'native_id', None)
+            )
         capture.release()
-        capture._thread.join(timeout=3)
-        if capture._thread.is_alive():
-            raise RuntimeError('Capture thread did not stop; process exit must release camera')
-        raw.close()
-    capture_rows = [r for r in raw.rows if r['decoded_ns'] >= int(warmup_until * 1e9)]
-    return dict(buffers=buffers, samples=rows, capture=capture_rows,
-                errors=raw.errors, failed_reads=raw.failed_reads), last_detected
+        if isolation == 'thread':
+            capture._thread.join(timeout=3)
+            if capture._thread.is_alive():
+                raise RuntimeError('Capture thread did not stop; process exit must release camera')
+            raw.close()
+            captured, errors, failed_reads = raw.rows, raw.errors, raw.failed_reads
+            capture_scheduling = counter_delta(capture_before, capture_after)
+        else:
+            captured = capture.report['capture']
+            errors = capture.report['errors']
+            failed_reads = capture.report['failed_reads']
+            capture_scheduling = capture.report['scheduling']
+    capture_rows = [r for r in captured if r['decoded_ns'] >= int(warmup_until * 1e9)]
+    return dict(buffers=buffers, capture_isolation=isolation,
+                samples=rows, capture=capture_rows, errors=errors,
+                failed_reads=failed_reads,
+                scheduling={
+                    'inference_task': counter_delta(inference_before, inference_after),
+                    'capture_task': capture_scheduling,
+                    'system_cpu_pressure': pressure_delta(psi_before, cpu_pressure_snapshot()),
+                }), last_detected
+
+
+def lane_matrix(buffers, isolations):
+    """Broadcast one selector or pair equal-length selectors deterministically."""
+    buffers, isolations = list(buffers), list(isolations)
+    if len(buffers) == 1:
+        buffers *= len(isolations)
+    if len(isolations) == 1:
+        isolations *= len(buffers)
+    if len(buffers) != len(isolations):
+        raise ValueError('buffers and capture-isolation must have equal lengths or one value')
+    return list(zip(buffers, isolations))
 
 
 def native_profile_summary(folder):
@@ -358,8 +741,21 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--camera', required=True)
     parser.add_argument('--source-root', type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument('--seconds', type=int, choices=range(5, 31), default=10)
-    parser.add_argument('--inference-threads', type=int, choices=(1, 2, 4), default=2)
+    parser.add_argument('--seconds', type=int, choices=range(5, 601), default=10)
+    parser.add_argument('--buffers', nargs='+', type=int, choices=(1, 2),
+                        default=(1, 2, 1))
+    parser.add_argument('--capture-isolation', nargs='+',
+                        choices=('thread', 'process'), default=('thread',),
+                        help='benchmark-only latest-frame capture ownership')
+    parser.add_argument('--aggregate-only', action='store_true',
+                        help='retain compact summaries instead of per-frame rows')
+    parser.add_argument('--skip-replay', action='store_true',
+                        help='skip the fixed detected-hand profiler replay')
+    parser.add_argument('--tracking-evidence', action='store_true',
+                        help='expose lightweight palm/landmark path evidence')
+    parser.add_argument('--output', type=Path,
+                        help='write the report to this path instead of standard output')
+    parser.add_argument('--inference-threads', type=int, choices=(1, 2, 3, 4), default=2)
     parser.add_argument('--tracking-confidence', type=float,
                         choices=(.30, .35, .40, .45, .50, .55, .60),
                         default=.55)
@@ -375,13 +771,18 @@ def main():
     import mediapipe as mp
     tracker = MediaPipeTracker(inference_threads=args.inference_threads,
                                tracking_confidence=args.tracking_confidence,
-                               graph_mode=args.graph_mode)
+                               graph_mode=args.graph_mode,
+                               tracking_evidence=args.tracking_evidence)
     wrap_tracker(tracker)
     # Synthetic center for cost measurement only. Never reads or changes player setup.
     engine = GestureEngine('super_glove_ball', calibration=Calibration(.5, .5, .2, 0))
-    report = dict(format='powerglove-camera-pipeline/2', opencv=cv2.__version__,
+    report = dict(format='powerglove-camera-pipeline/3', opencv=cv2.__version__,
         mediapipe=mp.__version__, inference_threads=args.inference_threads,
         tracking_confidence=args.tracking_confidence, graph_mode=args.graph_mode,
+        seconds_per_lane=args.seconds, requested_buffers=list(args.buffers),
+        requested_capture_isolation=list(args.capture_isolation),
+        aggregate_only=args.aggregate_only,
+        tracking_evidence=args.tracking_evidence,
         lanes=[], replay=[], limitations=[
             'Isolated capture/recognition; no gameplay transmission or supervisor workload.',
             'Driver timestamps are not validated physical exposure timestamps.',
@@ -393,15 +794,17 @@ def main():
         ])
     replay_frame = None
     try:
-        for buffers in (1, 2, 1):
-            lane, frame = camera_lane(args.camera, buffers, args.seconds, tracker, engine)
-            report['lanes'].append(lane)
+        for buffers, isolation in lane_matrix(args.buffers, args.capture_isolation):
+            lane, frame = camera_lane(args.camera, buffers, args.seconds, tracker, engine,
+                                      isolation=isolation)
+            report['lanes'].append(lane_summary(lane) if args.aggregate_only else lane)
             if frame is not None:
                 replay_frame = frame
-            print(json.dumps({'completed_buffers': buffers}), flush=True)
+            print(json.dumps({'completed_buffers': buffers,
+                              'capture_isolation': isolation}), flush=True)
     finally:
         tracker.close()
-    if replay_frame is not None:
+    if replay_frame is not None and not args.skip_replay:
         for profiled in (False, True, False):
             report['replay'].append(replay_lane(replay_frame, profiled, MediaPipeTracker,
                                                 GestureEngine, Calibration,
@@ -409,9 +812,17 @@ def main():
                                                 args.tracking_confidence,
                                                 args.graph_mode))
             print(json.dumps({'completed_profiled_replay': profiled}), flush=True)
-    else:
+    elif not args.skip_replay:
         report['recognition_profile_error'] = 'No detected-hand frame; repeat with visible hand'
-    print(json.dumps(report, allow_nan=False), flush=True)
+    rendered = json.dumps(report, allow_nan=False,
+                          indent=2 if args.output else None)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(rendered + '\n')
+        print(json.dumps({'output': str(args.output),
+                          'lanes': len(report['lanes'])}), flush=True)
+    else:
+        print(rendered, flush=True)
 
 
 if __name__ == '__main__':

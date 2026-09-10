@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-10 - Refuse whole-hub recovery when the enrolled hub carries networking.
 #   2026-09-09 - Added capability-gated per-port power cycling and explicit USB-action results.
 #   2026-09-08 - Reset an enrolled hub when UVC streaming fails despite USB enumeration.
 #   2026-09-05 - Added guarded camera USB recovery and autosuspend prevention.
@@ -352,6 +353,27 @@ def _rebind_hub(hub: Path) -> None:
             (USB_DRIVER / "bind").write_text(hub_name)
 
 
+def _hub_has_network_interface(hub: Path) -> bool:
+    """Report whether any network interface is below the enrolled USB hub."""
+    try:
+        root = hub.resolve()
+    except OSError:
+        root = hub
+    try:
+        network_directories = root.rglob("net")
+        for directory in network_directories:
+            if not directory.is_dir():
+                continue
+            try:
+                if any(directory.iterdir()):
+                    return True
+            except OSError:
+                continue
+    except OSError:
+        return False
+    return False
+
+
 def _recover() -> str:
     """Handle one request by enrolling a healthy camera or resetting its hub."""
     APP_DATA.mkdir(parents=True, exist_ok=True)
@@ -402,6 +424,11 @@ def _recover() -> str:
                 f"{config['camera']['hub_port']} on {hub_name}"
             )
         else:
+            if _hub_has_network_interface(hub):
+                raise RuntimeError(
+                    "camera-port power cycling is unavailable; refusing a whole-hub "
+                    "reset because the enrolled hub also carries a network interface"
+                )
             method = "hub-driver-rebind"
             _rebind_hub(hub)
 

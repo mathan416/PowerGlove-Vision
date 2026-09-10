@@ -102,13 +102,14 @@ Dashboard should load. With gestures off, a closed camera is normal. Open
 **Play** or **Glove Academy** to check that your camera view and whole hand
 appear, then return to Dashboard with controller transmission stopped.
 
-New installations keep **Compatible — OpenCV** and **Automatic — no camera
+New installations keep **Recommended — OpenCV** and **Automatic — no camera
 changes** as the portable camera defaults. Under Setup's advanced camera
-settings, Direct V4L2 and low-latency exposure are optional measured choices.
+settings, Direct V4L2 and low-latency exposure are optional engineering choices.
 The Camera dropdown lists Automatic plus currently connected usable cameras and
 refreshes while Setup remains open. Keep Automatic when the camera may be added
 later; selecting a specific camera is useful mainly when more than one is present.
-Direct V4L2 falls back automatically when a camera cannot supply its required
+OpenCV is the gameplay-validated reader. Direct V4L2 falls back automatically
+when a camera cannot supply its required
 640×480 MJPEG stream. With Direct V4L2 selected, Manual exposure and gain are
 also available. The Controller checks the attached camera's advertised controls,
 reports the values actually applied, and visibly falls back to automatic when
@@ -363,11 +364,11 @@ It also explains compatibility, package building, backups, and recovery.
   host helper automatically enrolls the single UVC camera and its parent hub on
   first successful use, even if no camera was connected during installation.
   After enrollment it makes one guarded recovery attempt during a sustained
-  outage. Supported hubs power-cycle only the camera port; other hubs use the
-  identity-checked whole-hub fallback. Success requires a real camera frame, not
+  outage. Supported hubs power-cycle only the camera port; non-networking hubs
+  may use the identity-checked whole-hub fallback. Success requires a real camera frame, not
   merely a device returning to USB.
   If it remains missing, reconnect or power-cycle the camera and check the powered
-  hub and cable; USB Ethernet may briefly disconnect during recovery.
+  hub and cable. A network-bearing hub is never reset as a unit.
 - **No controller in RetroArch:** finish pairing, select Start controller, and
   select PowerGlove Vision for Port 1 using your physical controller.
 - **Partial installation:** correct the reported problem and rerun the same

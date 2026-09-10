@@ -6,6 +6,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Allowed a replay-only three-thread scheduling comparison.
+#   2026-09-09 - Described direction-aware search as standard outside replay comparisons.
 #   2026-09-09 - Summarized native palm and landmark calculator timings.
 #   2026-09-09 - Added exact directional-search candidate tuples for focused sweeps.
 #   2026-09-09 - Added presence-score, native-inference, and recovery-cause summaries.
@@ -590,7 +592,7 @@ def parser() -> argparse.ArgumentParser:
         "--quick", action="store_true",
         help="Run only the proven 640x480, two-thread lane for clip validation",
     )
-    result.add_argument("--threads", nargs="+", type=int, choices=(1, 2, 4))
+    result.add_argument("--threads", nargs="+", type=int, choices=(1, 2, 3, 4))
     result.add_argument(
         "--palm-threads", nargs="+", type=int, choices=(1, 2, 4),
         help="replay research only: palm-detector threads; landmark threads remain --threads",
@@ -747,7 +749,7 @@ def main() -> int:
         "version": 3, "clip": str(args.clip), "full_frame_resize_only": True,
         "fixed_roi_shift_scope": "replay research only; production remains zero shift",
         "directional_search_scope": (
-            "configuration-controlled experiment; each replay lane records its setting"
+            "production standard; replay may explicitly compare an off lane"
         ),
         "cues": cues,
         "lanes": lanes,

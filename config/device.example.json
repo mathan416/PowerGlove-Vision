@@ -6,6 +6,7 @@
   "camera": "auto",
   "camera_fps": "auto",
   "camera_backend": "opencv",
+  "capture_isolation": "thread",
   "camera_exposure": "auto",
   "camera_manual_exposure": 78,
   "camera_manual_gain": 96,

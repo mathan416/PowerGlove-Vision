@@ -44,10 +44,11 @@ the actual delivered rate below the camera controls.
 
 ## Camera reader
 
-- **Compatible - OpenCV** is the portable default.
-- **Low latency - Direct V4L2** is an optional Linux path for supported 64-bit,
-  640x480 MJPEG cameras. It consumes the newest camera buffer and falls back to
-  OpenCV when its requirements are unavailable.
+- **Recommended - OpenCV** is the portable, gameplay-validated default.
+- **Engineering comparison - Direct V4L2** is an optional Linux path for
+  supported 64-bit, 640x480 MJPEG cameras. It consumes the newest camera buffer
+  and falls back to OpenCV when its requirements are unavailable. On the tested
+  Kiyo Pro, live Super Glove Ball play felt slower than OpenCV.
 
 Direct V4L2 does not change MediaPipe recognition, gestures, calibration, or
 controller mappings.
@@ -99,7 +100,8 @@ helper can recover a stream that remains wedged even though the camera is still
 visible to USB. It uses `uhubctl` only when that tool lists the exact enrolled
 hub as supporting per-port power control. In that case, it cycles only the
 camera's saved port. It never forces an unsupported hub. When port switching is
-unavailable, the existing identity-checked whole-hub rebind remains the fallback.
+unavailable, an identity-checked whole-hub rebind is allowed only if that hub
+does not carry networking.
 
 Seeing the camera return in USB is not considered successful recovery. The
 helper reports that the USB action has finished, the Controller restarts vision,

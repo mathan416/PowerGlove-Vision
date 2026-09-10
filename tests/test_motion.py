@@ -447,6 +447,23 @@ class NativeMotionTests(unittest.TestCase):
             index = command.index('--inference-threads')
             self.assertEqual(command[index + 1], expected)
 
+    def test_supervisor_gates_process_capture_on_direct_v4l2(self):
+        import runpy
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]
+        worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']
+        for settings, expected in (
+            ({}, 'thread'),
+            ({'capture_isolation': 'process'}, 'thread'),
+            ({'camera_backend': 'direct-v4l2',
+              'capture_isolation': 'process'}, 'process'),
+            ({'camera_backend': 'direct-v4l2',
+              'capture_isolation': 'invalid'}, 'thread'),
+        ):
+            command = worker_command(settings, Path('/tmp/model'))
+            index = command.index('--capture-isolation')
+            self.assertEqual(command[index + 1], expected)
+
     def test_supervisor_requires_mediapipe_035_as_the_only_runtime(self):
         root = Path(__file__).resolve().parents[1]
         worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']

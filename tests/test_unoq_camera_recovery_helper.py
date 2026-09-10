@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-10 - Verify recovery cannot reset a network-bearing USB hub.
 #   2026-09-09 - Covered capability-gated camera-port cycling and schema migration.
 #   2026-09-08 - Verify present-but-wedged camera recovery and request validation.
 #   2026-09-05 - Added isolated helper enrollment, hub-move and reset tests.
@@ -176,6 +177,22 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
             self.assertEqual(helper.main([]), 0)
         self.assertEqual((self.driver / "unbind").read_text(), "2-1")
         self.assertEqual((self.driver / "bind").read_text(), "2-1")
+
+    def test_refuses_whole_hub_fallback_when_hub_carries_networking(self):
+        hub = self.device("2-1")
+        camera = self.device("2-1.4")
+        self.install_hub_link(hub)
+        network = hub / "2-1.2:1.0" / "net" / "eth0"
+        network.mkdir(parents=True)
+        discovery = self.discovery(camera, hub)
+        helper._write_config(discovery)
+        self.request.write_text("recover\n")
+        with patch.object(helper, "_discover_cameras", return_value=[discovery]):
+            with self.assertRaisesRegex(RuntimeError, "carries a network interface"):
+                helper.main([])
+        self.assertEqual((self.driver / "unbind").read_text(), "")
+        self.assertEqual((self.driver / "bind").read_text(), "")
+        self.assertEqual(json.loads(self.result.read_text())["status"], "failed")
 
     def test_supported_hub_power_cycles_only_the_enrolled_camera_port(self):
         hub = self.device("2-1")

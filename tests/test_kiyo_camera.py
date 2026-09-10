@@ -15,15 +15,98 @@ from pathlib import Path
 import runpy
 import struct
 import tempfile
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from powerglove_vision import kiyo_camera as kiyo
 from powerglove_vision import camera_controls
-from powerglove_vision.vision_app import _camera_rate_attempts, build_parser
+from powerglove_vision.vision_app import (
+    _camera_rate_attempts, _first_direct_frame, _open_camera, build_parser,
+)
 
 
 class KiyoTests(unittest.TestCase):
+    def test_direct_startup_retries_transient_invalid_frames(self):
+        expected = object()
+
+        class Source:
+            def __init__(self):
+                self.reads = 0
+
+            def read_with_timestamp(self):
+                self.reads += 1
+                if self.reads == 1:
+                    raise RuntimeError('camera marked the direct MJPEG frame invalid')
+                if self.reads == 2:
+                    return False, None, 1.0
+                return True, expected, 2.5
+
+        source = Source()
+        frame, captured_at = _first_direct_frame(source, timeout=1.0)
+        self.assertIs(frame, expected)
+        self.assertEqual(captured_at, 2.5)
+        self.assertEqual(source.reads, 3)
+
+    def test_process_capture_does_not_warm_a_frame_in_parent(self):
+        class Candidate:
+            def __init__(self):
+                self.released = False
+
+            def set(self, _name, _value):
+                return True
+
+            def get(self, name):
+                return {
+                    fake_cv2.CAP_PROP_FOURCC: int.from_bytes(b'MJPG', 'little'),
+                    fake_cv2.CAP_PROP_FRAME_WIDTH: 640,
+                    fake_cv2.CAP_PROP_FRAME_HEIGHT: 480,
+                    fake_cv2.CAP_PROP_FPS: 30,
+                    fake_cv2.CAP_PROP_BUFFERSIZE: 2,
+                }[name]
+
+            def read(self):
+                raise AssertionError('parent must not dequeue a process-isolated frame')
+
+            def release(self):
+                self.released = True
+
+        candidate = Candidate()
+        fake_cv2 = SimpleNamespace(
+            CAP_V4L2=200,
+            CAP_ANY=0,
+            CAP_PROP_FOURCC=6,
+            CAP_PROP_FRAME_WIDTH=3,
+            CAP_PROP_FRAME_HEIGHT=4,
+            CAP_PROP_FPS=5,
+            CAP_PROP_BUFFERSIZE=38,
+            VideoWriter_fourcc=lambda *letters: int.from_bytes(
+                ''.join(letters).encode(), 'little'
+            ),
+            VideoCapture=lambda _device, _backend: candidate,
+        )
+        isolated = MagicMock()
+        isolated.metadata = {}
+        args = SimpleNamespace(
+            camera='auto', camera_manual_exposure_test=None,
+            camera_manual_gain_test=None, camera_manual_exposure=78,
+            camera_manual_gain=96, camera_exposure='manual',
+            capture_backend='direct-v4l2', capture_isolation='process',
+            camera_format='MJPG', width=640, height=480, fps=30,
+            camera_buffers=2, kiyo_hdr_off=False,
+        )
+        with patch.dict('sys.modules', {'cv2': fake_cv2}), \
+             patch('powerglove_vision.vision_app.camera_candidates',
+                   return_value=['/dev/video0']), \
+             patch('powerglove_vision.vision_app.sys.platform', 'linux'), \
+             patch('powerglove_vision.process_capture.ProcessDirectV4L2Capture',
+                   return_value=isolated) as process_capture:
+            returned_cv2, returned_capture = _open_camera(args)
+        self.assertIs(returned_cv2, fake_cv2)
+        self.assertIs(returned_capture, isolated)
+        self.assertTrue(candidate.released)
+        process_capture.assert_called_once()
+
     def test_descriptor_identity_and_invalid_lengths(self):
         descriptor=bytes([20,0x24,6,7])+kiyo.GUID
         self.assertEqual(kiyo.extension_unit(bytes([2,1])+descriptor),7)
@@ -99,6 +182,31 @@ class KiyoTests(unittest.TestCase):
         self.assertEqual(direct[direct.index('--capture-backend')+1], 'direct-v4l2')
         self.assertEqual(direct[direct.index('--camera-exposure')+1], 'low-latency')
         self.assertEqual(direct[direct.index('--tracker-graph')+1], 'lean-image')
+
+    def test_complete_worker_cache_is_preferred_offline(self):
+        root=Path(__file__).resolve().parents[1]
+        namespace=runpy.run_path(str(root/'python/main.py'))
+        environment={'UV_CACHE_DIR':'/cache'}
+        with patch.object(namespace['subprocess'], 'run',
+                          return_value=SimpleNamespace(returncode=0)) as probe:
+            selected=namespace['prefer_retained_worker_cache'](environment)
+        self.assertEqual(selected['UV_OFFLINE'], '1')
+        self.assertNotIn('UV_OFFLINE', environment)
+        self.assertEqual(probe.call_args.kwargs['env']['UV_OFFLINE'], '1')
+
+    def test_incomplete_worker_cache_preserves_online_fallback(self):
+        root=Path(__file__).resolve().parents[1]
+        namespace=runpy.run_path(str(root/'python/main.py'))
+        environment={'UV_CACHE_DIR':'/cache'}
+        for outcome in (SimpleNamespace(returncode=1),
+                        __import__('subprocess').TimeoutExpired('uv', 30)):
+            with self.subTest(outcome=type(outcome).__name__):
+                with patch.object(namespace['subprocess'], 'run',
+                                  side_effect=outcome if isinstance(outcome, Exception) else None,
+                                  return_value=None if isinstance(outcome, Exception) else outcome):
+                    selected=namespace['prefer_retained_worker_cache'](environment)
+                self.assertIs(selected, environment)
+                self.assertNotIn('UV_OFFLINE', selected)
 
     def test_manual_exposure_test_requires_valid_pair_and_direct_capture(self):
         root=Path(__file__).resolve().parents[1]

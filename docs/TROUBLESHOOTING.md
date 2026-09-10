@@ -49,8 +49,9 @@ If no camera appears, check the powered USB hub, cable, and camera connection.
 On the Controller host, `lsusb` should show the camera. If it is absent there,
 the problem is below hand recognition. The documented helper attempts one
 controlled recovery for the enrolled camera. A hub that proves per-port power
-support cycles only the saved camera port; other hubs use the guarded whole-hub
-fallback. The Controller does not report success until it reads a real frame.
+support cycles only the saved camera port; a guarded whole-hub fallback is used
+only when the hub carries no networking. The Controller does not report success
+until it reads a real frame.
 Repeated setting changes will not repair a disconnected USB device. See
 [Camera selection](CONFIGURATION_REFERENCE.md#camera-selection).
 

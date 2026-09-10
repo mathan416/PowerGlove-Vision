@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered the replay-only three-thread comparison lane.
 #   2026-09-09 - Covered exact directional-search candidate tuples.
 #   2026-09-09 - Covered loss-cause aggregation in replay reports.
 #   2026-09-09 - Covered zero/one-frame directional reacquisition comparison.
@@ -126,6 +127,12 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
             "--tracking-confidences", ".10", ".20", ".25", ".35",
         ])
         self.assertEqual(parsed.tracking_confidences, [.10, .20, .25, .35])
+
+    def test_cli_accepts_three_thread_research_lane(self):
+        parsed = BENCHMARK.parser().parse_args([
+            "clip.avi", "--output", "report.json", "--threads", "3", "4",
+        ])
+        self.assertEqual(parsed.threads, [3, 4])
 
     def test_cli_accepts_horizontal_roi_research_lanes(self):
         parsed = BENCHMARK.parser().parse_args([

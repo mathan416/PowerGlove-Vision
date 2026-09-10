@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Prefer the retained worker cache while preserving first-install online fallback.
+#   2026-09-09 - Added validated opt-in process-isolated direct capture.
 #   2026-09-09 - Made validated MediaPipe 0.10.35 the sole worker runtime.
 #   2026-09-09 - Verify camera recovery only after the restarted worker receives a frame.
 #   2026-09-07 - Pass optional direct capture and capability-checked exposure settings.
@@ -65,6 +67,7 @@ def load_device_config() -> dict:
         "tracking_roi_scale": 2.25,
         "camera_fps": "auto",
         "camera_backend": "opencv",
+        "capture_isolation": "thread",
         "camera_exposure": "auto",
         "camera_manual_exposure": 78,
         "camera_manual_gain": 96,
@@ -75,18 +78,24 @@ def load_device_config() -> dict:
     return settings
 
 
-def worker_command(settings: dict, model_path: Path, controller_enabled: bool = False) -> list[str]:
-    """Build the isolated MediaPipe worker command from validated runtime settings."""
+def worker_runtime_prefix() -> list[str]:
+    """Build the uv prefix shared by worker launches and the offline probe."""
     wheel = next(
         (APP_ROOT / "python" / "worker-wheels").glob(
             "mediapipe-0.10.35+powerglove*.whl"
         )
     )
-    command = [
+    return [
         # The repository supports the RetroPie receiver on Python 3.7, while
         # MediaPipe requires a newer interpreter. Keep the worker resolution
         # independent of project-wide Python compatibility metadata.
         "uv", "run", "--no-project", "--python", "3.12", "--with", str(wheel),
+    ]
+
+
+def worker_command(settings: dict, model_path: Path, controller_enabled: bool = False) -> list[str]:
+    """Build the isolated MediaPipe worker command from validated runtime settings."""
+    command = worker_runtime_prefix() + [
         "python", "-m", "powerglove_vision.vision_app",
         "--receiver", str(settings.get("receiver", "")),
         "--port", str(settings.get("port", 55355)),
@@ -128,6 +137,12 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
     if camera_backend not in ("opencv", "direct-v4l2"):
         camera_backend = "opencv"
     command.extend(["--capture-backend", camera_backend])
+    capture_isolation = settings.get("capture_isolation", "thread")
+    if capture_isolation not in ("thread", "process"):
+        capture_isolation = "thread"
+    if capture_isolation == "process" and camera_backend != "direct-v4l2":
+        capture_isolation = "thread"
+    command.extend(["--capture-isolation", capture_isolation])
     camera_exposure = settings.get("camera_exposure", "auto")
     if settings.get("kiyo_hdr_off") is True:
         camera_exposure = "kiyo-low-latency"
@@ -164,6 +179,25 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
     return command
 
 
+def prefer_retained_worker_cache(environment: dict[str, str]) -> dict[str, str]:
+    """Use the complete local uv cache, or retain online resolution for first install."""
+    offline = dict(environment)
+    offline["UV_OFFLINE"] = "1"
+    try:
+        completed = subprocess.run(
+            worker_runtime_prefix() + ["python", "-c", "pass"],
+            cwd=APP_ROOT,
+            env=offline,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return environment
+    return offline if completed.returncode == 0 else environment
+
+
 def main() -> int:
     """Supervise the worker, control server, matrix, camera availability, and clean shutdown."""
     settings = load_device_config()
@@ -191,6 +225,7 @@ def main() -> int:
         "UV_CACHE_DIR": str(APP_ROOT / "data" / "uv-cache"),
         "UV_PYTHON_INSTALL_DIR": str(APP_ROOT / "data" / "uv-python"),
     })
+    environment = prefer_retained_worker_cache(environment)
 
     process: subprocess.Popen | None = None
     model_path = APP_ROOT / "data" / "models" / "hand_landmarker.task"

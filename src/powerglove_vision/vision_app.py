@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Added opt-in process-isolated Direct V4L2 capture.
 #   2026-09-09 - Included conditional search activity in bounded native traces.
 #   2026-09-09 - Enabled detailed MediaPipe evidence only during finite traces.
 #   2026-09-09 - Exposed capture-time tracking loss and recovery timing.
@@ -171,6 +172,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="camera reader; direct V4L2 falls back safely to OpenCV",
     )
     parser.add_argument(
+        "--capture-isolation", choices=("thread", "process"), default="thread",
+        help="latest-frame owner; process requires Direct V4L2",
+    )
+    parser.add_argument(
         "--camera-exposure", choices=("auto", "low-latency", "kiyo-low-latency", "manual"),
         default="auto", help="volatile capability-checked exposure behavior",
     )
@@ -274,6 +279,9 @@ def _open_camera(args: argparse.Namespace):
     manual_enabled = manual_test or manual_mode
     if manual_enabled and getattr(args, "capture_backend", "opencv") != "direct-v4l2":
         raise ValueError("manual exposure requires direct V4L2 capture")
+    if (getattr(args, "capture_isolation", "thread") == "process"
+            and getattr(args, "capture_backend", "opencv") != "direct-v4l2"):
+        raise ValueError("process-isolated capture requires direct V4L2")
     if manual_enabled and (not sys.platform.startswith("linux")
                            or args.camera_format != "MJPG"
                            or (args.width, args.height) != (640, 480)):
@@ -327,6 +335,106 @@ def _open_camera(args: argparse.Namespace):
             requested_buffers = getattr(args, "camera_buffers", 1)
             buffers_accepted = candidate.set(cv2.CAP_PROP_BUFFERSIZE, requested_buffers)
             log_startup_stage("camera settings", started)
+            process_direct = (
+                getattr(args, "capture_backend", "opencv") == "direct-v4l2"
+                and getattr(args, "capture_isolation", "thread") == "process"
+                and sys.platform.startswith("linux")
+                and args.camera_format == "MJPG"
+                and args.width == 640 and args.height == 480
+            )
+            if process_direct:
+                # OpenCV negotiates the requested camera format and rate, but it
+                # must not dequeue or decode a frame in process-isolated mode.
+                # Release its descriptor before the child becomes the sole
+                # streaming owner. Some UVC cameras can block for seconds on the
+                # otherwise redundant parent-side warm-up read.
+                fourcc = int(candidate.get(cv2.CAP_PROP_FOURCC))
+                negotiated_format = "".join(
+                    chr((fourcc >> (8 * index)) & 0xFF) for index in range(4)
+                ).rstrip("\x00")
+                metadata = {
+                    "camera_format": negotiated_format or args.camera_format,
+                    "camera_width": round(candidate.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                    "camera_height": round(candidate.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                    "camera_fps_requested": "auto" if args.fps == 0 else args.fps,
+                    "camera_fps_preferred": requested_rate,
+                    "camera_fps_request_accepted": rate_accepted,
+                    "camera_fps": round(candidate.get(cv2.CAP_PROP_FPS), 1),
+                    "camera_buffers_requested": requested_buffers,
+                    "camera_buffers": candidate.get(cv2.CAP_PROP_BUFFERSIZE),
+                    "camera_buffers_accepted": buffers_accepted,
+                    "camera_hdr_off_requested": exposure_mode == "kiyo-low-latency",
+                    "camera_hdr_off_command_sent": kiyo_applied,
+                    "camera_exposure_mode": exposure_mode,
+                    "camera_exposure_supported": exposure_report.get("supported", False),
+                    "camera_exposure_applied": bool(
+                        exposure_report.get("applied") or kiyo_applied
+                    ),
+                    "camera_exposure_fixed_rate": exposure_report.get(
+                        "fixed_frame_rate", False
+                    ),
+                    "camera_control_error": camera_control_error,
+                    "capture_isolation_requested": "process",
+                    "capture_isolation": "process",
+                    "capture_isolation_fallback": None,
+                }
+                candidate.release()
+                try:
+                    import numpy as np
+                    from .process_capture import ProcessDirectV4L2Capture
+                    isolated = ProcessDirectV4L2Capture(
+                        _v4l2_device_path(camera_device), requested_buffers, np,
+                        metadata=metadata,
+                        manual_exposure=(
+                            manual_values[0] if manual_enabled else None
+                        ),
+                        manual_gain=manual_values[1] if manual_enabled else None,
+                    )
+                    isolated.metadata.update({
+                        "capture_backend_requested": "direct-v4l2",
+                        "capture_backend": "direct-v4l2",
+                        "capture_backend_fallback": None,
+                        "camera_exposure_mode": (
+                            "manual-test" if manual_test else exposure_mode
+                        ),
+                    })
+                    if manual_enabled:
+                        isolated.metadata.update({
+                            "camera_manual_exposure_requested": manual_values[0],
+                            "camera_manual_gain_requested": manual_values[1],
+                            "camera_manual_exposure": manual_values[0],
+                            "camera_manual_gain": manual_values[1],
+                        })
+                    return cv2, isolated
+                except Exception as exc:
+                    if manual_test:
+                        raise RuntimeError(
+                            f"manual exposure test could not start safely: {exc}"
+                        ) from exc
+                    metadata.update({
+                        "capture_backend": "opencv",
+                        "capture_backend_fallback": str(exc),
+                        "capture_isolation": "thread",
+                        "capture_isolation_fallback": str(exc),
+                        "camera_exposure_fallback": manual_mode,
+                    })
+                    candidate = cv2.VideoCapture(camera_device, backend)
+                    candidate.set(
+                        cv2.CAP_PROP_FOURCC,
+                        cv2.VideoWriter_fourcc(*args.camera_format),
+                    )
+                    candidate.set(cv2.CAP_PROP_FRAME_WIDTH, args.width)
+                    candidate.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
+                    if requested_rate is not None:
+                        candidate.set(cv2.CAP_PROP_FPS, requested_rate)
+                    candidate.set(cv2.CAP_PROP_BUFFERSIZE, requested_buffers)
+                    ok, fallback_frame = candidate.read()
+                    if not ok:
+                        candidate.release()
+                        continue
+                    return cv2, LatestFrameCapture(
+                        candidate, fallback_frame, metadata=metadata,
+                    )
             started = time.monotonic()
             warmup_deadline = time.monotonic() + 5.0
             while candidate.isOpened() and time.monotonic() < warmup_deadline:
@@ -355,6 +463,11 @@ def _open_camera(args: argparse.Namespace):
                         "camera_exposure_applied": bool(exposure_report.get("applied") or kiyo_applied),
                         "camera_exposure_fixed_rate": exposure_report.get("fixed_frame_rate", False),
                         "camera_control_error": camera_control_error,
+                        "capture_isolation_requested": getattr(
+                            args, "capture_isolation", "thread"
+                        ),
+                        "capture_isolation": "thread",
+                        "capture_isolation_fallback": None,
                     }
                     if (getattr(args, "capture_backend", "opencv") == "direct-v4l2"
                             and sys.platform.startswith("linux")
@@ -368,9 +481,7 @@ def _open_camera(args: argparse.Namespace):
                             direct = DirectV4L2Capture(
                                 _v4l2_device_path(camera_device), requested_buffers, cv2, np,
                             )
-                            ok, direct_frame, direct_at = direct.read_with_timestamp()
-                            if not ok:
-                                raise RuntimeError("direct V4L2 produced no first frame")
+                            direct_frame, direct_at = _first_direct_frame(direct)
                             if manual_enabled:
                                 from .camera_controls import (
                                     configure_manual_on_fd, restore_automatic_on_fd,
@@ -430,6 +541,11 @@ def _open_camera(args: argparse.Namespace):
                                 "capture_backend_requested": "direct-v4l2",
                                 "capture_backend": "opencv",
                                 "capture_backend_fallback": str(exc),
+                                "capture_isolation_requested": getattr(
+                                    args, "capture_isolation", "thread"
+                                ),
+                                "capture_isolation": "thread",
+                                "capture_isolation_fallback": str(exc),
                                 "camera_exposure_fallback": manual_mode,
                             })
                             candidate = cv2.VideoCapture(camera_device, backend)
@@ -455,6 +571,27 @@ def _open_camera(args: argparse.Namespace):
                 time.sleep(0.1)
             candidate.release()
     raise CameraUnavailableError(f"camera '{args.camera}' is unavailable; waiting for a USB camera")
+
+
+def _first_direct_frame(source, timeout: float = 5.0):
+    """Wait through transient V4L2 startup failures for one valid frame."""
+    deadline = time.monotonic() + timeout
+    last_error = None
+    while time.monotonic() < deadline:
+        try:
+            ok, frame, captured_at = source.read_with_timestamp()
+        except Exception as exc:
+            last_error = exc
+            time.sleep(0.005)
+            continue
+        if ok:
+            return frame, captured_at
+        time.sleep(0.005)
+    if last_error is not None:
+        raise RuntimeError(
+            f"direct V4L2 produced no valid first frame: {last_error}"
+        ) from last_error
+    raise RuntimeError("direct V4L2 produced no valid first frame")
 
 
 def _close_vision(capture, tracker) -> None:

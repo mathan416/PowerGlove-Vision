@@ -389,7 +389,7 @@ when backlight was reduced, with fewer missing frames and reacquisitions;
 inference timing remained unchanged. Lighting improves recognition margin, not
 model execution speed.
 
-Setup also offers opt-in camera controls. **Low latency — Direct V4L2**
+Setup also offers opt-in camera controls. **Engineering comparison — Direct V4L2**
 reads the newest Linux MJPEG driver buffer and automatically falls back to
 OpenCV if the camera or negotiated format is incompatible. **Razer Kiyo Pro —
 tested low latency** keeps automatic exposure, requests a fixed frame rate using
@@ -403,9 +403,10 @@ latency difference. Manual controls are restored to automatic when the camera is
 closed, while the saved preference is reused the next time vision starts.
 
 The direct reader passed a live compatibility check on this project's Kiyo Pro
-and exposed valid driver sequence numbers and monotonic timestamps. It remains
-an option rather than a universal default because other camera drivers may not
-provide the same Linux MJPEG interface. A matched lean MediaPipe output test did
+and exposed valid driver sequence numbers and monotonic timestamps. Explicit
+OpenCV/threaded live play was smoother and more responsive, so it is the
+production default; Direct V4L2 and process isolation remain engineering
+comparisons. A matched lean MediaPipe output test did
 not produce a meaningful end-to-end improvement, so the complete proven graph
 remains selected.
 
@@ -418,7 +419,8 @@ requested, PowerGlove Vision makes one guarded recovery attempt for that outage
 with the narrowest proven action. If `uhubctl` confirms that the enrolled hub
 supports per-port power switching, only the camera's recorded port is power
 cycled. Otherwise the helper falls back to rebinding the identity-checked parent
-hub, which can briefly interrupt USB Ethernet; Wi-Fi remains available. USB
+hub only when that hub does not carry networking. A network-bearing hub fails
+safely instead of disconnecting the Controller. USB
 reappearance means only that the host action finished. Recovery is confirmed
 only after the restarted vision worker reads a camera frame. If a camera has
 never been seen—or does not produce a frame after that attempt—reconnect or

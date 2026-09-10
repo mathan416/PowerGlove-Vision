@@ -9,6 +9,33 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Extended the output-paused camera benchmark for sustained UNO Q runs. It now
+  separates driver dequeue age, MJPEG decode, recognition pickup, graph time,
+  and post-graph work; learns camera sequence-counter cadence; records compact
+  correlated tail events; and can attribute palm-versus-landmark paths without
+  retaining images.
+- Added a three-thread research lane and rejected it after a live four/three/four
+  comparison. Three threads produced fewer coordinate results and higher normal
+  latency without improving end-to-end p95, so the validated four-thread
+  production setting remains unchanged.
+- Added a benchmark-only process-isolated camera lane with Linux task-scheduler
+  counters. A 90-second A/B/A comparison and five-minute soak showed that it
+  continued draining frames through long MediaPipe palm-search calls, reduced
+  the worst observed coordinate age from 303–327 ms to 239 ms, and completed
+  without a camera error. It is not yet a production capture mode.
+- Added process-isolated Direct V4L2 as an engineering comparison. It owns one
+  replaceable shared frame, reports child failure repeatedly so existing
+  recovery can act, restores manual exposure in the camera-owning process, and
+  falls back to threaded OpenCV when startup fails. Matched live Super Glove
+  Ball tests selected OpenCV with thread isolation as the production default:
+  it felt faster, remained playable through fast sweeps, and recovered quickly
+  after intentional departures from the camera view.
+- Matched the isolated reader to the proven camera lifecycle by treating a
+  camera-marked invalid MJPEG frame as transient. Hardware validation confirmed
+  process startup, manual exposure 78/gain 96, 569 advancing driver frames over
+  ten seconds, graceful shutdown, descriptor release, and automatic-exposure
+  restoration. A deliberately killed child can still wedge this Kiyo/hub at the
+  USB level, so destructive crash injection is not part of routine validation.
 - Promoted the validated direction-aware fast-sweep search to standard
   MediaPipe behavior. Removed its Setup checkbox and guarded save endpoint;
   older `directional_search` device-file values are now harmlessly ignored.
@@ -18,6 +45,13 @@ authoritative record for line-level and file-level history.
 - Corrected Setup's Controller output flag so an armed Controller waiting for a
   game is shown as ready instead of falsely reporting **Receiver unavailable**.
   Genuine delivery failure remains red during an active game context.
+- Made camera recovery refuse a whole-hub driver rebind when the enrolled hub
+  also carries a network interface. Capability-confirmed per-port power cycling
+  remains allowed; unsupported network-bearing hubs now fail safely instead of
+  disconnecting the Controller's Ethernet path.
+- Made worker startup probe its retained `uv` environment offline first. A
+  complete cache now restarts without Internet access, while a new or incomplete
+  installation automatically retains online dependency resolution.
 
 ## [0.4.0-rc.3] - 2026-09-09
 

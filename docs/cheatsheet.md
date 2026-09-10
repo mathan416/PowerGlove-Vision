@@ -162,7 +162,8 @@ camera sighting enrolls the one UVC camera and its actual parent hub. Moving the
 camera to another hub updates the association automatically the next time vision
 sees it. The installer adds `uhubctl`; when the enrolled hub advertises genuine
 per-port switching, only the saved camera port is power-cycled. Otherwise the
-identity-checked whole-hub rebind remains the fallback. Recovery is confirmed
+identity-checked whole-hub rebind remains a fallback only for hubs without a
+network interface. Recovery is confirmed
 only after a worker test frame, not USB enumeration. Until that first sighting,
 recovery intentionally has no hub or port to operate.
 
@@ -531,7 +532,7 @@ for the recording recipes, neutral calibration, image-quality advice, and shared
 | PowerGlove Vision Controller readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
 | PowerGlove Vision Controller boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
 | PowerGlove Vision Controller camera recovery watcher | `powerglove-camera-recovery.path` |
-| PowerGlove Vision Controller camera recovery action | `powerglove-camera-recovery.service`; power-cycles the enrolled camera port on a capability-confirmed hub, otherwise rebinds the allowlisted hub |
+| PowerGlove Vision Controller camera recovery action | `powerglove-camera-recovery.service`; power-cycles the enrolled camera port on a capability-confirmed hub, otherwise rebinds the allowlisted hub only when it does not carry networking |
 | PowerGlove Vision Controller camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use and reports USB action separately from stream verification |
 | PowerGlove Vision Controller camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera identity plus hub identity/path and learned camera port |
 

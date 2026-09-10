@@ -985,3 +985,137 @@ MediaPipe 0.10.35 is therefore the sole shipped recognition runtime. The
 repacked wheel removes unused JAX/JAXLIB dependency declarations and pins
 headless OpenCV 4.11.0.86. Historical 0.10.18 values remain comparison evidence,
 not an installed fallback or user-selectable mode.
+
+### Sustained camera dequeue and scheduling analysis — September 9, 2026
+
+The output-paused camera benchmark was extended to retain aggregate timing and
+compact correlated tail events rather than images. A five-minute UNO Q lane used
+the production 640×480 MJPEG camera mode, two V4L2 buffers, the complete
+MediaPipe 0.10.35 graph, four XNNPACK threads, and no preview or controller
+output. The empty-room scene intentionally exercised the expensive palm-search
+path repeatedly, making this a scheduling stress test rather than a normal
+tracked-hand latency measurement.
+
+| Boundary | p50 | p95 | Maximum |
+| --- | ---: | ---: | ---: |
+| Camera dequeue interval | 33.26 ms | 37.93 ms | 190.17 ms |
+| MJPEG decode | 5.54 ms | 10.22 ms | 30.51 ms |
+| Decoded frame to recognition start | 16.99 ms | 32.66 ms | 186.93 ms |
+| MediaPipe graph | 72.60 ms | 112.58 ms | 260.53 ms |
+| Driver timestamp to coordinates | 131.65 ms | 175.12 ms | 327.19 ms |
+| Post-graph conversion and gesture work | 1.99 ms | 3.02 ms | 9.54 ms |
+
+The camera delivered 9,003 frames with no read failure or application error.
+Its V4L2 sequence counter normally advances by two per delivered frame, so the
+benchmark now learns that cadence instead of falsely counting each increment as
+a dropped frame. Only one sequence discontinuity occurred.
+
+The worst event began with a 260.53 ms MediaPipe call at 191.851 seconds. While
+that call occupied the inference path, the capture thread stopped dequeuing;
+the following dequeue interval reached 190.17 ms, recognition pickup reached
+186.93 ms, and coordinate age reached 327.19 ms. The camera resumed immediately.
+This correlated ordering identifies a rare inference/scheduling stall rather
+than a persistent camera or USB failure.
+
+A separate two-minute confirmation enabled lightweight graph-path evidence. It
+captured 3,605 frames with no failures. Every observable graph call above
+150 ms used `palm_detection_no_valid_hand`; normal landmark continuation was not
+the source of those tails. Camera dequeue remained 33.25/37.97 ms p50/p95 with
+one 64.65 ms maximum, while driver-to-coordinate time was 129.25/171.35 ms with
+a 217.95 ms maximum. The hottest thermal zone during sustained testing was
+58.6 °C, below the earlier stable ten-minute soak maximum.
+
+Supporting camera-free UNO Q tests ruled out the remaining boundaries. Signed
+UDP send measured 0.18/0.26 ms p50/p95, and the complete post-inference
+iteration remained below 0.51 ms p95 even with a deliberately slow Dashboard
+consumer. Tracking-confidence values from 0.25 through 0.40 produced identical
+97.96% continuity on the retained fast-sweep loop. Separate palm thread counts
+showed that the selected four threads remained fastest: reacquisition p95 was
+205.17 ms with one thread, 130.67 ms with two, and 128.13 ms with four.
+
+A subsequent live, output-paused four/three/four A/B/A comparison tested whether
+leaving one CPU execution slot free would reduce capture scheduling stalls. Each
+lane ran for 90 seconds with the same production camera, graph, and recognition
+settings.
+
+| Threads | Coordinate results | Graph p50 / p95 | Driver-to-coordinate p50 / p95 | Maximum |
+| ---: | ---: | ---: | ---: | ---: |
+| 4 (first) | 1,210 | 72.11 / 96.43 ms | 127.55 / 153.75 ms | 180.67 ms |
+| 3 | 1,161 | 74.52 / 88.25 ms | 133.88 / 153.61 ms | 186.91 ms |
+| 4 (repeat) | 1,179 | 72.66 / 97.44 ms | 129.15 / 154.71 ms | 203.37 ms |
+
+Three threads marginally reduced some isolated dequeue and graph tails, but it
+produced 4.0% fewer coordinate results than the mean of the two four-thread
+lanes, raised median graph time by about 2.1 ms, and raised median
+driver-to-coordinate age by about 5.5 ms. End-to-end p95 was effectively tied.
+It therefore failed the promotion gate; four threads remains the production
+choice. The benchmark accepts three only so this rejected scheduling hypothesis
+can be reproduced.
+
+The next experiment kept four inference threads and moved Direct V4L2 capture,
+MJPEG decoding, and the single replaceable frame slot into a separate process.
+This was a benchmark-only architecture: it sent no controller output and did not
+alter the installed camera path. Linux per-task scheduling counters were added
+to distinguish graph execution from capture-task run-queue delay.
+
+A 90-second thread/process/thread A/B/A run completed without camera errors. The
+process lane produced 1,188 coordinate results, compared with 1,107 and 1,170
+for the surrounding thread lanes. Its driver-to-coordinate p95 was 148.41 ms,
+inside the 138.45–152.88 ms baseline range. During an actual 237.66 ms graph
+call, camera sequence advanced from 3,259 to 3,266. The next inference selected
+that fresh frame and returned to 111.28 ms source age instead of travelling
+through queued frames.
+
+A separate five-minute process-only soak captured 8,903 camera frames and
+produced 4,090 coordinate results with no failed read or camera error. Six
+observable palm-search calls exceeded 150 ms. Capture continued during them:
+camera dequeue interval remained below 73.08 ms, recognition pickup remained
+below 69.98 ms, and worst coordinate age was 239.26 ms. The two retained
+five-minute threaded baselines had 166.63–190.17 ms dequeue freezes and
+303.03–327.19 ms worst coordinate age. This clears the headless research gate
+for an opt-in production-lifecycle prototype, but does not by itself promote a
+new capture default; startup, recovery, exposure restoration, and live gameplay
+still require validation.
+
+The opt-in production-lifecycle implementation subsequently passed a safe UNO Q
+hardware check. It selected process-isolated Direct V4L2, applied the saved
+manual exposure 78 and gain 96 in the camera-owning child, advanced 569 driver
+frames during a ten-second active interval, shut down cleanly, released the
+descriptor, and restored automatic exposure. The Kiyo can mark the first frame
+after a control change invalid; the isolated reader now publishes that transient
+failure and continues, matching the proven threaded behavior. A deliberately
+killed camera child wedged this particular camera/hub until physical reconnect,
+and the guarded port-power cycle did not re-enumerate it. Hard-kill injection is
+therefore excluded from repeatable validation; ordinary failure publication and
+the existing two-second reconnect path remain covered automatically.
+
+The camera's sequence counter sometimes advanced by one rather than its modal
+two during the sidecar soak. That represents capturing an additional driver
+frame, not losing one. Reports now distinguish non-modal cadence from genuine
+forward sequence gaps.
+
+### Final live capture selection — September 10, 2026
+
+Matched live Super Glove Ball sessions compared Direct V4L2 with thread
+isolation, Direct V4L2 with process isolation, and explicit OpenCV with thread
+isolation. The player found process-isolated Direct V4L2 playable but lagged,
+threaded Direct V4L2 clearly slower, and OpenCV the most responsive and most
+playable. The OpenCV session lasted 49.66 seconds, produced 22.29 coordinate
+results per second, retained 97.3% detection including an intentional departure,
+and kept the receiver, controller, and game session connected throughout. Its
+camera-read-completion-to-send age was 61.2 ms p50 and 84.7 ms p95; inference
+was 40.2 ms p50 and 59.6 ms p95.
+
+The OpenCV timing starts when `VideoCapture.read()` returns, so it does not
+include sensor exposure or opaque driver residency. Direct V4L2 exposes a more
+complete driver timestamp and therefore its absolute source-age figures are not
+directly interchangeable. Live feel and operational continuity are the deciding
+evidence here. Production now explicitly uses OpenCV with thread isolation;
+both Direct V4L2 variants remain available as engineering comparisons.
+
+A replay-only one-frame previous-region grace experiment was rejected. It
+reduced palm-detector calls from 15 to 8 but converted isolated one-frame losses
+into two-frame losses, reducing continuity from 97.96% to 97.83%. The older
+region was already stale during fast travel, so production continues to fall
+back immediately. No movement math or deployed recognition setting changed as
+a result of these measurements.

@@ -29,6 +29,7 @@ class LaunchGuardTests(unittest.TestCase):
         self.assertEqual(args.tracking_roi_scale, 2.25)
         self.assertEqual(args.tracker_backend, "legacy")
         self.assertEqual(args.preview_fps, 5.0)
+        self.assertEqual(args.capture_isolation, "thread")
         self.assertTrue(args.directional_search)
 
     def test_former_directional_search_option_remains_compatible(self):
