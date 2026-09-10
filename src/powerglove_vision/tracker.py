@@ -5,17 +5,14 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Made validated 0.10.35 the sole shipped XNNPACK graph runtime.
+#   2026-09-09 - Recorded landmark-presence loss causes and native profiling evidence.
 #   2026-09-09 - Added a replay-selectable one-frame directional reacquisition lane.
 #   2026-09-09 - Measured tracking-loss gaps and recovery inference separately.
 #   2026-09-09 - Kept Dashboard preview out of MediaPipe frame preparation.
 #   2026-09-08 - Added replay-only conditional search and precise tracking-path evidence.
 #   2026-09-07 - Added an isolated image-landmark-only graph experiment.
 #   2026-09-07 - Added geometry validation and benchmarkable pose-stable palm anchors.
-#   2026-09-06 - Add opt-in independent native hand movement tracking.
-#   2026-09-05 - Added clear proven and experimental backend display names.
-#   2026-09-05 - Made legacy and Tasks tracker selection explicit for benchmarks.
-#   2026-09-04 - Logged hand-tracker startup stage durations.
-#   2026-09-03 - Used 3D world landmarks for camera finger curl.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Convert MediaPipe or Arduino hand landmarks into normalized observations and annotated frames."""
@@ -39,7 +36,8 @@ TRACKER_BACKEND_LABELS = {
 # Existing calibration centres and reach spans were recorded from this anchor.
 # Benchmark alternatives without silently changing that coordinate contract.
 PALM_ANCHOR = "five_point_average"
-TRACKING_EVIDENCE_OUTPUTS = ("palm_detections",)
+HAND_PRESENCE_SCORE_OUTPUT = "handlandmarkcpu__hand_presence_score"
+TRACKING_EVIDENCE_OUTPUTS = ("palm_detections", HAND_PRESENCE_SCORE_OUTPUT)
 
 
 def log_startup_stage(label: str, started: float) -> None:
@@ -228,6 +226,16 @@ class _TrackingTelemetry:
         self.palm_reacquisitions_total = 0
         self.hand_missing_results_total = 0
         self.invalid_landmark_results_total = 0
+        self.missing_cause_totals = {
+            "invalid_landmark_geometry": 0,
+            "palm_detection_without_valid_hand": 0,
+            "landmark_presence_below_gate": 0,
+            "graph_no_hand_unobservable": 0,
+        }
+        self.loss_start_cause: str | None = None
+        self.last_recovery_loss_start_cause: str | None = None
+        self.last_recovery_missing_causes: dict[str, int] = {}
+        self.current_missing_causes: dict[str, int] = {}
         self.last_detected_timestamp: float | None = None
         self.loss_started_timestamp: float | None = None
         self.last_recovery_gap_ms: float | None = None
@@ -244,9 +252,24 @@ class _TrackingTelemetry:
         invalid_landmarks: bool = False,
         timestamp: float | None = None,
         inference_ms: float | None = None,
+        hand_presence_score: float | None = None,
+        include_cause_details: bool = True,
     ) -> dict:
         """Record graph-path evidence and capture-time loss/recovery latency."""
         missing_before = self.hand_missing_streak
+        if detected:
+            observation_cause = "valid_landmarks"
+        elif invalid_landmarks:
+            observation_cause = "invalid_landmark_geometry"
+        elif hand_presence_score is not None:
+            observation_cause = "landmark_presence_below_gate"
+        elif palm_detector_invoked is True:
+            observation_cause = "palm_detection_without_valid_hand"
+        else:
+            # An empty MediaPipe stream does not reveal whether the palm branch
+            # was skipped or ran without a detection. Keep that distinction
+            # explicitly unknown until a native graph profile supplies it.
+            observation_cause = "graph_no_hand_unobservable"
         tracking_recovered = bool(detected and self.ever_detected and missing_before)
         recovery_gap_ms = None
         recovery_missing_span_ms = None
@@ -262,6 +285,9 @@ class _TrackingTelemetry:
                 )
                 self.last_recovery_missing_span_ms = recovery_missing_span_ms
             self.last_recovery_inference_ms = inference_ms
+        if tracking_recovered and include_cause_details:
+            self.last_recovery_loss_start_cause = self.loss_start_cause
+            self.last_recovery_missing_causes = dict(self.current_missing_causes)
         reacquired = False
         if palm_detector_invoked is True:
             self.palm_detection_packets_total += 1
@@ -296,11 +322,21 @@ class _TrackingTelemetry:
             if timestamp is not None:
                 self.last_detected_timestamp = timestamp
             self.loss_started_timestamp = None
+            if include_cause_details:
+                self.loss_start_cause = None
+                self.current_missing_causes = {}
         else:
             self.hand_missing_results_total += 1
             self.hand_missing_streak += 1
+            if include_cause_details:
+                self.missing_cause_totals[observation_cause] += 1
+                self.current_missing_causes[observation_cause] = (
+                    self.current_missing_causes.get(observation_cause, 0) + 1
+                )
             if self.loss_started_timestamp is None:
                 self.loss_started_timestamp = timestamp
+                if include_cause_details:
+                    self.loss_start_cause = observation_cause
         if invalid_landmarks:
             self.invalid_landmark_results_total += 1
 
@@ -314,10 +350,12 @@ class _TrackingTelemetry:
                 self.longest_tracking_loss_ms, current_loss_ms,
             )
 
-        return {
+        result = {
             "tracking_path": path,
+            "tracking_observation_cause": observation_cause,
             "palm_detector_invoked": palm_detector_invoked,
             "palm_detection_count": palm_detection_count,
+            "hand_presence_score": hand_presence_score,
             "palm_reacquired": reacquired,
             "hand_missing_streak": self.hand_missing_streak,
             "landmark_continuations_total": self.landmark_continuations_total,
@@ -336,6 +374,15 @@ class _TrackingTelemetry:
             "last_recovery_inference_ms": self.last_recovery_inference_ms,
             "longest_tracking_loss_ms": self.longest_tracking_loss_ms,
         }
+        if include_cause_details:
+            result.update({
+                "loss_start_cause": self.loss_start_cause,
+                "current_missing_causes": dict(self.current_missing_causes),
+                "last_recovery_loss_start_cause": self.last_recovery_loss_start_cause,
+                "last_recovery_missing_causes": dict(self.last_recovery_missing_causes),
+                "missing_cause_totals": dict(self.missing_cause_totals),
+            })
+        return result
 
 
 def _palm_detector_evidence(result: Any) -> tuple[bool | None, int | None]:
@@ -349,6 +396,16 @@ def _palm_detector_evidence(result: Any) -> tuple[bool | None, int | None]:
         return True, len(detections)
     except TypeError:
         return True, None
+
+
+def _hand_presence_score_evidence(result: Any) -> float | None:
+    """Return the diagnostic landmark-presence score when explicitly exposed."""
+    value = getattr(result, HAND_PRESENCE_SCORE_OUTPUT, None)
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return None
+    return score if math.isfinite(score) else None
 
 
 def _prepare_tracker_frame(frame: Any, mirror: bool, preview: bool,
@@ -488,6 +545,14 @@ def _inference_node_threads(node_name: str, landmark_threads: int,
     raise RuntimeError(f"unrecognized MediaPipe inference node: {node_name}")
 
 
+def _is_cpu_inference_calculator(calculator: str) -> bool:
+    """Recognize supported legacy Hands CPU nodes across MediaPipe releases."""
+    return calculator in (
+        "InferenceCalculatorCpu",
+        "InferenceCalculatorXnnpack",
+    )
+
+
 def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
                   detection_confidence: float = .55,
                   graph_mode: str = "full", tracking_roi_scale: float = 2.0,
@@ -514,7 +579,8 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
             and tracking_roi_shift_y == 0.0
             and tracking_roi_scale_x is None
             and tracking_roi_scale_y is None
-            and use_previous_landmarks):
+            and use_previous_landmarks
+            and not tracking_evidence):
         return base
     try:
         from google.protobuf import text_format
@@ -528,7 +594,10 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
         modified = 0
         configured_inference_nodes = set()
         for node in graph.node:
-            if node.calculator != "InferenceCalculatorCpu":
+            # MediaPipe 0.10.18 names the CPU wrapper generically; 0.10.35
+            # exposes the selected XNNPACK implementation in the calculator
+            # name. Both carry the same InferenceCalculatorOptions extension.
+            if not _is_cpu_inference_calculator(node.calculator):
                 continue
             node_threads = _inference_node_threads(
                 node.name, cpu_threads, palm_inference_threads,
@@ -566,6 +635,12 @@ def _legacy_hands(mp, cpu_threads: int, tracking_confidence: float = .55,
         if roi_modified != 1:
             raise RuntimeError(
                 f"expected one next-frame hand region, found {roi_modified}"
+            )
+        if tracking_evidence and not any(
+            HAND_PRESENCE_SCORE_OUTPUT in output for output in graph.output_stream
+        ):
+            graph.output_stream.append(
+                "HAND_PRESENCE_SCORE:" + HAND_PRESENCE_SCORE_OUTPUT
             )
         threaded = SolutionBase(
             graph_config=graph,
@@ -780,12 +855,15 @@ class MediaPipeTracker:
             detected = result.multi_hand_landmarks
         tracking_inference_ms = (time.monotonic() - inference_started) * 1000.0
         palm_detector_invoked, palm_detection_count = _palm_detector_evidence(result)
+        hand_presence_score = _hand_presence_score_evidence(result)
         if not detected:
             if self.directional_search:
                 self._directional_search.observe_missing()
             diagnostics = self._tracking_telemetry.observe(
                 False, palm_detector_invoked, palm_detection_count,
                 timestamp=now, inference_ms=tracking_inference_ms,
+                hand_presence_score=hand_presence_score,
+                include_cause_details=self.tracking_evidence,
             )
             diagnostics["frame_preparation"] = frame_preparation
             diagnostics["directional_search_active"] = self._directional_search.active
@@ -824,6 +902,8 @@ class MediaPipeTracker:
                 False, palm_detector_invoked, palm_detection_count,
                 invalid_landmarks=True,
                 timestamp=now, inference_ms=tracking_inference_ms,
+                hand_presence_score=hand_presence_score,
+                include_cause_details=self.tracking_evidence,
             )
             diagnostics["frame_preparation"] = frame_preparation
             diagnostics["directional_search_active"] = self._directional_search.active
@@ -878,6 +958,8 @@ class MediaPipeTracker:
         diagnostics = self._tracking_telemetry.observe(
             True, palm_detector_invoked, palm_detection_count,
             timestamp=now, inference_ms=tracking_inference_ms,
+            hand_presence_score=hand_presence_score,
+            include_cause_details=self.tracking_evidence,
         )
         diagnostics["frame_preparation"] = frame_preparation
         diagnostics["directional_search_active"] = self._directional_search.active

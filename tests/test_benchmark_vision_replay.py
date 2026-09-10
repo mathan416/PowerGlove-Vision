@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered exact directional-search candidate tuples.
+#   2026-09-09 - Covered loss-cause aggregation in replay reports.
 #   2026-09-09 - Covered zero/one-frame directional reacquisition comparison.
 #   2026-09-09 - Verified selected conditional search replay reporting.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -30,16 +32,21 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
             {
                 "path": "hand_missing_path_unobservable", "ms": 20,
                 "detected": False, "frame": 2, "elapsed": .04, "cue": "fast_xy",
+                "observation_cause": "graph_no_hand_unobservable",
             },
             {
                 "path": "palm_reacquisition", "ms": 30, "detected": True,
                 "recovery_gap_ms": 66.7, "recovery_missing_span_ms": 33.3,
                 "recovery_inference_ms": 30,
             },
-            {"path": "palm_detection_no_valid_hand", "ms": 40, "detected": False},
-            {"path": "palm_detection_no_valid_hand", "ms": 50, "detected": False},
-            {"path": "palm_detection_no_valid_hand", "ms": 60, "detected": False},
-            {"path": "palm_detection_no_valid_hand", "ms": 70, "detected": False},
+            {"path": "palm_detection_no_valid_hand", "ms": 40, "detected": False,
+             "observation_cause": "palm_detection_without_valid_hand"},
+            {"path": "palm_detection_no_valid_hand", "ms": 50, "detected": False,
+             "observation_cause": "palm_detection_without_valid_hand"},
+            {"path": "palm_detection_no_valid_hand", "ms": 60, "detected": False,
+             "observation_cause": "palm_detection_without_valid_hand"},
+            {"path": "palm_detection_no_valid_hand", "ms": 70, "detected": False,
+             "observation_cause": "palm_detection_without_valid_hand"},
         ]
         summary = BENCHMARK.tracking_path_summary(samples)
         self.assertEqual(summary["short_missing_runs"], [1])
@@ -47,8 +54,15 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
         self.assertEqual(summary["missing_run_details"][0], {
             "start_frame": 2, "end_frame": 2,
             "start_elapsed": .04, "end_elapsed": .04,
-            "cues": ["fast_xy"], "frames": 1,
+            "cues": ["fast_xy"],
+            "causes": ["graph_no_hand_unobservable"], "frames": 1,
         })
+        self.assertEqual(summary["observation_causes"], {
+            "graph_no_hand_unobservable": 1,
+            "palm_detection_without_valid_hand": 4,
+            "unavailable": 2,
+        })
+        self.assertFalse(summary["native_inference_attribution"]["available"])
         self.assertEqual(summary["paths"]["palm_detection_no_valid_hand"]["p95"], 70)
         self.assertEqual(summary["recovery_gap_ms"]["p50"], 66.7)
         self.assertEqual(summary["recovery_missing_span_ms"]["p50"], 33.3)
@@ -98,6 +112,14 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
         self.assertEqual(parsed.threads, [4])
         self.assertEqual(parsed.palm_threads, [1, 2, 4])
 
+    def test_cli_exposes_native_profiling_only_when_requested(self):
+        baseline = BENCHMARK.parser().parse_args(["clip.avi", "--output", "out.json"])
+        profiled = BENCHMARK.parser().parse_args([
+            "clip.avi", "--output", "out.json", "--native-profile",
+        ])
+        self.assertFalse(baseline.native_profile)
+        self.assertTrue(profiled.native_profile)
+
     def test_cli_accepts_low_tracking_confidence_research_lanes(self):
         parsed = BENCHMARK.parser().parse_args([
             "clip.avi", "--output", "report.json",
@@ -126,6 +148,23 @@ class FixedRoiShiftReplayTests(unittest.TestCase):
         self.assertEqual(parsed.directional_search_min_speeds, [.4, .6])
         self.assertEqual(parsed.directional_search_max_offsets, [.04, .08])
         self.assertEqual(parsed.directional_search_recovery_frames, [0, 1])
+
+    def test_cli_accepts_exact_directional_search_candidates(self):
+        parsed = BENCHMARK.parser().parse_args([
+            "clip.avi", "--output", "report.json",
+            "--directional-search-candidate", ".18,.30,.025,0",
+            "--directional-search-candidate", ".22,.35,.03,1",
+        ])
+        self.assertEqual(parsed.directional_search_candidate, [
+            (.18, .30, .025, 0), (.22, .35, .03, 1),
+        ])
+
+    def test_exact_directional_search_candidate_rejects_unsafe_values(self):
+        for value in (".2,.3,.02", "x,.3,.02,0", "1.1,.3,.02,0",
+                      ".2,-.1,.02,0", ".2,.3,.16,0", ".2,.3,.02,2"):
+            with self.subTest(value=value), self.assertRaises(
+                    argparse.ArgumentTypeError):
+                BENCHMARK.parse_directional_search_candidate(value)
 
 
 if __name__ == "__main__":

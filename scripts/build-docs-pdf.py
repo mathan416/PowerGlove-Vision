@@ -686,7 +686,7 @@ def main():
     build(docs / "CAMERA_GUIDE.md", OUTPUT / "PowerGlove-Vision-Camera-Guide.pdf",
           "PowerGlove Vision Camera Guide", "Choose, tune, and troubleshoot a camera without changing gesture recognition.", "User guide")
     build(docs / "motion-smoothing-analysis.md", OUTPUT / "PowerGlove-Vision-Motion-Analysis.pdf",
-          "Native Movement Analysis", "Evidence and experiments behind Latest coordinate and bounded movement.", "Engineering analysis")
+          "Recognition and Movement Pipeline Analysis", "CPU runtime, GPU research, reacquisition, and native X/Y evidence.", "Engineering analysis")
     print(f"Built 20 PDF guides on {date.today().isoformat()}")
 
 

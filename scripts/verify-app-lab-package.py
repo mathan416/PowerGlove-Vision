@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Required validated MediaPipe 0.10.35 as the sole runtime wheel.
 #   2026-09-07 - Aligned packaged PDFs with the consolidated documentation set.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Require the extracted Setup browser module.
@@ -216,9 +217,17 @@ def archive_errors(path: Path) -> list[str]:
             license_path = "PowerGlove-Vision/licenses/Apache-2.0.txt"
             if license_path in names and hashlib.sha256(archive.read(license_path)).hexdigest() != "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30":
                 errors.append("Apache 2.0 license text is missing or altered")
-            wheels = [name for name in names if "/python/worker-wheels/mediapipe-" in name and name.endswith(".whl")]
-            if len(wheels) != 1:
-                errors.append(f"expected one UNO Q MediaPipe wheel, found {len(wheels)}")
+            wheels = {
+                PurePosixPath(name).name for name in names
+                if "/python/worker-wheels/mediapipe-" in name and name.endswith(".whl")
+            }
+            required_wheels = {
+                "mediapipe-0.10.35+powerglove.gpu2-cp312-cp312-linux_aarch64.whl"
+            }
+            if wheels != required_wheels:
+                errors.append(
+                    "expected validated UNO Q MediaPipe 0.10.35 wheel only"
+                )
     except (BadZipFile, FileNotFoundError) as exc:
         errors.append(str(exc))
     return errors

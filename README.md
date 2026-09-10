@@ -106,7 +106,7 @@ On Dashboard, **Center hand** saves the resting reference for the selected playe
 | Review Super Glove Ball packet and gameplay evidence | [Native compatibility record](docs/super-glove-ball-native.md) |
 | Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
 | Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
-| Review movement-filter evidence and experiments | [Motion smoothing analysis](docs/motion-smoothing-analysis.md) |
+| Review recognition-runtime and movement experiments | [Recognition and movement pipeline analysis](docs/motion-smoothing-analysis.md) |
 | Measure native X/Y or isolate it from Super Glove Ball behavior | [Native movement validation](docs/direction-response-benchmark.md#direct-output-dot-test) |
 | Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
 | Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
@@ -315,7 +315,7 @@ optical-flow, selected, and filtered coordinates without recording video; the
 current live path reports the newest valid MediaPipe coordinate directly.
 Physical hand-to-screen latency still requires synchronized recording.
 
-The production Controller runs the proven CPU MediaPipe Hands path at 640×480,
+The production Controller runs the validated CPU MediaPipe Hands 0.10.35 path at 640×480,
 with four explicitly selected inference threads, a `0.35` tracking-confidence
 threshold, and a `2.25` next-frame hand search area. The larger search area
 recovered five of nine previously missed fast-sweep frames in repeatable replay
@@ -323,8 +323,11 @@ without a material latency or false-activation cost. Camera rate defaults to
 Automatic, which tries the measured 30 fps
 path before safely accepting the driver's supported rate. An isolated Adreno GPU probe
 successfully created a delegate but the first MediaPipe Tasks graph was much
-slower than production, so no GPU wheel or runtime change ships in this
-candidate. A lean, output-paused GPU palm/landmark experiment remains research.
+slower than the CPU path, so GPU execution remains research. MediaPipe 0.10.35
+is the only recognition runtime shipped by the installer. Matched replay
+preserved 97.96% continuity while 0.10.35 reduced inference p95
+from 60.18 ms to 46.60 ms; a ten-minute Controller soak completed without an
+error or thermal throttling.
 
 ## Use the web interface
 

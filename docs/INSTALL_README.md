@@ -254,7 +254,10 @@ standard gamepad path. The RetroPie installer checks the game-specific FCEUmm op
 remaining ACTION message and rerun the installer after resolving it. See [Glove Zap setup](CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
 No extra-trigger assignment or receiver change is required.
 
-A calibration uses 24 geometrically valid hand observations. MediaPipe's
+A calibration uses 24 geometrically valid hand observations. The Controller
+installer includes the validated MediaPipe Hands 0.10.35 ARM64 runtime and
+headless OpenCV 4.11; it does not download an older fallback or unused JAX
+components. MediaPipe's
 displayed score describes handedness certainty rather than position confidence,
 so it is not used as a false quality gate. Repeating calibration from the same
 position should give closely comparable center, scale, wrist, and jitter values,

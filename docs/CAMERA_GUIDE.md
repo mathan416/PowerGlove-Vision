@@ -86,6 +86,11 @@ bright window behind the player improved overall hand detection from 98.73% to
 about 98.8% in both clips, and inference time did not change. Treat this as
 practical placement guidance rather than a universal camera setting.
 
+The shipped MediaPipe Hands 0.10.35 CPU runtime improves inference and
+reacquisition timing independently of camera exposure. Better front lighting
+still gives it clearer evidence and more recovery margin; it does not make the
+model calculation itself run faster.
+
 ## Reconnection and recovery
 
 The Controller looks for the saved camera whenever tracking starts. Supported

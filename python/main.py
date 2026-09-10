@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Made validated MediaPipe 0.10.35 the sole worker runtime.
 #   2026-09-09 - Verify camera recovery only after the restarted worker receives a frame.
 #   2026-09-07 - Pass optional direct capture and capability-checked exposure settings.
 #   2026-09-07 - Pass an explicit validated MediaPipe inference thread count.
@@ -77,7 +78,11 @@ def load_device_config() -> dict:
 
 def worker_command(settings: dict, model_path: Path, controller_enabled: bool = False) -> list[str]:
     """Build the isolated MediaPipe worker command from validated runtime settings."""
-    wheel = next((APP_ROOT / "python" / "worker-wheels").glob("mediapipe-0.10.18-*.whl"))
+    wheel = next(
+        (APP_ROOT / "python" / "worker-wheels").glob(
+            "mediapipe-0.10.35+powerglove*.whl"
+        )
+    )
     command = [
         # The repository supports the RetroPie receiver on Python 3.7, while
         # MediaPipe requires a newer interpreter. Keep the worker resolution

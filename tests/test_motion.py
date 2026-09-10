@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Required MediaPipe 0.10.35 as the sole worker runtime.
+#   2026-09-09 - Required conditional-search activity in native traces.
 #   2026-09-07 - Cover MediaPipe cadence smoothing and saturated jitter fallback.
 #   2026-09-07 - Cover MediaPipe-first native routing and preview scaling.
 #   2026-09-06 - Cover experimental palm flow with synthetic images and blocked inference.
@@ -13,6 +15,9 @@
 """Exercise real optical flow where available and controller safety everywhere."""
 
 from dataclasses import replace
+from pathlib import Path
+import runpy
+import tempfile
 import threading
 import unittest
 from unittest import mock
@@ -123,12 +128,18 @@ class NativeMotionTests(unittest.TestCase):
             'palm_detection_count': 1,
             'palm_reacquired': True,
             'hand_missing_streak': 0,
+            'directional_search_active': True,
+            'directional_search_offset': (-.02, .01),
+            'directional_search_phase': 'lead',
         })
         fields = _native_trace_fields(self.engine, result, True)
         self.assertEqual(fields['tracking_path'], 'palm_reacquisition')
         self.assertTrue(fields['palm_detector_invoked'])
         self.assertEqual(fields['palm_detection_count'], 1)
         self.assertTrue(fields['palm_reacquired'])
+        self.assertTrue(fields['directional_search_active'])
+        self.assertEqual(fields['directional_search_offset'], (-.02, .01))
+        self.assertEqual(fields['directional_search_phase'], 'lead')
 
     def test_latest_holds_one_backward_reacquisition_after_consistent_motion(self):
         for timestamp, x in ((10.0, .50), (10.1, .55), (10.2, .60)):
@@ -435,6 +446,24 @@ class NativeMotionTests(unittest.TestCase):
             command = worker_command({'inference_threads': value}, Path('/tmp/model'))
             index = command.index('--inference-threads')
             self.assertEqual(command[index + 1], expected)
+
+    def test_supervisor_requires_mediapipe_035_as_the_only_runtime(self):
+        root = Path(__file__).resolve().parents[1]
+        worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']
+        with tempfile.TemporaryDirectory() as folder:
+            test_root = Path(folder)
+            wheels = test_root / 'python/worker-wheels'
+            wheels.mkdir(parents=True)
+            experimental = wheels / 'mediapipe-0.10.35+powerglove.test.whl'
+            experimental.touch()
+            worker_command.__globals__['APP_ROOT'] = test_root
+
+            command = worker_command({}, Path('/tmp/model'))
+            self.assertIn(str(experimental), command)
+            self.assertNotIn('mediapipe_runtime', ' '.join(command))
+            experimental.unlink()
+            with self.assertRaises(StopIteration):
+                command = worker_command({}, Path('/tmp/model'))
 
     def test_directional_search_defaults_off_and_requires_a_real_boolean(self):
         import runpy

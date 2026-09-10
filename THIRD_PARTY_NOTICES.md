@@ -7,52 +7,49 @@ PowerGlove Vision's original source code and associated documentation are
 licensed under the repository's MIT License. That license does not replace the
 licenses or terms that apply to third-party software and model files.
 
-## MediaPipe 0.10.18 ARM64 wheel
+## MediaPipe 0.10.35 ARM64 wheel
 
-A wheel (`.whl`) is an installable Python package. This wheel includes
-MediaPipe's compiled Linux ARM64 code, so the PowerGlove Vision Controller does not need to build it.
-The filename's `cp312-cp312` tags identify CPython 3.12 and its binary interface;
-`manylinux2014_aarch64` and `manylinux_2_17_aarch64` identify compatible ARM64
-Linux environments. The PowerGlove Vision Controller uses this tracked file:
+A wheel (`.whl`) is an installable Python package. PowerGlove Vision ships one
+compiled Linux ARM64 MediaPipe runtime, so the PowerGlove Vision Controller does
+not build MediaPipe during installation. The `cp312-cp312` tags identify
+CPython 3.12 and its binary interface; `linux_aarch64` identifies ARM64 Linux.
 
 ```text
-python/worker-wheels/mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+python/worker-wheels/mediapipe-0.10.35+powerglove.gpu2-cp312-cp312-linux_aarch64.whl
 ```
 
 | Property | Value |
 | --- | --- |
-| Component | MediaPipe 0.10.18 for CPython 3.12, Linux ARM64 |
+| Component | MediaPipe 0.10.35 for CPython 3.12, Linux ARM64 |
 | Upstream project | <https://github.com/google-ai-edge/mediapipe> |
-| Upstream package | <https://pypi.org/project/mediapipe/0.10.18/> |
+| Upstream source commit | `f8ef212d5c962c0e853db7e59d217056b187084b` |
 | License | Apache License 2.0 |
-| PowerGlove repack SHA-256 | `f2617c0960eb35aaa58b76076a9ae629edbf7ec8901d5fab4b046c28d13fbe8d` |
-| Original PyPI wheel SHA-256 | `09cbf7dc1f9a2deeaaac687e5f982836623def4cbd3e827d95f86f42450d2dd1` |
+| PowerGlove packaged-wheel SHA-256 | `3f09815d9f6c41d828cd71c9ba477c24a63850908876dfc8b095a882c790e562` |
 
 ### Modification notice
 
-PowerGlove Vision repackaged the upstream wheel for its headless PowerGlove Vision Controller worker.
-The Python package code and compiled MediaPipe binaries were not modified. The changes listed below were made when repackaging the wheel, and its
-`RECORD` file was rebuilt to reflect them:
+The ARM64/Python 3.12 wheel was built from the identified upstream source for
+the UNO Q environment. It retains upstream source headers and MediaPipe's full
+Apache 2.0 license at
+`mediapipe-0.10.35+powerglove.gpu2.dist-info/licenses/LICENSE`. The build keeps
+the established MediaPipe Hands graph used by PowerGlove Vision and includes
+the narrow Linux compatibility and GPU-research support recorded in the
+[recognition and movement pipeline analysis](docs/motion-smoothing-analysis.md).
+Production selects the four-thread XNNPACK CPU graph; the slower GPU lanes are
+not selected during gameplay.
 
-- The `jax` dependency declaration was removed.
-- The `jaxlib` dependency declaration was removed.
-- The `opencv-contrib-python` dependency was replaced with `opencv-contrib-python-headless==4.10.0.84`.
-- The upstream wheel's empty `mediapipe.libs` directory was omitted.
+The release wheel was then repackaged for the headless Controller. Its `RECORD`
+integrity list was rebuilt after these metadata changes:
 
-These changes avoid unnecessary JAX installation and GUI OpenCV dependencies
-on the PowerGlove Vision Controller. The repacked wheel retains MediaPipe's Apache 2.0 license at
-`mediapipe-0.10.18.dist-info/LICENSE`. Do not substitute the upstream wheel
-without retesting dependency resolution, camera startup, and hand tracking.
+- The unused `jax` dependency declaration was removed.
+- The unused `jaxlib` dependency declaration was removed.
+- Headless OpenCV was pinned to `opencv-contrib-python-headless==4.11.0.86`.
 
-The released wheel and production Controller path are CPU-only. An isolated
-research build from the exact MediaPipe 0.10.18 source successfully initialized
-the UNO Q Adreno 702 through EGL/OpenGL ES and created a TensorFlow Lite GPU
-delegate. The first MediaPipe Tasks graph was substantially slower than the
-proven MediaPipe Hands path, so that custom wheel, its temporary Mesa alignment,
-and its build environment are not distributed. This confirms device access, not
-a production-quality GPU tracker. Any future lean GPU palm/landmark path must
-retain upstream Apache notices and pass the documented latency, continuity,
-recognition, jitter, and thermal gates before packaging.
+Removing unused JAX dependencies avoids a large first-start download and
+reduces pressure on the Controller's storage. The rebuilt wheel was imported on
+the ARM64 Controller, reported MediaPipe `0.10.35+powerglove.gpu2` and OpenCV
+`4.11.0`, and confirmed that JAX was absent. Do not substitute another wheel
+without repeating dependency, camera, recognition, replay, and thermal tests.
 
 ## Google Hand Landmarker model
 

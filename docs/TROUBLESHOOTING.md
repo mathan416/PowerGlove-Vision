@@ -65,6 +65,11 @@ If detection repeatedly disappears, fix visibility before tuning gesture
 thresholds. Tracking losses and ordinary stationary jitter are different
 problems and should be reported separately.
 
+Current releases install MediaPipe Hands 0.10.35 as the single Controller
+runtime. There is no user-selectable old-runtime fallback. If the worker reports
+that its wheel is missing, rerun the current Controller installer rather than
+adding a runtime setting to `device.json`.
+
 ## The hand is detected but the game does not move
 
 1. Close local Play and Glove Academy; they pause cabinet input. Finish tuning, then explicitly start controller delivery if required.

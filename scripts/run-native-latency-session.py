@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Added FCEUmm labeling and removed redundant full-session neutral holds.
 #   2026-09-08 - Added smoke/full protocols, cue logs, and video annotation templates.
 #   2026-09-06 - Add operator-paced native latency session evidence.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -88,7 +89,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--status-url', type=measurement.status_url, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
-    parser.add_argument('--test', choices=('native', 'dot'), default='native',
+    parser.add_argument('--test', choices=('native', 'dot', 'fceumm'), default='native',
                         help='Label evidence and show the matching preflight; does not launch an emulator')
     parser.add_argument('--protocol', choices=('smoke', 'full'), default='full',
                         help='smoke checks framing in about 45 seconds; full collects the baseline')
@@ -105,7 +106,7 @@ def main():
     if args.preflight:
         import hashlib
         preflight_digest = hashlib.sha256(args.preflight.read_bytes()).hexdigest()
-    session = {"format": "powerglove-guided-latency-session/2", "test": args.test,
+    session = {"format": "powerglove-guided-latency-session/3", "test": args.test,
                "protocol": args.protocol, "created_unix": time.time(),
                "preflight_sha256": preflight_digest,
                "cue_clock": "Mac local pacing only; not synchronized to video or device clocks"}
@@ -128,14 +129,19 @@ def main():
         print('UNO Q MediaPipe baseline; active player and calibration; yellow dot and TRACKING;')
         print('The inset canvas is x=16..239, y=24..207. NO INPUT must remove the dot.')
         print('The installed wrapper traces for 300 seconds from launch; relaunch for later trace windows.')
-    else:
+    elif args.test == 'native':
         print('Preflight: native core/device 517; active player and calibration; Robo-Glove follows hand;')
+    else:
+        print('Preflight: launch a listed game with FCEUmm; active player and calibration;')
+        print('Controller mode must show joystick output, with native X/Y inactive.')
     print('preview CLOSED; stable lighting; same game conditions; original hand+screen video framing checked.')
     print('Verify software identities and effective per-game video overrides separately. No configuration is changed.')
     with cue_path.open('x') as cues:
         os.chmod(cue_path, 0o600)
         record_cue(cues, "session_start", protocol=args.protocol, test=args.test)
-        neutral_count = 1 if args.protocol == 'smoke' else 3
+        # One supported neutral window is sufficient. Additional neutral windows
+        # are repeats only when that first sample is invalid, never routine work.
+        neutral_count = 1
         neutral_seconds = 8 if args.protocol == 'smoke' else 20
         movement_seconds = 16 if args.protocol == 'smoke' else 60
         for index in range(1, neutral_count + 1):

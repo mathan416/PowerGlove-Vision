@@ -147,9 +147,13 @@ available for setup and recovery.
 Deterministic headless comparisons establish input handling in the emulator and
 game. They do not include exposure time, inference, the real network, or cabinet
 display latency. Live native movement is playable and substantially improved. A
-recent Dashboard-closed sample measured about 52 ms median MediaPipe work and
-about 16 new native coordinates per second, but noticeable end-to-end latency
-remains; the synchronized physical hand/display baseline is still pending.
+The selected MediaPipe 0.10.35 runtime preserved 97.96% continuity on the same
+736-frame fast-sweep clip while reducing inference p95 from 60.18 to 46.60 ms
+and palm-reacquisition p95 from 149.48 to 120.16 ms versus the former runtime.
+A live Dashboard-closed Super Glove Ball trace measured 61.29/91.15 ms
+capture-to-send p50/p95 across 3,408 samples, with every receipt correlated and
+no trace drops. These are camera-to-network measurements, not complete
+physical-hand-to-display latency.
 
 The planned measurement uses one recording containing both the real hand and
 screen, plus separate software timings. Only after identifying the dominant

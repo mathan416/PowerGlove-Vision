@@ -955,3 +955,32 @@ status consumer sleep 5 ms; newest-only replacement allowed controller sends to
 continue without waiting for that consumer. This establishes ordering and
 backpressure behavior on the development Mac. It excludes MediaPipe, real network
 drivers, RetroPie, the emulator, and the display.
+
+### MediaPipe 0.10.35 promotion — September 9, 2026
+
+The same private 736-frame fast-sweep clip was replayed with identical
+640×480, full-graph, four-thread settings through the former 0.10.18 runtime
+and the selected 0.10.35 runtime:
+
+| Runtime | Inference p50 / p95 | Continuity | Missing frames | Landmark-continuation p95 | Reacquisition p95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Historical 0.10.18 | 36.12 / 60.18 ms | 97.96% | 15 | 51.10 ms | 149.48 ms |
+| Shipped 0.10.35 | 34.03 / 46.60 ms | 97.96% | 15 | 44.29 ms | 120.16 ms |
+
+A live Dashboard-closed Super Glove Ball trace then correlated all 3,408 sent
+samples with receiver records and reported no trace drops. Capture-to-send was
+61.29/91.15 ms p50/p95, compared with the earlier 69.05/126.84 ms baseline;
+receiver socket-return to native-state publication was 0.91/1.18 ms p50/p95.
+The player described movement as zippier and reacquisition as faster and better
+located.
+
+An output-paused ten-minute UNO Q soak completed without an application error,
+camera loss, or crash. The hottest reported thermal zone reached 61.7 °C and
+resident memory rose during warm-up before settling near 484 MiB. This soak
+mostly exercised repeated palm detection in an empty room; continuity evidence
+comes from the controlled clip and live gameplay trace.
+
+MediaPipe 0.10.35 is therefore the sole shipped recognition runtime. The
+repacked wheel removes unused JAX/JAXLIB dependency declarations and pins
+headless OpenCV 4.11.0.86. Historical 0.10.18 values remain comparison evidence,
+not an installed fallback or user-selectable mode.

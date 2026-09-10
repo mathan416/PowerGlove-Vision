@@ -3,7 +3,7 @@
 A camera-to-controller system for the **PowerGlove Vision Controller (Arduino
 UNO Q)** and RetroPie.
 
-This guide describes the implementation reviewed on September 4, 2026, including
+This guide describes the implementation reviewed on September 9, 2026, including
 three-step tuning, optional personal hand setup, shared gameplay thresholds, the
 matching Glove Academy/Tune matrix animations, and the verified Arduino sketch build.
 It is a map of current behaviour, not a proposed redesign or a hardware test report.
@@ -49,7 +49,8 @@ camera, receiver, or game is working.
 
 App Lab starts `python/main.py` in the main application container. This
 supervisor runs the website and starts an isolated Python 3.12 vision worker
-with the packaged MediaPipe wheel. It polls worker status, updates the matrix,
+with the sole packaged MediaPipe 0.10.35 ARM64 wheel. There is no installed
+0.10.18 fallback or runtime selector. It polls worker status, updates the matrix,
 and retries a worker that stops. The worker's internal HTTP interface is on
 loopback port 8089; the public website is on 8088, with secure Setup on 8443.
 
@@ -79,10 +80,13 @@ sockets. These functions are kept separate from camera inference.
    driver buffer and its timestamp, with automatic OpenCV fallback. A dedicated
    capture thread publishes only the newest frame; older unprocessed frames are
    superseded rather than queued.
-2. MediaPipe identifies the hand landmarks. The tracker validates finite,
-   non-collapsed palm geometry and produces a `HandObservation` using the
-   selected frame's capture timestamp. MediaPipe's score is labelled as
-   handedness certainty rather than position confidence.
+2. MediaPipe Hands 0.10.35 runs its complete graph with four XNNPACK CPU
+   threads. The graph first uses its palm detector, then the landmark model
+   produces 21 hand points and normally continues from the prior hand region.
+   Palm detection runs again when landmark tracking cannot continue. The
+   tracker validates finite, non-collapsed palm geometry and produces a
+   `HandObservation` using the selected frame's capture timestamp. MediaPipe's
+   score is labelled as handedness certainty rather than position confidence.
 3. The gesture engine compares that observation with the saved neutral calibration and effective thresholds. Directions are relative to the calibrated palm; apparent hand-size change supplies forward/backward movement.
 4. Shared activation/release states and held menu poses feed the selected profile's mapping. The result is a `ControllerState`, including buttons, D-pad, axes, finger values, events, sequence, and tracking/calibration metadata.
 5. The worker sends the state only if controller delivery is armed, a live
@@ -142,6 +146,14 @@ page does not read, render, retain, or request detailed controller and event
 fields. Capture
 age, inference cadence, skipped frames, preview cost, and send time expose the
 local stages; none alone is an end-to-end camera-to-game latency measurement.
+
+The shipped graph runs on the UNO Q CPU. OpenGL/OpenCL, MediaPipe Tasks GPU,
+MNN/Vulkan, and ncnn comparisons did not beat this complete CPU graph while
+preserving recognition behavior, so they remain engineering research rather
+than selectable gameplay runtimes. The model graph is the connected palm-
+detection and landmark-computation pipeline; it is broader than either neural
+network alone. Research details and promotion gates are consolidated in
+[Recognition and movement pipeline analysis](motion-smoothing-analysis.md).
 
 Optional manual exposure and gain are applied through the Direct V4L2 stream's
 existing file descriptor after the camera advertises compatible controls. This

@@ -7,6 +7,8 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+## [0.4.0-rc.3] - 2026-09-09
+
 ### Added
 
 - Added a separate, version-matched PowerGlove Vision Engineering Tools source
@@ -34,6 +36,11 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Replaced the former MediaPipe 0.10.18 package with MediaPipe Hands 0.10.35 as
+  the sole CPU recognition runtime after matched replay and live Super Glove
+  Ball validation. Gesture rules, calibration, Latest-coordinate movement, and
+  controller mappings are unchanged. The rebuilt ARM64 wheel removes unused
+  JAX/JAXLIB dependency declarations and pins headless OpenCV 4.11.0.86.
 - Focused ordinary Controller and RetroPie release packages on production code
   and end-user calibration, status, recovery, and emulator-setup tools. The full
   engineering suite remains in Git and on development deployments but is no
@@ -88,6 +95,14 @@ authoritative record for line-level and file-level history.
 
 ### Validation
 
+- Replayed the same 736-frame fast-sweep clip through both packaged runtimes.
+  Detection continuity and all 15 one-frame misses were identical at 97.96%,
+  while MediaPipe 0.10.35 reduced overall inference p95 from 60.18 ms to
+  46.60 ms and palm-reacquisition p95 from 149.48 ms to 120.16 ms. A live
+  Super Glove Ball trace delivered all 3,408 samples, improved capture-to-send
+  p95 from 126.84 ms to 91.16 ms, and had zero trace drops. A ten-minute
+  output-paused soak completed without errors, reached 61.7 °C at its hottest
+  reported zone, and settled at a stable memory plateau.
 - Corrected the saved-clip loss interpretation after frame-level review. Its
   nine-frame run is the scripted hand-removal cue, while the selected fast-sweep
   lane detected 91 of 92 frames and missed only the exact cue-boundary frame.

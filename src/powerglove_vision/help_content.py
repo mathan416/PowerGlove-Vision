@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Renamed the consolidated recognition and movement analysis guide.
 #   2026-09-07 - Added PDFs for the remaining public technical guides.
 #   2026-09-06 - Made Rock Paper Scissors and live native validation discoverable in Help.
 #   2026-09-06 - Added the local Rock Paper Scissors page to cabinet links.
@@ -50,7 +51,7 @@ HELP_GUIDES = (
     {'slug': 'configuration', 'title': 'Configuration reference', 'file': 'CONFIGURATION_REFERENCE.md', 'description': 'Every public setting, template, generated file, and installed location.', 'group': 'Technical documentation'},
     {'slug': 'input-audit', 'title': 'Power Glove game input audit', 'file': 'power-glove-rom-input-audit.md', 'description': 'ROM-level evidence separating native Power Glove input from standard controller mappings.', 'group': 'Technical documentation'},
     {'slug': 'direction-response', 'title': 'Native movement validation', 'file': 'direction-response-benchmark.md', 'description': 'Native latency, jitter, dot-core isolation, software traces, video evidence, and headless measurements.', 'group': 'Technical documentation'},
-    {'slug': 'motion-smoothing', 'title': 'Motion smoothing analysis', 'file': 'motion-smoothing-analysis.md', 'description': 'Trace-based analysis of recognition age, optical flow, smoothing, and experimental native X/Y response.', 'group': 'Technical documentation'},
+    {'slug': 'motion-smoothing', 'title': 'Recognition and movement pipeline analysis', 'file': 'motion-smoothing-analysis.md', 'description': 'CPU runtime, GPU research, reacquisition, optical flow, and native X/Y response evidence.', 'group': 'Technical documentation'},
     {'slug': 'security', 'title': 'Security and privacy', 'file': 'SECURITY.md', 'description': 'Pairing boundaries, safe network use, shutdown permissions, and reporting.', 'group': 'Technical documentation'},
     {'slug': 'components', 'title': 'Third-party notices', 'file': '../THIRD_PARTY_NOTICES.md', 'description': 'MediaPipe, model, emulator, license, checksum, modification, and runtime provenance.', 'group': 'Technical documentation'},
     {'slug': 'contributing', 'title': 'Contributing', 'file': 'CONTRIBUTING.md', 'description': 'Source formatting, tests, documentation, packaging, and review expectations.', 'group': 'Technical documentation'},

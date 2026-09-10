@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Required one neutral window and FCEUmm baseline labeling.
 #   2026-09-08 - Cover session preflight gates and guided video review helpers.
 #   2026-09-07 - Cover receiver-to-native publication timing.
 #   2026-09-06 - Cover drops, clock separation, session reuse, and video timing brackets.
@@ -48,6 +49,12 @@ session_runner = load('run-native-latency-session')
 
 
 class DiagnosticTests(unittest.TestCase):
+    def test_guided_session_supports_all_three_delivery_baselines(self):
+        source = (ROOT/'scripts'/'run-native-latency-session.py').read_text()
+        self.assertIn("choices=('native', 'dot', 'fceumm')", source)
+        self.assertIn('neutral_count = 1', source)
+        self.assertNotIn("neutral_count = 1 if args.protocol == 'smoke' else 3", source)
+
     def test_guided_session_uses_lightweight_status_polling(self):
         report = {'observed_samples':1, 'request_errors':0,
                   'segments':[{'stationary_candidate':True}]}

@@ -345,7 +345,7 @@ COMPLETE SOURCE INVENTORY
 |   |-- main.py
 |   |-- ssh_pair.py
 |   `-- worker-wheels
-|       `-- mediapipe-0.10.18-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+|       `-- mediapipe-0.10.35+powerglove.gpu2-cp312-cp312-linux_aarch64.whl
 |-- retropie
 |   |-- bin
 |   |   |-- powerglove-bsb-zap

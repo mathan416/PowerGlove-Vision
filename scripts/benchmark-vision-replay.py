@@ -6,6 +6,9 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Summarized native palm and landmark calculator timings.
+#   2026-09-09 - Added exact directional-search candidate tuples for focused sweeps.
+#   2026-09-09 - Added presence-score, native-inference, and recovery-cause summaries.
 #   2026-09-09 - Compared immediate search reset with one-frame reacquisition carry.
 #   2026-09-09 - Reported capture-time tracking loss and recovery timing.
 #   2026-09-08 - Added fused-colour and fixed search-region comparison lanes.
@@ -23,6 +26,7 @@ from collections import Counter
 import json
 import math
 import sys
+import tempfile
 import time
 from math import ceil
 from pathlib import Path
@@ -30,7 +34,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from powerglove_vision.tracker import MediaPipeTracker  # noqa: E402
+from powerglove_vision.tracker import (  # noqa: E402
+    MediaPipeTracker,
+    TRACKING_EVIDENCE_OUTPUTS,
+)
 from powerglove_vision.gesture import GestureEngine  # noqa: E402
 
 
@@ -58,6 +65,28 @@ def parse_roi_shift(value: str) -> tuple[float, float]:
     return shift
 
 
+def parse_directional_search_candidate(value: str) -> tuple[float, float, float, int]:
+    """Parse one exact gain,min-speed,max-offset,recovery-frames candidate."""
+    try:
+        parts = value.split(",")
+        if len(parts) != 4:
+            raise ValueError
+        gain, min_speed, max_offset = map(float, parts[:3])
+        recovery_frames = int(parts[3])
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "directional-search candidate must be gain,min-speed,max-offset,recovery-frames"
+        ) from exc
+    if (not math.isfinite(gain) or not 0.0 <= gain <= 1.0
+            or not math.isfinite(min_speed) or not 0.0 <= min_speed <= 4.0
+            or not math.isfinite(max_offset) or not 0.0 <= max_offset <= .15
+            or recovery_frames not in (0, 1)):
+        raise argparse.ArgumentTypeError(
+            "directional-search candidate values are outside their safe bounds"
+        )
+    return gain, min_speed, max_offset, recovery_frames
+
+
 def roi_shift_lane_label(shift_x: float, shift_y: float) -> str:
     """Make the production baseline unmistakable from fixed-shift research."""
     if shift_x == 0.0 and shift_y == 0.0:
@@ -68,6 +97,13 @@ def roi_shift_lane_label(shift_x: float, shift_y: float) -> str:
 def tracking_path_summary(samples: list[dict]) -> dict:
     """Summarize detector cost and consecutive missing results per replay lane."""
     counts = Counter(sample["path"] for sample in samples)
+    cause_counts = Counter(
+        sample.get("observation_cause", "unavailable") for sample in samples
+    )
+    native_loss_causes = Counter(
+        sample["native_loss_cause"] for sample in samples
+        if sample.get("native_loss_cause")
+    )
     timing = {}
     for path in sorted(counts):
         values = [sample["ms"] for sample in samples if sample["path"] == path]
@@ -90,12 +126,21 @@ def tracking_path_summary(samples: list[dict]) -> dict:
                     "start_elapsed": sample.get("elapsed"),
                     "end_elapsed": sample.get("elapsed"),
                     "cues": [],
+                    "causes": [],
                 }
             current_detail["end_frame"] = sample.get("frame", index)
             current_detail["end_elapsed"] = sample.get("elapsed")
             cue = sample.get("cue")
             if cue is not None and cue not in current_detail["cues"]:
                 current_detail["cues"].append(cue)
+            cause = sample.get("observation_cause", "unavailable")
+            if cause not in current_detail["causes"]:
+                current_detail["causes"].append(cause)
+            native_cause = sample.get("native_loss_cause")
+            if native_cause:
+                current_detail.setdefault("native_causes", [])
+                if native_cause not in current_detail["native_causes"]:
+                    current_detail["native_causes"].append(native_cause)
         elif current_run:
             missing_runs.append(current_run)
             current_detail["frames"] = current_run
@@ -112,8 +157,39 @@ def tracking_path_summary(samples: list[dict]) -> dict:
                               if sample.get("recovery_missing_span_ms") is not None]
     recovery_inference = [sample["recovery_inference_ms"] for sample in samples
                           if sample.get("recovery_inference_ms") is not None]
+    native_palm_samples = [
+        sample for sample in samples if sample.get("native_palm_inference") is True
+    ]
+    native_landmark_samples = [
+        sample for sample in samples if sample.get("native_landmark_inference") is True
+    ]
+    presence_detected = [sample["hand_presence_score"] for sample in samples
+                         if sample.get("detected")
+                         and sample.get("hand_presence_score") is not None]
+    presence_missing = [sample["hand_presence_score"] for sample in samples
+                        if not sample.get("detected")
+                        and sample.get("hand_presence_score") is not None]
     return {
         "paths": timing,
+        "observation_causes": dict(sorted(cause_counts.items())),
+        "native_loss_causes": dict(sorted(native_loss_causes.items())),
+        "hand_presence_score": {
+            "detected_p50": percentile(presence_detected, .50),
+            "detected_p05": percentile(presence_detected, .05),
+            "missing_p50": percentile(presence_missing, .50),
+            "missing_p95": percentile(presence_missing, .95),
+        },
+        "native_inference_attribution": {
+            "available": any("native_palm_inference" in sample for sample in samples),
+            "palm_frames": len(native_palm_samples),
+            "palm_frames_missing": sum(not sample["detected"]
+                                       for sample in native_palm_samples),
+            "palm_frames_detected": sum(sample["detected"]
+                                        for sample in native_palm_samples),
+            "landmark_frames": len(native_landmark_samples),
+            "landmark_frames_missing": sum(not sample["detected"]
+                                           for sample in native_landmark_samples),
+        },
         "missing_runs": missing_runs,
         "missing_run_details": missing_run_details,
         "short_missing_runs": [length for length in missing_runs if length <= 3],
@@ -136,6 +212,112 @@ def tracking_path_summary(samples: list[dict]) -> dict:
     }
 
 
+def _enable_native_profile(tracker, folder: str) -> None:
+    """Rebuild one replay tracker with MediaPipe's finite native profiler."""
+    from google.protobuf import text_format
+    from mediapipe.framework import calculator_pb2
+    from mediapipe.python.solution_base import SolutionBase
+
+    graph = calculator_pb2.CalculatorGraphConfig()
+    text_format.Parse(tracker.hands._graph.text_config, graph)
+    tracker.hands.close()
+    profiler = graph.profiler_config
+    profiler.enable_profiler = profiler.trace_enabled = True
+    # A 30-second full graph replay can exceed the historical 131072-event
+    # buffer. Keep this finite but large enough to avoid silently losing the
+    # inference events needed for frame attribution.
+    profiler.trace_log_capacity = 524288
+    profiler.trace_log_interval_usec = -1
+    profiler.trace_log_margin_usec = 0
+    profiler.trace_log_path = folder + "/"
+    outputs = (["multi_hand_landmarks"] if tracker.graph_mode == "lean-image" else [
+        "multi_hand_landmarks", "multi_hand_world_landmarks", "multi_handedness",
+    ]) + list(TRACKING_EVIDENCE_OUTPUTS)
+    tracker.hands = SolutionBase(
+        graph_config=graph,
+        side_inputs={
+            "model_complexity": tracker.model_complexity,
+            "num_hands": 1,
+            "use_prev_landmarks": tracker.use_previous_landmarks,
+        },
+        outputs=outputs,
+    )
+
+
+def native_profile_frames(folder: str, frame_count: int) -> dict:
+    """Map palm/landmark inference calls to exact SolutionBase replay frames."""
+    from mediapipe.framework import calculator_profile_pb2
+
+    frames = {index: {} for index in range(1, frame_count + 1)}
+    event_count = 0
+    inference_nodes = Counter()
+    out_of_range_timestamps = []
+    for path in Path(folder).glob("*.binarypb"):
+        report = calculator_profile_pb2.GraphProfile()
+        report.ParseFromString(path.read_bytes())
+        for trace in report.graph_trace:
+            for event in trace.calculator_trace:
+                if event.event_type != calculator_profile_pb2.GraphTrace.PROCESS:
+                    continue
+                if not (event.HasField("input_timestamp")
+                        and event.HasField("start_time")
+                        and event.HasField("finish_time")
+                        and 0 <= event.node_id < len(trace.calculator_name)):
+                    continue
+                name = trace.calculator_name[event.node_id].lower()
+                if "inferencecalculator" not in name:
+                    continue
+                inference_nodes[name] += 1
+                if "palmdetection" in name:
+                    lane = "palm"
+                elif "handlandmark" in name:
+                    lane = "landmark"
+                else:
+                    continue
+                # GraphProfile stores this field as the zero-based packet index
+                # in current MediaPipe builds. Accept the older simulated-us
+                # representation as a conservative compatibility fallback.
+                if 0 <= event.input_timestamp < frame_count:
+                    frame = int(event.input_timestamp) + 1
+                else:
+                    frame = int(round(event.input_timestamp / 33333.0))
+                if frame not in frames:
+                    out_of_range_timestamps.append(event.input_timestamp)
+                    continue
+                frames[frame][lane + "_inference_ms"] = max(
+                    0.0, (event.finish_time - event.start_time) / 1000.0,
+                )
+                event_count += 1
+    palm_ms = [item["palm_inference_ms"] for item in frames.values()
+               if "palm_inference_ms" in item]
+    landmark_ms = [item["landmark_inference_ms"] for item in frames.values()
+                   if "landmark_inference_ms" in item]
+
+    def timing_summary(values: list[float]) -> dict:
+        """Summarize one extracted graph-timing lane."""
+        return {
+            "count": len(values),
+            "p50": percentile(values, .50),
+            "p95": percentile(values, .95),
+            "mean": round(sum(values) / len(values), 2) if values else None,
+        }
+
+    return {
+        "events": event_count,
+        "frames": frames,
+        "palm_inference_frames": sum("palm_inference_ms" in item
+                                     for item in frames.values()),
+        "landmark_inference_frames": sum("landmark_inference_ms" in item
+                                         for item in frames.values()),
+        "inference_nodes": dict(sorted(inference_nodes.items())),
+        "inference_ms": {
+            "palm": timing_summary(palm_ms),
+            "landmark": timing_summary(landmark_ms),
+        },
+        "out_of_range_timestamps": out_of_range_timestamps[:20],
+    }
+
+
 def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
              preview: bool, model: Path | None, cues: list[dict],
              tracking_confidence: float = .55,
@@ -154,7 +336,8 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
              directional_search_gain: float = .275,
              directional_search_min_speed: float = .5,
              directional_search_max_offset: float = .04,
-             directional_search_recovery_frames: int = 0) -> dict:
+             directional_search_recovery_frames: int = 0,
+             native_profile: bool = False) -> dict:
     """Replay one clip through a single tracker configuration and summarize it."""
     import cv2
     tracker = MediaPipeTracker(
@@ -177,6 +360,11 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
         directional_search_recovery_frames=directional_search_recovery_frames,
         tracking_evidence=True,
     )
+    profile_folder = tempfile.TemporaryDirectory(
+        prefix="pgv-replay-native-profile-"
+    ) if native_profile else None
+    if profile_folder is not None:
+        _enable_native_profile(tracker, profile_folder.name)
     tracker.preview_enabled = preview
     tracker.diagnostics_enabled = preview
     capture = cv2.VideoCapture(str(clip))
@@ -218,18 +406,30 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
             detected.append(result.observation.detected)
             tracking_paths.append({
                 "path": result.diagnostics.get("tracking_path", "unavailable"),
+                "observation_cause": result.diagnostics.get(
+                    "tracking_observation_cause", "unavailable"
+                ),
                 "frame": frame_index,
                 "elapsed": elapsed,
                 "cue": None if cue is None else cue["label"],
                 "ms": (finished - started) * 1000,
                 "detected": result.observation.detected,
                 "recovery_gap_ms": result.diagnostics.get("recovery_gap_ms"),
+                "hand_presence_score": result.diagnostics.get("hand_presence_score"),
                 "recovery_missing_span_ms": (
                     result.diagnostics.get("recovery_missing_span_ms")
                 ),
                 "recovery_inference_ms": (
                     result.diagnostics.get("last_recovery_inference_ms")
                     if result.diagnostics.get("tracking_recovered") else None
+                ),
+                "recovery_loss_start_cause": (
+                    result.diagnostics.get("last_recovery_loss_start_cause")
+                    if result.diagnostics.get("tracking_recovered") else None
+                ),
+                "recovery_missing_causes": (
+                    result.diagnostics.get("last_recovery_missing_causes", {})
+                    if result.diagnostics.get("tracking_recovered") else {}
                 ),
                 "directional_search_phase": result.diagnostics.get(
                     "directional_search_phase", "inactive"
@@ -305,6 +505,31 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
     finally:
         capture.release()
         tracker.close()
+    native_profile_summary = None
+    if profile_folder is not None:
+        native_profile_summary = native_profile_frames(
+            profile_folder.name, frame_index,
+        )
+        for sample in tracking_paths:
+            native = native_profile_summary["frames"].get(sample["frame"], {})
+            sample.update(native)
+            sample["native_palm_inference"] = "palm_inference_ms" in native
+            sample["native_landmark_inference"] = "landmark_inference_ms" in native
+            if not sample["detected"]:
+                if sample["native_landmark_inference"]:
+                    sample["native_loss_cause"] = (
+                        "landmark_inference_without_valid_hand"
+                    )
+                elif sample["native_palm_inference"]:
+                    sample["native_loss_cause"] = "palm_inference_without_valid_hand"
+                else:
+                    sample["native_loss_cause"] = "no_profiled_inference"
+        detected_frames = sum(sample["detected"] for sample in tracking_paths)
+        native_profile_summary["trace_complete_for_detected_frames"] = (
+            native_profile_summary["landmark_inference_frames"] >= detected_frames
+        )
+        del native_profile_summary["frames"]
+        profile_folder.cleanup()
     for stat in cue_stats.values():
         stat["detection_percent"] = round(
             stat["detected"] / stat["frames"] * 100, 2
@@ -346,6 +571,7 @@ def run_lane(clip: Path, backend: str, threads: int, size: tuple[int, int],
                               "p95": percentile(encoded_ms, .95)},
         "detection_continuity_percent": round(sum(detected) / len(detected) * 100, 2) if detected else 0,
         "tracking_path_summary": tracking_path_summary(tracking_paths),
+        "native_profile": native_profile_summary,
         "cue_results": cue_stats,
         "neutral_false_activation_frames": neutral_false_frames,
         "neutral_coordinate_jitter_span": jitter_span,
@@ -408,6 +634,17 @@ def parser() -> argparse.ArgumentParser:
         choices=(0, 1),
         help="replay research only: compare immediate reset with one-frame recovery carry",
     )
+    result.add_argument(
+        "--directional-search-candidate", action="append",
+        type=parse_directional_search_candidate,
+        help=("replay research only: run one exact on-lane as "
+              "gain,min-speed,max-offset,recovery-frames; repeat for more lanes"),
+    )
+    result.add_argument(
+        "--native-profile", action="store_true",
+        help=("enable MediaPipe's finite native calculator trace for exact "
+              "palm/landmark inference attribution; replay only"),
+    )
     return result
 
 
@@ -433,7 +670,9 @@ def main() -> int:
                    or args.directional_search_gains
                    or args.directional_search_min_speeds
                    or args.directional_search_max_offsets
-                   or args.directional_search_recovery_frames or args.preview)
+                   or args.directional_search_recovery_frames
+                   or args.directional_search_candidate or args.preview
+                   or args.native_profile)
     sizes = ((640, 480),) if args.quick or focused else ((640, 480), (512, 384))
     previews = ((False,) if args.preview in (None, "closed") else
                 (True,) if args.preview == "open" else (False, True))
@@ -456,6 +695,20 @@ def main() -> int:
     directional_recovery_frames = tuple(
         args.directional_search_recovery_frames or (0,)
     )
+    if args.directional_search_candidate:
+        directional_candidates = tuple(
+            ("on", gain, speed, offset, recovery)
+            for gain, speed, offset, recovery in args.directional_search_candidate
+        )
+    else:
+        directional_candidates = tuple(
+            (mode, gain, speed, offset, recovery)
+            for mode in directional_modes
+            for gain in directional_gains
+            for speed in directional_min_speeds
+            for offset in directional_max_offsets
+            for recovery in directional_recovery_frames
+        )
     for size in sizes:
         for preview in previews:
             for threads in threads_to_test:
@@ -468,12 +721,10 @@ def main() -> int:
                                         for detection_confidence in detection_confidences:
                                             for model_complexity in model_complexities:
                                                 for preparation in frame_preparations:
-                                                    for directional_mode in directional_modes:
-                                                        for directional_gain in directional_gains:
-                                                            for directional_speed in directional_min_speeds:
-                                                                for directional_offset in directional_max_offsets:
-                                                                    for recovery_frames in directional_recovery_frames:
-                                                                        lanes.append(run_lane(
+                                                    for (directional_mode, directional_gain,
+                                                         directional_speed, directional_offset,
+                                                         recovery_frames) in directional_candidates:
+                                                        lanes.append(run_lane(
                                                                         args.clip, "legacy", threads, size, preview,
                                                                         None, cues, confidence, roi_scale, roi_shift,
                                                                         palm_mode, detection_confidence, model_complexity,
@@ -483,6 +734,7 @@ def main() -> int:
                                                                         directional_mode == "on", directional_gain,
                                                                         directional_speed, directional_offset,
                                                                         recovery_frames,
+                                                                        args.native_profile,
                                                                         ))
             if args.model is not None and not args.quick:
                 lanes.append(run_lane(
@@ -492,9 +744,11 @@ def main() -> int:
                     frame_times, effective_fps,
                 ))
     result = {
-        "version": 2, "clip": str(args.clip), "full_frame_resize_only": True,
+        "version": 3, "clip": str(args.clip), "full_frame_resize_only": True,
         "fixed_roi_shift_scope": "replay research only; production remains zero shift",
-        "directional_search_scope": "replay research only; production remains disabled",
+        "directional_search_scope": (
+            "configuration-controlled experiment; each replay lane records its setting"
+        ),
         "cues": cues,
         "lanes": lanes,
         "note": ("Observation samples support cue-by-cue recognition review. Live Dashboard "

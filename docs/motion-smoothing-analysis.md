@@ -1,4 +1,4 @@
-# Existing sample review and smoothing model
+# Recognition and movement pipeline analysis
 
 ## Historical bounded speed-sensitive replacement — 7 September 2026
 
@@ -87,23 +87,99 @@ These are sampled frame counts, not distinct recognition-result counts.
 The receiver observed 1,367 distinct valid publications in 30 seconds, not 1,367
 new recognized positions or displayed images.
 
-## Isolated GPU feasibility result
+## Recognition runtime and Adreno 702 research - 9 September 2026
 
-The UNO Q exposes an Adreno 702 OpenGL ES 3.1 renderer. A custom ARM64 MediaPipe
-0.10.18 research wheel initialized EGL and created the TensorFlow Lite GPU
-delegate, proving that the application container can reach the GPU when supplied
-with a compatible runtime. The synchronous Tasks Image graph measured roughly
-664 ms warm p50 on GPU and 207 ms on CPU, compared with roughly 52 ms for the
-deployed MediaPipe Hands graph on live input. Repeated single-write tensor
-synchronization warnings accompanied the GPU run.
+### What the MediaPipe graph means
 
-No gesture, reach, or smoothing threshold can remove hundreds of milliseconds
-inside the inference graph. The custom wheel and temporary runtime changes were
-removed from the Controller and are not release artifacts. The remaining useful
-experiment is a lean GPU palm-detection/landmark graph that keeps preprocessing
-on the GPU, prewarms once, returns only landmarks, and uses one newest result in
-flight. It must beat the proven CPU path by at least 20% without reducing
-recognition by more than one percentage point or worsening jitter or thermals.
+The MediaPipe graph is the complete hand-processing pipeline, not one neural
+network. It connects frame preparation, palm detection, hand-region geometry,
+the landmark model, tracking between detections, and result delivery. The palm
+and landmark neural networks are nodes inside that graph. During continuous
+tracking, the landmark model uses the previous hand region. When that evidence
+fails, the graph runs the more expensive palm detector to reacquire the hand.
+
+PowerGlove Vision consumes the graph's 21 landmarks once per fresh result. The
+five-point palm anchor and gesture calculations happen after MediaPipe has
+already calculated all landmarks; reducing the number of points averaged by
+PowerGlove Vision would therefore not reduce neural-network work.
+
+### MediaPipe 0.10.35 CPU promotion
+
+The release now ships only the ARM64/Python 3.12 MediaPipe 0.10.35 wheel. The
+production lane remains the complete MediaPipe Hands graph with four XNNPACK CPU
+threads, fused full-colour preparation, a 0.35 tracking-confidence threshold,
+the 2.25 hand-search region, and Latest-coordinate native X/Y. Gesture rules,
+calibration, reach, mappings, and controller transport did not change.
+
+The same retained 736-frame fast-sweep clip was replayed through the former
+0.10.18 runtime and the selected 0.10.35 runtime with identical settings:
+
+| Runtime | Inference p50 / p95 | Detection continuity | One-frame misses |
+| --- | ---: | ---: | ---: |
+| Historical 0.10.18 | 36.12 / 60.18 ms | 97.96% | 15 |
+| Shipped 0.10.35 | 34.03 / 46.60 ms | 97.96% | 15 |
+
+Landmark-continuation p95 fell from 51.10 ms to 44.29 ms. Palm-reacquisition
+p95 fell from 149.48 ms to 120.16 ms. A separate live Super Glove Ball trace
+improved capture-to-send p95 from 126.84 ms to 91.16 ms and delivered all 3,408
+observed samples to RetroPie with no trace drops. The player reported that both
+ordinary tracking and return-to-space reacquisition felt zippier.
+
+An output-paused ten-minute soak exercised the complete camera and graph. It
+completed without a crash, camera loss, worker error, or thermal throttling.
+The hottest reported thermal zone reached 61.7 degrees Celsius. Container memory
+rose during initialization, then remained at an approximately 484 MiB plateau.
+The blank-room portion deliberately stressed repeated palm detection; the
+matched clip supplies the continuity evidence that an unattended room cannot.
+
+The packaged wheel was rebuilt from upstream MediaPipe commit
+`f8ef212d5c962c0e853db7e59d217056b187084b`. Its release metadata removes
+unused JAX and JAXLIB dependencies and pins headless OpenCV 4.11.0.86. The
+rebuilt integrity record has SHA-256
+`3f09815d9f6c41d828cd71c9ba477c24a63850908876dfc8b095a882c790e562`.
+An isolated ARM64 import confirmed MediaPipe `0.10.35+powerglove.gpu2`, OpenCV
+`4.11.0`, and no installed JAX module.
+
+### Why production still uses the CPU
+
+The UNO Q exposes a genuine Adreno 702 at 845 MHz through Mesa's Turnip driver.
+Tests reached the hardware through EGL/OpenGL ES, OpenCL through Rusticl, and
+Vulkan. Hardware access was therefore confirmed; the limitation was the tested
+inference software path, not an absent GPU.
+
+| Exact or representative lane | CPU result | Adreno result | Decision |
+| --- | ---: | ---: | --- |
+| MediaPipe 0.10.35 hand landmark continuation | 32.74 ms p50 | 384.12 ms p50 | GPU rejected |
+| MNN 3.6.1 landmark-lite model | 19.7 / 26.8 ms | 43.9 / 44.0 ms | Vulkan slower and numerically incompatible |
+| MNN 3.6.1 palm-lite model | 36.3 / 44.3 ms | 77.9 / 78.2 ms | Vulkan slower and numerically incompatible |
+| ncnn exact landmark model | 25.0 / 38.7 ms | 385.5 / 386.9 ms | Vulkan slower and numerically incompatible |
+
+The MediaPipe OpenGL graph repeatedly synchronized small tensors and was more
+than ten times slower than XNNPACK. The experimental Linux OpenCL port reached
+real FD702 graph construction but failed while creating an image from a buffer.
+MNN's per-layer profiler showed time distributed across convolution and
+depthwise-convolution work rather than one fixable synchronization tail.
+
+An ncnn CPU sidecar did reproduce the exact landmark model and closely matched
+MediaPipe coordinates, but its complete replay measured 36.1-36.5 ms p50 and
+45.7-52.3 ms p95 with 98.68% continuity. Image preparation, process handoff, and
+duplicated tracking geometry removed its model-only advantage. It remains a
+repository research tool rather than an installed backend.
+
+Qualcomm QNN remains a possible future lane only if a redistributable UNO Q
+runtime becomes available and proves end-to-end improvement. No confidence,
+reach, or gesture tuning can repair hundreds of milliseconds spent inside a
+delegate. Any future accelerator must beat the current camera-to-coordinate p95
+by at least 20%, preserve ordered newest-sample delivery and recognition within
+one percentage point, add no jitter or false gestures, and remain thermally
+stable for ten minutes.
+
+The supporting upstream references are MediaPipe's framework documentation,
+hand-tracking graphs and model documentation; Qualcomm's AI Engine Direct and
+TensorFlow Lite delegate documentation; MNN's Vulkan backend; ncnn's Vulkan
+documentation; and Mesa's Freedreno/Turnip device support. Exact commits,
+converted-model hashes, profiler outputs, and temporary binaries remain
+engineering evidence and are deliberately excluded from ordinary installers.
 
 ## Historical smoothing-only experiment
 

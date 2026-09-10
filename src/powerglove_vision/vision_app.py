@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-09 - Included conditional search activity in bounded native traces.
+#   2026-09-09 - Enabled detailed MediaPipe evidence only during finite traces.
 #   2026-09-09 - Exposed capture-time tracking loss and recovery timing.
 #   2026-09-09 - Removed tuning locks from the inference-to-send boundary.
 #   2026-09-08 - Published frame-preparation and palm-reacquisition trace evidence.
@@ -521,6 +523,7 @@ def _prepare_vision(args):
             backend=args.tracker_backend,
             graph_mode=args.tracker_graph,
             directional_search=args.directional_search,
+            tracking_evidence=getattr(args, "tracking_evidence", False),
         )
         log_startup_stage("preparation total", preparation_started)
         return cv2, capture, tracker
@@ -593,8 +596,16 @@ def _native_trace_fields(engine: GestureEngine, result, active: bool) -> dict:
         "latest_recovery_pending": bool(engine._latest_recovery_pending),
         "latest_confirmation_pending": bool(engine._latest_confirmation_pending),
         "tracking_path": result.diagnostics.get("tracking_path"),
+        "tracking_observation_cause": result.diagnostics.get(
+            "tracking_observation_cause"
+        ),
+        "loss_start_cause": result.diagnostics.get("loss_start_cause"),
+        "last_recovery_loss_start_cause": result.diagnostics.get(
+            "last_recovery_loss_start_cause"
+        ),
         "palm_detector_invoked": result.diagnostics.get("palm_detector_invoked"),
         "palm_detection_count": result.diagnostics.get("palm_detection_count"),
+        "hand_presence_score": result.diagnostics.get("hand_presence_score"),
         "palm_reacquired": bool(result.diagnostics.get("palm_reacquired", False)),
         "hand_missing_streak": result.diagnostics.get("hand_missing_streak", 0),
         "tracking_recovered": bool(result.diagnostics.get("tracking_recovered", False)),
@@ -605,14 +616,30 @@ def _native_trace_fields(engine: GestureEngine, result, active: bool) -> dict:
             if result.diagnostics.get("tracking_recovered") else None
         ),
         "frame_preparation": result.diagnostics.get("frame_preparation"),
+        "directional_search_active": bool(
+            result.diagnostics.get("directional_search_active", False)
+        ),
+        "directional_search_offset": result.diagnostics.get(
+            "directional_search_offset", (0.0, 0.0)
+        ),
+        "directional_search_phase": result.diagnostics.get(
+            "directional_search_phase", "inactive"
+        ),
     }
 
 
 TRACKING_STATUS_FIELDS = (
     "frame_preparation",
     "tracking_path",
+    "tracking_observation_cause",
+    "loss_start_cause",
+    "current_missing_causes",
+    "last_recovery_loss_start_cause",
+    "last_recovery_missing_causes",
+    "missing_cause_totals",
     "palm_detector_invoked",
     "palm_detection_count",
+    "hand_presence_score",
     "palm_reacquired",
     "hand_missing_streak",
     "landmark_continuations_total",
@@ -717,6 +744,9 @@ def main() -> int:
     token = load_worker_token(args)
     sender = UdpSender(args.receiver, args.port, token)
     trace = getattr(sender, "trace", None)
+    # Extra MediaPipe evidence exists only for an explicitly enabled finite
+    # diagnostic trace; the normal gameplay graph remains unchanged.
+    args.tracking_evidence = trace is not None
     profile_server = ProfileCommandServer(args.profile_listen, args.profile_port, token)
     shared = SharedDebugState()
     shared.tuning = TuningManager(calibration_path.with_name("gesture-tuning.json"))

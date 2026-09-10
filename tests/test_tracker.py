@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-09 - Covered CPU inference node names in two tested MediaPipe releases.
+#   2026-09-09 - Covered observable loss-cause attribution across recovery.
 #   2026-09-09 - Covered optional one-frame directional reacquisition search.
 #   2026-09-09 - Covered capture-time tracking loss and recovery timing.
 #   2026-09-09 - Verified preview demand cannot change fused preparation.
@@ -26,7 +28,8 @@ from powerglove_vision.tracker import (
     _DirectionalSearchState, _TrackingTelemetry,
     _Point, _camera_curl_points, _configure_tracking_roi, _curl, _finger_bends,
     _finger_curls, _finger_curls_from_bends, _landmarks_valid,
-    _inference_node_threads,
+    _inference_node_threads, _is_cpu_inference_calculator,
+    _hand_presence_score_evidence,
     _palm_anchor_candidates, _palm_detector_evidence, _polygon_centroid,
     _prepare_tracker_frame, _translate_tracker_input,
 )
@@ -44,6 +47,11 @@ def pose_points(closed):
 
 
 class TrackerGeometryTests(unittest.TestCase):
+    def test_cpu_inference_calculator_names_cover_tested_mediapipe_versions(self):
+        self.assertTrue(_is_cpu_inference_calculator("InferenceCalculatorCpu"))
+        self.assertTrue(_is_cpu_inference_calculator("InferenceCalculatorXnnpack"))
+        self.assertFalse(_is_cpu_inference_calculator("InferenceCalculatorGl"))
+
     def test_directional_search_uses_measured_gentle_gain_by_default(self):
         parameters = inspect.signature(tracker_module.MediaPipeTracker).parameters
         self.assertEqual(parameters["directional_search_gain"].default, .275)
@@ -184,6 +192,7 @@ class TrackerGeometryTests(unittest.TestCase):
     def test_tracking_evidence_names_match_the_mediapipe_graph_outputs(self):
         self.assertEqual(TRACKING_EVIDENCE_OUTPUTS, (
             "palm_detections",
+            "handlandmarkcpu__hand_presence_score",
         ))
 
     def test_inference_threads_can_target_palm_and_landmark_models_separately(self):
@@ -209,6 +218,16 @@ class TrackerGeometryTests(unittest.TestCase):
             _palm_detector_evidence(SimpleNamespace(palm_detections=[1])),
             (True, 1),
         )
+
+    def test_hand_presence_evidence_rejects_unavailable_and_nonfinite_values(self):
+        name = "handlandmarkcpu__hand_presence_score"
+        self.assertIsNone(_hand_presence_score_evidence(SimpleNamespace()))
+        self.assertIsNone(_hand_presence_score_evidence(
+            SimpleNamespace(**{name: float("nan")})
+        ))
+        self.assertEqual(_hand_presence_score_evidence(
+            SimpleNamespace(**{name: .47})
+        ), .47)
 
     def test_tracking_telemetry_classifies_initial_continuation_and_reacquisition(self):
         telemetry = _TrackingTelemetry()
@@ -253,6 +272,53 @@ class TrackerGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(recovered["recovery_missing_span_ms"], 80.0)
         self.assertAlmostEqual(recovered["last_recovery_inference_ms"], 68.0)
         self.assertAlmostEqual(recovered["longest_tracking_loss_ms"], 80.0)
+        self.assertEqual(first["tracking_observation_cause"],
+                         "graph_no_hand_unobservable")
+        self.assertEqual(second["tracking_observation_cause"],
+                         "palm_detection_without_valid_hand")
+        self.assertEqual(recovered["last_recovery_loss_start_cause"],
+                         "graph_no_hand_unobservable")
+        self.assertEqual(recovered["last_recovery_missing_causes"], {
+            "graph_no_hand_unobservable": 1,
+            "palm_detection_without_valid_hand": 1,
+        })
+        self.assertEqual(recovered["missing_cause_totals"], {
+            "invalid_landmark_geometry": 0,
+            "palm_detection_without_valid_hand": 1,
+            "landmark_presence_below_gate": 0,
+            "graph_no_hand_unobservable": 1,
+        })
+
+    def test_presence_score_identifies_a_landmark_gate_loss(self):
+        telemetry = _TrackingTelemetry()
+        telemetry.observe(True, True, 1)
+        missing = telemetry.observe(
+            False, None, None, hand_presence_score=.48,
+        )
+        self.assertEqual(missing["tracking_observation_cause"],
+                         "landmark_presence_below_gate")
+        self.assertEqual(missing["hand_presence_score"], .48)
+
+    def test_normal_gameplay_omits_detailed_cause_dictionaries(self):
+        telemetry = _TrackingTelemetry()
+        missing = telemetry.observe(
+            False, None, None, include_cause_details=False,
+        )
+        self.assertEqual(missing["tracking_observation_cause"],
+                         "graph_no_hand_unobservable")
+        self.assertNotIn("missing_cause_totals", missing)
+        self.assertNotIn("current_missing_causes", missing)
+
+    def test_invalid_landmarks_are_the_observable_loss_cause(self):
+        telemetry = _TrackingTelemetry()
+        telemetry.observe(True, True, 1)
+        missing = telemetry.observe(
+            False, True, 1, invalid_landmarks=True,
+        )
+        self.assertEqual(missing["tracking_observation_cause"],
+                         "invalid_landmark_geometry")
+        self.assertEqual(missing["loss_start_cause"],
+                         "invalid_landmark_geometry")
 
     def test_tracking_telemetry_handles_missing_timestamps_without_inventing_latency(self):
         telemetry = _TrackingTelemetry()

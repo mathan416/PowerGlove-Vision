@@ -306,11 +306,13 @@ Camera capture uses the complete 640×480 field of view. Automatic rate prefers
 30 fps with safe driver fallback. A dedicated
 capture thread continuously drains the camera and retains only its newest frame,
 so inference skips superseded images instead of building an input queue. The
-deployed worker explicitly selects **MediaPipe Hands**, whose stable
+deployed worker explicitly selects **MediaPipe Hands 0.10.35**, whose stable
 command identifier is `legacy`, and lets each of its two inference stages use up
 to four CPU threads (`--inference-threads 4`). Matched live testing promoted four
 threads for the PowerGlove Vision Controller; the saved setting remains explicit
 so a future platform can be re-measured rather than assuming the same result.
+The release installer carries only the validated 0.10.35 runtime. Historical
+0.10.18 results remain benchmark evidence, not a selectable installed path.
 **MediaPipe Tasks Video (experimental)** remains available under the stable
 `tasks-video` identifier for controlled comparison.
 
@@ -1238,7 +1240,7 @@ several complete loops is the preferred review artifact for later refinements.
 | `app.yaml` | Arduino App Lab application metadata and exposed ports |
 | `sketch/sketch.yaml` | PowerGlove Vision Controller sketch platform and pinned Arduino library dependencies |
 | `pyproject.toml` | Python package metadata, supported interpreter range, and optional dependencies |
-| `python/worker-wheels/` | Platform-specific MediaPipe worker dependency supplied by the App Lab installation ZIP |
+| `python/worker-wheels/` | Sole validated MediaPipe 0.10.35 ARM64 runtime supplied by the App Lab installation ZIP |
 | `data/models/hand_landmarker.task` | Checksum-verified cached model, installed from the bundle when vision is first activated |
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
