@@ -32,6 +32,9 @@ No changes are pending after the refreshed release candidate.
 
 ### Fixed
 
+- Fixed clean UNO Q release installation after App Lab startup by explicitly
+  preserving the application root while recreating generated Compose services;
+  brick mounts can no longer collapse to invalid root-level `/scripts` paths.
 - Prevented the release installer from generating a Python bytecode cache inside
   its verified staging tree before applying the installation manifest. RC.7's
   archive was clean, but this runtime cache caused a clean UNO Q installation to
