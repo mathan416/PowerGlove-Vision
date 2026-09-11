@@ -2438,6 +2438,11 @@ Drafts and prereleases are excluded from automatic selection. A failed `curl`
 download prevents the chained `bash` command from running; saving the script
 first also leaves terminal input available for prompts.
 
+UNO Q download commands must begin with `cd /home/arduino`. Its terminal can
+open in the read-only `/` directory, where `curl` cannot create
+`install-uno-q.sh`. RetroPie commands may use that account's writable home
+directory instead.
+
 To pin a published release, append `--version TAG` to the saved script command,
 for example `bash install-uno-q.sh --version v0.3.0`. To test a published development
 prerelease, use `bash install-uno-q.sh --development dev-COMMIT` instead. Replace

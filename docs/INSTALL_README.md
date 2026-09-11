@@ -22,7 +22,9 @@ continue to select the latest stable release.
 On the VirtualGlove Controller:
 
 ```sh
-curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.7/install-uno-q.sh && bash install-uno-q.sh --development v0.4.0-rc.7
+cd /home/arduino
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.7/install-uno-q.sh
+bash install-uno-q.sh --development v0.4.0-rc.7
 ```
 
 On RetroPie:
@@ -72,8 +74,14 @@ The latest release must include the installer assets before these commands work.
 Run this single line in the Controller terminal:
 
 ```sh
-curl -fLO https://github.com/mathan416/VirtualGlove/releases/latest/download/install-uno-q.sh && bash install-uno-q.sh
+cd /home/arduino
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/latest/download/install-uno-q.sh
+bash install-uno-q.sh
 ```
+
+The Controller terminal may open in `/`, where a normal user cannot save files.
+The command first moves to the Arduino user's writable home directory so the
+installer can be downloaded safely.
 
 The script verifies its download, installs VirtualGlove, and configures automatic
 startup. It also installs:

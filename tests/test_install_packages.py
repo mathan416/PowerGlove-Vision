@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Covered cache-free loading from an extracted release tree.
 #   2026-09-05 - Covered required renewable game-session package members.
 #   2026-09-05 - Required App Lab builds to refresh their checksum companion.
 #   2026-09-04 - Added two-machine installation regression coverage.
@@ -105,6 +106,30 @@ class ArchiveTests(unittest.TestCase):
             for machine, version in [('uno-q', 'dev-test'), ('retropie', 'v-other')]:
                 with self.assertRaisesRegex(ValueError, 'does not match'):
                     installer.unpack(archive, Path(directory) / 'bad', machine, version)
+
+    def test_loading_and_staging_extracted_setup_creates_no_generated_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / 'VirtualGlove'
+            scripts = source / 'scripts'
+            scripts.mkdir(parents=True)
+            for name in ('setup-machine.py', 'installation-manifest.py'):
+                (scripts / name).write_bytes((ROOT / 'scripts' / name).read_bytes())
+            (source / 'app.yaml').write_text('name: VirtualGlove\n')
+
+            module = installer.load_setup(source)
+            module.BACKUPS = root / 'backups'
+            app = root / 'home/ArduinoApps/powerglove-vision'
+            account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
+            with patch.object(installer, 'APP', app), \
+                 patch.object(installer.pwd, 'getpwnam', return_value=account), \
+                 patch.object(installer.os, 'chown'), patch.object(module, 'run'):
+                installer.stage_unoq(source, module)
+
+            self.assertFalse((scripts / '__pycache__').exists())
+            self.assertFalse(list(source.rglob('*.pyc')))
+            self.assertTrue((app / 'scripts/setup-machine.py').is_file())
+            self.assertTrue((app / '.powerglove-install.json').is_file())
 
     def test_traversal_private_files_and_links_rejected_before_extract(self):
         link = zipfile.ZipInfo('VirtualGlove/link')

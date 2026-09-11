@@ -3,8 +3,12 @@
   "rule": "Count every hand showing five fingers plus a thumb once per appearance, including repeated artwork.",
   "guides": {
     "GAMEPLAY_GUIDE.md": {
-      "answer": 14,
+      "answer": 15,
       "images": {
+        "images/gestures/v2/closed-hand.png": {
+          "hands_per_appearance": 1,
+          "occurrences": 1
+        },
         "images/gestures/actions/finger-curl.png": {
           "hands_per_appearance": 1,
           "occurrences": 8
@@ -19,6 +23,7 @@
         }
       },
       "locations": [
+        "Rock, Paper, Scissors - Rock",
         "Bad Street Brawler",
         "Joust",
         "Defender II",
