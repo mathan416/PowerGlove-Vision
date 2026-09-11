@@ -7,6 +7,13 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Fixed
+
+- Corrected Pixel Pal's Extra-Digit Hunt answer from 14 to 15 after a complete
+  visual audit found one more six-digit glove in the opening Rock, Paper,
+  Scissors table. The documentation check now also rejects six-digit artwork
+  that is labelled for accessibility but missing from the hunt manifest.
+
 ## [0.4.0-rc.7] - 2026-09-11
 
 ### Added

@@ -112,11 +112,24 @@ def check_extra_digit_hunt(errors: list[str]) -> None:
             source = source_path.read_text()
             answer = int(guide["answer"])
             images = guide["images"]
+            locations = guide["locations"]
         except (OSError, KeyError, TypeError, ValueError) as exc:
             errors.append(f"invalid Extra-Digit Hunt guide record for {filename}: {exc}")
             continue
         calculated = 0
         tags = re.findall(r"<img\s+[^>]+>", source, re.IGNORECASE)
+        listed_images = set(images)
+        described_images = {
+            match.group(1)
+            for tag in tags
+            if "six-digit" in tag.lower()
+            if (match := re.search(r'src="([^"]+)"', tag, re.IGNORECASE))
+        }
+        for image in sorted(described_images - listed_images):
+            errors.append(
+                f"Extra-Digit Hunt image is described as six-digit but is not in the manifest: "
+                f"{image} in {filename}"
+            )
         for image, record in images.items():
             expected = int(record["occurrences"])
             hands = int(record["hands_per_appearance"])
@@ -132,6 +145,10 @@ def check_extra_digit_hunt(errors: list[str]) -> None:
         if calculated != answer:
             errors.append(
                 f"Extra-Digit Hunt answer for {filename} is {answer}; artwork totals {calculated}"
+            )
+        if len(locations) != answer or len(set(locations)) != len(locations):
+            errors.append(
+                f"Extra-Digit Hunt locations for {filename} must name all {answer} hands exactly once"
             )
         if f"**Pixel Pal's answer: {answer} six-digit hands.**" not in source:
             errors.append(f"Extra-Digit Hunt published answer is stale in {filename}")

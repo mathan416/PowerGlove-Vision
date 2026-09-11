@@ -18,7 +18,7 @@ input while the page is open, so RetroPie does not need to be connected.
 
 | Your move | Make this pose | See it |
 | --- | --- | --- |
-| Rock | Close all five fingers into a comfortable fist. | <img src="images/gestures/v2/closed-hand.png" alt="Closed hand for rock" width="96"> |
+| Rock | Close all five fingers into a comfortable fist. | <img src="images/gestures/v2/closed-hand.png" alt="Six-digit closed glove for rock" width="96"> |
 | Paper | Face an open, relaxed palm toward the camera. | <img src="images/gestures/v2/show-your-hand.png" alt="Open palm for paper" width="96"> |
 | Scissors | Extend the index and middle fingers in a V sign. | <img src="images/gestures/v2/v-sign.png" alt="V sign for scissors" width="96"> |
 
@@ -749,11 +749,12 @@ their respective owners. No ROM images or original game artwork are distributed.
 
 <img src="images/gestures/v2/pixel-pal.png" alt="Pixel Pal reveals the Extra-Digit Hunt answer" width="180">
 
-**Pixel Pal's answer: 14 six-digit hands.**
+**Pixel Pal's answer: 15 six-digit hands.**
 
-They appear once each in the Bad Street Brawler, Joust, Defender II, Sesame
-Street 1-2-3, and Gun Smoke play cards; twice in the native Super Glove Ball
-gesture table; three times in the gesture reference (middle curl, ring curl,
-and closed hand); and once in the
+One appears in the opening Rock, Paper, Scissors table. They also appear once
+each in the Bad Street Brawler, Joust, Defender II, Sesame Street 1-2-3, and
+Gun Smoke play cards; twice in the native Super Glove Ball gesture table;
+three times in the gesture reference (middle curl, ring curl, and closed hand);
+and once in the
 **Start with A, D, and H** table. Three more appear in the Program B, E, and F
 cards. Every appearance counts, even when the same artwork returns.
