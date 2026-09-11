@@ -9,6 +9,11 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Reworked the repository README into a concise project landing page with a
+  clear introduction, feature summary, hardware checklist, seven-step release-
+  candidate installation path, first-play guidance, and simpler routes into the
+  user and technical documentation. Removed the Extra-Digit Hunt explanation
+  from the README while retaining the game in the illustrated guides.
 - Added automatic paired-console recovery when a saved IP becomes stale or
   `.local` resolution is unavailable. The Controller now detects missing
   authenticated receiver replies, broadcasts only a signed handshake on each
