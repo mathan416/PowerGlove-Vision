@@ -342,10 +342,12 @@ def local_broadcast_addresses() -> tuple[str, ...]:
 
 
 def _cache_key(host: str, port: int, token: str) -> tuple[str, int, bytes]:
+    """Build a destination-cache key without retaining the pairing token."""
     return host, port, hashlib.sha256(token.encode()).digest()
 
 
 def _cached_destination(key: tuple[str, int, bytes], now: float) -> str | None:
+    """Return one unexpired authenticated destination from the process cache."""
     with _destination_cache_lock:
         item = _destination_cache.get(key)
         if item is None:
@@ -360,6 +362,7 @@ def _cached_destination(key: tuple[str, int, bytes], now: float) -> str | None:
 def _remember_destination(
     key: tuple[str, int, bytes], address: str, now: float
 ) -> None:
+    """Cache one validated IPv4 destination within the bounded expiry table."""
     try:
         parsed = ipaddress.ip_address(address)
     except ValueError:
@@ -411,6 +414,7 @@ def _exchange(
     sock: socket.socket, payload: bytes, destination: tuple[str, int], token: str,
     request_id: str, kind: str, attempts: int
 ) -> tuple[dict[str, Any], tuple[str, int]] | None:
+    """Send a bounded request and accept only its authenticated matching reply."""
     for _attempt in range(attempts):
         try:
             sock.sendto(payload, destination)

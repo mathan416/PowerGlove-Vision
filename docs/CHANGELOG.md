@@ -7,6 +7,8 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+## [0.4.0-rc.6] - 2026-09-11
+
 ### Changed
 
 - Reworked the repository README into a concise project landing page with a
