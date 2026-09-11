@@ -5,7 +5,7 @@ This file records user-visible PowerGlove Vision changes. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
 
-## [Unreleased]
+## [0.4.0-rc.4] - 2026-09-10
 
 ### Added
 
@@ -40,6 +40,29 @@ authoritative record for line-level and file-level history.
   capture-buffer choice.
 
 ### Changed
+
+- Completed the MediaPipe CPU-pipeline refinement and froze the validated
+  production defaults: OpenCV with thread isolation, one requested buffer,
+  30-fps-first negotiation, four inference threads, tracking confidence `0.35`,
+  palm-detection confidence `0.45`, a 2.25 search region, direction-aware
+  fast-sweep tracking, and Latest-coordinate native X/Y.
+- Added detector-context attribution to the output-paused camera benchmark.
+  A final sustained run separated camera dequeue, MJPEG decode, inference
+  pickup, the preceding frame, palm detection, recovery, post-graph work, and
+  Linux scheduling. Ordinary landmark tracking measured about 37 ms median;
+  palm detection/reacquisition measured about 105 ms median. Camera delivery,
+  scheduling, recognition output, and transport were not the source of the
+  detector tail.
+- Rejected lower `0.10` and `0.20` tracking-confidence gates. They did not
+  prevent any fast-sweep detector entries and increased reacquisition p95 from
+  about 102 ms at `0.35` to 126-128 ms. A broader clip likewise found no useful
+  recovery trade-off.
+- Extended process-isolated capture research to OpenCV as well as Direct V4L2.
+  Both variants retain one coherent latest frame and report an explicit fallback;
+  matched live tests still selected thread-isolated OpenCV for production.
+- Made Controller restarts terminate and reap the complete worker process group,
+  including its private `uv`, Python, and camera-owning descendants, before a
+  replacement worker starts.
 
 - Replaced positional activation/release hysteresis with the original-style
   nine-region layout: center, four cardinal directions, and four diagonals. Every

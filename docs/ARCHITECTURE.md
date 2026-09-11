@@ -83,7 +83,8 @@ sockets. These functions are kept separate from camera inference.
 2. MediaPipe Hands 0.10.35 runs its complete graph with four XNNPACK CPU
    threads. The graph first uses its palm detector, then the landmark model
    produces 21 hand points and normally continues from the prior hand region.
-   Palm detection runs again when landmark tracking cannot continue. The
+   The production landmark-tracking gate is 0.35 and the palm-detection gate is
+   0.45. Palm detection runs again when landmark tracking cannot continue. The
    tracker validates finite, non-collapsed palm geometry and produces a
    `HandObservation` using the selected frame's capture timestamp. MediaPipe's
    score is labelled as handedness certainty rather than position confidence.
@@ -113,6 +114,16 @@ comfortable-reach spans. A missed observation shorter than
 `native_xy_loss_hold_ms` (180 ms by default) holds only the last X/Y position;
 buttons, fingers, depth, roll, and digital directions release on the first
 missed native observation without inheriting the X/Y hold.
+
+Final sustained attribution measured ordinary landmark continuation near 37 ms
+median and palm detection/reacquisition near 105 ms median. Two-buffer direct
+V4L2 diagnostics sustained approximately 30 camera dequeues per second, with
+MJPEG decode near 5.4 ms median and post-graph work near 2.9 ms median. Inference
+run-queue wait was negligible. These figures establish the palm detector as the
+remaining CPU latency tail; they do not justify another smoothing layer, frame
+queue, or speculative parallel tracker. OpenCV with thread isolation remains
+the live-tested production reader, and its saved one-buffer request remains
+independent of the direct-reader diagnostic.
 After that brief gap, Latest immediately accepts a strongly aligned forward
 measurement. One contradictory or unusually distant non-forward result instead
 holds the last reliable point until the next fresh measurement confirms the

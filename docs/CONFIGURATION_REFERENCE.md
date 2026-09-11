@@ -524,6 +524,7 @@ A typical device configuration file contains the following fields:
   "capture_isolation": "thread",
   "inference_threads": 4,
   "tracking_confidence": 0.35,
+  "detection_confidence": 0.45,
   "tracking_roi_scale": 2.25,
   "matrix_attract": "on"
 }
@@ -533,8 +534,11 @@ A typical device configuration file contains the following fields:
 usable driver rate. `camera_buffers` is `1` or `2`; invalid values are rejected
 instead of silently changing the capture policy. Production `inference_threads`
 accepts 1, 2, or 4. The 0.4.0
-baseline uses four threads, `tracking_confidence` 0.35, and
-`tracking_roi_scale` 2.25.
+baseline uses four threads, `tracking_confidence` 0.35,
+`detection_confidence` 0.45, and `tracking_roi_scale` 2.25. Tracking confidence
+decides whether the previous landmark region remains usable; detection confidence
+is the gate applied when the palm detector must find or reacquire a hand. These
+are tested engineering defaults rather than ordinary player controls.
 Direction-aware fast-sweep search is always active in the production MediaPipe
 path. It applies the measured gentle next-frame search translation without
 changing reach, gestures, mappings, or Latest-coordinate output. The former
@@ -556,11 +560,12 @@ guides. It disconnects that optional stream between candidates and when the
 test completes, stops, or needs recovery.
 
 `capture_isolation` is `thread` by default and is the gameplay-validated path.
-The opt-in `process` engineering comparison is
-accepted only with `camera_backend: "direct-v4l2"`; it moves camera ownership,
-MJPEG decoding, and the single latest-frame slot outside the MediaPipe worker.
-It adds no frame queue. Unsupported combinations remain on the proven threaded
-path, and a failed isolated startup falls back with its reason in status.
+The opt-in `process` engineering comparison works with OpenCV and Direct V4L2;
+it moves camera ownership, decoding, and the single latest-frame slot outside
+the MediaPipe worker. It adds no frame queue. A failed isolated startup falls
+back to the proven threaded OpenCV path with its reason in status. Process
+isolation remains configuration-only because matched live play did not improve
+on the thread path.
 
 `matrix_attract` accepts `on` (default), `dim` (animation limited to levels 1–2),
 or `off` (four faint app/console/paired-console/Networking indicators). Change it using
@@ -1777,7 +1782,7 @@ they may still perform their normal work.
 | `scripts/benchmark-vision-replay.py` | Local clip, required JSON output, optional Tasks model path, and research lane parameters | Replays the same full frames through MediaPipe Hands at 1, 2, 3, or 4 threads and through optional Tasks Video, at 640×480 and full-field 512×384, with preview closed and open. Reports p50/p95 inference, continuity, cue recognition, neutral false activations, coordinate jitter, preview cost, tracking paths, and cue-labelled losses. Three threads is retained only as a reproducible scheduling comparison; the Controller setting remains four. The research-only directional recovery parameter compares immediate reset with at most one carried search frame; its default is zero. |
 | `scripts/benchmark-post-inference.py` | Optional `--iterations` (default 100000), `--slow-publisher-ms` (default 5), and `--output` | Runs camera-free established-session signed UDP and Dashboard-housekeeping lanes in off/on/off order. Reports p50/p95/p99/max send, housekeeping, and full-iteration times; a slow newest-only status consumer proves Dashboard backpressure cannot queue controller input. |
 | `scripts/benchmark-native-motion-curve.py` | Version-2 vision replay JSON, optional lane index, and required new output path | Compares the former overshooting experiment, capped error curve, actual bounded speed curve, and unsmoothed coordinates. Sweeps 27 bounded candidates and reports jitter, lag, medium response, fast pickup, reversals, overshoot, continuity, and available source age without controlling a game. |
-| `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH`, `--seconds 5..600`, `--buffers 1 2`, `--capture-isolation thread process`, `--inference-threads 1..4`, `--aggregate-only`, `--skip-replay`, `--tracking-evidence`, and `--output PATH` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership and can compare selected V4L2 buffer counts, the current capture thread, or a benchmark-only latest-frame capture process. Aggregate mode reports driver dequeue age, decode, recognition pickup, graph, post-graph, Linux task scheduling, sequence cadence, skips, stalls, and compact correlated tail events without retaining frames. Lightweight tracking evidence attributes palm and landmark paths. Three-thread inference and process-isolated capture remain research comparisons; neither changes the production setting. It does not change camera controls or player settings. |
+| `scripts/benchmark-camera-pipeline.py` | Required `--camera DEVICE` and `--worker-stopped`; optional `--source-root PATH`, `--seconds 5..600`, `--buffers 1 2`, `--capture-isolation thread process`, `--inference-threads 1..4`, `--aggregate-only`, `--skip-replay`, `--tracking-evidence`, and `--output PATH` | Linux-only, output-paused capture/recognition diagnostic. Requires exclusive camera ownership and can compare selected V4L2 buffer counts, the current capture thread, or a benchmark-only latest-frame capture process. Aggregate mode reports driver dequeue age, decode, recognition pickup, graph, post-graph, Linux task scheduling, sequence cadence, skips, stalls, and compact correlated tail events without retaining frames. Detector context separates the frame before detection, camera age entering it, detector cost, skipped frames, and recovered coordinate age. Lightweight tracking evidence attributes palm and landmark paths. Three-thread inference and process-isolated capture remain research comparisons; neither changes the production setting. It does not change camera controls or player settings. |
 | `scripts/benchmark-palm-anchors.py` | Version-2 replay JSON and required new output path | Compares the five-point baseline, four-knuckle centroid, palm-polygon center, and weighted wrist/knuckle center for pose shift, travel retention, continuity, and reacquisition. It reports evidence but does not change the live anchor. |
 | `scripts/benchmark-frame-preprocessing.py` | Camera or clip input and required new output path | Output-paused comparison of mirrored-frame preparation and reusable buffers. It cannot change handedness or preview conventions. |
 | `scripts/benchmark-staggered-trackers.py` | Camera or clip input and required new output path | Isolated two-tracker newest-sequence experiment. It never arms controller output and is not a gameplay backend. |

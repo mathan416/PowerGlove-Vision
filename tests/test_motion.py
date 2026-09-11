@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-10 - Verified complete supervised worker-group termination.
 #   2026-09-09 - Required MediaPipe 0.10.35 as the sole worker runtime.
 #   2026-09-09 - Required conditional-search activity in native traces.
 #   2026-09-07 - Cover MediaPipe cadence smoothing and saturated jitter fallback.
@@ -16,7 +17,9 @@
 
 from dataclasses import replace
 from pathlib import Path
+import signal
 import runpy
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -447,14 +450,25 @@ class NativeMotionTests(unittest.TestCase):
             index = command.index('--inference-threads')
             self.assertEqual(command[index + 1], expected)
 
-    def test_supervisor_gates_process_capture_on_direct_v4l2(self):
+    def test_supervisor_validates_detection_confidence_setting(self):
+        import runpy
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1]
+        worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']
+        for value, expected in ((.35, '0.35'), (.45, '0.45'), (.55, '0.55'),
+                                (-.1, '0.45'), (1.1, '0.45'), ('0.45', '0.45')):
+            command = worker_command({'detection_confidence': value}, Path('/tmp/model'))
+            index = command.index('--detection-confidence')
+            self.assertEqual(command[index + 1], expected)
+
+    def test_supervisor_accepts_process_capture_for_both_readers(self):
         import runpy
         from pathlib import Path
         root = Path(__file__).resolve().parents[1]
         worker_command = runpy.run_path(str(root / 'python/main.py'))['worker_command']
         for settings, expected in (
             ({}, 'thread'),
-            ({'capture_isolation': 'process'}, 'thread'),
+            ({'capture_isolation': 'process'}, 'process'),
             ({'camera_backend': 'direct-v4l2',
               'capture_isolation': 'process'}, 'process'),
             ({'camera_backend': 'direct-v4l2',
@@ -463,6 +477,33 @@ class NativeMotionTests(unittest.TestCase):
             command = worker_command(settings, Path('/tmp/model'))
             index = command.index('--capture-isolation')
             self.assertEqual(command[index + 1], expected)
+
+    def test_supervisor_stops_complete_worker_process_group(self):
+        root = Path(__file__).resolve().parents[1]
+        namespace = runpy.run_path(str(root / 'python/main.py'))
+        stop_worker = namespace['_stop_worker']
+        process = mock.Mock(pid=1234)
+        process.poll.return_value = None
+        with mock.patch.object(namespace['_stop_worker'].__globals__['os'], 'killpg') as killpg:
+            stop_worker(process)
+        killpg.assert_called_once_with(1234, signal.SIGTERM)
+        process.wait.assert_called_once_with(timeout=7.0)
+
+    def test_supervisor_escalates_stuck_worker_group(self):
+        root = Path(__file__).resolve().parents[1]
+        namespace = runpy.run_path(str(root / 'python/main.py'))
+        stop_worker = namespace['_stop_worker']
+        process = mock.Mock(pid=1234)
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired('worker', 7), 0]
+        with mock.patch.object(namespace['_stop_worker'].__globals__['os'], 'killpg') as killpg:
+            stop_worker(process)
+        self.assertEqual(
+            killpg.call_args_list,
+            [mock.call(1234, signal.SIGTERM), mock.call(1234, signal.SIGKILL)],
+        )
+        self.assertEqual(process.wait.call_args_list,
+                         [mock.call(timeout=7.0), mock.call(timeout=2)])
 
     def test_supervisor_requires_mediapipe_035_as_the_only_runtime(self):
         root = Path(__file__).resolve().parents[1]

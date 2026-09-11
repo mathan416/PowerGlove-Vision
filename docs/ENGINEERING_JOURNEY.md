@@ -74,6 +74,33 @@ default and the user interface became simpler.
 The remainder of this document preserves the detailed movement, runtime, GPU,
 and reacquisition investigations that support those decisions.
 
+## Final CPU-pipeline boundary - 10 September 2026
+
+The final refinement pass tested whether camera delivery or Linux scheduling
+was making palm reacquisition appear expensive. A sustained output-paused trace
+measured driver dequeue, MJPEG decode, inference pickup, graph execution,
+post-graph recognition, and task run-queue wait separately. The matched
+two-buffer direct V4L2 diagnostic sustained approximately 30 dequeues per second:
+camera dequeue cadence was 33.29/35.84 ms p50/p95, decode was 5.45/9.87 ms, and
+decode-to-inference pickup was 18.18/33.27 ms. Post-graph work was only
+2.93/3.13 ms.
+
+Ordinary landmark continuation measured 36.86 ms median. The 60 palm-detector
+frames measured 104.94/112.89 ms p50/p95 and skipped two application-visible
+camera frames at median while the graph was busy. Inference accumulated only
+132 ms of run-queue wait across the entire 60-second trace, so scheduling did
+not explain the detector cost. The delay began inside MediaPipe's recovery path.
+
+A separate replay lowered landmark-tracking confidence to 0.10 and 0.20 in an
+attempt to avoid detector entry. Both produced the same eight fast-sweep misses
+as the 0.35 control and increased reacquisition p95 from about 102 ms to
+126-128 ms. The broader recovery clip likewise found no worthwhile trade-off.
+The accepted defaults therefore remain tracking confidence 0.35, palm-detection
+confidence 0.45, four CPU threads, the 2.25 direction-aware search region, and
+Latest-coordinate output. Further improvement would require a different
+detector architecture and must earn its place through isolated testing; it is
+not part of the 0.4.0 production path.
+
 ## Historical bounded speed-sensitive replacement — 7 September 2026
 
 The former bounded native motion experiment used completed MediaPipe palm observations and

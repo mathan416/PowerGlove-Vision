@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Reaped the complete uv/Python/camera worker process group on restart.
+#   2026-09-10 - Allowed opt-in process isolation with OpenCV capture.
 #   2026-09-10 - Prefer the retained worker cache while preserving first-install online fallback.
 #   2026-09-09 - Added validated opt-in process-isolated direct capture.
 #   2026-09-09 - Made validated MediaPipe 0.10.35 the sole worker runtime.
@@ -49,6 +51,24 @@ def _shutdown_on_signal(_signum: int, _frame: object) -> None:
     raise KeyboardInterrupt
 
 
+def _stop_worker(process: subprocess.Popen, timeout: float = 7.0) -> None:
+    """Stop and reap the complete uv/Python/camera worker process group."""
+    if process.poll() is not None:
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=2)
+
+
 def load_device_config() -> dict:
     """Load persistent device settings, creating safe first-run defaults when absent."""
     if CONFIG_PATH.exists():
@@ -64,6 +84,7 @@ def load_device_config() -> dict:
         "matrix_attract": "on",
         "inference_threads": 4,
         "tracking_confidence": 0.35,
+        "detection_confidence": 0.45,
         "tracking_roi_scale": 2.25,
         "camera_fps": "auto",
         "camera_buffers": 1,
@@ -121,6 +142,11 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
             or not 0.0 <= tracking_confidence <= 1.0):
         tracking_confidence = 0.35
     command.extend(["--tracking-confidence", str(tracking_confidence)])
+    detection_confidence = settings.get("detection_confidence", 0.45)
+    if (type(detection_confidence) not in (int, float)
+            or not 0.0 <= detection_confidence <= 1.0):
+        detection_confidence = 0.45
+    command.extend(["--detection-confidence", str(detection_confidence)])
     tracking_roi_scale = settings.get("tracking_roi_scale", 2.25)
     if (type(tracking_roi_scale) not in (int, float)
             or float(tracking_roi_scale) not in (2.0, 2.25)):
@@ -140,8 +166,6 @@ def worker_command(settings: dict, model_path: Path, controller_enabled: bool = 
     command.extend(["--capture-backend", camera_backend])
     capture_isolation = settings.get("capture_isolation", "thread")
     if capture_isolation not in ("thread", "process"):
-        capture_isolation = "thread"
-    if capture_isolation == "process" and camera_backend != "direct-v4l2":
         capture_isolation = "thread"
     command.extend(["--capture-isolation", capture_isolation])
     camera_exposure = settings.get("camera_exposure", "auto")
@@ -240,7 +264,8 @@ def main() -> int:
             matrix.set_status(MatrixStatus.LOADING)
             revision = control.revision
             process = subprocess.Popen(
-                worker_command(settings, model_path, control.controller_enabled()), cwd=APP_ROOT, env=environment
+                worker_command(settings, model_path, control.controller_enabled()), cwd=APP_ROOT,
+                env=environment, start_new_session=True,
             )
             control.update_supervisor(camera=False, running=True)
             configuration_changed = False
@@ -248,11 +273,7 @@ def main() -> int:
             while process.poll() is None:
                 if revision != control.revision:
                     configuration_changed = True
-                    process.terminate()
-                    try:
-                        process.wait(timeout=7)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
+                    _stop_worker(process)
                     break
                 try:
                     control.flush_controller_request()
@@ -282,12 +303,7 @@ def main() -> int:
                             # Do not race UVC open/read calls against the host's
                             # physical USB unbind/rebind cycle.
                             camera_recovery_restart = True
-                            process.terminate()
-                            try:
-                                process.wait(timeout=7)
-                            except subprocess.TimeoutExpired:
-                                process.kill()
-                                process.wait(timeout=2)
+                            _stop_worker(process)
                             break
                     active_profile = status.get("active_profile")
                     matrix.set_profile(
@@ -329,11 +345,7 @@ def main() -> int:
     except KeyboardInterrupt:
         matrix.set_status(MatrixStatus.OFF)
         if process is not None and process.poll() is None:
-            process.terminate()
-            try:
-                process.wait(timeout=7)
-            except subprocess.TimeoutExpired:
-                process.kill()
+            _stop_worker(process)
         return 0
     finally:
         control_server.shutdown()

@@ -12,12 +12,15 @@
 
 import threading
 import time
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import numpy
 
 from powerglove_vision.process_capture import (
-    ProcessDirectV4L2Capture, _publish, _publish_failure,
+    ProcessDirectV4L2Capture, ProcessOpenCVCapture, _publish,
+    _publish_failure, _publish_opencv, _opencv_capture_worker,
 )
 
 
@@ -97,6 +100,95 @@ class ProcessCaptureTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ProcessDirectV4L2Capture('/dev/video0', 2, numpy,
                                      manual_exposure=78)
+
+    def test_opencv_publish_carries_no_fabricated_driver_timestamp(self):
+        capture = self.capture()
+        frame = numpy.full((480, 640, 3), 31, dtype=numpy.uint8)
+        _publish_opencv(frame, 20.0, capture._pixels, capture._state,
+                        capture._lock, numpy)
+        result = capture.latest_after(0)
+        self.assertTrue(result.ok)
+        self.assertEqual(result.captured_at, 20.0)
+        self.assertFalse(capture.metadata["camera_driver_timestamp"])
+        self.assertEqual(capture.metadata["camera_driver_sequence"], 0)
+
+    def test_opencv_process_rejects_non_production_frame_size(self):
+        with self.assertRaises(ValueError):
+            ProcessOpenCVCapture(0, 0, "MJPG", 320, 240, 30, 1, numpy)
+
+    def test_opencv_worker_negotiates_and_publishes_latest_frame(self):
+        class Stop:
+            stopped = False
+
+            def is_set(self):
+                return self.stopped
+
+            def wait(self, _seconds):
+                pass
+
+        stop = Stop()
+
+        class Source:
+            def __init__(self):
+                self.reads = 0
+                self.released = False
+
+            def set(self, _key, _value):
+                return True
+
+            def get(self, key):
+                return {
+                    6: int.from_bytes(b"MJPG", "little"),
+                    3: 640, 4: 480, 5: 30, 38: 1,
+                }[key]
+
+            def isOpened(self):
+                return True
+
+            def read(self):
+                self.reads += 1
+                if self.reads == 2:
+                    stop.stopped = True
+                return True, numpy.full((480, 640, 3), self.reads, dtype=numpy.uint8)
+
+            def release(self):
+                self.released = True
+
+        source = Source()
+
+        class Control:
+            def __init__(self):
+                self.messages = []
+
+            def send(self, message):
+                self.messages.append(message)
+
+            def close(self):
+                pass
+
+        control = Control()
+        fake_cv2 = SimpleNamespace(
+            CAP_PROP_FOURCC=6, CAP_PROP_FRAME_WIDTH=3,
+            CAP_PROP_FRAME_HEIGHT=4, CAP_PROP_FPS=5,
+            CAP_PROP_BUFFERSIZE=38,
+            VideoWriter_fourcc=lambda *letters: int.from_bytes(
+                "".join(letters).encode(), "little"
+            ),
+            VideoCapture=lambda _device, _backend: source,
+        )
+        pixels = bytearray(640 * 480 * 3)
+        state = [0] * 7
+        with patch.dict("sys.modules", {"cv2": fake_cv2}):
+            _opencv_capture_worker(
+                0, 200, "MJPG", 640, 480, 30, 1, pixels, state,
+                threading.Lock(), stop, control,
+            )
+        self.assertTrue(source.released)
+        self.assertEqual(source.reads, 2)
+        self.assertEqual(state[0], 2)
+        self.assertTrue(control.messages[0]["ready"])
+        self.assertEqual(control.messages[0]["metadata"]["camera_fps"], 30)
+        self.assertEqual(pixels[0], 2)
 
 
 if __name__ == "__main__":

@@ -107,6 +107,29 @@ class KiyoTests(unittest.TestCase):
         self.assertTrue(candidate.released)
         process_capture.assert_called_once()
 
+    def test_process_opencv_opens_only_in_child(self):
+        fake_cv2 = SimpleNamespace(CAP_V4L2=200, CAP_ANY=0)
+        isolated = MagicMock()
+        isolated.metadata = {}
+        args = SimpleNamespace(
+            camera='auto', camera_manual_exposure_test=None,
+            camera_manual_gain_test=None, camera_manual_exposure=78,
+            camera_manual_gain=96, camera_exposure='auto',
+            capture_backend='opencv', capture_isolation='process',
+            camera_format='MJPG', width=640, height=480, fps=30,
+            camera_buffers=1, kiyo_hdr_off=False,
+        )
+        with patch.dict('sys.modules', {'cv2': fake_cv2}), \
+             patch('powerglove_vision.vision_app.camera_candidates',
+                   return_value=['/dev/video0']), \
+             patch('powerglove_vision.vision_app.sys.platform', 'linux'), \
+             patch('powerglove_vision.process_capture.ProcessOpenCVCapture',
+                   return_value=isolated) as process_capture:
+            returned_cv2, returned_capture = _open_camera(args)
+        self.assertIs(returned_cv2, fake_cv2)
+        self.assertIs(returned_capture, isolated)
+        process_capture.assert_called_once()
+
     def test_descriptor_identity_and_invalid_lengths(self):
         descriptor=bytes([20,0x24,6,7])+kiyo.GUID
         self.assertEqual(kiyo.extension_unit(bytes([2,1])+descriptor),7)

@@ -151,6 +151,53 @@ class CameraPipelineTests(unittest.TestCase):
         self.assertEqual(summary['driver_sequence_forward_skips'], 2)
         self.assertEqual(summary['driver_sequence_discontinuities'], 2)
 
+    def test_lane_summary_attributes_detector_cost_and_lead_up(self):
+        capture = [
+            dict(driver_ns=1_000_000_000, flags=0x2000,
+                 dequeued_ns=1_002_000_000, requeued_ns=1_003_000_000,
+                 decoded_ns=1_008_000_000, driver_sequence=1),
+            dict(driver_ns=1_033_000_000, flags=0x2000,
+                 dequeued_ns=1_035_000_000, requeued_ns=1_036_000_000,
+                 decoded_ns=1_041_000_000, driver_sequence=2),
+        ]
+        samples = [
+            dict(capture[0], start_ns=1_009_000_000, end_ns=1_049_000_000,
+                 graph_ms=35.0, detected=True,
+                 tracking_path='landmark_continuation',
+                 palm_detector_invoked=False, palm_detection_count=None,
+                 preprocessing_ms=1.0,
+                 landmark_conversion_and_wrapper_ms=2.0,
+                 gesture_and_axes_ms=1.0, skipped_application_frames=0,
+                 driver_to_recognition_ms=9.0,
+                 driver_to_coordinates_ms=49.0),
+            dict(capture[1], start_ns=1_076_000_000, end_ns=1_176_000_000,
+                 graph_ms=95.0, detected=True,
+                 tracking_path='palm_reacquisition',
+                 palm_detector_invoked=True, palm_detection_count=1,
+                 preprocessing_ms=1.0,
+                 landmark_conversion_and_wrapper_ms=2.0,
+                 gesture_and_axes_ms=1.0, skipped_application_frames=1,
+                 driver_to_recognition_ms=43.0,
+                 driver_to_coordinates_ms=143.0),
+        ]
+        summary = bench.lane_summary(dict(
+            buffers=2, capture_isolation='thread', samples=samples,
+            capture=capture, failed_reads=0, errors=[], scheduling={},
+        ))
+        context = summary['detector_context']
+        self.assertEqual(context['frames'], 1)
+        self.assertEqual(context['paths'], {'palm_reacquisition': 1})
+        self.assertEqual(
+            context['predecessor_paths'], {'landmark_continuation': 1}
+        )
+        self.assertEqual(context['previous_graph_ms']['p50'], 35.0)
+        self.assertEqual(context['recognition_interval_ms']['p50'], 67.0)
+        self.assertEqual(
+            context['decoded_to_recognition_start_ms']['p50'], 35.0
+        )
+        self.assertEqual(context['graph_ms']['p50'], 95.0)
+        self.assertEqual(context['skipped_application_frames']['p50'], 1)
+
 
 if __name__ == '__main__':
     unittest.main()

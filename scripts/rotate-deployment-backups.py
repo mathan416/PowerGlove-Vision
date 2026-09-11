@@ -54,6 +54,7 @@ def rotate(root: Path, keep: int = 12, *, dry_run: bool = False) -> list[Path]:
 
 
 def main() -> int:
+    """Parse rotation policy, remove selected routine backups, and report it."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("root", type=Path)
     parser.add_argument("--keep", type=int, default=12)

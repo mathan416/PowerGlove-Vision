@@ -4,6 +4,9 @@
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
+# Change log:
+#   2026-09-10 - Added guided camera-profile recommendation coverage.
+# Full history: docs/CHANGELOG.md and Git history.
 
 """Verify candidate selection and conservative camera profile scoring."""
 

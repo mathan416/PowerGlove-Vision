@@ -675,7 +675,7 @@ class MediaPipeTracker:
         model_path: Path | str | None = None,
         inference_threads: int = 4,
         tracking_confidence: float = .35,
-        detection_confidence: float = .55,
+        detection_confidence: float = .45,
         backend: str = "legacy",
         graph_mode: str = "full",
         tracking_roi_scale: float = 2.25,

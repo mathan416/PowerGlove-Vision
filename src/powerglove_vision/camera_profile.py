@@ -74,6 +74,7 @@ def candidates(camera: dict[str, Any], current: dict[str, Any] | None = None) ->
 
 
 def _percentile(values: Iterable[float], fraction: float) -> float | None:
+    """Return the nearest-rank percentile for finite numeric observations."""
     ordered = sorted(float(value) for value in values if math.isfinite(float(value)))
     if not ordered:
         return None
@@ -143,6 +144,7 @@ def summarize(settings: dict[str, Any], samples: list[dict[str, Any]],
 
 
 def _round(value: float | None) -> float | None:
+    """Round an optional measurement for stable user-facing reports."""
     return None if value is None else round(value, 2)
 
 
@@ -157,6 +159,7 @@ def recommend(results: list[dict[str, Any]]) -> dict[str, Any] | None:
     safe = [result for result in valid
             if result["continuity"] >= best_continuity - .01]
     def ranking(result: dict[str, Any]) -> tuple[float, float, float, int]:
+        """Prefer low tail age, then rate, continuity, and compatible OpenCV."""
         age = result.get("sample_age_p95_ms")
         age = 10_000.0 if age is None else float(age)
         return (

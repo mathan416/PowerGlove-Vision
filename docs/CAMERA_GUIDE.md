@@ -141,6 +141,13 @@ reacquisition timing independently of camera exposure. Better front lighting
 still gives it clearer evidence and more recovery margin; it does not make the
 model calculation itself run faster.
 
+The production recognition settings use four CPU inference threads, a `0.35`
+landmark-tracking gate, and a `0.45` palm-detection gate. They apply to every
+supported camera and normally need no adjustment. Final sustained measurements
+found that camera delivery and scheduling were stable; the remaining large
+latency tail occurs when MediaPipe must run its palm detector after losing the
+tracked hand region. Good framing and lighting help avoid that recovery path.
+
 ## Reconnection and recovery
 
 The Controller looks for the saved camera whenever tracking starts. Supported

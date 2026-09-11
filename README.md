@@ -4,12 +4,13 @@
 
 # PowerGlove Vision
 
-**Current project version: 0.4.0; public candidate: v0.4.0-rc.3.** This candidate promotes the tested
-MediaPipe efficiency work: newest-frame capture, four inference threads,
-30-fps-first camera negotiation, off-thread lightweight preview rendering, and
-Latest-coordinate native movement with guarded reacquisition. Optional,
-capability-checked camera latency and exposure choices are available without changing
-the compatible defaults. Update the
+**Current project version: 0.4.0; public candidate: v0.4.0-rc.4.** This candidate completes the tested
+MediaPipe CPU pipeline: newest-frame capture, four inference threads, a `0.35`
+landmark-tracking gate, a `0.45` palm-detection gate, 30-fps-first camera
+negotiation, off-thread lightweight preview rendering, and Latest-coordinate
+native movement with guarded reacquisition. Optional, capability-checked camera
+latency and exposure choices remain available without changing the compatible
+defaults. Update the
 Controller and RetroPie together using the [installation guide](docs/INSTALL_README.md).
 
 PowerGlove Vision lets you play RetroPie games by moving your hand in front of
@@ -420,7 +421,11 @@ OpenCV/threaded live play was smoother and more responsive, so it is the
 production default; Direct V4L2 and process isolation remain engineering
 comparisons. A matched lean MediaPipe output test did
 not produce a meaningful end-to-end improvement, so the complete proven graph
-remains selected.
+remains selected. Final detector-context measurements found ordinary landmark
+tracking near 37 ms median, while palm detection and reacquisition remained near
+105 ms median. Camera delivery, scheduling, post-inference work, and controller
+transport were not responsible for those detector tails, so 0.4.0 freezes the
+proven CPU path instead of adding speculative filtering or parallel inference.
 
 The Controller host helper supports one UVC camera. Installation works with or without
 the camera connected. On the first healthy sighting it records the camera and its

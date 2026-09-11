@@ -248,6 +248,49 @@ def lane_summary(lane):
         path_graph_ms.setdefault(
             row.get('tracking_path') or 'unavailable', []
         ).append(row['graph_ms'])
+    # Attribute latency before and during palm-detector frames. This separates
+    # an intrinsically expensive detector from one that merely starts after a
+    # late camera dequeue or scheduling stall.
+    detector_contexts = []
+    for index, current in enumerate(samples):
+        if not current.get('palm_detector_invoked'):
+            continue
+        previous = samples[index - 1] if index else None
+        detector_contexts.append({
+            'path': current.get('tracking_path') or 'unavailable',
+            'previous_path': (
+                None if previous is None
+                else previous.get('tracking_path') or 'unavailable'
+            ),
+            'previous_graph_ms': None if previous is None else previous['graph_ms'],
+            'recognition_interval_ms': (
+                None if previous is None
+                else (current['start_ns'] - previous['start_ns']) / 1e6
+            ),
+            'decoded_to_recognition_start_ms': (
+                current['start_ns'] - current['decoded_ns']
+            ) / 1e6,
+            'driver_to_recognition_ms': current.get('driver_to_recognition_ms'),
+            'graph_ms': current['graph_ms'],
+            'driver_to_coordinates_ms': current.get('driver_to_coordinates_ms'),
+            'skipped_application_frames': current.get(
+                'skipped_application_frames', 0
+            ),
+        })
+
+    def context_stats(field):
+        """Summarize one finite numeric detector-context field."""
+        values = [
+            row[field] for row in detector_contexts
+            if row.get(field) is not None and math.isfinite(row[field])
+        ]
+        return stats(values)
+
+    detector_paths = Counter(row['path'] for row in detector_contexts)
+    predecessor_paths = Counter(
+        row['previous_path'] for row in detector_contexts
+        if row['previous_path'] is not None
+    )
     def stalls(values):
         """Count latency-tail samples beyond each diagnostic boundary."""
         return {f'over_{limit}_ms': sum(value > limit for value in values)
@@ -292,6 +335,26 @@ def lane_summary(lane):
         'graph_ms': stats([row['graph_ms'] for row in samples]),
         'tracking_path_graph_ms': {
             path: stats(values) for path, values in sorted(path_graph_ms.items())
+        },
+        'detector_context': {
+            'frames': len(detector_contexts),
+            'paths': dict(detector_paths),
+            'predecessor_paths': dict(predecessor_paths),
+            'previous_graph_ms': context_stats('previous_graph_ms'),
+            'recognition_interval_ms': context_stats('recognition_interval_ms'),
+            'decoded_to_recognition_start_ms': context_stats(
+                'decoded_to_recognition_start_ms'
+            ),
+            'driver_to_recognition_ms': context_stats(
+                'driver_to_recognition_ms'
+            ),
+            'graph_ms': context_stats('graph_ms'),
+            'driver_to_coordinates_ms': context_stats(
+                'driver_to_coordinates_ms'
+            ),
+            'skipped_application_frames': context_stats(
+                'skipped_application_frames'
+            ),
         },
         'post_graph_ms': stats([
             row['landmark_conversion_and_wrapper_ms'] + row['gesture_and_axes_ms']

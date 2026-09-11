@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-10 - Added opt-in process-isolated OpenCV capture.
 #   2026-09-09 - Added opt-in process-isolated Direct V4L2 capture.
 #   2026-09-09 - Included conditional search activity in bounded native traces.
 #   2026-09-09 - Enabled detailed MediaPipe evidence only during finite traces.
@@ -173,7 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--capture-isolation", choices=("thread", "process"), default="thread",
-        help="latest-frame owner; process requires Direct V4L2",
+        help="latest-frame owner; process supports OpenCV and Direct V4L2",
     )
     parser.add_argument(
         "--camera-exposure", choices=("auto", "low-latency", "kiyo-low-latency", "manual"),
@@ -194,6 +195,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--tracking-confidence", type=float, default=.35,
         help="minimum MediaPipe landmark-tracking confidence",
+    )
+    parser.add_argument(
+        "--detection-confidence", type=float, default=.45,
+        help="minimum MediaPipe palm-detection confidence",
     )
     parser.add_argument(
         "--tracking-roi-scale", type=float,
@@ -279,9 +284,6 @@ def _open_camera(args: argparse.Namespace):
     manual_enabled = manual_test or manual_mode
     if manual_enabled and getattr(args, "capture_backend", "opencv") != "direct-v4l2":
         raise ValueError("manual exposure requires direct V4L2 capture")
-    if (getattr(args, "capture_isolation", "thread") == "process"
-            and getattr(args, "capture_backend", "opencv") != "direct-v4l2"):
-        raise ValueError("process-isolated capture requires direct V4L2")
     if manual_enabled and (not sys.platform.startswith("linux")
                            or args.camera_format != "MJPG"
                            or (args.width, args.height) != (640, 480)):
@@ -319,6 +321,40 @@ def _open_camera(args: argparse.Namespace):
         # accept the driver's native choice.
         rate_attempts = _camera_rate_attempts(args.fps)
         for requested_rate in rate_attempts:
+            process_opencv_error = None
+            process_opencv = (
+                getattr(args, "capture_backend", "opencv") == "opencv"
+                and getattr(args, "capture_isolation", "thread") == "process"
+                and sys.platform.startswith("linux")
+                and args.camera_format == "MJPG"
+                and args.width == 640 and args.height == 480
+            )
+            if process_opencv:
+                metadata = {
+                    "camera_fps_requested": "auto" if args.fps == 0 else args.fps,
+                    "camera_hdr_off_requested": exposure_mode == "kiyo-low-latency",
+                    "camera_hdr_off_command_sent": kiyo_applied,
+                    "camera_exposure_mode": exposure_mode,
+                    "camera_exposure_supported": exposure_report.get("supported", False),
+                    "camera_exposure_applied": bool(
+                        exposure_report.get("applied") or kiyo_applied
+                    ),
+                    "camera_exposure_fixed_rate": exposure_report.get(
+                        "fixed_frame_rate", False
+                    ),
+                    "camera_control_error": camera_control_error,
+                }
+                try:
+                    import numpy as np
+                    from .process_capture import ProcessOpenCVCapture
+                    isolated = ProcessOpenCVCapture(
+                        camera_device, backend, args.camera_format, args.width,
+                        args.height, requested_rate,
+                        getattr(args, "camera_buffers", 1), np, metadata=metadata,
+                    )
+                    return cv2, isolated
+                except Exception as exc:
+                    process_opencv_error = str(exc)
             started = time.monotonic()
             candidate = cv2.VideoCapture(camera_device, backend)
             log_startup_stage("camera open", started)
@@ -467,7 +503,7 @@ def _open_camera(args: argparse.Namespace):
                             args, "capture_isolation", "thread"
                         ),
                         "capture_isolation": "thread",
-                        "capture_isolation_fallback": None,
+                        "capture_isolation_fallback": process_opencv_error,
                     }
                     if (getattr(args, "capture_backend", "opencv") == "direct-v4l2"
                             and sys.platform.startswith("linux")
@@ -662,6 +698,7 @@ def _prepare_vision(args):
             model_path=model_path,
             inference_threads=args.inference_threads,
             tracking_confidence=args.tracking_confidence,
+            detection_confidence=args.detection_confidence,
             tracking_roi_scale=args.tracking_roi_scale,
             backend=args.tracker_backend,
             graph_mode=args.tracker_graph,
@@ -1366,6 +1403,7 @@ def main() -> int:
             status["confidence_source"] = result.observation.confidence_source
             status["inference_threads"] = args.inference_threads
             status["tracking_confidence"] = tracker.tracking_confidence
+            status["detection_confidence"] = tracker.detection_confidence
             status["tracking_roi_scale"] = tracker.tracking_roi_scale
             status["directional_search"] = tracker.directional_search
             status["tracking_evidence"] = tracker.tracking_evidence
