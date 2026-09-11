@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/instrument-native-core.py
 # Purpose: Instrument only an isolated diagnostic Nestopia build at checked insertion points.
 # Author: Iain Bennett

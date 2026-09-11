@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_motion_trace.py
 # Purpose: Verify native-motion trace classification and summary calculations.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/installation-manifest.py
 # Purpose: Track and transactionally update application-owned files without deleting local changes.
 # Author: Iain Bennett

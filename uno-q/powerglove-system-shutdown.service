@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: uno-q/powerglove-system-shutdown.service
 # Purpose: Consume an authorized shutdown request and initiate a non-blocking UNO Q halt.
 # Author: Iain Bennett
@@ -10,7 +10,7 @@
 # Full history: docs/CHANGELOG.md and Git history.
 
 [Unit]
-Description=Shut down the UNO Q for PowerGlove Vision
+Description=Shut down the UNO Q for VirtualGlove
 
 [Service]
 Type=oneshot

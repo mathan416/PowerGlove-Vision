@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/configure-uno-q-avahi.py
 # Purpose: Restrict Controller mDNS advertisement to physical interfaces.
 # Author: Iain Bennett

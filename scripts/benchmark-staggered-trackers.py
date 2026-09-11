@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-staggered-trackers.py
 # Purpose: Compare one proven MediaPipe graph with two staggered graphs without controller output.
 # Author: Iain Bennett

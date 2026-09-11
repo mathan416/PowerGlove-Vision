@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/browser_joystick_deadzone.py
 # Purpose: Exercise Setup dead-zone controls in isolated browser engines.
 # Author: Iain Bennett

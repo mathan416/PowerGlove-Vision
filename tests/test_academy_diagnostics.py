@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_academy_diagnostics.py
 # Purpose: Verify private Academy diagnostic lifecycle and aggregate reports.
 # Author: Iain Bennett

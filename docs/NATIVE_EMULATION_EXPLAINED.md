@@ -1,6 +1,6 @@
 # How native Power Glove emulation works
 
-PowerGlove Vision offers two ways to turn the same recognized hand into game
+VirtualGlove offers two ways to turn the same recognized hand into game
 input. Most supported games use ordinary NES-style directions and buttons.
 Super Glove Ball can instead consume a native Power Glove packet through
 **Nestopia (PowerGlove)**, the separate `lr-nestopia-powerglove` core.
@@ -12,7 +12,7 @@ system or a different hand calibration.
 
 ## Follow one hand movement
 
-1. The **PowerGlove Vision Controller (Arduino UNO Q)** captures the newest camera frame. Older waiting frames are replaced rather than queued.
+1. The **VirtualGlove Controller (Arduino UNO Q)** captures the newest camera frame. Older waiting frames are replaced rather than queued.
 2. MediaPipe Hands finds hand landmarks. Shared calibration and gesture processing turn them into position, depth, finger, and pose states.
 3. The Controller sends authenticated state to RetroPie. The receiver validates it and publishes the newest usable state.
 4. The chosen emulator core presents that state as the kind of controller input the game understands.
@@ -35,7 +35,7 @@ fall back to OpenCV and is not inherently lower latency.
 
 One camera buffer minimizes how much captured work can wait. Two buffers can
 improve continuity on some camera and hub combinations. In either case,
-PowerGlove Vision owns one latest-frame slot: a newer capture replaces an older
+VirtualGlove owns one latest-frame slot: a newer capture replaces an older
 frame that inference has not started. The choice affects joystick and native
 games equally because it occurs before the emulator paths split. Use Setup's
 camera test to compare supported choices with the actual camera rather than
@@ -43,7 +43,7 @@ assuming that the more technical reader or larger buffer count is faster.
 
 ## Joystick-style input: directions and buttons
 
-With FCEUmm, RetroPie exposes the **PowerGlove Vision** virtual gamepad. A profile
+With FCEUmm, RetroPie exposes the **VirtualGlove** virtual gamepad. A profile
 maps recognized gestures to D-pad directions, A, B, Start, and Select.
 Moving sufficiently left of your saved centre can press Left; returning toward
 centre releases it. Activation and release thresholds help avoid repeated
@@ -130,7 +130,7 @@ protocol used between the two computers.
 
 ## Calibration display: native coordinates without a ROM
 
-The optional **PowerGlove Calibration Test** uses the same 64-byte receiver
+The optional **VirtualGlove Calibration Test** uses the same 64-byte receiver
 record but draws X/Y as a yellow dot on a 4:3 field. It is a separate,
 project-owned libretro core and appears under RetroPie's **Ports** list when
 chosen during installation. Its launcher selects `super_glove_ball` plus

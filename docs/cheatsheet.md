@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="680">
+  <img src="../assets/virtualglove-logo.png" alt="VirtualGlove" width="680">
 </p>
 
-# PowerGlove Vision — Quick Reference
+# VirtualGlove — Quick Reference
 
-Use this guide to install, pair, check, and operate your PowerGlove Vision system.
-The **PowerGlove Vision Controller** is the project's camera and recognition
+Use this guide to install, pair, check, and operate your VirtualGlove system.
+The **VirtualGlove Controller** is the project's camera and recognition
 device, built on an Arduino UNO Q. Replace `UNO-Q-NAME.local` with your
-PowerGlove Vision Controller hostname and `RETROPIE-NAME.local`
+VirtualGlove Controller hostname and `RETROPIE-NAME.local`
 with your Raspberry Pi hostname. Each command section identifies the machine
 on which to run it. Keep passwords and pairing tokens out of this document.
 
@@ -15,10 +15,10 @@ on which to run it. Keep passwords and pairing tokens out of this document.
 
 | Item | Value |
 | --- | --- |
-| PowerGlove Vision Controller network address | `UNO-Q-NAME.local` |
+| VirtualGlove Controller network address | `UNO-Q-NAME.local` |
 | RetroPie network address | `RETROPIE-NAME.local` |
-| PowerGlove Vision Controller App Lab application | PowerGlove Vision |
-| PowerGlove Vision Controller application directory | `/home/arduino/ArduinoApps/powerglove-vision` |
+| VirtualGlove Controller App Lab application | VirtualGlove |
+| VirtualGlove Controller application directory | `/home/arduino/ArduinoApps/powerglove-vision` |
 | Camera | UVC-compatible USB camera; select **Automatic — choose the connected camera** in Setup |
 | Startup profile | Choose in Setup |
 
@@ -41,10 +41,10 @@ Open these pages on a computer or phone connected to the same trusted network.
 | Secure Setup: pairing | [Open secure Setup](https://UNO-Q-NAME.local:8443/setup) |
 | Status: diagnostic readings | [Open status](http://UNO-Q-NAME.local:8088/status) |
 | Camera stream | [Open camera stream](http://UNO-Q-NAME.local:8088/stream) |
-| Project repository | [PowerGlove Vision on GitHub](https://github.com/mathan416/PowerGlove-Vision) |
+| Project repository | [VirtualGlove on GitHub](https://github.com/mathan416/PowerGlove-Vision) |
 
 The links above contain example hostnames. Replace them in the browser's address
-bar. The live **Help > This console** page builds links using the PowerGlove Vision Controller address
+bar. The live **Help > This console** page builds links using the VirtualGlove Controller address
 you used to open it.
 
 ## Install and deploy over Wi-Fi
@@ -56,7 +56,7 @@ All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#co
 ### Download and package on your computer
 
 1. Install Arduino App Lab on your development computer. Run `command -v git python3 bash rsync zip` and install any missing tools.
-2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `main` branch and build its PowerGlove Vision Controller installation ZIP.
+2. In a macOS or Linux terminal, choose your projects folder and run the commands below. They download the current `main` branch and build its VirtualGlove Controller installation ZIP.
 3. Confirm that verification reports **App Lab installation ZIP verified**.
 
 ```sh
@@ -66,19 +66,19 @@ scripts/build-app-lab-package.sh
 python3 scripts/verify-app-lab-package.py
 ```
 
-### Prepare the PowerGlove Vision Controller
+### Prepare the VirtualGlove Controller
 
-1. Connect the PowerGlove Vision Controller by USB and complete its setup in App Lab. Join the same network as RetroPie and record the board's hostname.
-2. Import `output/app-lab/PowerGlove-Vision-Uno-Q.zip` from your computer's checkout. Open **PowerGlove Vision** and select **Run** to transfer and start the app and matrix sketch.
+1. Connect the VirtualGlove Controller by USB and complete its setup in App Lab. Join the same network as RetroPie and record the board's hostname.
+2. Import `output/app-lab/VirtualGlove-Uno-Q.zip` from your computer's checkout. Open **VirtualGlove** and select **Run** to transfer and start the app and matrix sketch.
 3. Connect the camera through the powered USB hub. Follow the [Installation Guide](INSTALL_README.md) if you need help with the initial board setup.
 
-Open a terminal on the PowerGlove Vision Controller, or connect from your computer:
+Open a terminal on the VirtualGlove Controller, or connect from your computer:
 
 ```sh
 ssh arduino@UNO-Q-NAME.local
 ```
 
-Run these commands **on the PowerGlove Vision Controller** after importing and running the app once:
+Run these commands **on the VirtualGlove Controller** after importing and running the app once:
 
 ```sh
 cd /home/arduino/ArduinoApps/powerglove-vision
@@ -88,16 +88,16 @@ sudo python3 scripts/setup-machine.py uno-q
 This installs host support for local names, shutdown, and guarded USB-camera recovery, sets the app
 to start at boot, and restarts it. Review every **FAIL** or **ACTION** result.
 The installer requires the application directory shown above. Run `exit` after
-setup to leave the PowerGlove Vision Controller terminal. Check Dashboard, Play, and Learn before pairing.
+setup to leave the VirtualGlove Controller terminal. Check Dashboard, Play, and Learn before pairing.
 
 ### Install the Raspberry Pi receiver before pairing
 
 The Raspberry Pi needs the receiver, pairing command, game registry, and launch
-hooks before you can pair it with the PowerGlove Vision Controller. Run the following in a terminal
+hooks before you can pair it with the VirtualGlove Controller. Run the following in a terminal
 **on the Raspberry Pi running RetroPie**. You can use a local terminal or SSH
 with your RetroPie account.
 
-For a new installation, download the same `main` branch used on the PowerGlove Vision Controller:
+For a new installation, download the same `main` branch used on the VirtualGlove Controller:
 
 ```sh
 sudo apt update
@@ -108,7 +108,7 @@ cd PowerGlove-Vision
 ```
 
 If you already have a checkout, open that directory instead of cloning again.
-Then install the RetroPie components, substituting your PowerGlove Vision Controller hostname:
+Then install the RetroPie components, substituting your VirtualGlove Controller hostname:
 
 ```sh
 sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local
@@ -127,10 +127,10 @@ saved emulator remains FCEUmm until you explicitly choose the native core from
 RetroPie's per-ROM launch menu. Declining the optional build leaves the complete
 FCEUmm fallback available.
 
-For an existing installation, `--peer` does not replace the saved PowerGlove Vision Controller address.
+For an existing installation, `--peer` does not replace the saved VirtualGlove Controller address.
 If that address has changed, update `/etc/powerglove/launcher.json` on RetroPie.
 
-### Update the PowerGlove Vision Controller from your computer
+### Update the VirtualGlove Controller from your computer
 
 Complete the [SSH key setup](CONFIGURATION_REFERENCE.md#set-up-ssh-key-access-once) first. From the full project
 checkout **on your development computer**, verify access and deploy:
@@ -140,11 +140,11 @@ ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
 ```
 
-The deployment preserves the PowerGlove Vision Controller's private `data/` directory and restarts the
-application. It updates the PowerGlove Vision Controller only. To update RetroPie, update its source
+The deployment preserves the VirtualGlove Controller's private `data/` directory and restarts the
+application. It updates the VirtualGlove Controller only. To update RetroPie, update its source
 checkout and rerun the RetroPie installer above; it preserves local settings.
 
-The PowerGlove Vision Controller installer includes the shutdown and camera-recovery helpers. To update
+The VirtualGlove Controller installer includes the shutdown and camera-recovery helpers. To update
 or repair them separately, run this from your development computer's project checkout:
 
 ```sh
@@ -167,7 +167,7 @@ network interface. Recovery is confirmed
 only after a worker test frame, not USB enumeration. Until that first sighting,
 recovery intentionally has no hub or port to operate.
 
-The terminal prompts for the PowerGlove Vision Controller account password if needed. The helper
+The terminal prompts for the VirtualGlove Controller account password if needed. The helper
 requests a Linux halt; the tested board restarts afterward. See the shutdown
 limitation below.
 
@@ -218,7 +218,7 @@ Run these checks **on RetroPie**:
 sudo systemctl status powerglove-receiver.service
 sudo systemctl status powerglove-receiver.timer
 sudo journalctl -u powerglove-receiver.service -n 100 --no-pager
-grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices
+grep -A8 -B2 'VirtualGlove' /proc/bus/input/devices
 ```
 
 The virtual controller appears after the first authenticated packet. Select
@@ -242,16 +242,16 @@ replace a check of the controls in a running game.
 
 ## Camera troubleshooting
 
-Connect the camera to the **PowerGlove Vision Controller** through a powered USB hub. A camera attached
-to your computer is not available to the PowerGlove Vision Controller application.
+Connect the camera to the **VirtualGlove Controller** through a powered USB hub. A camera attached
+to your computer is not available to the VirtualGlove Controller application.
 
-Open a terminal on the PowerGlove Vision Controller, using SSH if necessary:
+Open a terminal on the VirtualGlove Controller, using SSH if necessary:
 
 ```sh
 ssh arduino@UNO-Q-NAME.local
 ```
 
-Run the following **on the PowerGlove Vision Controller** to see each Linux video device and its name:
+Run the following **on the VirtualGlove Controller** to see each Linux video device and its name:
 
 ```sh
 for device in /sys/class/video4linux/video*; do
@@ -285,7 +285,7 @@ The app retries camera initialization automatically. Keep **Camera** set to
 1. Put the camera in its normal cabinet position before calibration.
 2. Stand or sit at your normal playing distance. Keep your comfortable center and the full area you intend to reach inside the camera view, with room at every edge.
 3. Hold a relaxed open hand at that center and select **Center hand**. Direction thresholds are shared across games and automatically rise above measured resting-hand jitter; separate left, right, up, and down calibration is not normally needed.
-4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable PowerGlove Vision Controller work and game stutter.
+4. After checking the live view, close Dashboard or the direct camera stream while playing. Tracking and controller delivery continue, while closing the 5 fps preview reduces avoidable VirtualGlove Controller work and game stutter.
 
 Recalibrate after moving the camera, changing your playing distance, or changing
 your normal center. Returning to the same position produces a similar reference,
@@ -314,7 +314,7 @@ for each player. Complete every lesson to earn **Glove Master**. Learning shows
 **L** on the matrix; optional personalization shows **T**. Both pause cabinet input.
 
 Use **Setup → Players → Players and hand-setup backups** to export the selected player. Your browser
-saves a named file such as `iain-powerglove-hand-setup.json` on the computer,
+saves a named file such as `iain-virtualglove-hand-setup.json` on the computer,
 phone, or tablet you are using, usually in Downloads. Restore selects a file from that device and updates the selected
 player after review. Downloads exclude Academy progress; all players' live
 settings and progress remain on the Controller in `data/gesture-tuning.json`.
@@ -378,7 +378,7 @@ game, RetroArch stopping, or a session becoming stale also turns gestures off.
 For a registered game, a one-second post-RetroArch guard pauses controller output so
 hand movement cannot operate RetroPie's pre-emulator runcommand menu. Output
 resumes automatically when the guard ends, provided the controller was already
-armed. A PowerGlove Vision Controller application restart can reconnect on the next renewal while that
+armed. A VirtualGlove Controller application restart can reconnect on the next renewal while that
 game remains open. The guard and game session never start a controller that the
 player explicitly stopped.
 
@@ -436,7 +436,7 @@ fallback. A failed or incomplete native setup does not remove it.
 
 ### Gun Smoke: tested FCEUmm controls
 
-The `program_g` path was tested end to end from the PowerGlove Vision Controller through RetroPie and
+The `program_g` path was tested end to end from the VirtualGlove Controller through RetroPie and
 FCEUmm. Use these controls:
 
 | Gesture | Gun Smoke action |
@@ -454,7 +454,7 @@ full movement region visible, and then calibrate.
 
 ### Try a profile in a game
 
-1. Launch an unregistered NES or Famicom game. PowerGlove Vision should show **Gestures off**.
+1. Launch an unregistered NES or Famicom game. VirtualGlove should show **Gestures off**.
 2. Open Dashboard and choose **A: Pinball**, **D: Challenge**, **H: General**, or another profile.
 3. Wait for the camera view. Hold your open hand in your comfortable resting position. This is your **neutral position**: the position the app treats as the center for movement.
 4. If a direction remains active while your hand is at rest, select **Center hand** and hold still. Also recalibrate after moving the camera or changing your playing position.
@@ -470,7 +470,7 @@ Once a profile works well, register the game **on RetroPie**. The launch hook
 reads `/etc/powerglove/games.json` to choose the profile each time a game starts.
 
 1. Find the game file in your RetroPie ROM folder, usually `~/RetroPie/roms/nes/`. Record its complete filename, including the extension. For example, `/home/pi/RetroPie/roms/nes/My Game (USA).zip` has the filename `My Game (USA).zip`. Use the archive filename when launching an archive, not the filename inside it.
-2. Open **Setup → Games** on the PowerGlove Vision Controller website and select **Download backup**.
+2. Open **Setup → Games** on the VirtualGlove Controller website and select **Download backup**.
 3. Edit the loaded JSON in the Games section.
 4. Add the filename and your chosen profile inside the existing `games` object. Keep all existing entries, separate entries with commas, and leave no comma after the last entry.
 5. Select **Validate**, then **Save**. Wait for verified save confirmation and restart the game. **Restore previous save** reverses the last saved edit.
@@ -500,10 +500,10 @@ Confirm the selected profile on Dashboard after restarting the game.
 See the [Gameplay Guide](GAMEPLAY_GUIDE.md) for game-specific instructions and
 the [Gameplay Guide](GAMEPLAY_GUIDE.md#programs-a-i) for all reusable mappings.
 
-A **profile queued** launch message means the PowerGlove Vision Controller accepted the request for
+A **profile queued** launch message means the VirtualGlove Controller accepted the request for
 processing. Confirm the active profile and game name on Dashboard. For timeouts,
 see [Check a queued profile change](CONFIGURATION_REFERENCE.md#check-a-queued-profile-change);
-the PowerGlove Vision Controller must publish UDP `55356`, and the registry must match the exact archive filename.
+the VirtualGlove Controller must publish UDP `55356`, and the registry must match the exact archive filename.
 
 ### Tune a gesture
 
@@ -521,20 +521,20 @@ for the recording recipes, neutral calibration, image-quality advice, and shared
 
 | Item | Location or name |
 | --- | --- |
-| RetroPie virtual controller | `PowerGlove Vision` |
+| RetroPie virtual controller | `VirtualGlove` |
 | RetroPie pairing token | `/etc/powerglove/token` |
 | RetroPie game registry | `/etc/powerglove/games.json` |
 | RetroPie connection settings | `/etc/powerglove/launcher.json` |
 | Receiver service | `powerglove-receiver.service` |
 | Receiver startup timer | `powerglove-receiver.timer`; starts 45 seconds after boot |
-| PowerGlove Vision Controller shutdown watcher | `powerglove-system-shutdown.path` |
-| PowerGlove Vision Controller shutdown action | `powerglove-system-shutdown.service`; requests a Linux halt |
-| PowerGlove Vision Controller readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
-| PowerGlove Vision Controller boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
-| PowerGlove Vision Controller camera recovery watcher | `powerglove-camera-recovery.path` |
-| PowerGlove Vision Controller camera recovery action | `powerglove-camera-recovery.service`; power-cycles the enrolled camera port on a capability-confirmed hub, otherwise rebinds the allowlisted hub only when it does not carry networking |
-| PowerGlove Vision Controller camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use and reports USB action separately from stream verification |
-| PowerGlove Vision Controller camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera identity plus hub identity/path and learned camera port |
+| VirtualGlove Controller shutdown watcher | `powerglove-system-shutdown.path` |
+| VirtualGlove Controller shutdown action | `powerglove-system-shutdown.service`; requests a Linux halt |
+| VirtualGlove Controller readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
+| VirtualGlove Controller boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
+| VirtualGlove Controller camera recovery watcher | `powerglove-camera-recovery.path` |
+| VirtualGlove Controller camera recovery action | `powerglove-camera-recovery.service`; power-cycles the enrolled camera port on a capability-confirmed hub, otherwise rebinds the allowlisted hub only when it does not carry networking |
+| VirtualGlove Controller camera recovery helper | `/usr/local/libexec/powerglove-camera-recovery`; enrolls the single healthy UVC camera on first use and reports USB action separately from stream verification |
+| VirtualGlove Controller camera recovery allowlist | `/etc/powerglove-camera-recovery.json`; root-owned camera identity plus hub identity/path and learned camera port |
 
 The boot rule creates the readiness marker; it does not initiate shutdown or
 prove that shutdown has completed. The watcher responds to a separate
@@ -542,7 +542,7 @@ prove that shutdown has completed. The watcher responds to a separate
 Update the rule and its matching service files together using the helper
 installation command under **Install and deploy over Wi-Fi**.
 
-Verify the helper **on the PowerGlove Vision Controller** without requesting a shutdown:
+Verify the helper **on the VirtualGlove Controller** without requesting a shutdown:
 
 ```sh
 systemctl is-enabled powerglove-system-shutdown.path
@@ -560,18 +560,18 @@ activation. The timer starts the service after EmulationStation initializes.
 
 | Port | Direction | Purpose |
 | --- | --- | --- |
-| TCP `8088` | Browser → PowerGlove Vision Controller | Dashboard, Play, Learn, Help, Setup, status, and camera stream |
-| TCP `8443` | Browser → PowerGlove Vision Controller | Secure Setup and pairing |
-| UDP `55355` | PowerGlove Vision Controller → RetroPie | Controller-state packets |
-| UDP `55356` | RetroPie → PowerGlove Vision Controller | Profile requests and acknowledgements |
-| TCP `55357` | PowerGlove Vision Controller → RetroPie | Temporary one-time-code pairing server |
+| TCP `8088` | Browser → VirtualGlove Controller | Dashboard, Play, Learn, Help, Setup, status, and camera stream |
+| TCP `8443` | Browser → VirtualGlove Controller | Secure Setup and pairing |
+| UDP `55355` | VirtualGlove Controller → RetroPie | Controller-state packets |
+| UDP `55356` | RetroPie → VirtualGlove Controller | Profile requests and acknowledgements |
+| TCP `55357` | VirtualGlove Controller → RetroPie | Temporary one-time-code pairing server |
 
 Keep these ports on your trusted local network. Do not expose them to the internet.
 
 ## Saved calibration and startup
 
 Calibration records your resting hand position, apparent size, and wrist angle
-in the PowerGlove Vision Controller's `data/calibration.json`. It survives profile changes, Learn
+in the VirtualGlove Controller's `data/calibration.json`. It survives profile changes, Learn
 sessions, and restarts. Include it in private backups. Recalibrate when your
 physical setup changes or the resting hand position produces unwanted movement.
 The app uses 24 geometrically valid observations. MediaPipe's displayed score
@@ -583,7 +583,7 @@ recognition baseline in `config/profiles.json`.
 The camera overlay's **Right** or **Left** label identifies the hand; its score
 is confidence in that identification, not confidence in a movement command.
 
-Keep one PowerGlove Vision installation active in App Lab and set it as the
+Keep one VirtualGlove installation active in App Lab and set it as the
 default startup app. OpenCV and MediaPipe preload in the background while the
 website is available. **Gestures off** keeps the camera closed; select an active
 profile or open Learn to begin capture. An early request waits for preloading
@@ -595,12 +595,12 @@ With preloading complete, the first activation after a tested reboot took
 1.21 seconds; actual times vary. For a slow start, inspect the
 [startup stage logs](CONFIGURATION_REFERENCE.md#vision-startup-and-timing).
 If the camera disappears after reboot, check `lsusb` and `/dev/v4l/by-id/` on
-the PowerGlove Vision Controller and reconnect the camera or hub if it is missing.
+the VirtualGlove Controller and reconnect the camera or hub if it is missing.
 
-## Known limitation: PowerGlove Vision Controller restarts after Shutdown
+## Known limitation: VirtualGlove Controller restarts after Shutdown
 
 **Stop controller** leaves Linux and the website running. **Shutdown** requests
-a graceful Linux halt. The tested PowerGlove Vision Controller automatically restarts after halt, both
+a graceful Linux halt. The tested VirtualGlove Controller automatically restarts after halt, both
 with a powered hub and with a direct Mac USB connection. A disappearing website,
 matrix animation, or fixed waiting period does not confirm that power can safely
 be removed. See the [Installation Guide](INSTALL_README.md) for the recorded
@@ -612,10 +612,10 @@ Each player retains a separate center. Selecting a player in Glove Academy immed
 loads their sensitivity, progress, and saved center. Use **Center hand** for a new
 player or after moving the camera or changing playing position. Controller output remains paused until Start.
 
-Portable backups now use version 3. New exports include the center-box size,
+Portable backups now use VirtualGlove version 4. New exports include the center-box size,
 personal and complete gesture sensitivity, software identity, and the player's saved calibration. Restore
-separately confirms complete sensitivity and calibration reuse. Earlier version-2
-files remain supported; version-1 exports are rejected. Internal player stores
+separately confirms complete sensitivity and calibration reuse. Legacy version-2
+and version-3 files remain supported; version-1 exports are rejected. Internal player stores
 migrate to version 5 with a private recovery backup.
 
 Off attract mode shows four faint pixels: app, console service, authenticated

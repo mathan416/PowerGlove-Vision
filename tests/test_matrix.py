@@ -1,11 +1,11 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_matrix.py
 # Purpose: Verify LED matrix status, profile, and physical pairing-display bridge calls.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified gestures idle remains distinct from system off.
 #   2026-09-03 - Verified the dedicated Learn-mode matrix state.

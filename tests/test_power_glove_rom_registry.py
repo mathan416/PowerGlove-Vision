@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_power_glove_rom_registry.py
 # Purpose: Keep the audited Power Glove game list and shared mappings complete.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/calibrate-reach.py
 # Purpose: Record per-player comfortable reach through the existing calibration APIs.
 # Author: Iain Bennett
@@ -81,7 +81,7 @@ class ReachSession:
         """Route mutations through the supervisor to persist output stops."""
         request = urllib.request.Request('http://127.0.0.1:8088/' + endpoint,
             data=json.dumps(data).encode(), headers={'Content-Type': 'application/json',
-                'X-PowerGlove-Action': endpoint.rsplit('/', 1)[-1]})
+                'X-VirtualGlove-Action': endpoint.rsplit('/', 1)[-1]})
         with urllib.request.urlopen(request, timeout=5) as response:
             body = response.read()
             return json.loads(body) if body else None

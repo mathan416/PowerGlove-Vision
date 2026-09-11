@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-engineering-tools-package.py
 # Purpose: Build a separate source toolkit for repeatable research and diagnostics.
 # Author: Iain Bennett
@@ -53,9 +53,9 @@ def build(version: str, output: Path) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", version):
         raise ValueError("Use a release tag without slashes or whitespace")
     output.parent.mkdir(parents=True, exist_ok=True)
-    root_name = "PowerGlove-Vision-Engineering-Tools"
+    root_name = "VirtualGlove-Engineering-Tools"
     readme = (
-        "PowerGlove Vision Engineering Tools\n\n"
+        "VirtualGlove Engineering Tools\n\n"
         "These research, replay, tracing, benchmark, documentation-build, and soak-test tools are "
         "not required for normal installation or calibration. Run them from this extracted directory "
         "and follow the matching technical documentation. No ROMs, recordings, device settings, "
@@ -84,7 +84,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", required=True)
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "output/install/PowerGlove-Vision-Engineering-Tools.zip")
+                        default=ROOT / "output/install/VirtualGlove-Engineering-Tools.zip")
     args = parser.parse_args()
     print("Built " + str(build(args.version, args.output)))
 

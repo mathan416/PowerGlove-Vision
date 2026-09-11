@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: retropie/powerglove-games.service
 # Purpose: Run fixed-purpose paired game registry administration separately from input delivery.
 # Author: Iain Bennett
@@ -9,7 +9,7 @@
 # Full history: docs/CHANGELOG.md and Git history.
 
 [Unit]
-Description=PowerGlove paired game mappings
+Description=VirtualGlove paired game mappings
 Wants=network-online.target
 After=network-online.target
 

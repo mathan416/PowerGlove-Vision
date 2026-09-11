@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/prepare-end-to-end-session.py
 # Purpose: Record a privacy-safe, read-only manifest before latency measurement.
 # Author: Iain Bennett

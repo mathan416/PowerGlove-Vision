@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/profile_control.py
 # Purpose: Authenticate profile commands and coordinate per-game profile selection between RetroPie and UNO Q.
 # Author: Iain Bennett
@@ -8,7 +8,7 @@
 # Change log:
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-05 - Added renewable active-game leases for safe restart recovery.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 
@@ -335,7 +335,7 @@ def main() -> int:
         print(str(exc))
         return 2
     label = profile or "off"
-    print(f"PowerGlove profile: {label} ({'accepted' if ack.get('accepted') else 'rejected'})")
+    print(f"VirtualGlove profile: {label} ({'accepted' if ack.get('accepted') else 'rejected'})")
     return 0 if ack.get("accepted") else 3
 
 

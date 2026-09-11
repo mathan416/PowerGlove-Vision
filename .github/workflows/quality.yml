@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: .github/workflows/quality.yml
 # Purpose: Test supported Python versions and verify source, documentation, PDFs, and the App Lab installation ZIP.
 # Author: Iain Bennett
@@ -98,7 +98,7 @@ jobs:
       - name: Publish verified App Lab installation ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: PowerGlove-Vision-Uno-Q
-          path: output/app-lab/PowerGlove-Vision-Uno-Q.zip
+          name: VirtualGlove-Uno-Q
+          path: output/app-lab/VirtualGlove-Uno-Q.zip
           if-no-files-found: error
           retention-days: 14

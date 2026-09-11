@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_install_packages.py
 # Purpose: Test release validation, safe updates, and installer entry points without host changes.
 # Author: Iain Bennett
@@ -44,8 +44,8 @@ class PackageContentTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             archive = Path(directory) / 'package.zip'
             with zipfile.ZipFile(archive, 'w') as output:
-                output.writestr('PowerGlove-Vision/assets/matrix/A.png', 'duplicate')
-                output.writestr('PowerGlove-Vision/docs/images/matrix/A.jpg', 'guide')
+                output.writestr('VirtualGlove/assets/matrix/A.png', 'duplicate')
+                output.writestr('VirtualGlove/docs/images/matrix/A.jpg', 'guide')
             errors = verifier.archive_errors(archive)
             duplicates = [error for error in errors if 'local duplicate matrix' in error]
             self.assertEqual(len(duplicates), 1)
@@ -60,7 +60,7 @@ class PackageContentTests(unittest.TestCase):
             archive = Path(directory) / 'package.zip'
             with zipfile.ZipFile(archive, 'w') as output:
                 output.writestr(
-                    'PowerGlove-Vision/scripts/benchmark-vision-replay.py', 'engineering')
+                    'VirtualGlove/scripts/benchmark-vision-replay.py', 'engineering')
             errors = verifier.archive_errors(archive)
             self.assertTrue(any('engineering-only file included' in error for error in errors))
 
@@ -69,7 +69,7 @@ class ArchiveTests(unittest.TestCase):
     def package(self, directory, machine='retropie', extra=None):
         archive = Path(directory) / 'package.zip'
         with zipfile.ZipFile(archive, 'w') as output:
-            output.writestr('PowerGlove-Vision/install-release.json', json.dumps(
+            output.writestr('VirtualGlove/install-release.json', json.dumps(
                 dict(format=1, machine=machine, version='dev-test')))
             for name in ('scripts/setup-machine.py', 'scripts/installation-manifest.py',
                          'scripts/install-nestopia-powerglove.sh',
@@ -92,7 +92,7 @@ class ArchiveTests(unittest.TestCase):
                          'native/nestopia-powerglove/nestopia-powerglove.patch',
                          'native/powerglove-dot/powerglove_dot.cpp',
                          'src/powerglove_vision/dot_launcher.py'):
-                output.writestr('PowerGlove-Vision/' + name, 'test')
+                output.writestr('VirtualGlove/' + name, 'test')
             if extra:
                 output.writestr(*extra)
         return archive
@@ -107,10 +107,10 @@ class ArchiveTests(unittest.TestCase):
                     installer.unpack(archive, Path(directory) / 'bad', machine, version)
 
     def test_traversal_private_files_and_links_rejected_before_extract(self):
-        link = zipfile.ZipInfo('PowerGlove-Vision/link')
+        link = zipfile.ZipInfo('VirtualGlove/link')
         link.external_attr = (stat.S_IFLNK | 0o777) << 16
-        for name in ('../escape', '/absolute', 'PowerGlove-Vision/data/token',
-                     'PowerGlove-Vision/docs/cheatsheet.md', link):
+        for name in ('../escape', '/absolute', 'VirtualGlove/data/token',
+                     'VirtualGlove/docs/cheatsheet.md', link):
             with tempfile.TemporaryDirectory() as directory:
                 archive = self.package(directory, extra=(name, 'bad'))
                 target = Path(directory) / 'extract'
@@ -120,11 +120,11 @@ class ArchiveTests(unittest.TestCase):
 
     def test_duplicate_and_incomplete_packages(self):
         with tempfile.TemporaryDirectory() as directory:
-            archive = self.package(directory, extra=('PowerGlove-Vision/config/games.json', 'duplicate'))
+            archive = self.package(directory, extra=('VirtualGlove/config/games.json', 'duplicate'))
             with self.assertRaisesRegex(ValueError, 'duplicate'):
                 installer.unpack(archive, Path(directory) / 'bad', 'retropie', 'dev-test')
             with zipfile.ZipFile(archive, 'w') as output:
-                output.writestr('PowerGlove-Vision/install-release.json', json.dumps(
+                output.writestr('VirtualGlove/install-release.json', json.dumps(
                     dict(format=1, machine='retropie', version='dev-test')))
             with self.assertRaisesRegex(ValueError, 'Incomplete'):
                 installer.unpack(archive, Path(directory) / 'bad', 'retropie', 'dev-test')
@@ -196,7 +196,7 @@ class BootstrapTests(unittest.TestCase):
         import hashlib
         driver, package = b'driver', b'package'
         sums = (hashlib.sha256(driver).hexdigest() + '  install-package.py\n' +
-                hashlib.sha256(package).hexdigest() + '  PowerGlove-Vision-RetroPie.zip\n').encode()
+                hashlib.sha256(package).hexdigest() + '  VirtualGlove-RetroPie.zip\n').encode()
         result, network, call = self.execute(['--development', 'dev-test', '--peer', 'uno.local'],
                                              side_effect=[io.BytesIO(sums), io.BytesIO(driver), io.BytesIO(package)])
         self.assertEqual(result, 0)
@@ -207,7 +207,7 @@ class BootstrapTests(unittest.TestCase):
         import hashlib
         driver, package = b'driver', b'package'
         sums = (hashlib.sha256(driver).hexdigest() + '  install-package.py\n' +
-                hashlib.sha256(package).hexdigest() + '  PowerGlove-Vision-RetroPie.zip\n').encode()
+                hashlib.sha256(package).hexdigest() + '  VirtualGlove-RetroPie.zip\n').encode()
         result, network, call = self.execute([], side_effect=[
             io.BytesIO(b'{"tag_name":"v0.3.0"}'), io.BytesIO(sums),
             io.BytesIO(driver), io.BytesIO(package)])
@@ -300,7 +300,7 @@ class GameSetupTests(unittest.TestCase):
                 setup.configure_games(lambda message: "Calibration Test" in message)
 
             run.assert_any_call("apt-get", "install", "-y", "build-essential")
-            launcher = mapped("/home/pi/RetroPie/roms/ports/PowerGlove Calibration Test.sh")
+            launcher = mapped("/home/pi/RetroPie/roms/ports/VirtualGlove Calibration Test.sh")
             self.assertEqual(launcher.read_text(),
                              "#!/bin/sh\nexec /opt/powerglove/bin/powerglove-dot\n")
             self.assertEqual((prefix / "configs/nes/powerglove-native.cfg").read_text(),

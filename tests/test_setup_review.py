@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_setup_review.py
 # Purpose: Exercise Setup recovery, concurrent settings, private worker launch, and receiver release.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/install-uno-q.sh
 # Purpose: Download and verify the release, then install uno-q integration.
 # Author: Iain Bennett
@@ -14,7 +14,7 @@ command -v python3 >/dev/null || { echo "Install Python 3.7 or newer using your 
 # Keep stdin attached to the terminal for installer and sudo prompts.
 exec python3 -c '
 import argparse, hashlib, json, os, pathlib, re, subprocess, sys, tempfile, urllib.request
-p = argparse.ArgumentParser(description="Install PowerGlove Vision on uno-q. Run as your normal login user.")
+p = argparse.ArgumentParser(description="Install VirtualGlove on uno-q. Run as your normal login user.")
 v = p.add_mutually_exclusive_group()
 v.add_argument("--version", help="Published release tag; defaults to latest stable release")
 v.add_argument("--development", metavar="TAG", help="Explicit prerelease tag built from the development branch")
@@ -27,7 +27,7 @@ try:
     if a.check:
         source = pathlib.Path("/home/arduino/ArduinoApps/powerglove-vision/scripts/setup-machine.py")
         if not source.is_file():
-            raise ValueError("PowerGlove Vision is not installed at its standard location")
+            raise ValueError("VirtualGlove is not installed at its standard location")
         cmd = ["python3", str(source), "uno-q", "--check"]
         sys.exit(subprocess.call(cmd if os.geteuid() == 0 else ["sudo"] + cmd))
     if os.geteuid() == 0:
@@ -55,7 +55,7 @@ try:
             if not re.fullmatch(r"[0-9a-f]{64}", digest) or name in sums:
                 raise ValueError("Invalid release checksum list")
             sums[name] = digest
-        for name in ("install-package.py", "PowerGlove-Vision-Uno-Q.zip"):
+        for name in ("install-package.py", "VirtualGlove-Uno-Q.zip"):
             print("Downloading " + name + " (" + tag + ")", flush=True)
             download(base + name, directory / name)
             digest = hashlib.sha256()
@@ -65,7 +65,7 @@ try:
             if digest.hexdigest() != sums.get(name):
                 raise ValueError("Checksum mismatch: " + name + "; nothing installed")
         cmd = ["sudo", "python3", str(directory / "install-package.py"), "uno-q",
-               "--archive", str(directory / "PowerGlove-Vision-Uno-Q.zip"), "--version", tag]
+               "--archive", str(directory / "VirtualGlove-Uno-Q.zip"), "--version", tag]
         if a.peer:
             cmd += ["--peer", a.peer]
         sys.exit(subprocess.call(cmd))

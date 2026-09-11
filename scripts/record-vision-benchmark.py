@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/record-vision-benchmark.py
 # Purpose: Record a short, local-only, repeatable vision benchmark clip.
 # Author: Iain Bennett

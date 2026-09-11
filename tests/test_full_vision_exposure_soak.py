@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_full_vision_exposure_soak.py
 # Purpose: Verify the full-pipeline exposure soak remains isolated and finite.
 # Author: Iain Bennett

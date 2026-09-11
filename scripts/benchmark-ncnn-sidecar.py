@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-ncnn-sidecar.py
 # Purpose: Compare an isolated ncnn CPU hand-tracking sidecar with MediaPipe.
 # Author: Iain Bennett

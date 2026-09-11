@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/academy_web.py
 # Purpose: Render Glove Academy lessons and personal hand setup.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/run-nestopia-powerglove-trace.py
 # Purpose: Run an exact NES ROM through the isolated libretro research core and capture deterministic Power Glove traces.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/measure-vision-status.py
 # Purpose: Collect a read-only, aggregate baseline from fresh vision status samples.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_vision_benchmark_tools.py
 # Purpose: Verify fixed and guided vision benchmark schedules and lifecycle.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# PowerGlove Vision: local Avahi resolver bridge, 2026-09-03.
+# VirtualGlove: local Avahi resolver bridge, 2026-09-03.
 # Preserves hostname resolution when App Lab regenerates its containers.
 # SPDX-License-Identifier: MIT
 id: local:avahi_resolver

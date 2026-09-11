@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: uno-q/powerglove-camera-recovery.py
 # Purpose: Recover the single UVC camera through its most recently observed parent USB hub.
 # Author: Iain Bennett
@@ -204,7 +204,7 @@ def _enroll_if_present(required: bool) -> int:
         raise PermissionError("camera recovery configuration must run as root")
     cameras = _discover_cameras()
     if not cameras and not required:
-        print("PowerGlove camera recovery: no camera connected; enrollment deferred until first use")
+        print("VirtualGlove camera recovery: no camera connected; enrollment deferred until first use")
         return 0
     if len(cameras) != 1:
         raise RuntimeError(
@@ -215,7 +215,7 @@ def _enroll_if_present(required: bool) -> int:
     camera = discovery["camera"]
     hub = discovery["hub"]
     print(
-        "PowerGlove camera recovery enrolled:\n"
+        "VirtualGlove camera recovery enrolled:\n"
         f"  camera: {camera['name']} ({camera['vendor_id']}:{camera['product_id']})\n"
         f"  hub: {hub['name']} ({hub['vendor_id']}:{hub['product_id']}) at {hub['sysfs_name']}"
     )
@@ -397,11 +397,11 @@ def _recover() -> str:
             current = _public_config(discovery)
             if previous != current:
                 _write_config(discovery)
-                print("PowerGlove camera recovery: camera and parent hub enrollment updated")
+                print("VirtualGlove camera recovery: camera and parent hub enrollment updated")
             _keep_awake(discovery["camera_path"])
             _keep_awake(discovery["hub_path"])
             if reason != "recover":
-                print("PowerGlove camera recovery: camera present; autosuspend disabled")
+                print("VirtualGlove camera recovery: camera present; autosuspend disabled")
                 return "enrollment"
 
         config = _load_config(optional=True)
@@ -411,7 +411,7 @@ def _recover() -> str:
             )
         now = time.monotonic()
         if _within_cooldown(now):
-            print("PowerGlove camera recovery: request ignored during cooldown")
+            print("VirtualGlove camera recovery: request ignored during cooldown")
             return "cooldown"
         hub = _approved_hub(config)
         hub_name = hub.name
@@ -420,7 +420,7 @@ def _recover() -> str:
         if _power_cycle_camera_port(config, hub):
             method = "port-power-cycle"
             print(
-                "PowerGlove camera recovery: power-cycled camera port "
+                "VirtualGlove camera recovery: power-cycled camera port "
                 f"{config['camera']['hub_port']} on {hub_name}"
             )
         else:
@@ -445,7 +445,7 @@ def _recover() -> str:
                 _keep_awake(discovery["camera_path"])
                 _keep_awake(discovery["hub_path"])
                 print(
-                    f"PowerGlove camera recovery: {method} completed; camera enumerated"
+                    f"VirtualGlove camera recovery: {method} completed; camera enumerated"
                 )
                 return method
             if len(cameras) > 1:

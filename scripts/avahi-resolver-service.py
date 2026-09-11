@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/avahi-resolver-service.py
 # Purpose: Expose only Avahi IPv4 .local lookups over an app-private Unix socket.
 # Author: Iain Bennett

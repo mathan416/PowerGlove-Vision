@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_setup_machine.py
 # Purpose: Verify installer preservation, backups, hook integration and repeatability.
 # Author: Iain Bennett

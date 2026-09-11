@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/tracker.py
 # Purpose: Convert MediaPipe or Arduino hand landmarks into normalized observations and annotated frames.
 # Author: Iain Bennett
@@ -175,7 +175,7 @@ class _DirectionalSearchState:
             return self.offset
         # Offset the image opposite the hand's projected movement. The graph's
         # previous ROI therefore sees a smaller displacement. Output landmarks
-        # are translated back before PowerGlove coordinates are calculated.
+        # are translated back before VirtualGlove coordinates are calculated.
         dt = min(next_dt, .067)
         x = self.offset[0] - self.gain * velocity2[0] * dt
         y = self.offset[1] - self.gain * velocity2[1] * dt

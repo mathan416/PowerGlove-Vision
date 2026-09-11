@@ -1,6 +1,6 @@
-# PowerGlove Vision security policy
+# VirtualGlove security policy
 
-Use PowerGlove Vision on a trusted home or workshop network. This policy
+Use VirtualGlove on a trusted home or workshop network. This policy
 explains how to report a vulnerability and which protections the project
 expects pairing, networking, and shutdown code to maintain.
 
@@ -22,7 +22,7 @@ configuration, or working exploit instructions in a public issue.
 Include these details in the private report:
 
 - the affected commit or release;
-- the PowerGlove Vision Controller, RetroPie, browser, and network environment involved;
+- the VirtualGlove Controller, RetroPie, browser, and network environment involved;
 - concise reproduction steps and the observed result;
 - the security boundary that was crossed;
 - logs or screenshots after removing tokens, passwords, pairing codes, local addresses, and unrelated personal information.
@@ -34,21 +34,21 @@ problems in public issues after removing sensitive information from the logs.
 
 ## Security model
 
-The **PowerGlove Vision Controller** is the Arduino UNO Q device that owns the
+The **VirtualGlove Controller** is the Arduino UNO Q device that owns the
 camera, recognition pipeline, local website, and controller sender.
 
-PowerGlove Vision is designed for a trusted home or workshop network. The PowerGlove Vision Controller
+VirtualGlove is designed for a trusted home or workshop network. The VirtualGlove Controller
 performs hand tracking and sends virtual-controller state to RetroPie. RetroPie
-sends per-game profile changes back to the PowerGlove Vision Controller. Neither device should be
+sends per-game profile changes back to the VirtualGlove Controller. Neither device should be
 treated as an Internet-facing service.
 
 The main protected assets are:
 
 - the shared controller token;
-- the PowerGlove Vision Controller and RetroPie operating systems;
+- the VirtualGlove Controller and RetroPie operating systems;
 - the privileged `/dev/uinput` receiver;
 - the physical pairing display and single-use PIN;
-- the fixed-purpose PowerGlove Vision Controller shutdown and USB-camera recovery helpers;
+- the fixed-purpose VirtualGlove Controller shutdown and USB-camera recovery helpers;
 - the integrity of the App Lab installation ZIP, MediaPipe wheel, bundled or downloaded model, and Arduino dependencies.
 
 The project does not attempt to protect a device after an attacker obtains root
@@ -57,8 +57,8 @@ both paired hosts.
 
 ## Pairing boundaries
 
-The PowerGlove Vision Controller and RetroPie share one random token of at least 16 characters. The
-active token belongs only in the PowerGlove Vision Controller's private `data/device.json` and
+The VirtualGlove Controller and RetroPie share one random token of at least 16 characters. The
+active token belongs only in the VirtualGlove Controller's private `data/device.json` and
 RetroPie's `/etc/powerglove/token`. It must not be committed, placed in a shell
 argument, stored in `launcher.json`, or included in a screenshot or log.
 
@@ -76,7 +76,7 @@ establishes trust, subsequent connections verify the saved remote host key.
 The password is not placed on the process command line.
 
 Both browser pairing methods require you to open secure Setup, compare the
-browser certificate identity with the identifier on the PowerGlove Vision Controller matrix, and
+browser certificate identity with the identifier on the VirtualGlove Controller matrix, and
 enter the single-use PIN shown on the matrix before the token is released. This is a local certificate-pinning ceremony, not
 validation by a public certificate authority.
 
@@ -95,11 +95,11 @@ requires explicit security review.
 
 | Port | Protocol | Direction | Boundary |
 | --- | --- | --- | --- |
-| `55355` | UDP | PowerGlove Vision Controller to RetroPie | Authenticated virtual-controller packets |
-| `55356` | UDP | RetroPie to PowerGlove Vision Controller | HMAC-authenticated profile commands and acknowledgements |
+| `55355` | UDP | VirtualGlove Controller to RetroPie | Authenticated virtual-controller packets |
+| `55356` | UDP | RetroPie to VirtualGlove Controller | HMAC-authenticated profile commands and acknowledgements |
 | `55357` | TCP/TLS | Pairing client to temporary server | Short-lived code-pairing exchange only |
-| `8088` | HTTP | Browser to PowerGlove Vision Controller | Local dashboard, Play, public Help guides, diagnostics, and ordinary controls; no pairing credentials accepted |
-| `8443` | HTTPS | Browser to PowerGlove Vision Controller | Protected setup and pairing operations |
+| `8088` | HTTP | Browser to VirtualGlove Controller | Local dashboard, Play, public Help guides, diagnostics, and ordinary controls; no pairing credentials accepted |
+| `8443` | HTTPS | Browser to VirtualGlove Controller | Protected setup and pairing operations |
 
 Keep these ports on a trusted LAN. Do not configure router port forwarding,
 public reverse proxies, cloud tunnels, or Internet firewall exceptions for
@@ -143,7 +143,7 @@ the fixed request when the host installer has placed the private
 `.shutdown-enabled` marker. These checks reduce accidents and prevent command
 substitution; they do not make the dashboard safe for public network exposure.
 Anyone able to use the reachable dashboard may still cause a denial of service
-by shutting down the PowerGlove Vision Controller.
+by shutting down the VirtualGlove Controller.
 
 A root-owned tmpfiles rule recreates only that fixed readiness marker during
 boot. It grants no command execution and does not change the container's
@@ -207,7 +207,7 @@ Tuning suppresses controller delivery even if a game launches or another Dashboa
 requests input. Saved settings are validated and atomically replaced.
 
 The optional Advanced diagnostic is the only Academy path that records video.
-It is explicitly started and user-paced, remains on the PowerGlove Vision Controller, and is deleted
+It is explicitly started and user-paced, remains on the VirtualGlove Controller, and is deleted
 immediately after aggregate analysis or cancellation. An abandoned AVI expires
 after 30 minutes. Its downloadable JSON contains aggregate continuity, latency,
 confidence, lighting, and recognized-state names only: no frames, landmarks,
@@ -229,7 +229,8 @@ version-5 `data/gesture-tuning.json` file stores player names, one joystick cent
 size, gesture activation/release pairs shared across game profiles for each player, Academy progress, and a
 required-center flag and separate saved calibration, plus a bounded pending reference during a calibration
 restore. Internal versions 1–4 migrate with private backups. Portable hand-setup
-exports use version 3; version 2 remains importable and version 1 is rejected.
+exports use the `virtualglove-hand-setup` format at version 4. Legacy
+`powerglove-hand-setup` versions 2 and 3 remain importable, while version 1 is rejected.
 Exports contain a name, center-box size, personal and complete gesture threshold
 pairs, software identity, and a neutral reference. They exclude
 camera images, landmarks, Wi-Fi credentials, pairing tokens, and lesson progress.

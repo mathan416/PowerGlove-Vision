@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-tasks-live-stream.py
 # Purpose: Probe CPU/GPU MediaPipe Tasks live-stream performance without controller output.
 # Author: Iain Bennett

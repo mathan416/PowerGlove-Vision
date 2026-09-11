@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/control_server.py
 # Purpose: Serve the UNO Q dashboard, local play, setup, pairing, controller controls, and guarded shutdown request.
 # Author: Iain Bennett
@@ -86,7 +86,7 @@ CAMERA_PROFILE_STAGES = (
     ("edge", 6.0, "Touch an edge, then return to the centre."),
 )
 CAMERA_PROFILE_MEASURE_SECONDS = sum(stage[1] for stage in CAMERA_PROFILE_STAGES)
-LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "powerglove-vision-logo.png"
+LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "virtualglove-logo.png"
 PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
     *(f"program_{letter}" for letter in "abcdefghi"),
@@ -1086,12 +1086,12 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     _send(self, 200, (LOGO_PATH.parent / "favicon.ico").read_bytes(), "image/vnd.microsoft.icon")
                 except OSError:
                     self.send_error(404)
-            elif path in ("/assets/powerglove-vision-icon.png", "/assets/favicon-32.png", "/assets/apple-touch-icon.png"):
+            elif path in ("/assets/virtualglove-icon.png", "/assets/favicon-32.png", "/assets/apple-touch-icon.png"):
                 try:
                     _send(self, 200, (LOGO_PATH.parent / path.rsplit("/", 1)[1]).read_bytes(), "image/png")
                 except OSError:
                     self.send_error(404)
-            elif path == "/assets/powerglove-vision-logo.png":
+            elif path == "/assets/virtualglove-logo.png":
                 try:
                     _send(self, 200, LOGO_PATH.read_bytes(), "image/png")
                 except OSError:
@@ -1122,7 +1122,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 if path in ("/api/games", "/api/tuning", "/api/players", "/api/attract", "/api/camera-profile"):
                     expected = path.rsplit("/", 1)[-1]
                     origin = self.headers.get("Origin")
-                    if (self.headers.get("X-PowerGlove-Action") != expected
+                    if (self.headers.get("X-VirtualGlove-Action") != expected
                             or self.headers.get("Sec-Fetch-Site", "") == "cross-site"
                             or (origin and origin not in ("http://" + self.headers.get("Host", ""), "https://" + self.headers.get("Host", "")))):
                         raise ForbiddenActionError("Open this control from the UNO website.")
@@ -1221,7 +1221,7 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                     _send(self, 204, b"", "application/json")
                 elif path == "/api/system/shutdown":
                     incoming = self.json_body(require_json=True)
-                    if self.headers.get("X-PowerGlove-Action") != "shutdown":
+                    if self.headers.get("X-VirtualGlove-Action") != "shutdown":
                         raise ForbiddenActionError("Shutdown request is missing its browser-action safeguard.")
                     if self.headers.get("Sec-Fetch-Site", "").lower() == "cross-site":
                         raise ForbiddenActionError("Cross-site shutdown requests are not allowed.")
@@ -1357,5 +1357,5 @@ def start_control_server(
         threading.Thread(target=secure_server.serve_forever, name="control-https", daemon=True).start()
         servers.append(secure_server)
     except (OSError, subprocess.CalledProcessError, ssl.SSLError) as exc:
-        print(f"PowerGlove Vision: secure setup unavailable: {exc}", flush=True)
+        print(f"VirtualGlove: secure setup unavailable: {exc}", flush=True)
     return ControlServerGroup(servers), state

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_dot_launcher.py
 # Purpose: Verify the ROM-free calibration utility's fixed launch contract.
 # Author: Iain Bennett

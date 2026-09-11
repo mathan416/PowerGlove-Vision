@@ -1,9 +1,9 @@
 # Third-party notices and runtime components
 
-The **PowerGlove Vision Controller (Arduino UNO Q)** hosts the camera and
+The **VirtualGlove Controller (Arduino UNO Q)** hosts the camera and
 recognition runtime described below.
 
-PowerGlove Vision's original source code and associated documentation are
+VirtualGlove's original source code and associated documentation are
 licensed under the repository's MIT License. That license does not replace the
 licenses or terms that apply to third-party software and model files.
 
@@ -11,10 +11,10 @@ licenses or terms that apply to third-party software and model files.
 
 | Item | Included in release | Licence and notice |
 | --- | --- | --- |
-| PowerGlove Vision source, documentation, and original artwork | Yes | MIT; see `LICENSE` |
+| VirtualGlove source, documentation, and original artwork | Yes | MIT; see `LICENSE` |
 | MediaPipe 0.10.35 ARM64/Python 3.12 wheel | Yes | Apache 2.0; the wheel retains its own licence and the release includes `licenses/Apache-2.0.txt` |
 | Google Hand Landmarker model | Yes | Apache 2.0; see `licenses/Apache-2.0.txt` and the model record below |
-| PowerGlove Vision Nestopia patch and reproducible build recipe | Yes | GNU GPL version 2; see `licenses/GPL-2.0.txt` |
+| VirtualGlove Nestopia patch and reproducible build recipe | Yes | GNU GPL version 2; see `licenses/GPL-2.0.txt` |
 | Compiled `lr-nestopia-powerglove` core | Built on RetroPie when the user selects native support; not bundled in the Controller archive | GNU GPL version 2; the installer preserves upstream copying information with the installed core |
 | `uhubctl` | Installed from Debian only when the camera-recovery option is used; not bundled | GNU GPL version 2 or later, under the Debian package's own notices |
 | RetroArch, FCEUmm, stock Nestopia, and RetroPie | Already supplied by or installed through RetroPie; not bundled | Their respective upstream licences |
@@ -26,8 +26,8 @@ distribute ROM images, original game artwork, or Nintendo software.
 
 ## MediaPipe 0.10.35 ARM64 wheel
 
-A wheel (`.whl`) is an installable Python package. PowerGlove Vision ships one
-compiled Linux ARM64 MediaPipe runtime, so the PowerGlove Vision Controller does
+A wheel (`.whl`) is an installable Python package. VirtualGlove ships one
+compiled Linux ARM64 MediaPipe runtime, so the VirtualGlove Controller does
 not build MediaPipe during installation. The `cp312-cp312` tags identify
 CPython 3.12 and its binary interface; `linux_aarch64` identifies ARM64 Linux.
 
@@ -41,7 +41,7 @@ python/worker-wheels/mediapipe-0.10.35+powerglove.cpu1-cp312-cp312-linux_aarch64
 | Upstream project | <https://github.com/google-ai-edge/mediapipe> |
 | Upstream source commit | `f8ef212d5c962c0e853db7e59d217056b187084b` |
 | License | Apache License 2.0 |
-| PowerGlove packaged-wheel SHA-256 | `6d29bfc33daebd8e47ff9a75d09ae8c032cdcc74445ba365c5aa78a85a6a2d2e` |
+| VirtualGlove packaged-wheel SHA-256 | `6d29bfc33daebd8e47ff9a75d09ae8c032cdcc74445ba365c5aa78a85a6a2d2e` |
 
 ### Modification notice
 
@@ -49,7 +49,7 @@ The ARM64/Python 3.12 wheel was built from the identified upstream source for
 the UNO Q environment. It retains upstream source headers and MediaPipe's full
 Apache 2.0 license at
 `mediapipe-0.10.35+powerglove.cpu1.dist-info/licenses/LICENSE`. The build keeps
-the established MediaPipe Hands graph used by PowerGlove Vision and includes
+the established MediaPipe Hands graph used by VirtualGlove and includes
 the narrow Linux compatibility and GPU-research support recorded in the
 [Engineering Journey](docs/ENGINEERING_JOURNEY.md).
 Production selects the four-thread XNNPACK CPU graph; the slower GPU lanes are
@@ -70,11 +70,11 @@ without repeating dependency, camera, recognition, replay, and thermal tests.
 
 ## Google Hand Landmarker model
 
-PowerGlove Vision uses Google's float16 Hand Landmarker task bundle.
+VirtualGlove uses Google's float16 Hand Landmarker task bundle.
 
 | Property | Value |
 | --- | --- |
-| PowerGlove Vision Controller runtime path | `data/models/hand_landmarker.task` |
+| VirtualGlove Controller runtime path | `data/models/hand_landmarker.task` |
 | Official download | <https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task> |
 | SHA-256 | `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1` |
 | Size | 7,819,105 bytes |
@@ -104,7 +104,7 @@ notices, and checksum together in backups. Store a copy of the recovery archive
 on another drive or in your regular off-machine backup; copies on the same Mac
 do not protect against loss of that Mac.
 
-## Verified PowerGlove Vision Controller sketch toolchain
+## Verified VirtualGlove Controller sketch toolchain
 
 The September 4, 2026 sketch build and firmware deployment used these pins from
 `sketch/sketch.yaml`:
@@ -126,18 +126,18 @@ Revalidate compilation and device operation before changing a pin.
 
 The optional `lr-nestopia-powerglove` core is built from libretro Nestopia
 revision `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e`. Nestopia identifies its
-license as the GNU General Public License, version 2. PowerGlove Vision's MIT
+license as the GNU General Public License, version 2. VirtualGlove's MIT
 license does not replace the license of Nestopia or the resulting modified core.
 The corresponding licence text is distributed as `licenses/GPL-2.0.txt`.
 
 | Property | Value |
 | --- | --- |
-| Component | libretro Nestopia with the PowerGlove Vision native-state patch |
+| Component | libretro Nestopia with the VirtualGlove native-state patch |
 | Upstream project | <https://github.com/libretro/nestopia> |
 | Pinned revision | `5a1cd378cb46ca9ccc2dd6f8b2b6a79ab986052e` |
 | Upstream license | GNU General Public License, version 2 |
 | Local modification | `native/nestopia-powerglove/nestopia-powerglove.patch` |
-| Patch SHA-256 | `3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397` |
+| Patch SHA-256 | `1cdde475a3d0da13a51d975c1bcacaedb3b9e1324260a4575e655346fcaa692f` |
 | Modified upstream files | `libretro/libretro.cpp`; `source/core/input/NstInpPowerGlove.cpp` |
 | Modification ledger | This guide, under **Nestopia modification ledger** |
 | Build recipe | `scripts/build-nestopia-powerglove.sh` |
@@ -148,7 +148,7 @@ Ordinary releases contain the patch and build recipe, not a compiled core. If
 the user accepts the RetroPie installer's optional native-core step,
 the target machine downloads the pinned upstream source, including its author
 notices and `COPYING` file, applies the patch, and builds for its own processor.
-The core installer places `COPYING` and this consolidated PowerGlove Vision
+The core installer places `COPYING` and this consolidated VirtualGlove
 notice and modification ledger beside the installed binary. The original
 Nestopia copyright/GPL header in
 `NstInpPowerGlove.cpp` remains byte-for-byte intact, and the build stops if a
@@ -165,7 +165,7 @@ ROM images are never part of a source or binary core artifact.
 At runtime, RetroArch loads the custom core only for an explicitly selected ROM.
 The launch entry passes the read-only latest-sample file through
 `POWERGLOVE_NATIVE_STATE`; the default path is `/run/powerglove/native-state`.
-The patch registers a separately named **Power Glove Vision** controller and
+The patch registers a separately named **VirtualGlove** controller and
 identifies the library as **Nestopia PowerGlove**. Invalid, stale, uncalibrated,
 lost-tracking, or wrong-profile samples are neutralized. The compatibility
 record in [Super Glove Ball native compatibility](docs/super-glove-ball-native.md)
@@ -218,7 +218,7 @@ on game unload. It does not modify the production patch, upstream headers,
 native-state ABI, or normal selection and is active only for an explicitly
 diagnostic build and trace environment.
 
-PowerGlove Vision 0.4.0 requires matching signed-controller software on both
+VirtualGlove 0.4.0 requires matching signed-controller software on both
 computers, but its coordinate-efficiency work does not change this patch or
 require a rebuild. The confirmed ten-byte packet is documented in
 [Super Glove Ball native compatibility](docs/super-glove-ball-native.md#confirmed-exact-rom-packet).
@@ -232,7 +232,7 @@ stops if the protected Nestopia Power Glove header changes.
 
 ## uhubctl
 
-The PowerGlove Vision Controller host installer uses the distribution-provided
+The VirtualGlove Controller host installer uses the distribution-provided
 `uhubctl` command to detect and operate genuine USB per-port power switching.
 The helper never bundles or modifies this utility, and it never forces it to
 operate on a hub that it does not report as supported.
@@ -242,9 +242,9 @@ operate on a hub that it does not report as supported.
 | Component | `uhubctl` USB hub per-port power control utility |
 | Upstream project | <https://github.com/mvp/uhubctl> |
 | License | GNU General Public License, version 2 |
-| Installed by | Debian package manager on the PowerGlove Vision Controller host |
+| Installed by | Debian package manager on the VirtualGlove Controller host |
 | Tested repository candidate | Debian 13 ARM64 `uhubctl` 2.6.0-1 |
-| Distribution boundary | Not copied into PowerGlove Vision source or release archives |
+| Distribution boundary | Not copied into VirtualGlove source or release archives |
 
 The root helper first asks `uhubctl` about the exact allowlisted hub location
 and camera port without using its force option. Only a positive capability
@@ -254,16 +254,16 @@ installed binary and accompanying copyright and license files.
 
 ## External RetroPie emulator dependencies
 
-PowerGlove Vision uses RetroPie-provided emulator software but does not include
+VirtualGlove uses RetroPie-provided emulator software but does not include
 those binaries in its installation archives. When either dependency is absent,
 the RetroPie installer can ask the user's existing RetroPie Setup installation
 to install it. That operation remains governed by RetroPie and the upstream
 licenses.
 
-| Component | PowerGlove Vision use | Upstream and license | Distribution boundary |
+| Component | VirtualGlove use | Upstream and license | Distribution boundary |
 | --- | --- | --- | --- |
-| RetroArch | Libretro frontend used to load FCEUmm and `lr-nestopia-powerglove` | [RetroArch](https://github.com/libretro/RetroArch), GPLv3 | Installed by RetroPie; not modified or redistributed by PowerGlove Vision |
-| FCEUmm | Default NES core for standard D-pad/button mappings and the complete Super Glove Ball fallback | [FCEUmm](https://github.com/libretro/libretro-fceumm), GPLv2 | Stock RetroPie core; not modified or redistributed by PowerGlove Vision |
+| RetroArch | Libretro frontend used to load FCEUmm and `lr-nestopia-powerglove` | [RetroArch](https://github.com/libretro/RetroArch), GPLv3 | Installed by RetroPie; not modified or redistributed by VirtualGlove |
+| FCEUmm | Default NES core for standard D-pad/button mappings and the complete Super Glove Ball fallback | [FCEUmm](https://github.com/libretro/libretro-fceumm), GPLv2 | Stock RetroPie core; not modified or redistributed by VirtualGlove |
 
 The deterministic direction benchmark separately builds stock FCEUmm revision
 `236ccdfc911e84c60fea6b9d0699c2d440a8de14` in an isolated working directory.
@@ -284,7 +284,7 @@ explains the build and verification scripts.
 2. Update the pinned values in `src/powerglove_vision/runtime_assets.py`, `scripts/fetch-runtime-assets.sh`, `scripts/verify-app-lab-package.py`, and `models/SHA256SUMS` when changing the model.
 3. If repackaging another wheel, record every difference from upstream and retain its license files.
 4. Build the App Lab installation ZIP and confirm it contains one wheel, the verified model, its license and notices, and only the root `sketch/` application sketch.
-5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the PowerGlove Vision Controller before publishing the package.
+5. Test first-launch offline model installation, download fallback, and checksum verification, background preloading with capture off, first activation after reboot, camera initialization, tracking, the Glove Academy and Dashboard pages, and controller output on the VirtualGlove Controller before publishing the package.
 
 ### Modified Nestopia core
 
@@ -312,7 +312,7 @@ are recorded separately from the software, model, and firmware dependencies abov
 
 The gesture sheets under `docs/images/gestures/` were generated on September 3,
 2026 with OpenAI's image-generation tool from project-authored prompts, then
-selected and arranged for the PowerGlove Vision gameplay guide. They are
+selected and arranged for the VirtualGlove gameplay guide. They are
 documentation assets, not runtime dependencies. No game screenshots, scans,
 box art, characters, publisher logos, or other source images were supplied to
 the generator.
@@ -334,7 +334,7 @@ marks remain the property of their respective owners.
 ### Application screenshots
 
 All application screenshots in `docs/images/` were refreshed from the current
-PowerGlove Vision source on September 6, 2026. They cover Dashboard, local Rock Paper Scissors, Glove Academy,
+VirtualGlove source on September 6, 2026. They cover Dashboard, local Rock Paper Scissors, Glove Academy,
 personalization, players and hand-setup restoration, Setup and guided pairing,
 Games, and the Help library. `scripts/capture-guide-screenshots.py` renders the
 real page templates in an isolated browser with temporary player state and
@@ -347,8 +347,8 @@ matrix photographs remain unchanged. No runtime dependencies are added.
 
 ### Website icon
 
-The website icon in `assets/powerglove-vision-icon.png` was derived from the
-project's `assets/powerglove-vision-logo.png` on September 6, 2026 using OpenAI's
+The website icon in `assets/virtualglove-icon.png` was derived from the
+project's `assets/virtualglove-logo.png` on September 6, 2026 using OpenAI's
 image-generation tool. It isolates the hand-and-target emblem without the
 wordmark. Browser-tab and Apple touch icon variants were resized from that
 square artwork. `assets/favicon.ico` contains 16, 32, and 48 pixel variants and

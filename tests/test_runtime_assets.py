@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_runtime_assets.py
 # Purpose: Verify model download caching, checksum enforcement, and atomic installation behavior.
 # Author: Iain Bennett

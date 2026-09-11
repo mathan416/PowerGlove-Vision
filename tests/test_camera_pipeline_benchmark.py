@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_camera_pipeline_benchmark.py
 # Purpose: Verify the isolated camera benchmark's timing and buffer safety.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/motion.py
 # Purpose: Archive the inactive optical-flow experiment for possible future reference.
 # Author: Iain Bennett

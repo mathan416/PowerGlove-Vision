@@ -27,7 +27,7 @@ index 3c7d92f..13b4fca 100644
  static bool is_nsf;
  static byte custpal[64*3];
  
-+/* PowerGlove Vision latest-sample ABI. This is deliberately local and
++/* VirtualGlove latest-sample ABI. This is deliberately local and
 + * read-only: the authenticated receiver owns the record and this core only
 + * accepts complete, current Super Glove Ball samples. */
 +#pragma pack(push, 1)
@@ -131,7 +131,7 @@ index 3c7d92f..13b4fca 100644
     static const struct retro_controller_description port1[] = {
        { "Auto", RETRO_DEVICE_AUTO },
        { "Gamepad", RETRO_DEVICE_GAMEPAD },
-+      { "Power Glove Vision", RETRO_DEVICE_POWERGLOVE },
++      { "VirtualGlove", RETRO_DEVICE_POWERGLOVE },
        { NULL, 0 },
     };
     static const struct retro_controller_description port2[] = {

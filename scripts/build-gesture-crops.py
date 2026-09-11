@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-gesture-crops.py
 # Purpose: Split the illustrated gesture sheets into reusable action images.
 # Author: Iain Bennett

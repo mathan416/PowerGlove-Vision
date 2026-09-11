@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/games_web.py
 # Purpose: Render the paired cabinet game registry editor.
 # Author: Iain Bennett
@@ -23,7 +23,7 @@ const editor=document.getElementById('game-json'),notice=document.getElementById
 let revision=null,loaded='',backup=false,busy=false;
 const buttons=[...document.querySelectorAll('#games-section button')];
 function controls(){buttons.forEach(b=>b.disabled=busy||(b.id!=='games-reload'&&!revision)||(b.id==='games-restore'&&!backup))}
-async function api(action){const r=await fetch('/api/games',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'games'},body:JSON.stringify({action,document:editor.value,revision})});const x=await r.json();if(!r.ok)throw Error(x.error||'Games request failed');return x}
+async function api(action){const r=await fetch('/api/games',{method:'POST',headers:{'Content-Type':'application/json','X-VirtualGlove-Action':'games'},body:JSON.stringify({action,document:editor.value,revision})});const x=await r.json();if(!r.ok)throw Error(x.error||'Games request failed');return x}
 async function run(action){if(busy)return;if(action==='read'&&editor.value!==loaded&&!confirm('Discard your unsaved edits and reload?'))return;if(action==='restore'&&!confirm('Replace the current mappings with the previous save?'))return;busy=true;controls();try{const x=await api(action);if(['read','save','restore'].includes(action)){editor.value=x.document;loaded=x.document;revision=x.revision;backup=x.has_backup;document.getElementById('game-profiles').textContent=x.profiles.join(' · ')}if(action==='format')editor.value=x.document;notice.textContent=action==='save'?'Saved on RetroPie and verified. The next game launch uses these mappings.':action==='restore'?'Previous save restored on RetroPie.':action==='validate'?'Valid JSON and game mappings.':action==='format'?'Formatted. Select Save to apply.':'Installed mappings loaded.'}catch(e){notice.textContent=e.message+' Your draft has been kept.'}finally{busy=false;controls()}}
 for(const [id,action] of Object.entries({'games-validate':'validate','games-format':'format','games-save':'save','games-reload':'read','games-restore':'restore'}))document.getElementById(id).onclick=()=>run(action);
 document.getElementById('games-backup').onclick=()=>{const url=URL.createObjectURL(new Blob([loaded],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='powerglove-games-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notice.textContent='Downloaded the last verified installed registry.'};

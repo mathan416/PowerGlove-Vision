@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: uno-q/powerglove-wifi-status.service
 # Purpose: Sample host Wi-Fi carrier state with no privileged network operations.
 # Author: Iain Bennett
@@ -8,7 +8,7 @@
 # Change log:
 #   2026-09-06 - Publish independent host Wi-Fi health for the idle matrix.
 [Unit]
-Description=PowerGlove Vision network link status
+Description=VirtualGlove network link status
 ConditionPathIsDirectory=/home/arduino/ArduinoApps/powerglove-vision/data
 
 [Service]

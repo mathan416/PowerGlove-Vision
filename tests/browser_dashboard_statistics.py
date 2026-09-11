@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/browser_dashboard_statistics.py
 # Purpose: Exercise the optional Dashboard statistics interface in a browser.
 # Author: Iain Bennett

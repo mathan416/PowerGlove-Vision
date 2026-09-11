@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/configure-super-glove-ball-core.py
 # Purpose: Select the evidence-gated native core or explicit FCEUmm fallback for one ROM.
 # Author: Iain Bennett

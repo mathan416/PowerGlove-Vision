@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_native_motion_curve.py
 # Purpose: Verify deterministic four-lane native movement-curve comparison.
 # Author: Iain Bennett

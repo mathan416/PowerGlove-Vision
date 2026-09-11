@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-frame-preprocessing.py
 # Purpose: Compare output-paused frame-preparation candidates without changing tracker semantics.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-install-packages.py
 # Purpose: Build validated versioned installers and checksums for both target machines.
 # Author: Iain Bennett
@@ -42,7 +42,7 @@ def build(version, destination):
     for machine in ("uno-q", "retropie"):
         if (ROOT / ("scripts/install-" + machine + ".sh")).read_text() != generator["render"](machine):
             raise ValueError("Regenerate installer scripts before packaging")
-    archive = ROOT / "output/app-lab/PowerGlove-Vision-Uno-Q.zip"
+    archive = ROOT / "output/app-lab/VirtualGlove-Uno-Q.zip"
     errors = runpy.run_path(str(ROOT / "scripts/verify-app-lab-package.py"))["archive_errors"](archive)
     if errors:
         raise ValueError("\n".join(errors))
@@ -50,7 +50,7 @@ def build(version, destination):
     assets = []
     with zipfile.ZipFile(archive) as original:
         for machine, name in (("uno-q", "Uno-Q"), ("retropie", "RetroPie")):
-            output = destination / ("PowerGlove-Vision-" + name + ".zip")
+            output = destination / ("VirtualGlove-" + name + ".zip")
             with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as package:
                 for item in original.infolist():
                     relative = Path(item.filename).parts[1:]
@@ -60,7 +60,7 @@ def build(version, destination):
                             "scripts", "src", "retropie", "config", "native", "licenses", "LICENSE", "THIRD_PARTY_NOTICES.md"):
                         continue
                     package.writestr(copy.copy(item), original.read(item.filename))
-                package.writestr("PowerGlove-Vision/install-release.json", json.dumps(
+                package.writestr("VirtualGlove/install-release.json", json.dumps(
                     {"format": 1, "machine": machine, "version": version}) + "\n")
             with tempfile.TemporaryDirectory() as directory:
                 load_installer().unpack(output, Path(directory), machine, version)
@@ -71,7 +71,7 @@ def build(version, destination):
         assets.append(target)
     engineering_builder = runpy.run_path(str(ROOT / "scripts/build-engineering-tools-package.py"))
     engineering = engineering_builder["build"](
-        version, destination / "PowerGlove-Vision-Engineering-Tools.zip"
+        version, destination / "VirtualGlove-Engineering-Tools.zip"
     )
     assets.extend((engineering, engineering.with_suffix(engineering.suffix + ".sha256")))
     lines = []

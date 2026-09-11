@@ -1,6 +1,6 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: uno-q/powerglove-camera-recovery.service
-# Purpose: Run the fixed-purpose PowerGlove camera USB recovery helper as root.
+# Purpose: Run the fixed-purpose VirtualGlove camera USB recovery helper as root.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
@@ -10,7 +10,7 @@
 # Full history: docs/CHANGELOG.md and Git history.
 
 [Unit]
-Description=Recover the PowerGlove Vision USB camera
+Description=Recover the VirtualGlove USB camera
 ConditionPathExists=/home/arduino/ArduinoApps/powerglove-vision/data/.camera-recovery-enabled
 
 [Service]

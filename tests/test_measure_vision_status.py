@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_measure_vision_status.py
 # Purpose: Verify latency baselines reject cached samples and retain only aggregates.
 # Author: Iain Bennett

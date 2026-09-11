@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_matrix_renderer.py
 # Purpose: Execute the firmware renderer to verify idle brightness and protected modes.
 # Author: Iain Bennett

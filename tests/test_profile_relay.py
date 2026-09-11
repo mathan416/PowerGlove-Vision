@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_profile_relay.py
 # Purpose: Verify bounded UDP relay exchanges and fail-open game-launch reporting.
 # Author: Iain Bennett

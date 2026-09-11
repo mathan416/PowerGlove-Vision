@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/gesture.py
 # Purpose: Convert calibrated hand observations into stable gamepad states for supported gesture profiles.
 # Author: Iain Bennett
@@ -15,7 +15,7 @@
 #   2026-09-05 - Added motion-confirmed depth gestures and a faster deliberate Start hold.
 #   2026-09-05 - Eased Menu Guard entry without loosening general finger recognition.
 #   2026-09-05 - Eased the default thumb-only B pose without changing other fingers.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Corrected Program I throttle and turbo output for Knight Rider.
 #   2026-09-03 - Persist and restore neutral-hand calibration.

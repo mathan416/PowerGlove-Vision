@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/receiver.py
 # Purpose: Validate controller datagrams and publish them as a Linux virtual gamepad through uinput.
 # Author: Iain Bennett
@@ -10,7 +10,7 @@
 #   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 
 """Validate controller datagrams and publish them as a Linux virtual gamepad through uinput."""
@@ -50,7 +50,7 @@ class DryRunDevice:
 
 
 class UInputDevice:
-    """Expose authenticated PowerGlove state as a standard Linux gamepad."""
+    """Expose authenticated VirtualGlove state as a standard Linux gamepad."""
     def __init__(self) -> None:
         try:
             from evdev import AbsInfo, UInput, ecodes
@@ -70,7 +70,7 @@ class UInputDevice:
                 (ecodes.ABS_RX, absolute), (ecodes.ABS_RY, absolute),
             ],
         }
-        self.device = UInput(capabilities, name="PowerGlove Vision", version=0x0100)
+        self.device = UInput(capabilities, name="VirtualGlove", version=0x0100)
 
     def write_state(self, state: dict) -> None:
         """Write all buttons and axes, then synchronize the uinput frame."""
@@ -105,7 +105,7 @@ class UInputDevice:
 
 def build_parser() -> argparse.ArgumentParser:
     """Create the virtual-controller receiver command-line parser."""
-    parser = argparse.ArgumentParser(description="Receive PowerGlove Vision as a Linux gamepad")
+    parser = argparse.ArgumentParser(description="Receive VirtualGlove as a Linux gamepad")
     parser.add_argument("--listen", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=55355)
     tokens = parser.add_mutually_exclusive_group(required=True)
@@ -134,7 +134,7 @@ def main() -> int:
         native = NativeStateWriter(args.native_state)
     except OSError as exc:
         # The standard uinput path remains usable on systems without the optional core.
-        print(f"Native Power Glove state unavailable: {exc}", flush=True)
+        print(f"Native VirtualGlove state unavailable: {exc}", flush=True)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((args.listen, args.port))
     packet_info = sys.platform.startswith("linux")

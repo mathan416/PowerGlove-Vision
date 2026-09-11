@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_latency_diagnostics.py
 # Purpose: Verify finite timing traces and reject misleading physical latency evidence.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_game_registry.py
 # Purpose: Exercise registry validation, atomic recovery, and paired service authentication.
 # Author: Iain Bennett

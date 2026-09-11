@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/install-package.py
 # Purpose: Validate and stage a release, preserving local settings before host setup.
 # Author: Iain Bennett
@@ -46,7 +46,7 @@ def unpack(archive, destination, machine, version):
         for item in package.infolist():
             path = PurePosixPath(item.filename)
             mode = item.external_attr >> 16
-            if (not path.parts or path.parts[0] != "PowerGlove-Vision" or path.is_absolute()
+            if (not path.parts or path.parts[0] != "VirtualGlove" or path.is_absolute()
                     or ".." in path.parts or "\\" in item.filename or item.filename in seen
                     or str(path) != item.filename.rstrip("/")
                     or (stat.S_IFMT(mode) not in (0, stat.S_IFREG, stat.S_IFDIR))):
@@ -57,7 +57,7 @@ def unpack(archive, destination, machine, version):
             if total > 2 * 1024 ** 3:
                 raise ValueError("Package expands beyond 2 GiB")
             seen.add(item.filename)
-        meta = json.loads(package.read("PowerGlove-Vision/install-release.json"))
+        meta = json.loads(package.read("VirtualGlove/install-release.json"))
         if meta != {"format": 1, "machine": machine, "version": version}:
             raise ValueError("Package version or target does not match the requested release")
         required = [
@@ -90,13 +90,13 @@ def unpack(archive, destination, machine, version):
                          "retropie/bin/powerglove-dot",
                      ])
         for relative in required:
-            if "PowerGlove-Vision/" + relative not in seen:
+            if "VirtualGlove/" + relative not in seen:
                 raise ValueError("Incomplete package: " + relative)
         package.extractall(str(destination))
         for item in package.infolist():
             if not item.is_dir():
                 (destination / item.filename).chmod(0o755 if item.external_attr >> 16 & 0o111 else 0o644)
-    return destination / "PowerGlove-Vision"
+    return destination / "VirtualGlove"
 
 
 def confirm(message):
@@ -141,7 +141,7 @@ def preflight(machine):
                 raise ValueError("No changes made; could not confirm safe restart")
         elif status and (status.get("controller_enabled") or status.get("practice_mode") or
                          status.get("tuning", {}).get("active") or status.get("profile", "off") != "off"):
-            if not confirm("PowerGlove Vision is active. Interrupt this session and install?"):
+            if not confirm("VirtualGlove is active. Interrupt this session and install?"):
                 raise ValueError("No changes made; active session preserved")
     else:
         if not Path("/opt/retropie/configs/all").is_dir():
@@ -212,7 +212,7 @@ def main(argv=None):
             setup.BACKUPS.chmod(0o700)
             print("Backups: " + str(setup.BACKUPS), flush=True)
             (setup.BACKUPS / "RESTORE.txt").write_text(
-                "Stop PowerGlove before recovery. Saved paths below mirror absolute host paths.\n"
+                "Stop VirtualGlove before recovery. Saved paths below mirror absolute host paths.\n"
                 "Copy only the files you need back to those paths, retaining ownership/permissions.\n"
                 "Private settings were preserved in place. To recover code/firmware, rerun the previous release installer.\n"
                 "Then reload systemd and rerun the installer --check. Do not copy the entire backup over /.\n")
@@ -231,7 +231,7 @@ def main(argv=None):
                 token = Path("/etc/powerglove/token")
                 if not token.is_file() or len(token.read_text().strip()) < 16:
                     print("NEXT  Pair using sudo /opt/powerglove/bin/powerglove-pair.")
-                print("NEXT  Confirm PowerGlove Vision is selected in RetroArch Port 1 and test gameplay.")
+                print("NEXT  Confirm VirtualGlove is selected in RetroArch Port 1 and test gameplay.")
             return report.finish()
     except (OSError, ValueError, KeyError, argparse.ArgumentTypeError, zipfile.BadZipFile, subprocess.SubprocessError) as error:
         print("FAIL  Installation stopped: " + str(error), file=sys.stderr)

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/joystick_web.py
 # Purpose: Render per-player digital joystick dead-zone controls and status.
 # Author: Iain Bennett
@@ -18,13 +18,13 @@ JOYSTICK_CONTENT = """<section class=card id=joystick-settings style="margin-top
 <div id=joystick-directions class=controls aria-label="Live direction states"><span class=bit data-direction=left>Left: off</span><span class=bit data-direction=up>Up: off</span><span class=bit data-direction=down>Down: off</span><span class=bit data-direction=right>Right: off</span></div>
 <p id=joystick-live>Waiting for tracking…</p><p id=joystick-notice role=status aria-live=polite></p>
 <p>Choose the size of the resting box around your saved center. Smaller values require less hand travel; larger values give you more room to rest.</p><ul><li>Inside or exactly on the box: movement stops.</li><li>Outside a side: one direction. Outside a corner: a diagonal.</li><li>Native Super Glove Ball X/Y reach stays separate.</li></ul>
-<p>PowerGlove Vision may safely enlarge the effective box when your saved neutral-hand jitter needs more resting room.</p></section>"""
+<p>VirtualGlove may safely enlarge the effective box when your saved neutral-hand jitter needs more resting room.</p></section>"""
 
 JOYSTICK_SCRIPT = r"""(()=>{
 const el=id=>document.getElementById(id), directions=['left','right','up','down'];
 let player=null, dirty=false, busy=false, polling=false;
 const notice=text=>el('joystick-notice').textContent=text;
-async function api(payload){const r=await fetch('/api/players',{method:'POST',headers:{'Content-Type':'application/json','X-PowerGlove-Action':'players'},body:JSON.stringify(payload)});const s=await r.json();if(!r.ok)throw Error(s.error||'Player request failed.');return s}
+async function api(payload){const r=await fetch('/api/players',{method:'POST',headers:{'Content-Type':'application/json','X-VirtualGlove-Action':'players'},body:JSON.stringify(payload)});const s=await r.json();if(!r.ok)throw Error(s.error||'Player request failed.');return s}
 function describe(state=null){const v=Number(el('joystick-size').value);let text=`Chosen size: ${Math.round(v*100)}% of calibrated palm size.`;
  if(state?.joystick?.jitter_protected)text+=` Effective size: ${Math.round(state.joystick.effective_deadzone*100)}% because neutral-hand movement needs a little more resting room.`;
  el('joystick-value').textContent=text}

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_unoq_camera_recovery_helper.py
 # Purpose: Verify first-use camera enrollment and guarded parent-hub recovery.
 # Author: Iain Bennett

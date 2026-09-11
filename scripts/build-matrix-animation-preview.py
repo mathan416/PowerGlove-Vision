@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-matrix-animation-preview.py
 # Purpose: Render the actual sketch idle frames as a reviewable animation.
 # Author: Iain Bennett
@@ -60,7 +60,7 @@ struct Matrix {
             x, y = 26 + index % 13 * 39, 25 + index // 13 * 39
             draw.rounded_rectangle((x-12, y-12, x+12, y+12), radius=5,
                                    fill=colors[value])
-        draw.text((18, 331), "PowerGlove Vision | simulated LED brightness", fill="#94acc4")
+        draw.text((18, 331), "VirtualGlove | simulated LED brightness", fill="#94acc4")
         frames.append(frame)
         durations.append(duration)
     output = root / "docs/images/matrix"

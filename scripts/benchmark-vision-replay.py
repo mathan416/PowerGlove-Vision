@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-vision-replay.py
 # Purpose: Compare repeatable tracker configurations using one local camera clip.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/analyze-motion-trace.py
 # Purpose: Analyze finite per-frame native-motion traces without replaying input.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/v4l2_capture.py
 # Purpose: Read the newest Linux MJPEG camera buffer with driver timestamps.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/guided-vision-benchmark.py
 # Purpose: Capture a user-paced, labeled vision benchmark with a live preview.
 # Author: Iain Bennett
@@ -59,7 +59,7 @@ FAST_SWEEP_CUES = (
 
 
 PAGE = """<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>
-<title>PowerGlove Guided Capture</title><style>
+<title>VirtualGlove Guided Capture</title><style>
 body{margin:0;background:#070a11;color:#eef4ff;font:17px system-ui,sans-serif}main{max-width:1040px;margin:auto;padding:24px}.grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:22px}.camera{width:100%;aspect-ratio:4/3;object-fit:contain;background:#000;border:2px solid #26d6e6;border-radius:14px}.card{background:#121827;border:1px solid #29344d;border-radius:14px;padding:20px}h1,h2{margin-top:0}.step{color:#83edf4;font-weight:700}.phase{font-size:32px;font-weight:800;margin:18px 0}.instruction{min-height:100px;line-height:1.45}.bar{height:12px;background:#222c41;border-radius:9px;overflow:hidden;margin:18px 0}.bar i{display:block;height:100%;background:#31d9e8;width:0}.controls{display:flex;gap:10px;flex-wrap:wrap}button{font:inherit;font-weight:700;padding:11px 16px;border:0;border-radius:9px;background:#31d9e8;color:#071018;cursor:pointer}button.secondary{background:#303b53;color:#fff}button:disabled{opacity:.4;cursor:default}.tip{color:#acb8cd;font-size:14px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
 </style></head><body><main><h1>Guided gesture capture</h1><p>Confirm the pose in the live view, then select <b>Record this step</b>. A two-second countdown precedes each sample.</p><div class=grid><img class=camera src=/stream alt='Live camera preview'><section class=card><div class=step id=step>Loading…</div><h2 id=title>Camera starting</h2><div class=instruction id=instruction></div><div class=phase id=phase>—</div><div class=bar><i id=bar></i></div><div class=controls><button id=record>Record this step</button></div><p class=tip id=tip>Nothing is recorded until you select the button.</p></section></div></main><script>
 const q=id=>document.getElementById(id);let priorPhase='';let priorCue=-1;

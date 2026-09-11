@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_motion.py
 # Purpose: Verify asynchronous motion correction, freshness, and native control release.
 # Author: Iain Bennett

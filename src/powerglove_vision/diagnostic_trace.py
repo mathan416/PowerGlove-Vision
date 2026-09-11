@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/diagnostic_trace.py
 # Purpose: Retain bounded optional timing evidence without disk I/O in gameplay callbacks.
 # Author: Iain Bennett

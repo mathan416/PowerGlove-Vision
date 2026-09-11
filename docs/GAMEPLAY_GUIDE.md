@@ -1,6 +1,6 @@
-# Play with PowerGlove Vision
+# Play with VirtualGlove
 
-The **PowerGlove Vision Controller (Arduino UNO Q)** watches your hand and sends
+The **VirtualGlove Controller (Arduino UNO Q)** watches your hand and sends
 the recognized controls to RetroPie.
 
 This guide provides eight game-specific play cards and explains how to use
@@ -38,7 +38,7 @@ straight after a reboot can take longer.
 2. Face a relaxed open palm toward the camera. On first use, or after moving the camera or changing your playing position, select **Center hand** and hold still until it finishes. Otherwise use your saved resting position.
 3. Select **Start controller** when ready. If the tracker is reconnecting, Start remains pending until it can be delivered; **Stop controller** cancels that request.
 4. Launch a registered game and allow its short startup pause to finish. Check the selected profile on Dashboard against the play card below; the card also shows its matrix display.
-5. Try one gesture at a time. Return to your resting position between attempts. In standard movement profiles this stops directional input; Nestopia (PowerGlove) follows your hand's position continuously.
+5. Try one gesture at a time. Return to your resting position between attempts. In standard movement profiles this stops directional input; Nestopia (VirtualGlove) follows your hand's position continuously.
 
 **Start controller** stays armed across Controller restarts, but sends controls
 only while a registered game or a manually selected Dashboard profile is active.
@@ -186,7 +186,7 @@ once-per-round availability. If Zap does not work, check the
 **Your mission:** Control the Robo-Glove, keep the energy ball in play, break a
 complete wall of tiles, and follow the revealed arrows through the maze.
 
-**Nestopia (PowerGlove)** means the custom `lr-nestopia-powerglove` core.
+**Nestopia (VirtualGlove)** means the custom `lr-nestopia-powerglove` core.
 Use the controls below for the emulator that actually starts; FCEUmm is the
 fallback. The RetroPie launch hook reports that running core automatically.
 Only Super Glove Ball running in `lr-nestopia-powerglove` uses native input.
@@ -195,17 +195,17 @@ output active for the whole session. The V sign sends Start in both modes.
 
 | Do this | See it | Controller result |
 | --- | --- | --- |
-| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in eight directions" width="96"> | FCEUmm: eight-direction digital steering. Nestopia (PowerGlove): continuous hand positioning. |
+| Move whole hand | <img src="images/gestures/actions/whole-hand-movement.png" alt="Move the whole hand in eight directions" width="96"> | FCEUmm: eight-direction digital steering. Nestopia (VirtualGlove): continuous hand positioning. |
 | Curl index finger | <img src="images/gestures/v2/curl-index.png" alt="Curl the index finger" width="72"> | FCEUmm: A, move the glove into the room. |
 | Curl thumb | <img src="images/gestures/v2/curl-thumb.png" alt="Curl the thumb" width="72"> | FCEUmm: B, punch, grab, or launch a new ball. |
-| Open hand | <img src="images/gestures/actions/show-your-hand.png" alt="Open hand" width="72"> | Nestopia (PowerGlove): release or throw a held ball. |
-| Close hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="72"> | Nestopia (PowerGlove): grab or catch the ball. |
-| Point index; curl middle, ring, and pinky | <img src="images/gestures/actions/keep-index-straight.png" alt="Point with the index finger while the other fingers are curled" width="72"> | Nestopia (PowerGlove): fire a Robo-Bullet. |
-| Close hand and push forward | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="68"> <img src="images/gestures/actions/push-toward-camera.png" alt="Push toward the camera" width="68"> | Nestopia (PowerGlove): Power Punch. |
+| Open hand | <img src="images/gestures/actions/show-your-hand.png" alt="Open hand" width="72"> | Nestopia (VirtualGlove): release or throw a held ball. |
+| Close hand | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="72"> | Nestopia (VirtualGlove): grab or catch the ball. |
+| Point index; curl middle, ring, and pinky | <img src="images/gestures/actions/keep-index-straight.png" alt="Point with the index finger while the other fingers are curled" width="72"> | Nestopia (VirtualGlove): fire a Robo-Bullet. |
+| Close hand and push forward | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="68"> <img src="images/gestures/actions/push-toward-camera.png" alt="Push toward the camera" width="68"> | Nestopia (VirtualGlove): Power Punch. |
 
 **Play smart:** Pick one wall and finish it, then follow the revealed arrow.
 With FCEUmm, use Select to take the exit. Do not rely on Select in
-Nestopia (PowerGlove); that action remains unconfirmed. **Latest coordinate** is
+Nestopia (VirtualGlove); that action remains unconfirmed. **Latest coordinate** is
 the native movement default. It follows each newest valid palm point directly
 during continuous tracking and waits one fresh result only for a contradictory
 or unusually distant non-forward reacquisition. Continuous native movement is
@@ -218,7 +218,7 @@ evidence and current limitations.
 **First round:**
 
 1. Move the Robo-Glove across the room with small hand movements.
-2. With **Nestopia (PowerGlove)**, practise closing to grab and opening to release. Try index-point fire and a fist-plus-forward Power Punch separately.
+2. With **Nestopia (VirtualGlove)**, practise closing to grab and opening to release. Try index-point fire and a fist-plus-forward Power Punch separately.
 3. With **FCEUmm**, try the index-curl A action and thumb-curl B action separately.
 
 <!-- PAGEBREAK -->
@@ -406,13 +406,14 @@ name, center-box size, personal and complete gesture sensitivity, software ident
 During restore, choose whether to keep the complete saved sensitivity, including
 the defaults used when the backup was made, or just personal adjustments. Reuse
 calibration only with the same camera and playing position; otherwise set a fresh
-centre. Backups do not include credentials or Academy progress. New exports are
-version 3; version-2 backups migrate their largest directional activation value
-into the center box. Older version-1 sensitivity-only files are rejected.
+centre. Backups do not include credentials or Academy progress. New exports use
+the `virtualglove-hand-setup` format at version 4. Legacy version-2 and
+version-3 backups remain importable; version 2 migrates its largest directional
+activation value into the center box. Older version-1 sensitivity-only files are rejected.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-virtualglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
@@ -492,7 +493,7 @@ pixels, startup animations, and the full display reference.
 ## Programs A-I
 
 The original Power Glove could load nine reusable mappings from Bad Street
-Brawler and retain one while the player changed cartridges. PowerGlove Vision
+Brawler and retain one while the player changed cartridges. VirtualGlove
 keeps all nine available at once: choose one on Dashboard or let RetroPie select
 one from the registered ROM filename. These mappings produce ordinary NES
 controller inputs, so they can be tried with games beyond the tested play cards.
@@ -509,7 +510,7 @@ for the glove's resident gesture interpreter. Each program mapped hand position,
 ordinary NES controller inputs. The
 next game therefore did not need special Power Glove support.
 
-PowerGlove Vision keeps all nine profiles ready at once. Select one on
+VirtualGlove keeps all nine profiles ready at once. Select one on
 Dashboard or let RetroPie choose it when a game launches. You do not need to
 open Bad Street Brawler first.
 
@@ -633,14 +634,14 @@ general-purpose starting point.
 Use this profile for Knight Rider and driving games that need steering, speed, and
 one extra action.
 
-## How PowerGlove Vision selects a program
+## How VirtualGlove selects a program
 
 Choose the current profile on Dashboard; choose the saved startup profile on
 Setup. Automatic selection matches the complete ROM filename, including its
 extension but excluding its folder path, against `/etc/powerglove/games.json`
 on RetroPie. Matching ignores letter case.
 
-The launch hook sends an authenticated profile request. The PowerGlove Vision Controller releases held
+The launch hook sends an authenticated profile request. The VirtualGlove Controller releases held
 controls, changes the mapping, reuses the saved calibration, and acknowledges
 the new profile on its blue matrix. If no valid calibration is saved, it collects
 an initial reference while you hold your open hand still in a comfortable
@@ -665,7 +666,7 @@ the previous game's mapping does not remain active.
 
 <!-- PAGEBREAK -->
 
-## Take PowerGlove Vision off-script
+## Take VirtualGlove off-script
 
 You can use the included profiles with games beyond the eight listed in this
 guide. Programs A–I send ordinary NES controller inputs, so try matching their
@@ -687,7 +688,7 @@ changing the ROM or emulator.
 ### Try a combination
 
 1. Launch the NES or Famicom game normally. An unregistered game safely turns gesture output off instead of inheriting the previous game's controls.
-2. Open the PowerGlove Vision Controller **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
+2. Open the VirtualGlove Controller **Dashboard** and choose **A: Pinball**, **D: Challenge**, **H: General**, or another Program A-I profile from **Active profile**.
 3. Use **Center hand** if your resting hand position produces unwanted movement or your physical setup has changed. Hold a relaxed open hand still at your intended centre and distance until calibration finishes, then select **Start controller** and return to the game.
 4. Test movement, both action gestures, Start, and Select before committing to a long session. Stop the controller immediately if a gesture remains active.
 
@@ -733,11 +734,11 @@ from the following historical instruction sources:
 - [Gun Smoke NES gameplay reference](https://strategywiki.org/wiki/Gun.Smoke_%28NES%29/Gameplay)
 - [Knight Rider NES instruction manual](https://www.retrogames.cz/manualy/NES/Knight_Rider_-_NES_-_Manual.pdf)
 
-The gesture drawings are original PowerGlove Vision project illustrations made
+The gesture drawings are original VirtualGlove project illustrations made
 for this guide. They deliberately avoid game screenshots, box art, characters,
 and publisher logos.
 
-PowerGlove Vision is an independent MIT-licensed hobbyist project by Iain
+VirtualGlove is an independent MIT-licensed hobbyist project by Iain
 Bennett. Nintendo, NES, Power Glove, and all game titles and marks belong to
 their respective owners. No ROM images or original game artwork are distributed.
 

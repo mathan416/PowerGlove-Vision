@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/camera.py
 # Purpose: Discover usable Linux camera capture devices while excluding codec-only video nodes.
 # Author: Iain Bennett
@@ -11,11 +11,11 @@
 #   2026-09-08 - Distinguish healthy enrollment from present-but-wedged stream recovery.
 #   2026-09-05 - Added guarded host USB-recovery requests for sustained camera outages.
 #   2026-09-05 - Re-enroll the camera after each unavailable-to-healthy transition.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Linux camera discovery helpers for PowerGlove Vision."""
+"""Linux camera discovery helpers for VirtualGlove."""
 
 from __future__ import annotations
 

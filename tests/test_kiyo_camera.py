@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_kiyo_camera.py
 # Purpose: Verify narrow Kiyo controls and opt-in camera configuration.
 # Author: Iain Bennett

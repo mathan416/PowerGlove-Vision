@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/game_registry.py
 # Purpose: Validate and atomically manage the installed game registry over paired requests.
 # Author: Iain Bennett
@@ -231,7 +231,7 @@ def registry_request(settings: dict, operation: str, payload: dict | None = None
 
 def main() -> int:
     """Run the serial, timeout-bounded administration service from installed settings."""
-    parser = argparse.ArgumentParser(description="Serve paired PowerGlove game registry editing")
+    parser = argparse.ArgumentParser(description="Serve paired VirtualGlove game registry editing")
     parser.add_argument("--settings", type=Path, default=Path("/etc/powerglove/launcher.json"))
     parser.add_argument("--listen", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=PORT)

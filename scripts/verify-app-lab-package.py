@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/verify-app-lab-package.py
 # Purpose: Reject incomplete, unsafe, or private content in the generated App Lab installation ZIP.
 # Author: Iain Bennett
@@ -35,129 +35,129 @@ from zipfile import BadZipFile, ZipFile
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_ARCHIVE = ROOT / "output" / "app-lab" / "PowerGlove-Vision-Uno-Q.zip"
-PACKAGE_ROOT = PurePosixPath("PowerGlove-Vision")
+DEFAULT_ARCHIVE = ROOT / "output" / "app-lab" / "VirtualGlove-Uno-Q.zip"
+PACKAGE_ROOT = PurePosixPath("VirtualGlove")
 ENGINEERING_FILES = runpy.run_path(str(ROOT / "scripts/package-inventory.py"))["ENGINEERING_FILES"]
 PUBLIC_PDF_NAMES = {
-    "PowerGlove-Vision-Third-Party-Notices.pdf",
-    "PowerGlove-Vision-Build-Your-Own.pdf",
-    "PowerGlove-Vision-Native-Emulation.pdf",
-    "PowerGlove-Vision-Troubleshooting.pdf",
-    "PowerGlove-Vision-Camera-Guide.pdf",
-    "PowerGlove-Vision-Engineering-Journey.pdf",
+    "VirtualGlove-Third-Party-Notices.pdf",
+    "VirtualGlove-Build-Your-Own.pdf",
+    "VirtualGlove-Native-Emulation.pdf",
+    "VirtualGlove-Troubleshooting.pdf",
+    "VirtualGlove-Camera-Guide.pdf",
+    "VirtualGlove-Engineering-Journey.pdf",
 
-    "PowerGlove-Vision-Matrix-Guide.pdf",
-    "PowerGlove-Vision-Architecture.pdf",
-    "PowerGlove-Vision-Changelog.pdf",
-    "PowerGlove-Vision-Configuration-Reference.pdf",
-    "PowerGlove-Vision-Contributing.pdf",
-    "PowerGlove-Vision-Gameplay-Guide.pdf",
-    "PowerGlove-Vision-Guide.pdf",
-    "PowerGlove-Vision-Overview.pdf",
-    "PowerGlove-Vision-Security.pdf",
-    "PowerGlove-Vision-Input-Audit.pdf",
-    "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
-    "PowerGlove-Vision-Direction-Response.pdf",
+    "VirtualGlove-Matrix-Guide.pdf",
+    "VirtualGlove-Architecture.pdf",
+    "VirtualGlove-Changelog.pdf",
+    "VirtualGlove-Configuration-Reference.pdf",
+    "VirtualGlove-Contributing.pdf",
+    "VirtualGlove-Gameplay-Guide.pdf",
+    "VirtualGlove-Guide.pdf",
+    "VirtualGlove-Overview.pdf",
+    "VirtualGlove-Security.pdf",
+    "VirtualGlove-Input-Audit.pdf",
+    "VirtualGlove-Super-Glove-Ball-Native.pdf",
+    "VirtualGlove-Direction-Response.pdf",
 }
 PUBLIC_PDF_PATHS = {f"output/pdf/{name}" for name in PUBLIC_PDF_NAMES}
 REQUIRED_FILES = {
-    "PowerGlove-Vision/docs/BUILD_YOUR_OWN.md",
-    "PowerGlove-Vision/docs/NATIVE_EMULATION_EXPLAINED.md",
-    "PowerGlove-Vision/docs/TROUBLESHOOTING.md",
-    "PowerGlove-Vision/docs/CAMERA_GUIDE.md",
+    "VirtualGlove/docs/BUILD_YOUR_OWN.md",
+    "VirtualGlove/docs/NATIVE_EMULATION_EXPLAINED.md",
+    "VirtualGlove/docs/TROUBLESHOOTING.md",
+    "VirtualGlove/docs/CAMERA_GUIDE.md",
 
-    "PowerGlove-Vision/src/powerglove_vision/diagnostic_trace.py",
-    "PowerGlove-Vision/scripts/measure-dot-input.py",
-    "PowerGlove-Vision/scripts/install-powerglove-dot.sh",
-    "PowerGlove-Vision/native/powerglove-dot/powerglove_dot.cpp",
-    "PowerGlove-Vision/src/powerglove_vision/dot_launcher.py",
-    "PowerGlove-Vision/retropie/bin/powerglove-dot",
-    "PowerGlove-Vision/src/powerglove_vision/controller_protocol.py",
-    "PowerGlove-Vision/src/powerglove_vision/web_common.py",
-    "PowerGlove-Vision/src/powerglove_vision/dashboard_web.py",
-    "PowerGlove-Vision/src/powerglove_vision/academy_web.py",
-    "PowerGlove-Vision/src/powerglove_vision/games_web.py",
-    "PowerGlove-Vision/src/powerglove_vision/tuning_web.py",
+    "VirtualGlove/src/powerglove_vision/diagnostic_trace.py",
+    "VirtualGlove/scripts/measure-dot-input.py",
+    "VirtualGlove/scripts/install-powerglove-dot.sh",
+    "VirtualGlove/native/powerglove-dot/powerglove_dot.cpp",
+    "VirtualGlove/src/powerglove_vision/dot_launcher.py",
+    "VirtualGlove/retropie/bin/powerglove-dot",
+    "VirtualGlove/src/powerglove_vision/controller_protocol.py",
+    "VirtualGlove/src/powerglove_vision/web_common.py",
+    "VirtualGlove/src/powerglove_vision/dashboard_web.py",
+    "VirtualGlove/src/powerglove_vision/academy_web.py",
+    "VirtualGlove/src/powerglove_vision/games_web.py",
+    "VirtualGlove/src/powerglove_vision/tuning_web.py",
 
-    "PowerGlove-Vision/scripts/install-uno-q.sh",
-    "PowerGlove-Vision/scripts/install-retropie.sh",
-    "PowerGlove-Vision/scripts/install-package.py",
-    "PowerGlove-Vision/scripts/setup-machine.py",
-    "PowerGlove-Vision/scripts/installation-manifest.py",
-    "PowerGlove-Vision/docs/images/web/gestures/v2/v-sign.png",
-    "PowerGlove-Vision/docs/images/gestures/v2/pixel-pal-coach.png",
-    "PowerGlove-Vision/docs/images/gestures/v2/pixel-pal-ready.png",
-    "PowerGlove-Vision/docs/images/gestures/v2/pixel-pal-thinking.png",
-    "PowerGlove-Vision/docs/images/gestures/v2/pixel-pal-safety.png",
-    "PowerGlove-Vision/docs/images/gestures/v2/pixel-pal-success.png",
-    "PowerGlove-Vision/docs/images/web/gestures/v2/pixel-pal-coach.png",
-    "PowerGlove-Vision/docs/images/web/gestures/v2/pixel-pal-ready.png",
-    "PowerGlove-Vision/docs/images/web/gestures/v2/pixel-pal-thinking.png",
-    "PowerGlove-Vision/docs/images/web/gestures/v2/pixel-pal-safety.png",
-    "PowerGlove-Vision/docs/images/web/gestures/v2/pixel-pal-success.png",
-    "PowerGlove-Vision/docs/images/web/gestures/actions/v-sign.png",
-    "PowerGlove-Vision/scripts/uno-q-early-start.py",
-    "PowerGlove-Vision/uno-q/powerglove-early-start.service",
-    "PowerGlove-Vision/sketch/sketch.yaml",
-    "PowerGlove-Vision/docs/MATRIX_GUIDE.md",
-    "PowerGlove-Vision/src/powerglove_vision/_build_info.json",
-    "PowerGlove-Vision/src/powerglove_vision/versioning.py",
-    "PowerGlove-Vision/models/hand_landmarker.task",
-    "PowerGlove-Vision/models/SHA256SUMS",
-    "PowerGlove-Vision/licenses/Apache-2.0.txt",
-    "PowerGlove-Vision/licenses/GPL-2.0.txt",
-    "PowerGlove-Vision/THIRD_PARTY_NOTICES.md",
-    "PowerGlove-Vision/src/powerglove_vision/game_registry.py",
-    "PowerGlove-Vision/src/powerglove_vision/tuning.py",
-    "PowerGlove-Vision/src/powerglove_vision/realtime.py",
-    "PowerGlove-Vision/src/powerglove_vision/native_state.py",
-    "PowerGlove-Vision/scripts/build-nestopia-powerglove.sh",
-    "PowerGlove-Vision/scripts/install-nestopia-powerglove.sh",
-    "PowerGlove-Vision/scripts/configure-super-glove-ball-core.py",
-    "PowerGlove-Vision/native/nestopia-powerglove/nestopia-powerglove.patch",
-    "PowerGlove-Vision/docs/super-glove-ball-native.md",
-    "PowerGlove-Vision/docs/direction-response-benchmark.md",
-    "PowerGlove-Vision/docs/ENGINEERING_JOURNEY.md",
-    "PowerGlove-Vision/docs/power-glove-rom-input-audit.md",
-    "PowerGlove-Vision/docs/images/gestures/actions/menu-guard.png",
-    "PowerGlove-Vision/docs/images/web/gestures/actions/menu-guard.png",
-    "PowerGlove-Vision/docs/images/gestures/actions/close-all-fingers.png",
-    "PowerGlove-Vision/docs/images/web/gestures/actions/close-all-fingers.png",
-    "PowerGlove-Vision/src/powerglove_vision/web_features.py",
-    "PowerGlove-Vision/src/powerglove_vision/setup_web.py",
-    "PowerGlove-Vision/src/powerglove_vision/wifi_status.py",
-    "PowerGlove-Vision/uno-q/powerglove-wifi-status.py",
-    "PowerGlove-Vision/uno-q/powerglove-wifi-status.service",
-    "PowerGlove-Vision/uno-q/powerglove-wifi-status.timer",
-    "PowerGlove-Vision/src/powerglove_vision/play_game.py",
-    "PowerGlove-Vision/retropie/powerglove-games.service",
-    "PowerGlove-Vision/retropie/bin/powerglove-games",
-    "PowerGlove-Vision/bricks/local/profile_control/brick_config.yaml",
-    "PowerGlove-Vision/bricks/local/profile_control/brick_compose.yaml",
-    "PowerGlove-Vision/scripts/profile-relay.py",
-    "PowerGlove-Vision/LICENSE",
-    "PowerGlove-Vision/README.md",
-    "PowerGlove-Vision/app.yaml",
-    "PowerGlove-Vision/bricks/local/avahi_resolver/brick_config.yaml",
-    "PowerGlove-Vision/bricks/local/avahi_resolver/brick_compose.yaml",
-    "PowerGlove-Vision/scripts/avahi-resolver-service.py",
-    "PowerGlove-Vision/docs/CONFIGURATION_REFERENCE.md",
-    "PowerGlove-Vision/docs/CONTRIBUTING.md",
-    "PowerGlove-Vision/docs/SECURITY.md",
-    "PowerGlove-Vision/python/main.py",
-    "PowerGlove-Vision/sketch/sketch.ino",
-    "PowerGlove-Vision/scripts/install-uno-q-shutdown-helper.sh",
-    "PowerGlove-Vision/scripts/install-uno-q-camera-recovery-helper.sh",
-    "PowerGlove-Vision/src/powerglove_vision/runtime_assets.py",
-    "PowerGlove-Vision/src/powerglove_vision/help_content.py",
-    "PowerGlove-Vision/uno-q/powerglove-system-shutdown.conf",
-    "PowerGlove-Vision/uno-q/powerglove-system-shutdown.path",
-    "PowerGlove-Vision/uno-q/powerglove-system-shutdown.service",
-    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.py",
-    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.conf",
-    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.path",
-    "PowerGlove-Vision/uno-q/powerglove-camera-recovery.service",
-} | {f"PowerGlove-Vision/{path}" for path in PUBLIC_PDF_PATHS}
+    "VirtualGlove/scripts/install-uno-q.sh",
+    "VirtualGlove/scripts/install-retropie.sh",
+    "VirtualGlove/scripts/install-package.py",
+    "VirtualGlove/scripts/setup-machine.py",
+    "VirtualGlove/scripts/installation-manifest.py",
+    "VirtualGlove/docs/images/web/gestures/v2/v-sign.png",
+    "VirtualGlove/docs/images/gestures/v2/pixel-pal-coach.png",
+    "VirtualGlove/docs/images/gestures/v2/pixel-pal-ready.png",
+    "VirtualGlove/docs/images/gestures/v2/pixel-pal-thinking.png",
+    "VirtualGlove/docs/images/gestures/v2/pixel-pal-safety.png",
+    "VirtualGlove/docs/images/gestures/v2/pixel-pal-success.png",
+    "VirtualGlove/docs/images/web/gestures/v2/pixel-pal-coach.png",
+    "VirtualGlove/docs/images/web/gestures/v2/pixel-pal-ready.png",
+    "VirtualGlove/docs/images/web/gestures/v2/pixel-pal-thinking.png",
+    "VirtualGlove/docs/images/web/gestures/v2/pixel-pal-safety.png",
+    "VirtualGlove/docs/images/web/gestures/v2/pixel-pal-success.png",
+    "VirtualGlove/docs/images/web/gestures/actions/v-sign.png",
+    "VirtualGlove/scripts/uno-q-early-start.py",
+    "VirtualGlove/uno-q/powerglove-early-start.service",
+    "VirtualGlove/sketch/sketch.yaml",
+    "VirtualGlove/docs/MATRIX_GUIDE.md",
+    "VirtualGlove/src/powerglove_vision/_build_info.json",
+    "VirtualGlove/src/powerglove_vision/versioning.py",
+    "VirtualGlove/models/hand_landmarker.task",
+    "VirtualGlove/models/SHA256SUMS",
+    "VirtualGlove/licenses/Apache-2.0.txt",
+    "VirtualGlove/licenses/GPL-2.0.txt",
+    "VirtualGlove/THIRD_PARTY_NOTICES.md",
+    "VirtualGlove/src/powerglove_vision/game_registry.py",
+    "VirtualGlove/src/powerglove_vision/tuning.py",
+    "VirtualGlove/src/powerglove_vision/realtime.py",
+    "VirtualGlove/src/powerglove_vision/native_state.py",
+    "VirtualGlove/scripts/build-nestopia-powerglove.sh",
+    "VirtualGlove/scripts/install-nestopia-powerglove.sh",
+    "VirtualGlove/scripts/configure-super-glove-ball-core.py",
+    "VirtualGlove/native/nestopia-powerglove/nestopia-powerglove.patch",
+    "VirtualGlove/docs/super-glove-ball-native.md",
+    "VirtualGlove/docs/direction-response-benchmark.md",
+    "VirtualGlove/docs/ENGINEERING_JOURNEY.md",
+    "VirtualGlove/docs/power-glove-rom-input-audit.md",
+    "VirtualGlove/docs/images/gestures/actions/menu-guard.png",
+    "VirtualGlove/docs/images/web/gestures/actions/menu-guard.png",
+    "VirtualGlove/docs/images/gestures/actions/close-all-fingers.png",
+    "VirtualGlove/docs/images/web/gestures/actions/close-all-fingers.png",
+    "VirtualGlove/src/powerglove_vision/web_features.py",
+    "VirtualGlove/src/powerglove_vision/setup_web.py",
+    "VirtualGlove/src/powerglove_vision/wifi_status.py",
+    "VirtualGlove/uno-q/powerglove-wifi-status.py",
+    "VirtualGlove/uno-q/powerglove-wifi-status.service",
+    "VirtualGlove/uno-q/powerglove-wifi-status.timer",
+    "VirtualGlove/src/powerglove_vision/play_game.py",
+    "VirtualGlove/retropie/powerglove-games.service",
+    "VirtualGlove/retropie/bin/powerglove-games",
+    "VirtualGlove/bricks/local/profile_control/brick_config.yaml",
+    "VirtualGlove/bricks/local/profile_control/brick_compose.yaml",
+    "VirtualGlove/scripts/profile-relay.py",
+    "VirtualGlove/LICENSE",
+    "VirtualGlove/README.md",
+    "VirtualGlove/app.yaml",
+    "VirtualGlove/bricks/local/avahi_resolver/brick_config.yaml",
+    "VirtualGlove/bricks/local/avahi_resolver/brick_compose.yaml",
+    "VirtualGlove/scripts/avahi-resolver-service.py",
+    "VirtualGlove/docs/CONFIGURATION_REFERENCE.md",
+    "VirtualGlove/docs/CONTRIBUTING.md",
+    "VirtualGlove/docs/SECURITY.md",
+    "VirtualGlove/python/main.py",
+    "VirtualGlove/sketch/sketch.ino",
+    "VirtualGlove/scripts/install-uno-q-shutdown-helper.sh",
+    "VirtualGlove/scripts/install-uno-q-camera-recovery-helper.sh",
+    "VirtualGlove/src/powerglove_vision/runtime_assets.py",
+    "VirtualGlove/src/powerglove_vision/help_content.py",
+    "VirtualGlove/uno-q/powerglove-system-shutdown.conf",
+    "VirtualGlove/uno-q/powerglove-system-shutdown.path",
+    "VirtualGlove/uno-q/powerglove-system-shutdown.service",
+    "VirtualGlove/uno-q/powerglove-camera-recovery.py",
+    "VirtualGlove/uno-q/powerglove-camera-recovery.conf",
+    "VirtualGlove/uno-q/powerglove-camera-recovery.path",
+    "VirtualGlove/uno-q/powerglove-camera-recovery.service",
+} | {f"VirtualGlove/{path}" for path in PUBLIC_PDF_PATHS}
 FORBIDDEN_PARTS = {".git", ".venv", "__pycache__", "data", "tests", "tmp"}
 FORBIDDEN_NAMES = {"CODE_REVIEW_MAP.txt", ".DS_Store", "cheatsheet.md"}
 FORBIDDEN_SUFFIXES = {".pyc"}
@@ -203,17 +203,17 @@ def archive_errors(path: Path) -> list[str]:
                 if member.suffix == ".pdf" and str(relative) not in PUBLIC_PDF_PATHS:
                     errors.append(f"unapproved PDF included: {info.filename}")
             for name in names:
-                if name.startswith("PowerGlove-Vision/docs/images/gestures/") and name.endswith(".png") and not name.endswith("-web.png"):
+                if name.startswith("VirtualGlove/docs/images/gestures/") and name.endswith(".png") and not name.endswith("-web.png"):
                     compact = name.replace("/docs/images/gestures/", "/docs/images/web/gestures/", 1)
                     if compact not in names:
                         errors.append("missing compact gesture image: " + compact)
             for name in sorted(REQUIRED_FILES - names):
                 errors.append(f"required package file is missing: {name}")
             for relative in sorted(ENGINEERING_FILES):
-                name = "PowerGlove-Vision/" + relative
+                name = "VirtualGlove/" + relative
                 if name in names:
                     errors.append(f"engineering-only file included in ordinary package: {name}")
-            stamp = "PowerGlove-Vision/src/powerglove_vision/_build_info.json"
+            stamp = "VirtualGlove/src/powerglove_vision/_build_info.json"
             if stamp in names:
                 try:
                     identity = json.loads(archive.read(stamp))
@@ -221,10 +221,10 @@ def archive_errors(path: Path) -> list[str]:
                         errors.append("build version or branch is missing")
                 except (ValueError, AttributeError):
                     errors.append("invalid build identity")
-            model = "PowerGlove-Vision/models/hand_landmarker.task"
+            model = "VirtualGlove/models/hand_landmarker.task"
             if model in names and hashlib.sha256(archive.read(model)).hexdigest() != "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1":
                 errors.append("bundled Hand Landmarker checksum mismatch")
-            license_path = "PowerGlove-Vision/licenses/Apache-2.0.txt"
+            license_path = "VirtualGlove/licenses/Apache-2.0.txt"
             if license_path in names and hashlib.sha256(archive.read(license_path)).hexdigest() != "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30":
                 errors.append("Apache 2.0 license text is missing or altered")
             wheels = {

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/browser_setup_pairing.py
 # Purpose: Exercise the guided Setup pairing flow with isolated browser fixtures.
 # Author: Iain Bennett
@@ -80,7 +80,7 @@ async def main():
                 return await r.fulfill(json={'paired':True})
             if path=='/api/players':
                 state=dict(active='default',generation=1,players=[dict(id='default',name='Iain')],progress=dict(course=1,completed=[],lesson=0),needs_center=False,has_saved_calibration=True)
-                if r.request.post_data_json['action']=='export':state['backup']=dict(format='powerglove-hand-setup',version=2,name='Iain')
+                if r.request.post_data_json['action']=='export':state['backup']=dict(format='virtualglove-hand-setup',version=4,name='Iain')
                 return await r.fulfill(json=state)
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
@@ -185,7 +185,7 @@ async def main():
         async with page.expect_download() as download_info:
             await page.locator('#player-export').click()
         download=await download_info.value
-        assert download.suggested_filename=='iain-powerglove-hand-setup.json'
+        assert download.suggested_filename=='iain-virtualglove-hand-setup.json'
         assert not await page.locator('#controller-toggle, #shutdown-system, #pair-host').count()
         await expect(page.locator('#pair-password')).to_be_disabled()
         await page.locator('#receiver').fill('draft.local')

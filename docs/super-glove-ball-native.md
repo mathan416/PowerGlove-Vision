@@ -8,7 +8,7 @@ are confirmed in exact-ROM headless traces. A completed live game also confirmed
 open-hand release/throw, fist grab/catch, index-point Robo-Bullet fire, and
 fist-plus-forward Power Punch. Movement is playable but retains some latency to
 refine.
-FCEUmm remains the supported explicit fallback using PowerGlove Vision's shared
+FCEUmm remains the supported explicit fallback using VirtualGlove's shared
 responsive D-pad and gesture recognition.
 
 ## Camera intake before native emulation

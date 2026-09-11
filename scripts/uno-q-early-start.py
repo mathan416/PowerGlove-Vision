@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/uno-q-early-start.py
 # Purpose: Release the installed sketch without resetting or flashing it.
 # Author: Iain Bennett
@@ -48,7 +48,7 @@ proc contents {path} {
     return $data
 }
 %s
-echo "PowerGlove sketch header and code samples verified"
+echo "VirtualGlove sketch header and code samples verified"
 set flag [lindex [read_memory 0x40036400 32 1] 0]
 if {$flag == 0xcaffeeee} {
     echo "ALREADY_RELEASED: no write"
@@ -79,7 +79,7 @@ def main() -> None:
     if b'arduino,imola' not in board:
         raise SystemExit('Only the verified UNO Q board is supported.')
     if Path('/var/lib/arduino-app-cli/default.app').read_text().strip() != str(APP):
-        raise SystemExit('PowerGlove is not the startup app; refusing.')
+        raise SystemExit('VirtualGlove is not the startup app; refusing.')
     deadline = time.monotonic() + (30 if args.wait_router else 0)
     while subprocess.run(['systemctl', 'is-active', '--quiet', 'arduino-router.service']).returncode:
         if time.monotonic() >= deadline:

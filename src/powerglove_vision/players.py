@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/players.py
 # Purpose: Persist bounded player presets, Academy progress, and portable hand settings.
 # Author: Iain Bennett
@@ -242,7 +242,7 @@ class PlayerSettings:
         if action == "export":
             if self.error:
                 raise ValueError(self.error)
-            return {"backup": {"format": "powerglove-hand-setup", "version": 3,
+            return {"backup": {"format": "virtualglove-hand-setup", "version": 4,
                     "name": self.active["name"], "thresholds": copy.deepcopy(self.active["thresholds"]),
                     "joystick_deadzone": self.active["joystick_deadzone"],
                     "calibration": copy.deepcopy(self.active["calibration"])}}
@@ -299,14 +299,19 @@ class PlayerSettings:
         elif action == "restore":
             backup = request.get("backup")
             if not isinstance(backup, dict) or type(backup.get("version")) is not int:
-                raise ValueError("Choose a PowerGlove hand-setup backup.")
-            complete = backup.get("format") == "powerglove-hand-setup" and backup["version"] in (2, 3)
+                raise ValueError("Choose a VirtualGlove hand-setup backup.")
+            backup_format = backup.get("format")
+            backup_version = backup.get("version")
+            complete = (
+                (backup_format == "virtualglove-hand-setup" and backup_version == 4)
+                or (backup_format == "powerglove-hand-setup" and backup_version in (2, 3))
+            )
             required = {"format", "version", "name", "thresholds", "calibration"}
-            if backup.get("version") == 3:
+            if backup.get("version") in (3, 4):
                 required.add("joystick_deadzone")
             optional = {"effective_thresholds", "source"}
             if not complete or not required <= set(backup) or set(backup) - required - optional:
-                raise ValueError("Choose a version-2 or version-3 hand-setup backup. Version-1 and device/pairing files are not supported.")
+                raise ValueError("Choose a VirtualGlove hand-setup backup, or a legacy version-2/version-3 backup. Version-1 and device/pairing files are not supported.")
             name = player_name(backup["name"])
             reference = calibration_value(backup["calibration"]) if backup["calibration"] is not None else None
             effective = backup.get("effective_thresholds")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/stamp-firmware-version.py
 # Purpose: Generate and verify the matrix firmware's source fingerprint.
 # Author: Iain Bennett

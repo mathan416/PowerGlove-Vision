@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/soak-camera-exposure.py
 # Purpose: Reliability-test temporary camera exposure settings outside gameplay.
 # Author: Iain Bennett

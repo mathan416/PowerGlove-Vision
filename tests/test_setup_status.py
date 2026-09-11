@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_setup_status.py
 # Purpose: Run Setup's Controller-output status helper without third-party packages.
 # Author: Iain Bennett

@@ -6,7 +6,7 @@ gamepad available. Change one setting at a time so you know what fixed the issue
 
 <img src="images/gestures/v2/pixel-pal-safety.png" alt="Pixel Pal gives a friendly stop-and-check signal" width="150">
 
-The **PowerGlove Vision Controller (Arduino UNO Q)** hosts Setup, Glove Academy,
+The **VirtualGlove Controller (Arduino UNO Q)** hosts Setup, Glove Academy,
 and Help. Use **Help → This console** for addresses specific to your installation.
 The examples below use placeholders, not addresses that every build shares.
 
@@ -80,7 +80,7 @@ adding a runtime setting to `device.json`.
 3. Select **Start controller**. Armed means delivery is permitted when a valid game session or intentional manual profile is active; it does not mean packets are always being sent.
 4. Check Setup's console-service and authenticated-response markers. A reachable service with unconfirmed authentication suggests pairing needs attention. Neither marker proves emulator input consumption.
 5. Confirm that the game has actually started in RetroArch. The exact ROM filename must be registered; `.nes`, `.zip`, and `.7z` are separate entries.
-6. Check the emulator and controller selection. For native Super Glove Ball, choose Nestopia (PowerGlove); for its joystick fallback choose FCEUmm.
+6. Check the emulator and controller selection. For native Super Glove Ball, choose Nestopia (VirtualGlove); for its joystick fallback choose FCEUmm.
 
 A filename such as `Gun.Smoke (USA).7z` must keep its punctuation in the registry
 even though the displayed game name is **Gun Smoke**. See
@@ -160,7 +160,7 @@ Check **Active player** first: player selection applies across browsers. Progres
 and settings live on the Controller, not in browser storage. Each downloaded
 backup contains only the selected player's hand setup and excludes Academy
 progress. Your browser usually puts it in Downloads with a player-based name,
-such as `alex-powerglove-hand-setup.json`.
+such as `alex-virtualglove-hand-setup.json`.
 
 Restore updates the selected player after review. An empty personal-threshold
 object can simply mean defaults are in use. Version-3 backups carry the center-box

@@ -1,6 +1,6 @@
-# PowerGlove Vision Camera Guide
+# VirtualGlove Camera Guide
 
-Your camera is how PowerGlove Vision sees your hand. This guide helps you choose
+Your camera is how VirtualGlove sees your hand. This guide helps you choose
 a camera, get a clear and responsive picture, and recover quickly when the
 camera is disconnected or unavailable.
 
@@ -61,7 +61,7 @@ changes before saving, Setup asks you to run the test again.
 
 Setup can explicitly save **1 buffer** or **2 buffers**. One buffer minimizes
 the driver's queue depth; two can provide steadier delivery on some cameras and
-hubs. Neither choice creates a software frame queue—PowerGlove Vision still
+hubs. Neither choice creates a software frame queue—VirtualGlove still
 keeps only the newest captured frame. Start with one buffer, or use Pixel Pal's
 camera test to compare both choices with the attached camera.
 
@@ -87,7 +87,7 @@ the actual delivered rate below the camera controls.
 ## Camera reader
 
 Think of the camera reader as the route a picture takes from the camera into
-PowerGlove Vision:
+VirtualGlove:
 
 - **Recommended - OpenCV** works with the widest range of cameras and was the
   smoothest choice in live gameplay. Start here.

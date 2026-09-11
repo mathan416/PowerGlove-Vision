@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-architecture-diagrams.py
 # Purpose: Render maintainable architecture flow diagrams for Help and the PDF guide.
 # Author: Iain Bennett

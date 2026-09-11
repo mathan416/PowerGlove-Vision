@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/stamp-build-version.py
 # Purpose: Stamp release and source-branch metadata into an exported application.
 # Author: Iain Bennett

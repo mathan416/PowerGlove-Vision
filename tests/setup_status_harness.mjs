@@ -1,5 +1,5 @@
 /*
- * Project: PowerGlove Vision
+ * Project: VirtualGlove
  * File: tests/setup_status_harness.mjs
  * Purpose: Exercise Setup's rendered Controller-output status without a browser.
  * Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-fceumm-benchmark.sh
 # Purpose: Build the pinned stock FCEUmm core used by the deterministic response benchmark.
 # Author: Iain Bennett

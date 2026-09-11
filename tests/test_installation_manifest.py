@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_installation_manifest.py
 # Purpose: Verify owned-file cleanup, local change preservation, and interrupted update recovery.
 # Author: Iain Bennett

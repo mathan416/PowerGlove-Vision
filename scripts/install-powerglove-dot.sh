@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/install-powerglove-dot.sh
 # Purpose: Build and install the ROM-free RetroPie calibration test core.
 # Author: Iain Bennett

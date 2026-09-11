@@ -1,15 +1,15 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/pairing.py
 # Purpose: Provision the shared controller token through bounded TLS pairing or authenticated SSH.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Short-lived HTTPS pairing for PowerGlove Vision and RetroPie."""
+"""Short-lived HTTPS pairing for VirtualGlove and RetroPie."""
 
 from __future__ import annotations
 
@@ -145,7 +145,7 @@ def serve_pairing(
     rejected_attempts = 0
     with tempfile.TemporaryDirectory(prefix="powerglove-pair-") as temporary_name:
         temporary = Path(temporary_name)
-        certificate, private_key, pem = generate_certificate(temporary, "PowerGlove-RetroPie-Pairing")
+        certificate, private_key, pem = generate_certificate(temporary, "VirtualGlove-RetroPie-Pairing")
         code = display_pairing_code(certificate_code(pem), authorization)
 
         class PairingHandler(BaseHTTPRequestHandler):
@@ -188,7 +188,7 @@ def serve_pairing(
         deadline = time.monotonic() + timeout
         server = BoundedTLSServer((host, port), PairingHandler, context, deadline)
         server.timeout = 0.5
-        print(f"PowerGlove Vision pairing code: {code}", flush=True)
+        print(f"VirtualGlove pairing code: {code}", flush=True)
         print(f"This code expires in {timeout} seconds and can be used once.", flush=True)
         if on_ready is not None:
             on_ready(code, int(server.server_address[1]))
@@ -328,7 +328,7 @@ def pair_over_ssh(
 
 def build_parser() -> argparse.ArgumentParser:
     """Create the command-line parser for serving or initiating pairing."""
-    parser = argparse.ArgumentParser(description="Pair PowerGlove Vision with RetroPie")
+    parser = argparse.ArgumentParser(description="Pair VirtualGlove with RetroPie")
     parser.add_argument("--listen", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=PAIRING_PORT)
     parser.add_argument("--token-file", type=Path, default=Path("/etc/powerglove/token"))
@@ -347,7 +347,7 @@ def main() -> int:
 
     try:
         serve_pairing(args.listen, args.port, args.token_file, args.timeout, restart_receiver)
-        print("Pairing complete. PowerGlove Vision receiver restarted.", flush=True)
+        print("Pairing complete. VirtualGlove receiver restarted.", flush=True)
         return 0
     except TimeoutError as exc:
         print(str(exc), flush=True)

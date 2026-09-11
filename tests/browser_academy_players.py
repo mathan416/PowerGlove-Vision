@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/browser_academy_players.py
 # Purpose: Verify Academy selection automatically loads the chosen player.
 # Author: Iain Bennett

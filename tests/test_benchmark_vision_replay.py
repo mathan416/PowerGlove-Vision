@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_benchmark_vision_replay.py
 # Purpose: Verify repeatable MediaPipe search-region and frame-preparation experiments.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-docs-pdf.py
 # Purpose: Render the maintained Markdown manuals into branded, print-ready PDF editions.
 # Author: Iain Bennett
@@ -13,7 +13,7 @@
 #   2026-09-05 - Kept each PDF list marker with its wrapped item text.
 #   2026-09-05 - Rendered paired gesture art side by side inside See it table cells.
 #   2026-09-04 - Honoured explicit widths for standalone manual illustrations.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added changelog, configuration, security, and contributor editions.
 #   2026-09-03 - Added explicit page breaks and the illustrated gameplay handbook.
@@ -21,7 +21,7 @@
 #   2026-09-04 - Added section-link destinations and kept headings with their following content.
 #   2026-09-04 - Indented list markers and text consistently within the body margin.
 
-"""Build polished, distributable PowerGlove Vision PDF guides."""
+"""Build polished, distributable VirtualGlove PDF guides."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ from reportlab.platypus import (
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "output" / "pdf"
-LOGO = ROOT / "assets" / "powerglove-vision-logo.png"
+LOGO = ROOT / "assets" / "virtualglove-logo.png"
 
 NIGHT = colors.HexColor("#07111F")
 INK = colors.HexColor("#111827")
@@ -409,7 +409,7 @@ def markdown_story(source: Path, styles: dict[str, ParagraphStyle]):
                 title.startswith("Stage ")
                 or title.startswith("Daily ")
                 or title.startswith("Workshop")
-                or title in {"Troubleshooting", "Program cards", "How PowerGlove Vision selects a program"}
+                or title in {"Troubleshooting", "Program cards", "How VirtualGlove selects a program"}
             ):
                 story.append(CondPageBreak(2.25 * inch))
             story.append(CondPageBreak((1.6 if level == 2 else 1.25) * inch))
@@ -547,7 +547,7 @@ def page_decor(canvas, document):
     canvas.line(document.leftMargin, 0.47 * inch, width - document.rightMargin, 0.47 * inch)
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(MUTED)
-    canvas.drawString(document.leftMargin, 0.27 * inch, "POWER GLOVE VISION  /  IAIN BENNETT")
+    canvas.drawString(document.leftMargin, 0.27 * inch, "VIRTUALGLOVE  /  IAIN BENNETT")
     canvas.drawRightString(width - document.rightMargin, 0.27 * inch, f"PAGE {document.page - 1}")
     canvas.restoreState()
 
@@ -561,7 +561,7 @@ def build(source: Path, destination: Path, title: str, subtitle: str, kind: str)
         rightMargin=0.7 * inch, leftMargin=0.7 * inch,
         topMargin=0.55 * inch, bottomMargin=0.67 * inch,
         title=title, subject=subtitle, author="Iain Bennett",
-        creator="Power Glove Vision documentation builder",
+        creator="VirtualGlove documentation builder",
     )
     story = cover_story(title, subtitle, kind, styles) + markdown_story(source, styles)
     document.build(story, onFirstPage=cover_page, onLaterPages=page_decor)
@@ -571,15 +571,15 @@ def main():
     """Build every maintained PDF edition and report the generation date."""
     obsolete = {
         "Bad-Street-Brawler-Power-Glove-Programs.pdf",
-        "PowerGlove-Vision-Motion-Analysis.pdf",
+        "VirtualGlove-Motion-Analysis.pdf",
         "Nestopia-PowerGlove-Changes.pdf",
         "Nestopia-PowerGlove-Core-Guide.pdf",
-        "PowerGlove-Vision-Dot-Test.pdf",
-        "PowerGlove-Vision-Early-Startup.pdf",
-        "PowerGlove-Vision-Guide-Asset-Reference.pdf",
-        "PowerGlove-Vision-Setup-Code-Review.pdf",
-        "PowerGlove-Vision-Third-Party-Components.pdf",
-        "PowerGlove-Vision-Web-Illustrations.pdf",
+        "VirtualGlove-Dot-Test.pdf",
+        "VirtualGlove-Early-Startup.pdf",
+        "VirtualGlove-Guide-Asset-Reference.pdf",
+        "VirtualGlove-Setup-Code-Review.pdf",
+        "VirtualGlove-Third-Party-Components.pdf",
+        "VirtualGlove-Web-Illustrations.pdf",
     }
     for name in obsolete:
         path = OUTPUT / name
@@ -599,89 +599,89 @@ def main():
     native_sgb = docs / "super-glove-ball-native.md"
     direction_response = docs / "direction-response-benchmark.md"
     build(
-        overview, OUTPUT / "PowerGlove-Vision-Overview.pdf",
-        "Power Glove Vision Project Overview",
+        overview, OUTPUT / "VirtualGlove-Overview.pdf",
+        "VirtualGlove Project Overview",
         "Architecture, controls, security, deployment, and project status.",
         "Project overview",
     )
     build(
-        install, OUTPUT / "PowerGlove-Vision-Guide.pdf",
-        "Power Glove Vision Installation Guide",
-        "Install, pair, and play with the PowerGlove Vision Controller and RetroPie.",
+        install, OUTPUT / "VirtualGlove-Guide.pdf",
+        "VirtualGlove Installation Guide",
+        "Install, pair, and play with the VirtualGlove Controller and RetroPie.",
         "Installation instructions",
     )
     build(
-        cheatsheet, OUTPUT / "PowerGlove-Vision-Quick-Reference.pdf",
-        "Power Glove Vision Quick Reference",
+        cheatsheet, OUTPUT / "VirtualGlove-Quick-Reference.pdf",
+        "VirtualGlove Quick Reference",
         "Current cabinet addresses, services, controls, and maintenance commands.",
         "Cabinet cheat sheet",
     )
     build(
-        third_party, OUTPUT / "PowerGlove-Vision-Third-Party-Notices.pdf",
+        third_party, OUTPUT / "VirtualGlove-Third-Party-Notices.pdf",
         "Third-party Notices and Runtime Components",
         "MediaPipe provenance, modifications, checksums, licensing, and update procedure.",
         "Technical notice",
     )
     build(
-        changelog, OUTPUT / "PowerGlove-Vision-Changelog.pdf",
-        "Power Glove Vision Changelog",
+        changelog, OUTPUT / "VirtualGlove-Changelog.pdf",
+        "VirtualGlove Changelog",
         "Versioned features, fixes, security changes, and documentation updates.",
         "Release history",
     )
     build(
-        configuration, OUTPUT / "PowerGlove-Vision-Configuration-Reference.pdf",
-        "Power Glove Vision Configuration Reference",
+        configuration, OUTPUT / "VirtualGlove-Configuration-Reference.pdf",
+        "VirtualGlove Configuration Reference",
         "Active files, installed copies, fields, secrets, and generated state.",
         "Technical reference",
     )
     build(
-        security, OUTPUT / "PowerGlove-Vision-Security.pdf",
-        "Power Glove Vision Security Policy",
+        security, OUTPUT / "VirtualGlove-Security.pdf",
+        "VirtualGlove Security Policy",
         "Reporting, trust boundaries, network exposure, shutdown, and release integrity.",
         "Security policy",
     )
     build(
-        contributing, OUTPUT / "PowerGlove-Vision-Contributing.pdf",
-        "Contributing to Power Glove Vision",
+        contributing, OUTPUT / "VirtualGlove-Contributing.pdf",
+        "Contributing to VirtualGlove",
         "Source style, testing, documentation, packaging, and pull-request expectations.",
         "Contributor guide",
     )
     build(
-        gameplay, OUTPUT / "PowerGlove-Vision-Gameplay-Guide.pdf",
-        "Play with Power Glove Vision",
+        gameplay, OUTPUT / "VirtualGlove-Gameplay-Guide.pdf",
+        "Play with VirtualGlove",
         "Eight ready-made play cards, nine reusable programs, and a whole library to rediscover.",
         "Illustrated game handbook",
     )
-    build(docs / "ARCHITECTURE.md", OUTPUT / "PowerGlove-Vision-Architecture.pdf",
-          "PowerGlove Vision Architecture",
+    build(docs / "ARCHITECTURE.md", OUTPUT / "VirtualGlove-Architecture.pdf",
+          "VirtualGlove Architecture",
           "System boundaries, recognition, tuning, game input, and deployment.",
           "Architecture and flows")
-    build(docs / "MATRIX_GUIDE.md", OUTPUT / "PowerGlove-Vision-Matrix-Guide.pdf",
-          "PowerGlove Vision Matrix Display Guide",
+    build(docs / "MATRIX_GUIDE.md", OUTPUT / "VirtualGlove-Matrix-Guide.pdf",
+          "VirtualGlove Matrix Display Guide",
           "Recognize animations, mode letters, pairing, and startup feedback.",
           "Display reference")
-    build(input_audit, OUTPUT / "PowerGlove-Vision-Input-Audit.pdf",
+    build(input_audit, OUTPUT / "VirtualGlove-Input-Audit.pdf",
           "Power Glove Game Input Audit",
           "ROM evidence for native packets and conventional controller mappings.",
           "Compatibility evidence")
-    build(native_sgb, OUTPUT / "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+    build(native_sgb, OUTPUT / "VirtualGlove-Super-Glove-Ball-Native.pdf",
           "Super Glove Ball Native Compatibility",
           "Confirmed behavior, open questions, tracing, and safe fallback operation.",
           "Native compatibility record")
-    build(direction_response, OUTPUT / "PowerGlove-Vision-Direction-Response.pdf",
+    build(direction_response, OUTPUT / "VirtualGlove-Direction-Response.pdf",
           "Native Movement Response and Validation",
           "Matched-state response, dot-core isolation, and camera-to-display evidence.",
           "Benchmark report")
-    build(docs / "BUILD_YOUR_OWN.md", OUTPUT / "PowerGlove-Vision-Build-Your-Own.pdf",
+    build(docs / "BUILD_YOUR_OWN.md", OUTPUT / "VirtualGlove-Build-Your-Own.pdf",
           "Build your own: parts, cost, and difficulty", "Parts, planning costs, tested hardware, and a staged first build.", "Community guide")
-    build(docs / "NATIVE_EMULATION_EXPLAINED.md", OUTPUT / "PowerGlove-Vision-Native-Emulation.pdf",
+    build(docs / "NATIVE_EMULATION_EXPLAINED.md", OUTPUT / "VirtualGlove-Native-Emulation.pdf",
           "How native Power Glove emulation works", "Follow hand recognition through joystick and native game input.", "Community guide")
-    build(docs / "TROUBLESHOOTING.md", OUTPUT / "PowerGlove-Vision-Troubleshooting.pdf",
+    build(docs / "TROUBLESHOOTING.md", OUTPUT / "VirtualGlove-Troubleshooting.pdf",
           "Troubleshooting by symptom", "Find the first failing stage, from the camera to the displayed game.", "Community guide")
-    build(docs / "CAMERA_GUIDE.md", OUTPUT / "PowerGlove-Vision-Camera-Guide.pdf",
-          "PowerGlove Vision Camera Guide", "Choose, tune, and troubleshoot a camera without changing gesture recognition.", "User guide")
-    build(docs / "ENGINEERING_JOURNEY.md", OUTPUT / "PowerGlove-Vision-Engineering-Journey.pdf",
-          "PowerGlove Vision Engineering Journey", "One week of hypotheses, measurements, experiments, and play tests.", "Engineering history")
+    build(docs / "CAMERA_GUIDE.md", OUTPUT / "VirtualGlove-Camera-Guide.pdf",
+          "VirtualGlove Camera Guide", "Choose, tune, and troubleshoot a camera without changing gesture recognition.", "User guide")
+    build(docs / "ENGINEERING_JOURNEY.md", OUTPUT / "VirtualGlove-Engineering-Journey.pdf",
+          "VirtualGlove Engineering Journey", "One week of hypotheses, measurements, experiments, and play tests.", "Engineering history")
     print(f"Built 19 PDF guides on {date.today().isoformat()}")
 
 

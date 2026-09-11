@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/capture-guide-screenshots.py
 # Purpose: Refresh guide screenshots from current pages using isolated sample data.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-// Project: PowerGlove Vision
+// Project: VirtualGlove
 // File: tests/academy_controls_harness.mjs
 // Purpose: Exercise the rendered Glove Academy controls in a dependency-free DOM harness.
 // Author: Iain Bennett

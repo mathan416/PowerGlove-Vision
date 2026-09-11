@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_deployment_backup_rotation.py
 # Purpose: Verify routine deployment backups rotate without touching named evidence.
 # Author: Iain Bennett

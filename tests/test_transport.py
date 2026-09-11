@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_transport.py
 # Purpose: Verify controller packet protocol validation and sender recovery from network failures.
 # Author: Iain Bennett
@@ -9,7 +9,7 @@
 #   2026-09-09 - Covered state-first maintenance and bounded reply processing.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-05 - Verified native compound hand poses survive transport.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 
 """Verify controller packet protocol validation and sender recovery from network failures."""

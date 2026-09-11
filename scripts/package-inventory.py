@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/package-inventory.py
 # Purpose: Separate ordinary installation content from developer and research tools.
 # Author: Iain Bennett

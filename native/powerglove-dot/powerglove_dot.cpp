@@ -1,4 +1,4 @@
-// Project: PowerGlove Vision
+// Project: VirtualGlove
 // File: native/powerglove-dot/powerglove_dot.cpp
 // Purpose: Display the receiver's latest native X/Y sample as a calibration dot.
 // Author: Iain Bennett
@@ -122,7 +122,7 @@ void retro_set_input_state(retro_input_state_t) {}
 unsigned retro_api_version() { return RETRO_API_VERSION; }
 void retro_init() { unsigned format = RETRO_PIXEL_FORMAT_XRGB8888; if (environment_cb) environment_cb(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format); }
 void retro_deinit() {}
-void retro_get_system_info(retro_system_info* info) { *info = {"PowerGlove Calibration Test", "1.0", "", false, false}; }
+void retro_get_system_info(retro_system_info* info) { *info = {"VirtualGlove Calibration Test", "1.0", "", false, false}; }
 void retro_get_system_av_info(retro_system_av_info* info) { *info = {{WIDTH, HEIGHT, WIDTH, HEIGHT, 4.0f / 3.0f}, {60.0988, 48000.0}}; }
 void retro_set_controller_port_device(unsigned, unsigned) {}
 void retro_reset() {}

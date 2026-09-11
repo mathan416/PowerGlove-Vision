@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/kiyo_camera.py
 # Purpose: Apply opt-in volatile Kiyo Pro controls through the Linux camera interface.
 # Author: Iain Bennett

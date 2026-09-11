@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/analyze-latency-video.py
 # Purpose: Measure reviewed hand/screen video annotations using decoded presentation timestamps.
 # Author: Iain Bennett

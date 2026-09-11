@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/dot_launcher.py
 # Purpose: Run the RetroPie calibration display with a renewable native-input lease.
 # Author: Iain Bennett
@@ -41,7 +41,7 @@ def main() -> int:
     token = read_token(None, Path(settings["token_file"]))
     for path in (CORE, RETROARCH, RETROARCH_CONFIG, NATIVE_CONFIG):
         if not path.is_file():
-            raise SystemExit("PowerGlove Calibration Test is incomplete; rerun the RetroPie installer.")
+            raise SystemExit("VirtualGlove Calibration Test is incomplete; rerun the RetroPie installer.")
     session_id = uuid.uuid4().hex
     process = subprocess.Popen(command(), env={**os.environ,
         "POWERGLOVE_NATIVE_STATE": "/run/powerglove/native-state"})
@@ -50,7 +50,7 @@ def main() -> int:
             try:
                 send_request(settings["uno_q"], int(settings.get("port", 55356)), token,
                              "super_glove_ball", "powerglove-calibration",
-                             "PowerGlove Calibration Test", float(settings.get("timeout", 0.4)),
+                             "VirtualGlove Calibration Test", float(settings.get("timeout", 0.4)),
                              session_id=session_id, lease_seconds=6.0,
                              emulator="lr-powerglove-dot")
             except (OSError, TimeoutError, ValueError, KeyError, TypeError):

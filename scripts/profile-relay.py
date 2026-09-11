@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/profile-relay.py
 # Purpose: Forward bounded UDP profile exchanges from the LAN to the App Lab worker.
 # Author: Iain Bennett

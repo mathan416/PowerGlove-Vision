@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/application-payload.py
 # Purpose: Stage one public application payload for releases and Wi-Fi deployment.
 # Author: Iain Bennett
@@ -20,7 +20,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_ROOTS = {"src", "python", "scripts", "sketch", "config", "docs", "models", "licenses", "retropie", "native", "uno-q", "bricks"}
-PUBLIC_FILES = {"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "app.yaml", "assets/powerglove-vision-logo.png", "assets/powerglove-vision-icon.png", "assets/favicon-32.png",
+PUBLIC_FILES = {"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "app.yaml", "assets/virtualglove-logo.png", "assets/virtualglove-icon.png", "assets/favicon-32.png",
     "assets/favicon.ico", "assets/apple-touch-icon.png"}
 
 

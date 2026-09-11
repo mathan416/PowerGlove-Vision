@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_academy_controls.py
 # Purpose: Run the rendered Glove Academy JavaScript control harness without third-party packages.
 # Author: Iain Bennett

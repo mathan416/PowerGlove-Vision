@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_launch_guard.py
 # Purpose: Verify the bounded pre-emulator controller-delivery guard.
 # Author: Iain Bennett

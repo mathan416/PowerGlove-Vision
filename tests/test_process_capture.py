@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_process_capture.py
 # Purpose: Verify coherent latest-only process capture and failure publication.
 # Author: Iain Bennett

@@ -1,17 +1,17 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: app.yaml
 # Purpose: Describe the UNO Q App Lab application name, icon, and published dashboard ports.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
-name: PowerGlove Vision
-description: Camera-only Power Glove controller for UNO Q and RetroPie
+name: VirtualGlove
+description: Camera-only hand controller for UNO Q and RetroPie
 ports:
   - 8088
   - 8443

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/camera_controls.py
 # Purpose: Apply capability-checked, volatile standard V4L2 latency controls.
 # Author: Iain Bennett

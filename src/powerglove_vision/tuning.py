@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/tuning.py
 # Purpose: Record gesture measurements and manage expiring global threshold previews.
 # Author: Iain Bennett

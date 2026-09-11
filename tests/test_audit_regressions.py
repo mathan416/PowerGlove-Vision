@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_audit_regressions.py
 # Purpose: Prevent controller, tuning, deployment, and matrix audit regressions.
 # Author: Iain Bennett

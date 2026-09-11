@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/install-nestopia-powerglove.sh
 # Purpose: Build and install the separately named evidence-gated Nestopia core on RetroPie.
 # Author: Iain Bennett

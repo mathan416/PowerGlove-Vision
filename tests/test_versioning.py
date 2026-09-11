@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_versioning.py
 # Purpose: Verify release and dev labels survive exported application builds.
 # Author: Iain Bennett

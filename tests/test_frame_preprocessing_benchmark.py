@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_frame_preprocessing_benchmark.py
 # Purpose: Verify privacy-safe frame-preparation benchmark reporting.
 # Author: Iain Bennett

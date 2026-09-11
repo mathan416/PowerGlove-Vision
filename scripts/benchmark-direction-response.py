@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-direction-response.py
 # Purpose: Compare deterministic direction-response latency in native Nestopia and FCEUmm.
 # Author: Iain Bennett

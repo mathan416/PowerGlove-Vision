@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/native_state.py
 # Purpose: Publish authenticated controller samples for the custom Nestopia core.
 # Author: Iain Bennett

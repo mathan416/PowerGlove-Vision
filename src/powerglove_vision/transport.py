@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/transport.py
 # Purpose: Encode bounded controller packets and send them to RetroPie without blocking vision recovery.
 # Author: Iain Bennett
@@ -11,7 +11,7 @@
 #   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-05 - Carried native closed-hand and index-point recognition states.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
 

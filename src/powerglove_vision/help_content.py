@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/help_content.py
 # Purpose: Render the bundled public Markdown guides as safe, offline Help pages.
 # Author: Iain Bennett
@@ -36,7 +36,7 @@ DOCS_ROOT = Path(__file__).resolve().parents[2] / "docs"
 HELP_ASSETS_ROOT = DOCS_ROOT / "images"
 HELP_PDFS_ROOT = DOCS_ROOT.parent / "output" / "pdf"
 HELP_GUIDES = (
-    {'slug': 'cabinet', 'title': 'This console', 'file': None, 'description': 'Live PowerGlove Vision Controller links and the active RetroPie connection, generated for this cabinet.', 'group': 'User manuals'},
+    {'slug': 'cabinet', 'title': 'This console', 'file': None, 'description': 'Live VirtualGlove Controller links and the active RetroPie connection, generated for this cabinet.', 'group': 'User manuals'},
     {'slug': 'gameplay', 'title': 'Game and gesture guide', 'file': 'GAMEPLAY_GUIDE.md', 'description': 'Illustrated Rock Paper Scissors instructions, configured-game controls, and play tips.', 'group': 'User manuals'},
     {'slug': 'matrix', 'title': 'Matrix display guide', 'file': 'MATRIX_GUIDE.md', 'description': 'Recognize startup, glove animations, Academy letters, game profiles, pairing, and errors.', 'group': 'User manuals'},
     {'slug': 'build-your-own', 'title': 'Build your own: parts, cost, and difficulty', 'file': 'BUILD_YOUR_OWN.md', 'description': 'Parts, planning costs, tested hardware, and a staged first build.', 'group': 'User manuals'},
@@ -68,25 +68,25 @@ SLUG_BY_FILE = {
     if guide["file"] is not None
 }
 HELP_PDFS = {
-    "build-your-own": "PowerGlove-Vision-Build-Your-Own.pdf",
-    "native-emulation": "PowerGlove-Vision-Native-Emulation.pdf",
-    "troubleshooting": "PowerGlove-Vision-Troubleshooting.pdf",
-    "camera": "PowerGlove-Vision-Camera-Guide.pdf",
+    "build-your-own": "VirtualGlove-Build-Your-Own.pdf",
+    "native-emulation": "VirtualGlove-Native-Emulation.pdf",
+    "troubleshooting": "VirtualGlove-Troubleshooting.pdf",
+    "camera": "VirtualGlove-Camera-Guide.pdf",
 
-    "matrix": "PowerGlove-Vision-Matrix-Guide.pdf",
-    "architecture": "PowerGlove-Vision-Architecture.pdf",
-    "input-audit": "PowerGlove-Vision-Input-Audit.pdf",
-    "native-super-glove-ball": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
-    "direction-response": "PowerGlove-Vision-Direction-Response.pdf",
-    "engineering-journey": "PowerGlove-Vision-Engineering-Journey.pdf",
-    "overview": "PowerGlove-Vision-Overview.pdf",
-    "installation": "PowerGlove-Vision-Guide.pdf",
-    "gameplay": "PowerGlove-Vision-Gameplay-Guide.pdf",
-    "configuration": "PowerGlove-Vision-Configuration-Reference.pdf",
-    "security": "PowerGlove-Vision-Security.pdf",
-    "components": "PowerGlove-Vision-Third-Party-Notices.pdf",
-    "contributing": "PowerGlove-Vision-Contributing.pdf",
-    "changelog": "PowerGlove-Vision-Changelog.pdf",
+    "matrix": "VirtualGlove-Matrix-Guide.pdf",
+    "architecture": "VirtualGlove-Architecture.pdf",
+    "input-audit": "VirtualGlove-Input-Audit.pdf",
+    "native-super-glove-ball": "VirtualGlove-Super-Glove-Ball-Native.pdf",
+    "direction-response": "VirtualGlove-Direction-Response.pdf",
+    "engineering-journey": "VirtualGlove-Engineering-Journey.pdf",
+    "overview": "VirtualGlove-Overview.pdf",
+    "installation": "VirtualGlove-Guide.pdf",
+    "gameplay": "VirtualGlove-Gameplay-Guide.pdf",
+    "configuration": "VirtualGlove-Configuration-Reference.pdf",
+    "security": "VirtualGlove-Security.pdf",
+    "components": "VirtualGlove-Third-Party-Notices.pdf",
+    "contributing": "VirtualGlove-Contributing.pdf",
+    "changelog": "VirtualGlove-Changelog.pdf",
 }
 
 _HTML_IMAGE_PATTERN = r'<img\s+src="([^"]+)"\s+alt="([^"]*)"\s+width="([0-9]{1,3})"\s*/?>'
@@ -171,7 +171,7 @@ def help_index_content() -> str:
         sections.append("<section class=help-group><h2>{}</h2><div class=guide-grid>{}</div></section>".format(group, "".join(cards)))
     return (
         "<h1>Help, without leaving the glove.</h1>"
-        "<p class=lead>Read the maintained PowerGlove Vision guides directly on this PowerGlove Vision Controller. "
+        "<p class=lead>Read the maintained VirtualGlove guides directly on this VirtualGlove Controller. "
         "Start with This console for your current connections, or choose a guide below. The manuals are available offline.</p>"
         + "".join(sections)
     )
@@ -271,8 +271,8 @@ def cabinet_reference_content(host_header: str, config: dict[str, Any]) -> tuple
     )
     article = (
         "<h1>This console</h1>"
-        "<p>These values are generated from the address used to open this page and the PowerGlove Vision Controller's active public configuration. They update without editing a guide.</p>"
-        "<h2>PowerGlove Vision Controller</h2><div class=table-scroll><table><tbody>"
+        "<p>These values are generated from the address used to open this page and the VirtualGlove Controller's active public configuration. They update without editing a guide.</p>"
+        "<h2>VirtualGlove Controller</h2><div class=table-scroll><table><tbody>"
         + row("Address used by this browser", board)
         + row("Web workshop", http_root)
         + row("Secure setup", https_root)
@@ -324,8 +324,8 @@ def _anchor(text: str, used: set[str]) -> str:
 def _safe_target(target: str, image: bool = False) -> str:
     """Translate known documentation links and reject unsafe URL schemes."""
     target = target.strip()
-    if image and target in {"../assets/powerglove-vision-logo.png", "assets/powerglove-vision-logo.png"}:
-        return "/assets/powerglove-vision-logo.png"
+    if image and target in {"../assets/virtualglove-logo.png", "assets/virtualglove-logo.png"}:
+        return "/assets/virtualglove-logo.png"
     if image and target.startswith("images/"):
         return "/help-assets/" + target[len("images/"):]
     filename = target.split("#", 1)[0].rsplit("/", 1)[-1]
@@ -350,7 +350,7 @@ def _inline(text: str) -> str:
                 target, alt, width_text = image_match.groups()
                 safe_target = _safe_target(target, image=True)
                 width = int(width_text)
-                maximum_width = 760 if safe_target == "/assets/powerglove-vision-logo.png" else 320
+                maximum_width = 760 if safe_target == "/assets/virtualglove-logo.png" else 320
                 if safe_target != "#" and 24 <= width <= maximum_width:
                     output.append(
                         "<img loading=lazy src='{src}' alt='{alt}' width='{width}'>".format(

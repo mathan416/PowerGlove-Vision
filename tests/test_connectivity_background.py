@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_connectivity_background.py
 # Purpose: Verify nonblocking address refresh and independent, fresh host Wi-Fi health.
 # Author: Iain Bennett

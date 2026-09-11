@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/setup_web.py
 # Purpose: Present connection, pairing, and idle-display settings with recoverable browser actions.
 # Author: Iain Bennett
@@ -85,8 +85,8 @@ function syncCameraOptions(options,selected){const menu=$('camera'),wanted=Strin
 function syncExposureFields(){const manual=$('camera_exposure').value==='manual';$('camera-manual-settings').hidden=!manual;$('camera_manual_exposure').required=manual;$('camera_manual_gain').required=manual}
 async function api(path,payload,timeoutMs=0){
   const options=payload===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)};
-  if(path==='/api/attract')options.headers['X-PowerGlove-Action']='attract';
-  if(path==='/api/camera-profile'&&payload!==undefined)options.headers['X-PowerGlove-Action']='camera-profile';
+  if(path==='/api/attract')options.headers['X-VirtualGlove-Action']='attract';
+  if(path==='/api/camera-profile'&&payload!==undefined)options.headers['X-VirtualGlove-Action']='camera-profile';
   const controller=timeoutMs?new AbortController():null;
   const timer=controller?setTimeout(()=>controller.abort(),timeoutMs):null;
   if(controller)options.signal=controller.signal;

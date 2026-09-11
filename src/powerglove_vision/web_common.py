@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/web_common.py
 # Purpose: Render the shared page shell, profile options, and camera startup behavior.
 # Author: Iain Bennett
@@ -63,7 +63,7 @@ def _page(title: str, content: str, script: str) -> bytes:
 <meta name=viewport content='width=device-width,initial-scale=1'>
 <link rel="icon" type="image/vnd.microsoft.icon" sizes="16x16 32x32 48x48" href="/favicon.ico?v=faee57fda59e">
 <link rel=apple-touch-icon sizes=180x180 href="/assets/apple-touch-icon.png?v=48a3ff7c60d3">
-<title>{html.escape(title)} · PowerGlove Vision</title>
+<title>{html.escape(title)} · VirtualGlove</title>
 <style>
 :root{{--ink:#f7f8ff;--muted:#a6aec5;--panel:#161a25;--line:#303748;--blue:#3d75ff;--cyan:#36dbe8;--red:#e64047;--green:#54e389}}
 *{{box-sizing:border-box}}body{{margin:0;color:var(--ink);font:16px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:#090b11 radial-gradient(circle at 75% 0,#182449 0,transparent 38%)}}
@@ -99,7 +99,7 @@ details.advanced{{margin-top:18px;padding-top:14px;border-top:1px solid var(--li
 @media(max-width:900px){{.status-grid{{grid-template-columns:repeat(2,minmax(0,1fr))}}.dashboard-workspace,.learn-grid,.rps-layout{{grid-template-columns:1fr}}.dashboard-workspace .camera,.learn-camera .camera,.rps-camera .camera{{height:auto;aspect-ratio:4/3}}}}
 @media(max-width:900px){{.help-layout{{grid-template-columns:1fr}}.help-sidebar{{position:static;max-height:none}}.guide-nav{{grid-template-columns:repeat(2,minmax(0,1fr))}}.toc{{display:none}}}}
 @media(max-width:600px){{header{{align-items:center}}.brand{{max-width:58%}}nav{{display:grid;grid-template-columns:repeat(2,auto);gap:5px 12px}}nav a{{margin:0}}.diagnostic-grid{{grid-template-columns:1fr}}.guide-nav{{grid-template-columns:1fr}}.markdown-body{{padding:20px 17px}}}}
-</style></head><body><header><a class=brand href=/dashboard aria-label='PowerGlove Vision dashboard'><img src=/assets/powerglove-vision-logo.png alt='PowerGlove Vision'></a><nav><a href=/dashboard>Dashboard</a><a href=/play>Play</a><a href=/learn>Glove Academy</a><a href=/help>Help</a><a href="/setup">Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>PowerGlove Vision v{html.escape(__version__)}</span>{started}<details class=build-details><summary>Software and matrix firmware</summary><p id=build-identity>Checking installed versions…</p></details></footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
+</style></head><body><header><a class=brand href=/dashboard aria-label='VirtualGlove dashboard'><img src=/assets/virtualglove-logo.png alt='VirtualGlove'></a><nav><a href=/dashboard>Dashboard</a><a href=/play>Play</a><a href=/learn>Glove Academy</a><a href=/help>Help</a><a href="/setup">Setup</a></nav></header><main>{content}</main><footer class=app-footer><span>VirtualGlove v{html.escape(__version__)}</span>{started}<details class=build-details><summary>Software and matrix firmware</summary><p id=build-identity>Checking installed versions…</p></details></footer><script>{metadata_script}</script><script>{script}</script></body></html>""".encode()
 
 
 VISION_STARTUP_SCRIPT = r"""

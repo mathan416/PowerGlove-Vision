@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/runtime_assets.py
 # Purpose: Download, verify, cache, and atomically install third-party runtime model assets.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-motion-correction.py
 # Purpose: Compare native-motion correction revisions with synthetic frames.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_players.py
 # Purpose: Verify player migration, persistent progress, bounded backups, and atomic changes.
 # Author: Iain Bennett
@@ -86,7 +86,8 @@ class PlayerTests(unittest.TestCase):
         path=self.path.with_name('calibration.json')
         save_calibration(path,reference)
         backup=self.command('export')['backup']
-        self.assertEqual(backup['version'],3)
+        self.assertEqual(backup['format'],'virtualglove-hand-setup')
+        self.assertEqual(backup['version'],4)
         self.assertEqual(backup['calibration']['neutral']['palm_x'],.4)
         backup['name']='Iain'
         self.command('restore',backup=backup,reuse_calibration=True)
@@ -122,6 +123,7 @@ class PlayerTests(unittest.TestCase):
 
     def test_original_version_two_backups_remain_supported(self):
         backup=self.command('export')['backup']
+        backup['format']='powerglove-hand-setup'
         backup['version']=2
         del backup['joystick_deadzone'];del backup['effective_thresholds'];del backup['source']
         self.command('restore',backup=backup)
@@ -147,6 +149,7 @@ class PlayerTests(unittest.TestCase):
 
     def test_version_two_backup_migrates_largest_activation(self):
         backup=self.command('export')['backup']
+        backup['format']='powerglove-hand-setup'
         backup['version']=2
         del backup['joystick_deadzone'];del backup['effective_thresholds'];del backup['source']
         backup['thresholds'].update({

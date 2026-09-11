@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/realtime.py
 # Purpose: Keep camera capture and diagnostic JPEG work off the gameplay loop.
 # Author: Iain Bennett

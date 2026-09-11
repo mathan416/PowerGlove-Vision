@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_reach.py
 # Purpose: Verify comfortable reach, legacy compatibility, and safe guided calibration.
 # Author: Iain Bennett

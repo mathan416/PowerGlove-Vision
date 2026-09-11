@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/resolver.py
 # Purpose: Resolve .local names through the host Avahi socket inside App Lab containers.
 # Author: Iain Bennett

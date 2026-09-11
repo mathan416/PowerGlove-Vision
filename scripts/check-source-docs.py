@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/check-source-docs.py
 # Purpose: Enforce standard source headers and production Python interface documentation.
 # Author: Iain Bennett
@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 HEADER_MARKERS = (
-    "Project: PowerGlove Vision",
+    "Project: VirtualGlove",
     "File:",
     "Purpose:",
     "Author: Iain Bennett",

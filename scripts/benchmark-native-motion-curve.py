@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-native-motion-curve.py
 # Purpose: Compare bounded native X/Y response curves from one vision replay.
 # Author: Iain Bennett

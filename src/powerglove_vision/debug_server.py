@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/debug_server.py
 # Purpose: Expose live worker status, camera frames, calibration, and controller state to the supervisor.
 # Author: Iain Bennett
@@ -10,7 +10,7 @@
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add complete hand-setup backups and explicit calibration restoration.
 #   2026-09-06 - Expose bounded player operations and enforce fresh centering.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added runtime profile requests and camera-free status updates.
 #   2026-09-03 - Added expiring browser practice leases for the Learn page.
@@ -32,12 +32,12 @@ PRACTICE_LEASE_SECONDS = 6.0
 
 PAGE = b"""<!doctype html>
 <html><head><meta name=viewport content='width=device-width,initial-scale=1'>
-<title>PowerGlove Vision</title>
+<title>VirtualGlove</title>
 <style>body{font:16px system-ui;background:#10131a;color:#eef;margin:24px auto;padding:0 18px;max-width:1000px}
 img{width:100%;background:#000;border-radius:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}
 .card{background:#1b2130;padding:13px;border-radius:9px}.label{color:#9ca9c7;font-size:12px;text-transform:uppercase}.value{font-size:19px;margin-top:3px}
 button{font-size:18px;padding:12px 20px;border:0;border-radius:8px;background:#287cff;color:white}</style></head>
-<body><h1>PowerGlove Vision</h1><div class=grid>
+<body><h1>VirtualGlove</h1><div class=grid>
 <div class=card><div class=label>Game</div><div class=value id=game>Waiting...</div></div>
 <div class=card><div class=label>Gesture profile</div><div class=value id=profile>Waiting...</div></div>
 <div class=card><div class=label>Hand tracking</div><div class=value id=tracking>Waiting...</div></div>

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_native_core.py
 # Purpose: Keep the experimental Nestopia core isolated and evidence-gated.
 # Author: Iain Bennett
@@ -121,7 +121,7 @@ class NativeCoreTests(unittest.TestCase):
         self.assertIn('POWERGLOVE-VISION-NOTICES.md', installer)
         self.assertIn("GNU General Public License, version 2", notice)
         self.assertIn("not a compiled core", notice)
-        self.assertIn("3172ef337bfbb37c67ea2507544f21c7de3cedd25733802b062b0d02ef679397", notice)
+        self.assertIn("1cdde475a3d0da13a51d975c1bcacaedb3b9e1324260a4575e655346fcaa692f", notice)
         self.assertIn("Martin Freij", notice)
         self.assertIn("leaves it", notice)
         self.assertIn("byte-for-byte unchanged", notice)

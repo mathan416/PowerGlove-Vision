@@ -1,4 +1,4 @@
-# PowerGlove Vision Configuration Reference
+# VirtualGlove Configuration Reference
 
 Use this reference to find a setting, change a game mapping, tune a gesture,
 or look up a command. Each section identifies the active file and explains
@@ -8,24 +8,24 @@ Use the [installation guide](INSTALL_README.md) for the initial deployment and
 pairing procedure. Return here when you need to change a host, camera, game,
 gesture threshold, or network setting.
 
-In this guide, **PowerGlove Vision Controller** means the Arduino UNO Q running
+In this guide, **VirtualGlove Controller** means the Arduino UNO Q running
 the camera, recognition, dashboard, and controller-sending software. Hardware-
 specific commands and filenames retain `uno-q` where that literal name is required.
 
-> **KEEP THE TOKEN PRIVATE**  PowerGlove Vision uses one shared token to
+> **KEEP THE TOKEN PRIVATE**  VirtualGlove uses one shared token to
 > authenticate controller packets and profile changes. Never paste it into an
 > issue, screenshot, command line, public backup, or Git commit.
 
 ## The three places configuration lives
 
-PowerGlove Vision runs on two computers. A repository template is not always the
+VirtualGlove runs on two computers. A repository template is not always the
 file the running system reads.
 
 | Location | What it controls | Preferred way to change it |
 | --- | --- | --- |
-| PowerGlove Vision Controller Setup page | Console address, controller port, startup profile, camera, and pairing token | Browser Setup page |
-| PowerGlove Vision Controller application files | Gesture sensitivity and advanced runtime defaults | Edit only when tuning is required |
-| RetroPie `/etc/powerglove/` | PowerGlove Vision Controller address, per-game profile selection, and receiver token | Protected files on RetroPie |
+| VirtualGlove Controller Setup page | Console address, controller port, startup profile, camera, and pairing token | Browser Setup page |
+| VirtualGlove Controller application files | Gesture sensitivity and advanced runtime defaults | Edit only when tuning is required |
+| RetroPie `/etc/powerglove/` | VirtualGlove Controller address, per-game profile selection, and receiver token | Protected files on RetroPie |
 
 The examples under the repository's `config/` directory are installation
 templates. Editing them does not change an already installed system. The active
@@ -35,23 +35,23 @@ In commands and examples, replace these placeholders:
 
 | Placeholder | Replace with |
 | --- | --- |
-| `UNO-Q-NAME.local` | Your PowerGlove Vision Controller hostname or reserved IP address |
+| `UNO-Q-NAME.local` | Your VirtualGlove Controller hostname or reserved IP address |
 | `RETROPIE-NAME.local` | Your RetroPie hostname or reserved IP address |
-| `/home/arduino/ArduinoApps/powerglove-vision` | Required directory for the supported PowerGlove Vision Controller installer and shutdown helper; do not substitute a different path |
+| `/home/arduino/ArduinoApps/powerglove-vision` | Required directory for the supported VirtualGlove Controller installer and shutdown helper; do not substitute a different path |
 
 ## Find the setting or command you need
 
 | Task | Section |
 | --- | --- |
 | Install and pair both machines | [Installation Guide](INSTALL_README.md) |
-| Change the camera or startup profile | [PowerGlove Vision Controller settings](#powerglove-vision-controller-settings) |
+| Change the camera or startup profile | [VirtualGlove Controller settings](#virtualglove-controller-settings) |
 | Repair pairing or token permissions | [Pairing and token management](#pairing-and-token-management) |
-| Change the PowerGlove Vision Controller destination on RetroPie | [RetroPie connection settings](#retropie-connection-settings) |
+| Change the VirtualGlove Controller destination on RetroPie | [RetroPie connection settings](#retropie-connection-settings) |
 | Make a game select a profile | [Register games and select profiles](#register-games-and-select-profiles) |
 | Adjust gesture sensitivity | [Tune gesture sensitivity](#tune-gesture-sensitivity) |
 | Understand an option or command | [Command-line reference](#command-line-reference) |
 
-## PowerGlove Vision Controller settings
+## VirtualGlove Controller settings
 
 Open the ordinary Setup page at:
 
@@ -67,7 +67,7 @@ https://UNO-Q-NAME.local:8443/setup
 
 The secure page uses a locally generated certificate. During pairing, compare
 the certificate fingerprint shown by the browser with the identifier shown on
-the PowerGlove Vision Controller matrix before entering the one-time PIN.
+the VirtualGlove Controller matrix before entering the one-time PIN.
 
 ### Settings shown in the browser
 
@@ -92,7 +92,7 @@ from camera frames and controller packets, which remain newest-state-only.
 | Setting | Default | Meaning and recommendation |
 | --- | --- | --- |
 | Console hostname or IP | Empty (not configured) | Set your RetroPie hostname (`RETROPIE-NAME.local` in examples) or a reserved LAN address and pair through Connection before starting controls. Glove Academy and local settings work without a destination. Existing saved destinations are preserved. |
-| Receiver UDP port | `55355` | PowerGlove Vision Controller to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
+| Receiver UDP port | `55355` | VirtualGlove Controller to RetroPie controller-state port. Leave it at the default unless both ends are changed. |
 | Startup game profile | `bad_street_brawler` | Profile used before a registered game selects another one. |
 | Hand or glove (diagnostic label) | `none` | `none`, `white`, or `black`. In the current release this is an informational diagnostic label; it does not change MediaPipe tracking. |
 | Camera | Automatic | Setup lists the currently discovered usable cameras. Prefer **Automatic — choose the connected camera**; choose a named camera only when more than one is attached or automatic selection is wrong. A saved disconnected camera remains visible as unavailable, and the list refreshes while Setup is open. |
@@ -153,7 +153,7 @@ The four optional `calibration.neutral` fields `reach_left`, `reach_right`,
 `reach_up`, and `reach_down` are normalized image distances from the saved center.
 All four zero (or omitted in older backups) use the original camera-boundary
 mapping. Otherwise all four must be finite numbers at least `0.05` and fit inside
-the image around that center. Player presets and version-3 hand-setup backups
+the image around that center. Player presets and version-4 VirtualGlove hand-setup backups
 preserve them. New reach-bearing backups require reach-aware software on import.
 **Center hand preserves valid reach spans** because neutral centering and
 comfortable travel are separate adjustments. If a new center would place an
@@ -311,7 +311,7 @@ so inference skips superseded images instead of building an input queue. The
 deployed worker explicitly selects **MediaPipe Hands 0.10.35**, whose stable
 command identifier is `legacy`, and lets each of its two inference stages use up
 to four CPU threads (`--inference-threads 4`). Matched live testing promoted four
-threads for the PowerGlove Vision Controller; the saved setting remains explicit
+threads for the VirtualGlove Controller; the saved setting remains explicit
 so a future platform can be re-measured rather than assuming the same result.
 The release installer carries only the validated 0.10.35 runtime. Historical
 0.10.18 results remain benchmark evidence, not a selectable installed path.
@@ -360,7 +360,7 @@ including a worker restart after saving Setup settings, starts preloading again.
 
 <!-- PAGEBREAK -->
 
-Measurements on the cabinet's PowerGlove Vision Controller with a Razer Kiyo Pro on September 4, 2026:
+Measurements on the cabinet's VirtualGlove Controller with a Razer Kiyo Pro on September 4, 2026:
 
 | Measurement | Observed time |
 | --- | --- |
@@ -374,7 +374,7 @@ change moves library loading earlier; it does not eliminate that work. Selecting
 a profile immediately after application startup can still wait for preloading.
 An earlier reported 13-14 second delay was not reproduced in the instrumented tests.
 
-To inspect startup stages on the PowerGlove Vision Controller:
+To inspect startup stages on the VirtualGlove Controller:
 
 ```sh
 docker logs --since 10m powerglove-vision-main-1 2>&1 | grep 'Vision startup:'
@@ -388,7 +388,7 @@ status. Preparation and activation totals include earlier stages; do not add
 them to the individual durations. Dashboard polling adds a small delay before
 it displays the new status. Compare entries from the same activation.
 
-If the camera is unavailable, check `lsusb` and `/dev/v4l/by-id/` on the PowerGlove Vision Controller.
+If the camera is unavailable, check `lsusb` and `/dev/v4l/by-id/` on the VirtualGlove Controller.
 The built-in `qcom-venus-encoder` and `qcom-venus-decoder` video nodes are not
 webcams. A camera missing from the USB device list is below MediaPipe and OpenCV;
 preloading cannot resolve that condition. The installed host helper waits for a
@@ -447,7 +447,7 @@ measure the complete delay from physical hand movement to the displayed game.
 | `capture_age_ms` | Time from completion of the newest camera read to the beginning of inference. This is a freshness diagnostic, not the camera exposure timestamp. |
 | `capture_interval_ms`, `capture_skipped_total` | Spacing between processed camera frames and the cumulative number intentionally superseded by newer frames. |
 | `inference_ms`, `inference_interval_ms`, and `inference_hz` | Per-frame tracking calculation, spacing between recognition passes, and its reciprocal rate. |
-| `sample_age_ms` | Time from completion of the newest camera read through inference and the local UDP send attempt. This is the primary PowerGlove Vision Controller software-stage gameplay measurement. |
+| `sample_age_ms` | Time from completion of the newest camera read through inference and the local UDP send attempt. This is the primary VirtualGlove Controller software-stage gameplay measurement. |
 | `controller_transition_age_ms` | `sample_age_ms` recorded only when a successfully transmitted gameplay-visible controller state changes. Native X/Y changes are included. |
 | `performance` | Rolling latest, p50, p95, and maximum values over the most recent 300 valid samples for capture age, processed-frame spacing, inference, inference spacing, send time, complete sample age, and changed-control age. |
 | `preview_encode_ms`, `preview_dropped` | Background JPEG cost and previews discarded to protect controller responsiveness. |
@@ -488,10 +488,10 @@ and recovery details.
 arms delivery; Stop remains sticky until explicitly changed. Armed is distinct from
 sending: output also requires either a live registered RetroPie game session or an
 intentional manual Dashboard profile. The RetroPie hook waits until RetroArch is
-actually running, then renews a bounded session every two seconds. The PowerGlove Vision Controller accepts
+actually running, then renews a bounded session every two seconds. The VirtualGlove Controller accepts
 each renewal for six seconds and uses a short one-second initialization guard before
 the first gameplay packet. This avoids operating the runcommand menu while allowing
-an armed controller to resume automatically if the PowerGlove Vision Controller application restarts during
+an armed controller to resume automatically if the VirtualGlove Controller application restarts during
 play. Game exit, RetroArch termination, an unregistered launch, or lease expiry sends
 a neutral/off request. None of these events silently changes a sticky Stop choice.
 
@@ -500,7 +500,7 @@ waiting for game” means the user's Start choice is retained but no packets are
 sent. “Registered game active” identifies a renewable launch session; “Manual
 profile” identifies an intentional Dashboard testing context.
 
-### Active PowerGlove Vision Controller device file
+### Active VirtualGlove Controller device file
 
 The Setup page maintains this private file inside the application:
 
@@ -573,7 +573,7 @@ or `off` (four faint app/console/paired-console/Networking indicators). Change i
 without restarting vision or changing controller state. Existing files that omit
 it retain the original animation. The separate guarded `POST /api/attract`
 accepts `{"mode":"on"}`, `dim`, or `off`, with JSON content type and the
-same-origin `X-PowerGlove-Action: attract` header. Connection indicators use the
+same-origin `X-VirtualGlove-Action: attract` header. Connection indicators use the
 existing authenticated Games service in a background thread; see the
 [Matrix guide](MATRIX_GUIDE.md#attract-brightness-and-connection-pixels) for their
 meaning and refresh interval. Updated matrix firmware is required.
@@ -587,7 +587,7 @@ python3 -m json.tool data/device.json >/dev/null
 chmod 0600 data/device.json
 ```
 
-Deleting `device.json` causes PowerGlove Vision to create a new token and
+Deleting `device.json` causes VirtualGlove to create a new token and
 first-run defaults. You must then pair RetroPie again.
 
 ### Camera selection
@@ -600,7 +600,7 @@ reboot.
 Choose a named camera from Setup only for troubleshooting or when more than one
 camera is connected. The saved value remains the device's numeric V4L2 index for
 compatibility, but ordinary users do not need to type or discover that number.
-Linux may assign a different number after hardware is reconnected. Keep the camera on a powered USB hub when the PowerGlove Vision Controller cannot supply
+Linux may assign a different number after hardware is reconnected. Keep the camera on a powered USB hub when the VirtualGlove Controller cannot supply
 stable power by itself.
 
 ### Supported startup profiles
@@ -624,7 +624,7 @@ Both machines must hold the same token:
 
 | Machine | Active private file |
 | --- | --- |
-| PowerGlove Vision Controller | Application `data/device.json`, in the `token` field |
+| VirtualGlove Controller | Application `data/device.json`, in the `token` field |
 | RetroPie | `/etc/powerglove/token` |
 
 Use one-time-code pairing whenever possible:
@@ -684,8 +684,8 @@ or exits.
 
 | Field | Meaning |
 | --- | --- |
-| `uno_q` | PowerGlove Vision Controller hostname or reserved address reachable from RetroPie. |
-| `port` | RetroPie to PowerGlove Vision Controller profile-control port. This is `55356`, not the controller-state port. |
+| `uno_q` | VirtualGlove Controller hostname or reserved address reachable from RetroPie. |
+| `port` | RetroPie to VirtualGlove Controller profile-control port. This is `55356`, not the controller-state port. |
 | `token_file` | Protected shared-token file. Keep the token out of this JSON file. |
 | `registry` | Active ROM-to-profile mapping. |
 | `timeout` | Seconds to wait for each acknowledgement. The hook retries up to three times and never prevents a game from launching. |
@@ -716,11 +716,11 @@ assigned to another device.
 
 Games is a section of **Setup**, below pairing; it is not a separate navigation tab.
 
-1. Open **Setup → Games** in the PowerGlove Vision Controller website. Both machines must be online and paired. The page reads the registry used by the installed RetroPie launch hook.
+1. Open **Setup → Games** in the VirtualGlove Controller website. Both machines must be online and paired. The page reads the registry used by the installed RetroPie launch hook.
 2. Select **Download backup** to keep a copy of the last verified installed registry on your computer.
 3. Edit the JSON, adding the exact ROM filename and a supported profile identifier inside `games`. Expand **Available profile identifiers** for the choices. Preserve your existing entries.
 4. Select **Validate**. It checks JSON syntax, supported profiles, and duplicate filenames, including names that differ only by letter case. **Format** tidies the JSON without saving it.
-5. Select **Save**. Wait for confirmation that RetroPie saved the file and the PowerGlove Vision Controller read it back successfully.
+5. Select **Save**. Wait for confirmation that RetroPie saved the file and the VirtualGlove Controller read it back successfully.
 6. Launch or restart the game and confirm its profile on Dashboard.
 
 Saving does not change the current game's profile. **Restore previous save** swaps
@@ -731,7 +731,7 @@ Leaving or refreshing the page can discard unsaved work.
 
 The Games section needs the `powerglove-games.service` installed by the current
 RetroPie setup workflow. If it reports an unavailable service, update the RetroPie
-installation, check pairing, and ensure TCP `55358` is reachable from the PowerGlove Vision Controller.
+installation, check pairing, and ensure TCP `55358` is reachable from the VirtualGlove Controller.
 Games does not require an SSH password after pairing.
 
 ### Registry format
@@ -742,7 +742,7 @@ The active game registry is:
 /etc/powerglove/games.json
 ```
 
-PowerGlove Vision matches the exact ROM basename, including its extension,
+VirtualGlove matches the exact ROM basename, including its extension,
 without regard to letter case. Directory names are ignored. Automatic profile
 selection currently applies only when RetroPie reports the system as `nes` or
 `famicom`; other systems turn gesture control off.
@@ -802,7 +802,7 @@ authenticated profile listener remain available.
 
 ### Check a queued profile change
 
-The launch helper reports **profile queued** when the PowerGlove Vision Controller has authenticated
+The launch helper reports **profile queued** when the VirtualGlove Controller has authenticated
 and queued the request. Dashboard shows the applied profile and ROM name once
 the worker processes it. Camera startup can take longer than the acknowledgement;
 an acknowledgement does not mean that the camera is ready or that controller
@@ -813,14 +813,14 @@ relay to the worker. The relay holds no pairing token and forwards signed
 packets unchanged. Both this brick and `local:avahi_resolver` must be present
 in `app.yaml`, so the services return when App Lab regenerates its containers.
 The setup and Wi-Fi update helpers also add their includes to existing Compose
-configuration. On the PowerGlove Vision Controller, check the published port with:
+configuration. On the VirtualGlove Controller, check the published port with:
 
 ```sh
 docker port powerglove-vision-profile-relay-1 55356/udp
 ```
 
 Expect a host binding for port `55356`. If it is missing, update the application
-and rerun PowerGlove Vision Controller setup. On RetroPie, compare the game's actual filename, including
+and rerun VirtualGlove Controller setup. On RetroPie, compare the game's actual filename, including
 `.nes`, `.zip`, or `.7z`, with `/etc/powerglove/games.json`. These are separate
 exact entries. Updating the template does not overwrite an installed registry;
 add missing names while preserving your custom mappings.
@@ -848,7 +848,7 @@ output stays paused until you explicitly start it. Finish tuning and turn
 
 ### Where player settings and backup files live
 
-All players are saved automatically on the PowerGlove Vision Controller in
+All players are saved automatically on the VirtualGlove Controller in
 `/home/arduino/ArduinoApps/powerglove-vision/data/gesture-tuning.json`. This single
 store holds each player's sensitivity, calibration, and Academy progress; there
 is no separate automatic file for each player. The active working calibration
@@ -857,7 +857,7 @@ Use Glove Academy to manage these settings.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-virtualglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
@@ -870,8 +870,9 @@ repeated filenames. Keep a clearly named copy for every player you want to recov
 
 ### Backup contents and restore choices
 
-**Back up hand setup** downloads `<player>-powerglove-hand-setup.json` with format
-`powerglove-hand-setup` and version `3`. Fields are `name`, personal `thresholds`,
+**Back up hand setup** downloads `<player>-virtualglove-hand-setup.json` with format
+`virtualglove-hand-setup` and version `4`. Legacy `powerglove-hand-setup`
+versions 2 and 3 remain importable. Fields are `name`, personal `thresholds`,
 `joystick_deadzone`, `calibration`, `effective_thresholds`, and `source` (`version`, `commit`). Empty
 personal thresholds mean no personal overrides. Effective thresholds contain
 all nine gesture activation/release pairs, including the supplied defaults in use.
@@ -935,7 +936,7 @@ appropriate private store backup when deliberately rolling back.
 `select`, `rename`, `delete`, `export`, `restore`, and `reuse_calibration`.
 Non-read requests include `player` and `generation`. Saved-player reuse also
 requires `confirmed: true`. JSON bodies are limited to 8192 bytes and require
-`X-PowerGlove-Action: players` and the same origin checks as tuning. Names and
+`X-VirtualGlove-Action: players` and the same origin checks as tuning. Names and
 progress are available on the trusted LAN; presets are not login accounts.
 
 ![Player selection and portable hand-setup backups](images/player-settings.png)
@@ -1005,7 +1006,7 @@ changes the resting reference separately and invalidates any current recordings.
 The Advanced diagnostic is separate from personalization. Eight user-paced cues
 exercise neutral, directions, A/B, menu poses, rolls, depth motion, Menu Guard,
 and tracking recovery using the deployed **MediaPipe Hands** backend.
-The PowerGlove Vision Controller records a temporary local AVI only while a cue is active. Completion
+The VirtualGlove Controller records a temporary local AVI only while a cue is active. Completion
 produces an aggregate JSON report containing detection continuity, confidence,
 latency, hand brightness, and recognized state names. It contains no frames or
 per-frame landmarks. The AVI is deleted immediately after analysis or cancellation;
@@ -1117,7 +1118,7 @@ The sender never queues input during negotiation. It retries hello after 250 mil
 ### Upgrade both computers together
 
 1. Select **Stop controller** and back up both installations and private settings.
-2. Update RetroPie and the PowerGlove Vision Controller from the same development commit or compatible release. The default new receiver rejects old input, and the new sender does not downgrade to version 1; mixed versions will pause controller delivery.
+2. Update RetroPie and the VirtualGlove Controller from the same development commit or compatible release. The default new receiver rejects old input, and the new sender does not downgrade to version 1; mixed versions will pause controller delivery.
 3. Restart both applications, confirm matching software identities, then select **Start controller**. Verify neutral/release behavior and actual game input. Profile changes also establish a fresh controller session.
 4. If you must roll back, stop controls and restore both matching application versions. Preserve device settings, calibration/player files, and the paired token; do not restore a mismatched sender/receiver combination.
 
@@ -1128,7 +1129,7 @@ Existing pairing credentials and native emulator files need no format migration.
 ## RetroPie receiver and virtual controller
 
 The receiver verifies authenticated UDP packets and creates a Linux `uinput`
-gamepad named `PowerGlove Vision`. Its installed service is:
+gamepad named `VirtualGlove`. Its installed service is:
 
 ```text
 /etc/systemd/system/powerglove-receiver.service
@@ -1136,7 +1137,7 @@ gamepad named `PowerGlove Vision`. Its installed service is:
 
 The supplied service listens on all local interfaces at UDP port `55355`, reads
 `/etc/powerglove/token`, and releases held controls when a socket receive times out after 250 milliseconds.
-The receiver measures its release deadline from the last valid packet; rejected traffic cannot postpone release. Both the virtual gamepad and native state are neutralized on timeout. If you change the controller port in PowerGlove Vision Controller Setup, add
+The receiver measures its release deadline from the last valid packet; rejected traffic cannot postpone release. Both the virtual gamepad and native state are neutralized on timeout. If you change the controller port in VirtualGlove Controller Setup, add
 the same `--port` value to the service's `ExecStart`, then reload and restart:
 
 ```sh
@@ -1158,7 +1159,7 @@ sudo journalctl -u powerglove-receiver.service -n 100 --no-pager
 ```
 
 The virtual gamepad appears only after the first authenticated controller
-packet. On the PowerGlove Vision Controller, select **Start controller** and show a centred hand before
+packet. On the VirtualGlove Controller, select **Start controller** and show a centred hand before
 deciding that the device is missing.
 
 ### RetroArch autoconfiguration
@@ -1166,7 +1167,7 @@ deciding that the device is missing.
 Install the supplied mapping at:
 
 ```text
-/opt/retropie/configs/all/retroarch/autoconfig/PowerGlove Vision.cfg
+/opt/retropie/configs/all/retroarch/autoconfig/VirtualGlove.cfg
 ```
 
 It matches the virtual device name plus vendor and product IDs `1:1`, uses the
@@ -1177,7 +1178,7 @@ or any other physical controller.
 If RetroArch has a hand-written override for this device, remove or reconcile
 that override before diagnosing the supplied autoconfiguration.
 
-## PowerGlove Vision Controller privileged host helpers
+## VirtualGlove Controller privileged host helpers
 
 The standard installation includes the host shutdown helper so Dashboard and
 Setup can halt Linux cleanly. It consists of two systemd units and one
@@ -1234,20 +1235,20 @@ enabled and active.
 
 ## Network ports and trust boundary
 
-Keep PowerGlove Vision on a trusted home or cabinet LAN. Do not forward these
+Keep VirtualGlove on a trusted home or cabinet LAN. Do not forward these
 ports through a router or expose them directly to the Internet.
 
 | Port | Direction | Purpose |
 | --- | --- | --- |
-| UDP `55355` | PowerGlove Vision Controller to RetroPie | Authenticated live controller state |
-| UDP `55356` | RetroPie to PowerGlove Vision Controller | Authenticated game-profile requests and acknowledgements |
-| TCP `8088` | Browser to PowerGlove Vision Controller | Dashboard, Play, Help, Glove Academy, and ordinary Setup UI, including Games |
-| TCP `8443` | Browser to PowerGlove Vision Controller | TLS Setup and pairing workflow |
-| TCP `55358` | PowerGlove Vision Controller to RetroPie | Paired game registry reads, saves, and restoration |
-| TCP `55357` | PowerGlove Vision Controller to RetroPie | Temporary one-time-code pairing helper |
+| UDP `55355` | VirtualGlove Controller to RetroPie | Authenticated live controller state |
+| UDP `55356` | RetroPie to VirtualGlove Controller | Authenticated game-profile requests and acknowledgements |
+| TCP `8088` | Browser to VirtualGlove Controller | Dashboard, Play, Help, Glove Academy, and ordinary Setup UI, including Games |
+| TCP `8443` | Browser to VirtualGlove Controller | TLS Setup and pairing workflow |
+| TCP `55358` | VirtualGlove Controller to RetroPie | Paired game registry reads, saves, and restoration |
+| TCP `55357` | VirtualGlove Controller to RetroPie | Temporary one-time-code pairing helper |
 
 The two UDP ports serve different purposes despite their similar numbers. The
-`port` in PowerGlove Vision Controller `device.json` is normally `55355`; the `port` in RetroPie
+`port` in VirtualGlove Controller `device.json` is normally `55355`; the `port` in RetroPie
 `launcher.json` is normally `55356`.
 
 The ordinary dashboard is reachable by other devices on the LAN. Pairing and
@@ -1255,13 +1256,13 @@ shutdown require additional protections, but the project assumes that the LAN
 itself is trusted. Review [SECURITY.md](SECURITY.md) before using a shared,
 guest, school, or public network.
 
-## PowerGlove Vision Controller matrix artwork
+## VirtualGlove Controller matrix artwork
 
 The built-in display is a 13-by-8 monochrome blue LED matrix with eight
 brightness levels. Treat it as a very small dot-matrix display in the spirit of
 a pinball DMD or monochrome BitPixel display, rather than as a miniature screen.
 The sketch encodes status, pairing, profile identifiers, and the gestures-idle
-Power Glove attract sequence. Glove Academy and Tune share a dim letter, bright scan line,
+VirtualGlove attract sequence. Glove Academy and Tune share a dim letter, bright scan line,
 and trailing glow: eight frames at 160 milliseconds each (a 1.28-second cycle).
 
 Matrix artwork should use broad motion, recognizable silhouettes, and strong
@@ -1272,7 +1273,7 @@ which erases the shape on the physical display. Transitional objects need to
 cross several columns and remain visible for more than one frame; isolated
 one-pixel changes are easily lost to persistence and viewing angle.
 
-Always judge animation timing and grayscale on the physical PowerGlove Vision Controller. A source
+Always judge animation timing and grayscale on the physical VirtualGlove Controller. A source
 grid or browser mock-up is useful for finding malformed frames, but it cannot
 reproduce LED bloom, exposure, or perceived persistence. A short video covering
 several complete loops is the preferred review artifact for later refinements.
@@ -1282,7 +1283,7 @@ several complete loops is the preferred review artifact for later refinements.
 | File or directory | Purpose |
 | --- | --- |
 | `app.yaml` | Arduino App Lab application metadata and exposed ports |
-| `sketch/sketch.yaml` | PowerGlove Vision Controller sketch platform and pinned Arduino library dependencies |
+| `sketch/sketch.yaml` | VirtualGlove Controller sketch platform and pinned Arduino library dependencies |
 | `pyproject.toml` | Python package metadata, supported interpreter range, and optional dependencies |
 | `python/worker-wheels/` | Sole validated MediaPipe 0.10.35 ARM64 runtime supplied by the App Lab installation ZIP |
 | `data/models/hand_landmarker.task` | Checksum-verified cached model, installed from the bundle when vision is first activated |
@@ -1298,7 +1299,7 @@ files and private runtime caches should not be committed or added to an App
 Lab installation ZIP. The installation ZIP is built as:
 
 ```text
-output/app-lab/PowerGlove-Vision-Uno-Q.zip
+output/app-lab/VirtualGlove-Uno-Q.zip
 ```
 
 The installation ZIP includes the verified model at `models/hand_landmarker.task`, its Apache 2.0 license, and third-party notices. It excludes private `data/`,
@@ -1332,7 +1333,7 @@ inspects the PDF set, and verifies the App Lab installation ZIP. The workflow ha
 read-only repository permissions and uses no deployment credentials.
 
 Ordinary installers do not need to edit this workflow. If you fork the project,
-keep live PowerGlove Vision Controller credentials and cabinet deployment out of hosted CI; deployment
+keep live VirtualGlove Controller credentials and cabinet deployment out of hosted CI; deployment
 should remain an explicit action from a trusted machine.
 
 ## Back up and update safely
@@ -1341,17 +1342,17 @@ Back up custom configuration before replacing an installation:
 
 | Item | Why it matters |
 | --- | --- |
-| PowerGlove Vision Controller `data/calibration.json` | Preserves your neutral hand position, size, and wrist angle; recalibrate if the physical setup changes |
-| PowerGlove Vision Controller `data/device.json` | Contains device settings and the private token |
-| PowerGlove Vision Controller `config/profiles.json` | Release-owned shared defaults; updates back up and replace this file |
-| PowerGlove Vision Controller `data/gesture-tuning.json` | Contains saved personal gesture sensitivity values and is preserved |
+| VirtualGlove Controller `data/calibration.json` | Preserves your neutral hand position, size, and wrist angle; recalibrate if the physical setup changes |
+| VirtualGlove Controller `data/device.json` | Contains device settings and the private token |
+| VirtualGlove Controller `config/profiles.json` | Release-owned shared defaults; updates back up and replace this file |
+| VirtualGlove Controller `data/gesture-tuning.json` | Contains saved personal gesture sensitivity values and is preserved |
 | RetroPie `/etc/powerglove/games.json` | Contains local ROM mappings |
 | RetroPie `/etc/powerglove/launcher.json` | Contains local host and path settings |
 | RetroPie `/etc/powerglove/token` | Contains the matching private token |
-| RetroArch `PowerGlove Vision.cfg` | Contains any deliberate local mapping changes |
+| RetroArch `VirtualGlove.cfg` | Contains any deliberate local mapping changes |
 
 Store token-bearing backups privately with restricted permissions. The supplied
-Wi-Fi deployment script preserves the PowerGlove Vision Controller `data/` directory. The App Lab
+Wi-Fi deployment script preserves the VirtualGlove Controller `data/` directory. The App Lab
 installation ZIP never contains your token or private model cache; it includes the unmodified public model.
 
 After an update, confirm that the active files under `/etc/powerglove/` still
@@ -1364,9 +1365,9 @@ not automatically migrate active configuration.
 | --- | --- |
 | Dashboard works but no virtual controller appears | Start the controller, show a centred hand, verify the receiver service and shared token, then check UDP `55355`. |
 | Controller appears but a game uses the wrong gestures | Confirm the system is `nes` or `famicom` and the exact ROM basename exists in `/etc/powerglove/games.json`. |
-| Game launches slowly while PowerGlove Vision Controller is offline | Confirm `timeout` remains near `0.4`; the hook retries but must never block game launch indefinitely. |
-| Profile command is not acknowledged | Check the PowerGlove Vision Controller name, UDP `55356`, pairing token, and the PowerGlove Vision Controller application status. |
-| Gestures off shows a blinking X | Update PowerGlove Vision; Gestures off should show the glove attract animation and must not open the camera. |
+| Game launches slowly while VirtualGlove Controller is offline | Confirm `timeout` remains near `0.4`; the hook retries but must never block game launch indefinitely. |
+| Profile command is not acknowledged | Check the VirtualGlove Controller name, UDP `55356`, pairing token, and the VirtualGlove Controller application status. |
+| Gestures off shows a blinking X | Update VirtualGlove; Gestures off should show the glove attract animation and must not open the camera. |
 | Camera disappears after reboot | Check `lsusb` and `/dev/v4l/by-id/`, reconnect the camera or hub if absent, and keep Camera set to **Automatic** unless selecting a specific listed device. See [startup diagnostics](#vision-startup-and-timing). |
 | First activation is slow | Allow background preloading to finish and inspect the startup stage logs before attributing the delay to the camera. |
 | Movement triggers too late | Recalibrate neutral first and verify the hand is steady; then reduce the selected player's **Joystick dead zone** center-box size. |
@@ -1378,14 +1379,14 @@ not automatically migrate active configuration.
 
 | Repository file | Active or installed copy | Used by |
 | --- | --- | --- |
-| `config/device.example.json` | PowerGlove Vision Controller application `data/device.json` | Vision supervisor and Setup UI |
-| `config/profiles.json` | PowerGlove Vision Controller application `config/profiles.json` | Gesture engine |
+| `config/device.example.json` | VirtualGlove Controller application `data/device.json` | Vision supervisor and Setup UI |
+| `config/profiles.json` | VirtualGlove Controller application `config/profiles.json` | Gesture engine |
 | `config/games.json` | RetroPie `/etc/powerglove/games.json` | Launch hook and profile selector |
 | `config/launcher.example.json` | RetroPie `/etc/powerglove/launcher.json` | RetroPie launch and exit hooks |
-| `retropie/retroarch/PowerGlove Vision.cfg` | RetroArch autoconfig directory | RetroArch input system |
+| `retropie/retroarch/VirtualGlove.cfg` | RetroArch autoconfig directory | RetroArch input system |
 | `retropie/powerglove-receiver.service` | `/etc/systemd/system/` | Privileged virtual-controller receiver |
 | `retropie/powerglove-games.service` | `/etc/systemd/system/` | Paired Games editor service on RetroPie |
-| `data/gesture-tuning.json` (runtime only) | PowerGlove Vision Controller application `data/gesture-tuning.json` | Player sensitivity, per-player calibration, and Academy progress |
+| `data/gesture-tuning.json` (runtime only) | VirtualGlove Controller application `data/gesture-tuning.json` | Player sensitivity, per-player calibration, and Academy progress |
 | `retropie/powerglove-receiver.timer` | `/etc/systemd/system/` | Delayed boot activation |
 | `uno-q/powerglove-system-shutdown.path` | `/etc/systemd/system/` | Fixed shutdown request watcher |
 | `uno-q/powerglove-system-shutdown.service` | `/etc/systemd/system/` | Fixed clean-shutdown action |
@@ -1396,8 +1397,8 @@ not automatically migrate active configuration.
 | `uno-q/powerglove-camera-recovery.conf` | `/etc/tmpfiles.d/` | Boot-time camera-recovery readiness marker |
 | Runtime camera allowlist | `/etc/powerglove-camera-recovery.json` | Root-owned camera identity plus last successfully observed hub path, identity, and direct camera port |
 | `.github/workflows/quality.yml` | GitHub Actions | Automated tests and release verification |
-| `app.yaml` | PowerGlove Vision Controller application root | App Lab |
-| `sketch/sketch.yaml` | PowerGlove Vision Controller application sketch directory | Arduino build system |
+| `app.yaml` | VirtualGlove Controller application root | App Lab |
+| `sketch/sketch.yaml` | VirtualGlove Controller application sketch directory | Arduino build system |
 | `pyproject.toml` | Repository or deployed application root | Python packaging and tests |
 
 When a change goes wrong, restore the last known-good active file rather than
@@ -1420,7 +1421,7 @@ If the console name fails, use **Check console address** in Connection, then fol
 [hostname troubleshooting](CONFIGURATION_REFERENCE.md#faq-what-if-the-console-name-cannot-be-resolved).
 A router-reserved IPv4 address is a fallback, not a setup requirement.
 
-Both machine installers install `avahi-daemon` and `libnss-mdns` and enable Avahi at boot. The PowerGlove Vision Controller host dependency supports native hostname lookups; it does not replace the app-owned resolver used inside the container. Setup check mode verifies the dependency and Avahi service, and the PowerGlove Vision Controller check tests the configured destination inside the app.
+Both machine installers install `avahi-daemon` and `libnss-mdns` and enable Avahi at boot. The VirtualGlove Controller host dependency supports native hostname lookups; it does not replace the app-owned resolver used inside the container. Setup check mode verifies the dependency and Avahi service, and the VirtualGlove Controller check tests the configured destination inside the app.
 
 The app-owned `local:avahi_resolver` brick survives App Lab container regeneration.
 It mounts `/run/avahi-daemon` read-only in a separate unprivileged service and
@@ -1477,9 +1478,9 @@ The existing four-pixel firmware and RetroPie need no update for Ethernet
 indication; a Controller application and host-sampler upgrade is required.
 Game/profile artwork, T/L, startup, and pairing displays remain unchanged.
 
-## Known limitation: PowerGlove Vision Controller restarts after Shutdown
+## Known limitation: VirtualGlove Controller restarts after Shutdown
 
-On the tested PowerGlove Vision Controller, a graceful `halt` still leads to an automatic restart,
+On the tested VirtualGlove Controller, a graceful `halt` still leads to an automatic restart,
 including when connected directly to a Mac without the powered hub. The helper
 requests halt correctly, but remaining stopped is not verified. Do not use loss
 of the website or a fixed delay as confirmation that power can safely be removed.
@@ -1521,13 +1522,13 @@ need both the option and its value, such as `--port 55355`.
 
 Run `sudo python3 scripts/setup-machine.py MACHINE [OPTIONS]` from the project
 directory on the target Linux machine. This is the recommended installer for
-both PowerGlove Vision Controller and RetroPie. `--check` performs read-only checks; using `sudo`
+both VirtualGlove Controller and RetroPie. `--check` performs read-only checks; using `sudo`
 also lets those checks read protected token files.
 
 | Argument or flag | Default | Meaning |
 | --- | --- | --- |
 | `MACHINE` | Required | `retropie` or `uno-q`; selects the machine to install or inspect. |
-| `--peer HOST` | None | Required for a new RetroPie launcher configuration; supplies the PowerGlove Vision Controller hostname or IPv4 address. Existing launcher settings are preserved. On PowerGlove Vision Controller, it prints guidance but does not change the saved receiver address. |
+| `--peer HOST` | None | Required for a new RetroPie launcher configuration; supplies the VirtualGlove Controller hostname or IPv4 address. Existing launcher settings are preserved. On VirtualGlove Controller, it prints guidance but does not change the saved receiver address. |
 | `--check` | Off | Checks the existing installation without installing, restarting, or changing it. |
 | `--wifi-status-only` | Off | With `uno-q`, install/update only the unprivileged Wi-Fi status sampler. Cannot be combined with `--check`. Normal setup and Wi-Fi deployment include it automatically. |
 | `-h`, `--help` | — | Prints usage and exits. |
@@ -1547,7 +1548,7 @@ history.
 | Flag | Default | Meaning |
 | --- | --- | --- |
 | `--listen ADDRESS` | `127.0.0.1` | Local address to bind. `0.0.0.0` accepts packets on all local IPv4 interfaces, as the installed service requires. |
-| `--port NUMBER` | `55355` | UDP port for controller packets; must match PowerGlove Vision Controller settings. |
+| `--port NUMBER` | `55355` | UDP port for controller packets; must match VirtualGlove Controller settings. |
 | `--token VALUE` | None | Supplies the shared token directly. Use only as an advanced alternative; the value can appear in process arguments. |
 | `--token-file PATH` | None | Reads the shared token from a protected file. Supply exactly one of this flag and `--token`. The token must contain at least 16 characters. |
 | `--allow-legacy-controller` | Off | Temporary version-1 receiver compatibility during a staged upgrade; closes after the first signed state until process restart. Remove after upgrading. |
@@ -1587,13 +1588,13 @@ times out. Other failures are reported as errors.
 ### Select a profile from RetroPie
 
 Use `/opt/powerglove/bin/powerglove-profile` to test profile selection. It sends
-an authenticated request to the PowerGlove Vision Controller. This changes the active profile; it
+an authenticated request to the VirtualGlove Controller. This changes the active profile; it
 does not change the saved startup profile or turn controller delivery on.
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
-| `--uno-q HOST` | Required | PowerGlove Vision Controller hostname or IPv4 address. |
-| `--port NUMBER` | `55356` | PowerGlove Vision Controller profile-control UDP port. |
+| `--uno-q HOST` | Required | VirtualGlove Controller hostname or IPv4 address. |
+| `--port NUMBER` | `55356` | VirtualGlove Controller profile-control UDP port. |
 | `--token VALUE` | None | Supplies the token directly; prefer the protected-file option. |
 | `--token-file PATH` | None | Reads the token from a file. Supply exactly one token option. |
 | `--registry PATH` | `/etc/powerglove/games.json` | Registry used when `--profile` is omitted. |
@@ -1609,7 +1610,7 @@ Malformed arguments and file errors can also stop the command.
 
 ### Run the calibration display
 
-When selected during RetroPie installation, **PowerGlove Calibration Test** is
+When selected during RetroPie installation, **VirtualGlove Calibration Test** is
 added to the user's **Ports** list. That menu entry runs the fixed
 `/opt/powerglove/bin/powerglove-dot` launcher; it accepts no ROM path or public
 options. The launcher starts the no-content `lr-powerglove-dot` core, requests
@@ -1660,14 +1661,14 @@ as an extra installation step.
 | `--settings PATH` | `/etc/powerglove/launcher.json` | Reads destination, token path, registry path, and timeout settings. |
 | `--session-file PATH` | Current user's `.cache/powerglove-vision/active-game.json` | User-owned marker that lets a newer launch or the end hook invalidate an older monitor. Normally set only by the installed wrapper. |
 | `--heartbeat-seconds NUMBER` | `2.0` | Renewal interval while the registered session and RetroArch are both active. Allowed range: 0.25-5 seconds. |
-| `--lease-seconds NUMBER` | `6.0` | PowerGlove Vision Controller validity window for each renewal. Allowed range: 2-15 seconds. |
+| `--lease-seconds NUMBER` | `6.0` | VirtualGlove Controller validity window for each renewal. Allowed range: 2-15 seconds. |
 | `--startup-wait NUMBER` | `20.0` | Maximum wait for RetroArch to appear before abandoning the session. Allowed range: 1-60 seconds. |
 | `-h`, `--help` | — | Prints usage and exits. |
 
 `retropie/runcommand-onstart-powerglove.sh` forwards RetroPie's four positional
 arguments. `retropie/runcommand-onend-powerglove.sh` needs none. Neither wrapper
 has its own flags. The executables in `retropie/bin/` forward their arguments
-to the corresponding Python commands. Update both the PowerGlove Vision Controller and RetroPie from
+to the corresponding Python commands. Update both the VirtualGlove Controller and RetroPie from
 the same release; an older hook cannot renew a session understood by the newer
 worker, and an older worker cannot apply the new lease fields.
 
@@ -1675,7 +1676,7 @@ worker, and an older worker cannot apply the new lease fields.
 
 `powerglove-vision` is the advanced camera worker, not the full App Lab website.
 Install the package's `vision` dependencies in a compatible Python environment
-before using it. Normal PowerGlove Vision Controller use should start through App Lab instead.
+before using it. Normal VirtualGlove Controller use should start through App Lab instead.
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
@@ -1741,7 +1742,7 @@ samples; public status polling can miss intervening inference results.
 Reports separate detected-hand from missing-hand inference costs and include
 the skipped-capture counter delta within each condition segment.
 
-### Deploy or repair the PowerGlove Vision Controller application
+### Deploy or repair the VirtualGlove Controller application
 
 Run these scripts from the project checkout on your development computer.
 Always supply your own SSH destination; the built-in fallback names the
@@ -1765,7 +1766,7 @@ they may still perform their normal work.
 
 | Script | Arguments and flags | Result or requirement |
 | --- | --- | --- |
-| `scripts/build-app-lab-package.sh` | No flags or positional arguments | Builds `output/app-lab/PowerGlove-Vision-Uno-Q.zip`; requires Bash, rsync, zip, and the existing public PDFs. |
+| `scripts/build-app-lab-package.sh` | No flags or positional arguments | Builds `output/app-lab/VirtualGlove-Uno-Q.zip`; requires Bash, rsync, zip, and the existing public PDFs. |
 | `scripts/verify-app-lab-package.py` | Optional `ARCHIVE` path; `-h`, `--help` | Checks the supplied ZIP or the default ZIP above; prints its SHA-256. Returns `0` on success, `1` on verification failure. |
 | `scripts/check-documentation.py` | `--require-pdfs`; `-h`, `--help` | Checks Markdown, links, and coverage. The optional flag also inspects the PDF set and needs `pypdf`. Returns `0` on success, `1` on failure. |
 | `scripts/check-source-docs.py` | No flags or positional arguments | Checks source headers and docstrings; returns `0` on success or `1` on failure. |
@@ -1939,7 +1940,7 @@ unrelated sound, video, or input settings. Leave the global value unchanged.
 In RetroArch, the equivalent workflow is to load the game, open Quick Menu's
 Core Options, allow opposing directions, and save a Game Options file. Verify
 that the game-specific file is loaded on the next launch. The existing receiver
-and PowerGlove gamepad mapping already carry separate Left and Right buttons;
+and VirtualGlove gamepad mapping already carry separate Left and Right buttons;
 no R2/extra-trigger binding is needed. Disable the option for this game or remove
 its new options file to undo that part of the change.
 
@@ -2036,7 +2037,7 @@ have lingering enabled. Run `systemctl --user daemon-reload` and
 `powerglove-early-start-trial.service` if present. No armed marker is required.
 
 The service waits up to 30 seconds for the router and permits 20 seconds for the
-debug check and release. It verifies the PowerGlove Vision Controller, PowerGlove startup app, Wait for
+debug check and release. It verifies the VirtualGlove Controller, VirtualGlove startup app, Wait for
 App image header, and four 64-byte code samples. This is not a full integrity
 check. If the image is unavailable or differs, or the debug pins are busy, it
 fails without releasing the sketch; normal App Lab startup continues. App Lab
@@ -2082,7 +2083,7 @@ can keep a mode letter or idle animation visible instead of X.
 
 ## Manual installation maintenance
 
-### PowerGlove Vision Controller updates over Wi-Fi
+### VirtualGlove Controller updates over Wi-Fi
 
 Use this route after the initial App Lab installation. It updates the Linux
 application; matrix firmware changes still need **Run** in App Lab.
@@ -2092,10 +2093,10 @@ application; matrix firmware changes still need **Run** in App Lab.
 1. On your development computer, check for an existing public key in `~/.ssh/`. Use only a file ending in `.pub`; never copy its matching private key.
 2. If you do not have a key, run `ssh-keygen -t ed25519`. Accept the suggested location only if it does not replace an existing key, and follow the passphrase prompts.
 3. Open your public-key file and copy its complete single line. For the default key, run `cat ~/.ssh/id_ed25519.pub`.
-4. Connect with `ssh arduino@UNO-Q-NAME.local`. On the PowerGlove Vision Controller, run `install -d -m 0700 ~/.ssh`, then `nano ~/.ssh/authorized_keys`.
+4. Connect with `ssh arduino@UNO-Q-NAME.local`. On the VirtualGlove Controller, run `install -d -m 0700 ~/.ssh`, then `nano ~/.ssh/authorized_keys`.
 5. Add the public key on a new line, preserving any existing keys. Save with Ctrl+O, confirm the name, and exit with Ctrl+X.
 6. Run `chmod 0600 ~/.ssh/authorized_keys`, then `exit` to return to your computer. If your private key has a passphrase, make it available through your computer's SSH agent before the unattended deployment check.
-7. Run `ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname`. Continue only when it prints the PowerGlove Vision Controller hostname without requesting a login password.
+7. Run `ssh -o BatchMode=yes arduino@UNO-Q-NAME.local hostname`. Continue only when it prints the VirtualGlove Controller hostname without requesting a login password.
 
 #### Update the application
 
@@ -2114,9 +2115,9 @@ For local-name failures, see [hostname resolution](CONFIGURATION_REFERENCE.md#lo
 
 ### Repair or update the shutdown helper
 
-The helper requests `systemctl --no-block halt`, not `poweroff`: the PowerGlove Vision Controller
+The helper requests `systemctl --no-block halt`, not `poweroff`: the VirtualGlove Controller
 can reboot after a power-off request. A halt requests that Linux stop; it does not disconnect electrical power. LEDs may
-remain lit. **Known limitation, confirmed September 3, 2026:** our PowerGlove Vision Controller
+remain lit. **Known limitation, confirmed September 3, 2026:** our VirtualGlove Controller
 restarted after reaching the halt target both through a powered USB-C hub and
 when connected directly to a Mac. Shutdown is therefore not a verified way to
 keep this board stopped. Do not treat the website disappearing as a safe-to-unplug
@@ -2131,13 +2132,13 @@ computer's project checkout:
 scripts/install-uno-q-shutdown-helper.sh arduino@UNO-Q-NAME.local
 ```
 
-Enter the PowerGlove Vision Controller `arduino` account password at the remote `sudo` prompt. The
+Enter the VirtualGlove Controller `arduino` account password at the remote `sudo` prompt. The
 script does not read or store it. The helper watches only the fixed
 `data/shutdown-request` path and can perform only a system halt. After it is
 installed, **Shutdown** is available on Dashboard and **Shut down Controller** on Setup. Each press
-requires browser confirmation and warns that the PowerGlove Vision Controller may restart automatically
+requires browser confirmation and warns that the VirtualGlove Controller may restart automatically
 and that a disconnected website does not confirm it is safe to remove power. Its boot-time tmpfiles rule recreates the readiness
-marker if the PowerGlove Vision Controller reboots or App Lab replaces the application directory.
+marker if the VirtualGlove Controller reboots or App Lab replaces the application directory.
 
 Verify the helper without triggering shutdown:
 
@@ -2151,7 +2152,7 @@ exit
 Expected results are `enabled` and `active`. Checks on the cabinet on September 3, 2026 confirmed that the watcher was
 enabled and active, the readiness marker existed, and both pages displayed
 the Shutdown button. Requests without confirmation were rejected. Do not test the accepted API path
-unless you intend to shut down the PowerGlove Vision Controller.
+unless you intend to shut down the VirtualGlove Controller.
 
 ### RetroPie updates
 
@@ -2189,7 +2190,7 @@ and keep only the intended application set to start at boot.
 ### Camera appears only after reconnecting it
 
 This usually indicates USB enumeration or power trouble. Keep the powered hub
-energized before starting the PowerGlove Vision Controller, try another cable, and avoid passive
+energized before starting the VirtualGlove Controller, try another cable, and avoid passive
 adapters. The app first retries an ordinary camera reopen. With the standard
 host helper installed, a camera that remains absent for 15 seconds receives one
 guarded recovery attempt. Network-bearing hubs are never reset as a unit. A camera still
@@ -2197,7 +2198,7 @@ absent afterward needs its physical connection checked.
 
 ### First installation takes several minutes
 
-The first launch downloads and prepares the software it needs. Keep the PowerGlove Vision Controller
+The first launch downloads and prepares the software it needs. Keep the VirtualGlove Controller
 connected to the internet and watch App Lab for progress. Later launches reuse
 the installed software and normally start faster.
 
@@ -2213,7 +2214,7 @@ the installed software and normally start faster.
 The startup timer includes preparation as well as opening the camera. Allow more
 time just after a reboot and wait for the camera view before calibrating.
 
-If the app reports that the camera is unavailable, run these commands on the PowerGlove Vision Controller:
+If the app reports that the camera is unavailable, run these commands on the VirtualGlove Controller:
 
 ```sh
 lsusb
@@ -2270,7 +2271,7 @@ are additional hooks.
 
 A **profile queued** message confirms authentication and queue admission. Wait
 for Dashboard to show the new profile; camera startup may still be in progress.
-For timeouts, check that the PowerGlove Vision Controller publishes UDP `55356` through its profile
+For timeouts, check that the VirtualGlove Controller publishes UDP `55356` through its profile
 relay. Follow [Check a queued profile change](CONFIGURATION_REFERENCE.md#check-a-queued-profile-change)
 for the command and recovery steps. Check the exact ROM filename, including
 its archive extension, if the selected profile is **off**.
@@ -2282,15 +2283,15 @@ its archive extension, if the selected profile is **off**.
 
 ### FAQ: What if the console name cannot be resolved?
 
-1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Check console address**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the PowerGlove Vision Controller app; successful lookup on your laptop alone is not sufficient.
+1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Check console address**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the VirtualGlove Controller app; successful lookup on your laptop alone is not sufficient.
 2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.
-3. From the PowerGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
-4. On the PowerGlove Vision Controller, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
+3. From the VirtualGlove source directory on RetroPie, run `sudo python3 scripts/setup-machine.py retropie --check`. Check Avahi with `systemctl is-active avahi-daemon` and `systemctl is-enabled avahi-daemon`. If setup is incomplete, rerun `sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local`, using your board's actual name, and review every FAIL or ACTION result.
+4. On the VirtualGlove Controller, from the app directory, run `sudo python3 scripts/setup-machine.py uno-q --check`. This checks the configured destination from inside the application. If installation is incomplete, rerun `sudo python3 scripts/setup-machine.py uno-q`. Do not manually patch `.cache/app-compose.yaml`: App Lab regenerates it. The shipped resolver brick supplies the persistent configuration.
 5. Check that both machines are on a network that allows communication between devices. Guest Wi-Fi, client isolation, VPN routing, separate VLANs, or multicast filtering can prevent `.local` discovery. mDNS uses UDP port 5353; do not disable your firewall wholesale or expose the app to the Internet to fix discovery.
-6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the PowerGlove Vision Controller by name, check that reverse direction separately.
+6. As a diagnostic or fallback, enter RetroPie's current LAN IPv4 address in **Connection** and test again. If that works while the name fails, investigate mDNS. For continued use, reserve that address in your router so DHCP does not change it. Save the intended destination using the normal Connection workflow; changing the address does not replace pairing credentials. If RetroPie also contacts the VirtualGlove Controller by name, check that reverse direction separately.
 7. If neither name nor IP works, investigate connectivity and the service itself, not just Avahi. A successful name test only establishes name resolution; pairing, the receiver, controller output, and emulator mappings must also work. Retry after boot has finished, then collect the exact error and setup-check results if it still fails. Never share tokens, passwords, or private SSH keys.
 
-After fixing the problem, reboot both machines and repeat **Check console address** before testing gameplay. The app-owned resolver has been verified across a PowerGlove Vision Controller reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
+After fixing the problem, reboot both machines and repeat **Check console address** before testing gameplay. The app-owned resolver has been verified across a VirtualGlove Controller reboot and a changed RetroPie DHCP address; no fixed IP entry is required for `.local` use.
 
 ## Removing the installation
 
@@ -2304,11 +2305,11 @@ sudo rm /etc/systemd/system/powerglove-receiver.timer \
 sudo systemctl daemon-reload
 ```
 
-Remove only the PowerGlove lines from the runcommand hooks. After backing up
+Remove only the VirtualGlove lines from the runcommand hooks. After backing up
 custom profiles, `/opt/powerglove`, `/opt/powerglove-src`, and
 `/etc/powerglove` may be removed manually.
 
-On the PowerGlove Vision Controller, stop the app, disable **Run at startup**, and remove it through
+On the VirtualGlove Controller, stop the app, disable **Run at startup**, and remove it through
 Arduino App Lab. Its private `data` directory contains the device token and
 cached runtime.
 
@@ -2347,10 +2348,10 @@ This preview does not compile the Arduino firmware or upload anything.
 
 The verified sketch profile is `arduino:zephyr:unoq` with Arduino Zephyr platform
 **1.0.0**. Keep the complete pinned `sketch/sketch.yaml`; installing a newer
-platform by itself does not rebuild or flash PowerGlove. A compile-only check
+platform by itself does not rebuild or flash VirtualGlove. A compile-only check
 builds the sketch but does not change the running firmware.
 
-From the application directory on the PowerGlove Vision Controller, validate the pinned configuration:
+From the application directory on the VirtualGlove Controller, validate the pinned configuration:
 
 ```sh
 arduino-cli compile --profile default sketch
@@ -2396,15 +2397,15 @@ RetroPie. No GitHub release is created by running an installer.
 | --- | --- |
 | `--version TAG` | Use one exact published release on both machines. Without a tag, select the latest stable GitHub release. |
 | `--development TAG` | Explicitly use a published development prerelease, such as `dev-COMMIT`. This is a release tag, not a branch name. |
-| `--peer HOST` | PowerGlove Vision Controller hostname or IPv4 address for a new RetroPie installation; prompted if omitted in an interactive terminal. Existing destinations are preserved. |
+| `--peer HOST` | VirtualGlove Controller hostname or IPv4 address for a new RetroPie installation; prompted if omitted in an interactive terminal. Existing destinations are preserved. |
 | `--check` | Use the installed shared checker. No download, package installation, service restart, or helper release. Sudo may be needed to inspect protected settings. |
 | `--help` | Show the entry point options without installing. |
 
-Supported baseline: an already provisioned PowerGlove Vision Controller with App Lab CLI **0.13.0**,
+Supported baseline: an already provisioned VirtualGlove Controller with App Lab CLI **0.13.0**,
 Arduino sketch platform **1.0.0**, the shipped pinned libraries, and a Debian-based
 RetroPie installation with Python **3.7 or newer**. The UNO installer rejects other
 App Lab CLI versions until compatibility has been validated. It does not upgrade
-the board OS or App Lab. Allow at least 3 GiB of free space in the Arduino home partition (PowerGlove Vision Controller) or
+the board OS or App Lab. Allow at least 3 GiB of free space in the Arduino home partition (VirtualGlove Controller) or
 `/var/tmp` (RetroPie), and 512 MiB on the system partition for package operations
 and backups. Larger updates may need more space.
 
@@ -2467,8 +2468,8 @@ Automated tests cover isolated fresh-directory installs and repeat updates,
 archive rejection, download failure, and settings preservation. These are not
 fresh-device tests. The new package installer was also run on the existing
 RetroPie cabinet: receiver, launch hooks, emulator, and Glove Zap checks passed
-with no technical failures. The PowerGlove Vision Controller full installer still needs an interactive
-sudo run. A provisioned spare PowerGlove Vision Controller and RetroPie system, real pairing,
+with no technical failures. The VirtualGlove Controller full installer still needs an interactive
+sudo run. A provisioned spare VirtualGlove Controller and RetroPie system, real pairing,
 live gameplay, and a cold boot are required before declaring the installers
 validated for release. Run read-only checks on both devices after installation;
 no automated check proves that a hand gesture controls a game correctly.
@@ -2489,7 +2490,7 @@ pairing, tuning, and cabinet settings remain in place.
 ### Installation ownership manifest
 
 `scripts/installation-manifest.py` manages the application payload in
-`/home/arduino/ArduinoApps/powerglove-vision` on PowerGlove Vision Controller and `/opt/powerglove-src`
+`/home/arduino/ArduinoApps/powerglove-vision` on VirtualGlove Controller and `/opt/powerglove-src`
 on RetroPie. Package installation and Wi-Fi deployment use the same implementation.
 Host service units, launch hooks, controller assignments, and system configuration
 remain under their existing installers; the payload manifest does not prune them.

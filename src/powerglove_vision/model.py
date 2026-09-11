@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/model.py
 # Purpose: Define the hand-observation, calibration, and virtual-controller data models.
 # Author: Iain Bennett
@@ -9,7 +9,7 @@
 #   2026-09-07 - Distinguished validated MediaPipe landmarks from handedness certainty.
 #   2026-09-06 - Preserve and map optional per-player comfortable reach spans.
 #   2026-09-05 - Included neutral native hand-pose states in released samples.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 

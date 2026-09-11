@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/check-documentation.py
 # Purpose: Validate project documentation layout, local links, configuration coverage, and PDF editions.
 # Author: Iain Bennett
@@ -41,7 +41,7 @@ CONFIGURATION_FILES = (
     "app.yaml",
     "sketch/sketch.yaml",
     "pyproject.toml",
-    "retropie/retroarch/PowerGlove Vision.cfg",
+    "retropie/retroarch/VirtualGlove.cfg",
     "retropie/powerglove-receiver.service",
     "retropie/powerglove-receiver.timer",
     "retropie/powerglove-games.service",
@@ -51,26 +51,26 @@ CONFIGURATION_FILES = (
     ".github/workflows/quality.yml",
 )
 PDF_EDITIONS = {
-    "THIRD_PARTY_NOTICES.md": "PowerGlove-Vision-Third-Party-Notices.pdf",
-    "docs/BUILD_YOUR_OWN.md": "PowerGlove-Vision-Build-Your-Own.pdf",
-    "docs/NATIVE_EMULATION_EXPLAINED.md": "PowerGlove-Vision-Native-Emulation.pdf",
-    "docs/TROUBLESHOOTING.md": "PowerGlove-Vision-Troubleshooting.pdf",
-    "docs/CAMERA_GUIDE.md": "PowerGlove-Vision-Camera-Guide.pdf",
-    "docs/ENGINEERING_JOURNEY.md": "PowerGlove-Vision-Engineering-Journey.pdf",
+    "THIRD_PARTY_NOTICES.md": "VirtualGlove-Third-Party-Notices.pdf",
+    "docs/BUILD_YOUR_OWN.md": "VirtualGlove-Build-Your-Own.pdf",
+    "docs/NATIVE_EMULATION_EXPLAINED.md": "VirtualGlove-Native-Emulation.pdf",
+    "docs/TROUBLESHOOTING.md": "VirtualGlove-Troubleshooting.pdf",
+    "docs/CAMERA_GUIDE.md": "VirtualGlove-Camera-Guide.pdf",
+    "docs/ENGINEERING_JOURNEY.md": "VirtualGlove-Engineering-Journey.pdf",
 
-    "docs/MATRIX_GUIDE.md": "PowerGlove-Vision-Matrix-Guide.pdf",
-    "docs/ARCHITECTURE.md": "PowerGlove-Vision-Architecture.pdf",
-    "README.md": "PowerGlove-Vision-Overview.pdf",
-    "docs/INSTALL_README.md": "PowerGlove-Vision-Guide.pdf",
-    "docs/cheatsheet.md": "PowerGlove-Vision-Quick-Reference.pdf",
-    "docs/CHANGELOG.md": "PowerGlove-Vision-Changelog.pdf",
-    "docs/CONFIGURATION_REFERENCE.md": "PowerGlove-Vision-Configuration-Reference.pdf",
-    "docs/SECURITY.md": "PowerGlove-Vision-Security.pdf",
-    "docs/CONTRIBUTING.md": "PowerGlove-Vision-Contributing.pdf",
-    "docs/GAMEPLAY_GUIDE.md": "PowerGlove-Vision-Gameplay-Guide.pdf",
-    "docs/power-glove-rom-input-audit.md": "PowerGlove-Vision-Input-Audit.pdf",
-    "docs/super-glove-ball-native.md": "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
-    "docs/direction-response-benchmark.md": "PowerGlove-Vision-Direction-Response.pdf",
+    "docs/MATRIX_GUIDE.md": "VirtualGlove-Matrix-Guide.pdf",
+    "docs/ARCHITECTURE.md": "VirtualGlove-Architecture.pdf",
+    "README.md": "VirtualGlove-Overview.pdf",
+    "docs/INSTALL_README.md": "VirtualGlove-Guide.pdf",
+    "docs/cheatsheet.md": "VirtualGlove-Quick-Reference.pdf",
+    "docs/CHANGELOG.md": "VirtualGlove-Changelog.pdf",
+    "docs/CONFIGURATION_REFERENCE.md": "VirtualGlove-Configuration-Reference.pdf",
+    "docs/SECURITY.md": "VirtualGlove-Security.pdf",
+    "docs/CONTRIBUTING.md": "VirtualGlove-Contributing.pdf",
+    "docs/GAMEPLAY_GUIDE.md": "VirtualGlove-Gameplay-Guide.pdf",
+    "docs/power-glove-rom-input-audit.md": "VirtualGlove-Input-Audit.pdf",
+    "docs/super-glove-ball-native.md": "VirtualGlove-Super-Glove-Ball-Native.pdf",
+    "docs/direction-response-benchmark.md": "VirtualGlove-Direction-Response.pdf",
 }
 
 

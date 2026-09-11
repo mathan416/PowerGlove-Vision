@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_joystick_deadzone.py
 # Purpose: Verify per-player digital direction threshold persistence.
 # Author: Iain Bennett

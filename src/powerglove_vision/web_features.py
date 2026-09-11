@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/web_features.py
 # Purpose: Re-export maintained game and tuning components for existing callers.
 # Author: Iain Bennett

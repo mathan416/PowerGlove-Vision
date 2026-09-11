@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/manage-latency-traces.py
 # Purpose: Enable and restore bounded Controller/receiver timing traces safely.
 # Author: Iain Bennett

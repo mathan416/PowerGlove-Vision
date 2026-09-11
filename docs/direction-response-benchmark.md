@@ -45,7 +45,7 @@ Run while normal camera processing is idle. The script never changes controller
 settings itself. The original UNO report is retained locally in
 `/tmp/uno-dot-baseline-x8heur1f/correction-benchmark-uno.json`.
 
-The **PowerGlove Vision Controller (Arduino UNO Q)** performs the camera,
+The **VirtualGlove Controller (Arduino UNO Q)** performs the camera,
 recognition, and send stages measured in this record.
 
 This deterministic headless benchmark compares the same exact Super Glove Ball
@@ -68,7 +68,7 @@ FCEUmm exercise of the shared camera-direction recognition when supplied.
 
 ### Direct-output dot test
 
-Use the optional **PowerGlove Calibration Test** when game behavior makes native
+Use the optional **VirtualGlove Calibration Test** when game behavior makes native
 X/Y difficult to judge. The release installer can add it as a ROM-free game in
 RetroPie's **Ports** list. Its project-owned `lr-powerglove-dot` core reuses the
 normal Controller camera, MediaPipe recognition, per-player center and reach,
@@ -77,7 +77,7 @@ only the game's interpretation.
 
 1. Select the intended player, confirm calibration, and start controller
    delivery on Dashboard.
-2. Launch **Ports → PowerGlove Calibration Test**. Its fixed launcher requests
+2. Launch **Ports → VirtualGlove Calibration Test**. Its fixed launcher requests
    the native test profile, renews that lease while RetroArch runs, and releases
    it on exit. It does not need or inspect a ROM.
 3. A yellow dot should follow the hand. The small green marker means the sample
@@ -157,7 +157,7 @@ display buffering, and physical display latency are intentionally outside this
 headless core benchmark.
 
 The Dashboard now reports rolling camera-read-to-send and changed-control-to-send
-p50/p95 measurements. Those cover the PowerGlove Vision Controller software stage for both FCEUmm and
+p50/p95 measurements. Those cover the VirtualGlove Controller software stage for both FCEUmm and
 native X/Y. Receiver publication and the core's next-frame consumption remain
 separate stages: the coherent native record timestamps publication on RetroPie
 after packet validation and virtual-gamepad writes, rather than socket arrival,
@@ -198,7 +198,7 @@ local and releases the camera automatically. A fixed-duration subset may then
 be sampled from those confirmed steps for repeatable replay. Guided capture is
 diagnostic evidence, not training data or an automatic part of Glove Academy.
 
-### Preliminary PowerGlove Vision Controller steady-state timing
+### Preliminary VirtualGlove Controller steady-state timing
 
 After deploying 0.3.2-dev on September 5, 2026, two controller-off 300-sample
 smoke-test windows exercised the current MediaPipe Hands configuration at
@@ -490,7 +490,7 @@ Put the external camera behind and slightly to one side of the player, looking
 past the shoulder. Both the real hand and the cabinet screen must be visible;
 the hand must not obscure the Robo-Glove. Keep them at similar vertical positions
 in the recording where practical to reduce rolling-shutter timing differences.
-Leave the PowerGlove Vision Controller camera in its normal playing position.
+Leave the VirtualGlove Controller camera in its normal playing position.
 Make a short framing clip before starting measurements.
 
 Before the recording day, the read-only preflight can capture the software and
@@ -671,7 +671,7 @@ normal/diagnostic core comparison. Report distribution changes and capture/
 tracking continuity; do not silently subtract a synthetic overhead estimate.
 
 An isolated September 8 device run measured only the trace call itself, with no
-camera or game workload. On the PowerGlove Vision Controller (arm64, Python
+camera or game workload. On the VirtualGlove Controller (arm64, Python
 3.13.14), disabled p50/p95 were 0.468/0.469 microseconds and enabled p50/p95 were
 11.771/18.073 microseconds. On RetroPie (arm64, Python 3.7.3), the corresponding
 values were 1.222/1.277 and 18.259/24.389 microseconds. These tens-of-microseconds

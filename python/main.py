@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: python/main.py
 # Purpose: Supervise the UNO Q App Lab vision worker, web controls, model retrieval, and camera recovery.
 # Author: Iain Bennett
@@ -21,13 +21,13 @@
 #   2026-09-06 - Publish the running matrix firmware identity outside the worker.
 #   2026-09-05 - Request one guarded host USB reset after a sustained camera outage.
 #   2026-09-05 - Selected the deployed legacy-lite tracker explicitly.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Delegated idle and active vision lifecycle to the persistent worker.
 #   2026-09-03 - Displayed a dedicated matrix state during Learn sessions.
 #   2026-09-03 - Support an unconfigured first-run receiver without blocking local practice.
 
-"""Arduino App Lab entry point for PowerGlove Vision."""
+"""Arduino App Lab entry point for VirtualGlove."""
 
 from __future__ import annotations
 
@@ -288,14 +288,14 @@ def main() -> int:
                     verified_method = camera_recovery.consume_verified_recovery()
                     if verified_method is not None:
                         print(
-                            "PowerGlove Vision: camera recovery verified by a test frame "
+                            "VirtualGlove: camera recovery verified by a test frame "
                             f"after {verified_method}",
                             file=sys.stderr,
                             flush=True,
                         )
                     if recovery_requested:
                         print(
-                            "PowerGlove Vision: requested guarded USB camera preparation/recovery",
+                            "VirtualGlove: requested guarded USB camera preparation/recovery",
                             file=sys.stderr,
                             flush=True,
                         )
@@ -323,10 +323,10 @@ def main() -> int:
                 recovered = camera_recovery.wait_for_recovery()
                 print(
                     (
-                        "PowerGlove Vision: guarded USB action completed; "
+                        "VirtualGlove: guarded USB action completed; "
                         "waiting for a camera test frame"
                         if recovered else
-                        "PowerGlove Vision: guarded USB action did not complete"
+                        "VirtualGlove: guarded USB action did not complete"
                     ),
                     file=sys.stderr,
                     flush=True,

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: bricks/local/profile_control/brick_compose.yaml
 # Purpose: Publish UDP 55356 without host networking or container privileges.
 # Author: Iain Bennett

@@ -1,13 +1,16 @@
-# Contributing to PowerGlove Vision
+# Contributing to VirtualGlove
 
-Thank you for helping improve PowerGlove Vision. Keep changes focused, readable,
+Thank you for helping improve VirtualGlove. Keep changes focused, readable,
 and safe for a project that combines camera input, local networking, virtual
 Linux devices, and a privileged shutdown helper.
 
-User-facing documentation calls the Arduino UNO Q device the **PowerGlove
-Vision Controller**. Introduce the hardware relationship once where it helps,
-then use the product name. Preserve literal `uno-q` commands, filenames,
-packages, host placeholders, and hardware-specific compatibility statements.
+User-facing documentation calls the Arduino UNO Q device the **VirtualGlove
+Controller**. Introduce the hardware relationship once where it helps, then use
+the product name. Preserve literal compatibility commands, filenames, installed
+paths, service names, host placeholders, and hardware-specific statements.
+References to Nintendo's original **Power Glove**, Super Glove Ball's emulated
+controller, and the separately named `lr-nestopia-powerglove` core are factual
+component names rather than VirtualGlove branding and must remain accurate.
 
 ## Before changing code
 
@@ -41,7 +44,7 @@ the repository host supports branch protection.
 ## Guide layout and audience
 
 Write the installation guide, gameplay guide, camera guide, troubleshooting guide,
-quick reference, and other user manuals for someone downloading PowerGlove Vision
+quick reference, and other user manuals for someone downloading VirtualGlove
 for the first time. Do not assume that reader has the project's camera, network
 names, calibration, saved players, or development devices. Lead them from a fresh
 installation through ordinary use, backups, maintenance, updates, and recovery.
@@ -74,7 +77,7 @@ as the first line when one is required. The header must identify:
 
 Imported or modified third-party source is the exception: retain its original
 header, authorship, copyright, and license language verbatim. Do not replace or
-prepend those notices with the PowerGlove Vision header. Keep project changes
+prepend those notices with the VirtualGlove header. Keep project changes
 in a separate patch and an additive component change ledger, and install or
 distribute that ledger with the upstream license and notices. If a vendor source
 tree is accepted later, place it under `third_party/` or `vendor/`; the source
@@ -107,7 +110,7 @@ scripts/check-source-docs.py
 Run these commands from the repository root on your development computer.
 The [command reference](CONFIGURATION_REFERENCE.md#command-line-reference) explains their options.
 
-Core tests must remain independent of a physical camera, PowerGlove Vision Controller, and RetroPie:
+Core tests must remain independent of a physical camera, VirtualGlove Controller, and RetroPie:
 
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v
@@ -229,18 +232,18 @@ Inspect the affected PDF pages for clipped text, broken tables, missing images,
 and unintended page breaks before committing.
 
 The public `README.md`, guides under `docs/`, and documentation images also
-drive the Help Center hosted by the PowerGlove Vision Controller. After a documentation change is
+drive the Help Center hosted by the VirtualGlove Controller. After a documentation change is
 merged or otherwise ready to deploy, synchronize and verify that copy with:
 
 ```sh
 scripts/deploy-uno-q-wifi.sh arduino@UNO-Q-NAME.local
 ```
 
-That deployment restarts the PowerGlove Vision application and checks every
+That deployment restarts the VirtualGlove application and checks every
 Help route, every public PDF, and representative gesture artwork. Confirm the
 affected page and its **Open PDF** link in a browser after deployment. The
 cabinet-specific `docs/cheatsheet.md` and its quick-reference PDF are
-intentionally excluded from the public PowerGlove Vision Controller Help deployment. If the PowerGlove Vision Controller is
+intentionally excluded from the public VirtualGlove Controller Help deployment. If the VirtualGlove Controller is
 unavailable, state clearly that device synchronization and live Help
 verification remain outstanding.
 
@@ -299,7 +302,7 @@ internal version-1 store migration with a retained backup, isolated player setti
 stale-tab rejection after player changes or progress resets, and controller
 suppression throughout tuning. Check that player selection automatically restores that player’s saved center,
 missing centers require centering, and hand-setting imports retain explicit calibration reuse;
-Start controller remains required. Verify version-3 round trips, version-2 center-box migration,
+Start controller remains required. Verify version-4 VirtualGlove round trips, legacy version-3 import, version-2 center-box migration,
 portable version-1 rejection,
 invalid calibration rejection, and restart recovery between both restore writes. Automatic
 suggestions must check separation and a simultaneous full-pose match in at least

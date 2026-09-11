@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_camera_recovery.py
 # Purpose: Verify guarded camera USB recovery requests without touching host devices.
 # Author: Iain Bennett

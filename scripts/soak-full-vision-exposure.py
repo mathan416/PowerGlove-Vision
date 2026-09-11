@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/soak-full-vision-exposure.py
 # Purpose: Repeatedly exercise manual exposure through the complete vision pipeline.
 # Author: Iain Bennett

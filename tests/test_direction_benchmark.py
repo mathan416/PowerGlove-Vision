@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_direction_benchmark.py
 # Purpose: Verify deterministic direction-response benchmark helpers and coverage.
 # Author: Iain Bennett

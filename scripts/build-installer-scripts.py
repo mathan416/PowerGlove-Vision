@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-installer-scripts.py
 # Purpose: Generate both standalone installer entrypoints from one maintained template.
 # Author: Iain Bennett
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def render(machine):
     """Expand only fixed installer identity and installed paths."""
     setup = ("/home/arduino/ArduinoApps/powerglove-vision" if machine == "uno-q" else "/opt/powerglove-src") + "/scripts/setup-machine.py"
-    archive = "PowerGlove-Vision-" + ("Uno-Q" if machine == "uno-q" else "RetroPie") + ".zip"
+    archive = "VirtualGlove-" + ("Uno-Q" if machine == "uno-q" else "RetroPie") + ".zip"
     return (ROOT / "scripts/templates/install.sh.in").read_text().replace(
         "@@MACHINE@@", machine).replace("@@SETUP@@", setup).replace("@@ARCHIVE@@", archive)
 

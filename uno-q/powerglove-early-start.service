@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: uno-q/powerglove-early-start.service
 # Purpose: Run early startup as the Arduino user.
 # Author: Iain Bennett
@@ -9,7 +9,7 @@
 # Full history: docs/CHANGELOG.md and Git history.
 
 [Unit]
-Description=PowerGlove early-start startup helper
+Description=VirtualGlove early-start startup helper
 
 [Service]
 Type=oneshot

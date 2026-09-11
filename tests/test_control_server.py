@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_control_server.py
 # Purpose: Verify dashboard configuration, pairing safeguards, controller state, and guarded shutdown behavior.
 # Author: Iain Bennett
@@ -119,8 +119,8 @@ class ControlStateTests(unittest.TestCase):
         servers, state = start_control_server(self.path, "127.0.0.1", 0, 0)
         try:
             port = servers.servers[0].server_address[1]
-            for extra in ({}, {"X-PowerGlove-Action":"players", "Sec-Fetch-Site":"cross-site"},
-                          {"X-PowerGlove-Action":"players", "Origin":"http://other.invalid"}):
+            for extra in ({}, {"X-VirtualGlove-Action":"players", "Sec-Fetch-Site":"cross-site"},
+                          {"X-VirtualGlove-Action":"players", "Origin":"http://other.invalid"}):
                 connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
                 with mock.patch('powerglove_vision.control_server.urllib.request.urlopen') as forward:
                     connection.request("POST", "/api/players", json.dumps({"action":"read"}),
@@ -145,7 +145,7 @@ class ControlStateTests(unittest.TestCase):
             connection = http.client.HTTPConnection("127.0.0.1", servers.servers[0].server_address[1], timeout=2)
             with mock.patch('powerglove_vision.control_server.urllib.request.urlopen', side_effect=fail_forward):
                 connection.request("POST", "/api/players", json.dumps({"action":"select", "id":"other"}),
-                                   {"Content-Type":"application/json", "X-PowerGlove-Action":"players"})
+                                   {"Content-Type":"application/json", "X-VirtualGlove-Action":"players"})
                 response = connection.getresponse()
                 response.read()
                 self.assertEqual(response.status, 400)
@@ -356,7 +356,7 @@ class ControlStateTests(unittest.TestCase):
             connection.request(
                 "POST", "/api/directional-search", json.dumps({"enabled": False}),
                 {"Content-Type": "application/json",
-                 "X-PowerGlove-Action": "directional-search"},
+                 "X-VirtualGlove-Action": "directional-search"},
             )
             response = connection.getresponse()
             response.read()
@@ -381,7 +381,7 @@ class ControlStateTests(unittest.TestCase):
             connection.request("POST", "/api/native-xy",
                                json.dumps({"mode": "bounded"}),
                                {"Content-Type": "application/json",
-                                "X-PowerGlove-Action": "native-xy"})
+                                "X-VirtualGlove-Action": "native-xy"})
             response = connection.getresponse()
             response.read()
             self.assertEqual(response.status, 404)
@@ -475,7 +475,7 @@ class ControlStateTests(unittest.TestCase):
 
     def test_logo_is_available_to_both_web_pages(self):
         self.assertTrue(LOGO_PATH.is_file())
-        logo_url = b"/assets/powerglove-vision-logo.png"
+        logo_url = b"/assets/virtualglove-logo.png"
         self.assertIn(logo_url, DASHBOARD)
         self.assertIn(logo_url, LEARN)
         self.assertIn(logo_url, PLAY)
@@ -554,7 +554,7 @@ class ControlStateTests(unittest.TestCase):
         page = help_document_page("gameplay")
         self.assertIsNotNone(page)
         assert page is not None
-        self.assertIn(b"Play with PowerGlove Vision", page)
+        self.assertIn(b"Play with VirtualGlove", page)
         self.assertIn(b"On this page", page)
         self.assertIn(b"/help-assets/gestures/actions/whole-hand-movement.png", page)
         self.assertIn(b"/help-assets/gestures/v2/v-sign.png", page)
@@ -588,8 +588,8 @@ class ControlStateTests(unittest.TestCase):
         for slug, width in (("gameplay", 680), ("installation", 680)):
             with self.subTest(slug=slug):
                 page = help_document_page(slug)
-                self.assertEqual(page.count(b"/assets/powerglove-vision-logo.png"), 1)
-                rendered, _ = render_markdown('<img src="../assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="%s">' % width)
+                self.assertEqual(page.count(b"/assets/virtualglove-logo.png"), 1)
+                rendered, _ = render_markdown('<img src="../assets/virtualglove-logo.png" alt="VirtualGlove" width="%s">' % width)
                 self.assertIn("<img loading=lazy", rendered)
                 self.assertNotIn(b"&lt;img", page)
         rendered, _ = render_markdown('<img src="../assets/private.png" alt="Unlisted" width="680">')
@@ -671,10 +671,10 @@ class ControlStateTests(unittest.TestCase):
         self.assertIsNotNone(document)
         assert document is not None
         self.assertTrue(document[0].startswith(b"%PDF-"))
-        self.assertEqual(document[1], "PowerGlove-Vision-Gameplay-Guide.pdf")
+        self.assertEqual(document[1], "VirtualGlove-Gameplay-Guide.pdf")
         self.assertEqual(
             guide_pdf("native-super-glove-ball")[1],
-            "PowerGlove-Vision-Super-Glove-Ball-Native.pdf",
+            "VirtualGlove-Super-Glove-Ball-Native.pdf",
         )
         self.assertIsNone(guide_pdf("quick-reference"))
         self.assertIsNone(guide_pdf("../../data/device"))
@@ -686,7 +686,7 @@ class ControlStateTests(unittest.TestCase):
             for path, expected_type in (
                 ("/favicon.ico", "image/vnd.microsoft.icon"),
                 ("/assets/favicon-32.png", "image/png"),
-                ("/assets/powerglove-vision-icon.png", "image/png"),
+                ("/assets/virtualglove-icon.png", "image/png"),
                 ("/assets/apple-touch-icon.png", "image/png"),
                 ("/play", "text/html"),
                 ("/help", "text/html"),
@@ -871,7 +871,7 @@ class ControlStateTests(unittest.TestCase):
     def test_footer_version_and_application_start_metadata(self):
         from powerglove_vision import __version__
         for page in (DASHBOARD, LEARN, PLAY, SETUP):
-            self.assertIn(("PowerGlove Vision v" + __version__).encode(), page)
+            self.assertIn(("VirtualGlove v" + __version__).encode(), page)
         self.assertNotIn(b"id=app-started", DASHBOARD)
         self.assertNotIn(b"id=app-started", PLAY)
         for page in (LEARN, SETUP):
@@ -1050,7 +1050,7 @@ class ControlStateTests(unittest.TestCase):
 
                 connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
                 connection.request("POST", "/api/system/shutdown", body, {
-                    "Content-Type": "application/json", "X-PowerGlove-Action": "shutdown",
+                    "Content-Type": "application/json", "X-VirtualGlove-Action": "shutdown",
                     "Sec-Fetch-Site": "cross-site",
                 })
                 response = connection.getresponse()
@@ -1061,7 +1061,7 @@ class ControlStateTests(unittest.TestCase):
 
                 connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2)
                 connection.request("POST", "/api/system/shutdown", body, {
-                    "Content-Type": "application/json", "X-PowerGlove-Action": "shutdown",
+                    "Content-Type": "application/json", "X-VirtualGlove-Action": "shutdown",
                 })
                 response = connection.getresponse()
                 response.read()

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_tracker.py
 # Purpose: Verify depth-aware curl geometry and MediaPipe coordinate selection.
 # Author: Iain Bennett

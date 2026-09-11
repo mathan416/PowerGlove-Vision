@@ -1,16 +1,16 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: retropie/powerglove-receiver.service
 # Purpose: Run the privileged uinput receiver under systemd with automatic failure recovery.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 
 [Unit]
-Description=PowerGlove Vision virtual gamepad receiver
+Description=VirtualGlove virtual gamepad receiver
 Wants=network-online.target
 After=network-online.target
 ConditionFileNotEmpty=/etc/powerglove/token

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/academy_diagnostics.py
 # Purpose: Run privacy-bounded, user-paced Glove Academy diagnostics.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_controller_protocol.py
 # Purpose: Verify signed controller authentication, replay rejection, and restart recovery.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/configure-bsb-zap.py
 # Purpose: Check and configure Bad Street Brawler's FCEUmm Glove Zap option.
 # Author: Iain Bennett

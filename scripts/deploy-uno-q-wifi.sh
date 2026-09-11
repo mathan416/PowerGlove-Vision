@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/deploy-uno-q-wifi.sh
 # Purpose: Deploy the application over authenticated SSH, preserve device data, restart it, and verify health.
 # Author: Iain Bennett
@@ -18,7 +18,7 @@
 #   2026-09-03 - Used staged SFTP uploads and terminal-backed UNO Q commands.
 #   2026-09-03 - Verified every Help guide and all gameplay table illustrations.
 #   2026-09-03 - Deployed and verified every allowlisted public PDF guide.
-#   2026-09-03 - Preserved PowerGlove Vision as the UNO Q default startup app.
+#   2026-09-03 - Preserved VirtualGlove as the UNO Q default startup app.
 #   2026-09-03 - Restored shutdown readiness when the host helper is active.
 #   2026-09-03 - Allowed three minutes for a cold App Lab runtime startup.
 
@@ -34,7 +34,7 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<'USAGE'
 Usage: scripts/deploy-uno-q-wifi.sh [user@uno-q-host]
 
-Deploy the PowerGlove Vision Linux application over an authenticated SSH
+Deploy the VirtualGlove Linux application over an authenticated SSH
 connection, preserve device settings, expose ports 8088 and 8443, keep it as
 the default startup app, restart the container, and verify its status. The
 default target is:
@@ -107,7 +107,7 @@ if [[ "${UNO_HEALTH_AUTHORITY}" == *:* && "${UNO_HEALTH_AUTHORITY}" != \[*\] ]];
 fi
 readonly UNO_CONNECTION UNO_HEALTH_HOST UNO_HEALTH_AUTHORITY
 
-echo "Uploading PowerGlove Vision over Wi-Fi..."
+echo "Uploading VirtualGlove over Wi-Fi..."
 python3 "${SCRIPT_DIR}/application-payload.py" "${LOCAL_METADATA_DIR}" --include-engineering
 COPYFILE_DISABLE=1 tar -C "${LOCAL_METADATA_DIR}" -cf "${LOCAL_ARCHIVE}" .
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
@@ -179,7 +179,7 @@ curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/actions/v-sign.png" >/dev/null
 GAMEPLAY_MARKDOWN="$(curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help/gameplay.md")"
-if [[ "${GAMEPLAY_MARKDOWN}" != *"Take PowerGlove Vision off-script"* ]]; then
+if [[ "${GAMEPLAY_MARKDOWN}" != *"Take VirtualGlove off-script"* ]]; then
   echo "error: deployed gameplay Help is not the current edition" >&2
   exit 1
 fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-nestopia-powerglove.sh
 # Purpose: Build the isolated evidence-gated Nestopia PowerGlove research core.
 # Author: Iain Bennett
@@ -36,7 +36,7 @@ git -C "$source_dir" apply "$root/native/nestopia-powerglove/nestopia-powerglove
 
 # The affected Nestopia implementation carries a 22-line upstream copyright
 # and GPL header. Compare it directly with the pinned revision after patching;
-# PowerGlove Vision changes belong below that header and in CHANGES.md.
+# VirtualGlove changes belong below that header and in CHANGES.md.
 header_check=$(mktemp -d)
 trap 'rm -rf "$header_check"' EXIT HUP INT TERM
 git -C "$source_dir" show "$revision:source/core/input/NstInpPowerGlove.cpp" \

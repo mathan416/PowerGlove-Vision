@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/process_capture.py
 # Purpose: Isolate direct camera capture from long hand-inference calls.
 # Author: Iain Bennett

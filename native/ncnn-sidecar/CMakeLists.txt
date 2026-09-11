@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: native/ncnn-sidecar/CMakeLists.txt
 # Purpose: Build the isolated ncnn CPU research sidecar.
 # Author: Iain Bennett

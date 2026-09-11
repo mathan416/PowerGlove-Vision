@@ -1,5 +1,5 @@
 #!/bin/sh
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: retropie/bin/powerglove-bsb-zap
 # Purpose: Launch the repeatable Bad Street Brawler Glove Zap configuration helper.
 # Author: Iain Bennett

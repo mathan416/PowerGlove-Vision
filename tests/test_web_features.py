@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_web_features.py
 # Purpose: Verify browser-facing Games and Tune safeguards and server-side validation.
 # Author: Iain Bennett
@@ -46,19 +46,19 @@ class WebFeatureTests(unittest.TestCase):
             action=path.rsplit('/',1)[-1]
             with patch('powerglove_vision.control_server.registry_request') as remote:
                 self.assertEqual(self.post(path,{'action':'save'})[0],403)
-                self.assertEqual(self.post(path,{'action':'save'},**{'X-PowerGlove-Action':action,'Origin':'http://untrusted.local'})[0],403)
+                self.assertEqual(self.post(path,{'action':'save'},**{'X-VirtualGlove-Action':action,'Origin':'http://untrusted.local'})[0],403)
                 remote.assert_not_called()
 
     def test_registry_validation_rejects_duplicate_keys_without_contacting_pi(self):
         with patch('powerglove_vision.control_server.registry_request') as remote:
-            status,result=self.post('/api/games',{'action':'validate','document':'{"games":{"a":"program_b","a":"program_c"}}'},**{'X-PowerGlove-Action':'games'})
+            status,result=self.post('/api/games',{'action':'validate','document':'{"games":{"a":"program_b","a":"program_c"}}'},**{'X-VirtualGlove-Action':'games'})
             self.assertEqual(status,400)
             self.assertIn('Duplicate',result['error'])
             remote.assert_not_called()
 
     def test_save_returns_verified_remote_result_without_secret(self):
         with patch('powerglove_vision.control_server.registry_request',return_value={'document':'{"games":{}}','revision':'verified'}) as remote:
-            code,result=self.post('/api/games',{'action':'save','document':'{"games":{}}','revision':'old'},**{'X-PowerGlove-Action':'games'})
+            code,result=self.post('/api/games',{'action':'save','document':'{"games":{}}','revision':'old'},**{'X-VirtualGlove-Action':'games'})
             self.assertEqual(code,200)
             self.assertEqual(result['revision'],'verified')
             self.assertNotIn('token',result)

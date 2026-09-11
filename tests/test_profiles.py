@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_profiles.py
 # Purpose: Verify authenticated profile commands, game matching, acknowledgements, and rejection paths.
 # Author: Iain Bennett
@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-05 - Covered renewable game-session validation and expiry.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 

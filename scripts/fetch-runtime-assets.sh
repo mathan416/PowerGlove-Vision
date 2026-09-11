@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/fetch-runtime-assets.sh
 # Purpose: Download and SHA-256 verify the official Google Hand Landmarker model for local or offline staging.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/statistics_web.py
 # Purpose: Share the optional Dashboard statistics preference across web pages.
 # Author: Iain Bennett

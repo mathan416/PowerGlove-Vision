@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/install-uno-q-shutdown-helper.sh
 # Purpose: Install narrow host helpers for confirmed shutdown and guarded USB camera recovery.
 # Author: Iain Bennett
@@ -36,7 +36,7 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<'USAGE'
 Usage: scripts/install-uno-q-shutdown-helper.sh [user@uno-q-host]
 
-Install fixed-purpose, root-owned helpers that let PowerGlove Vision ask the
+Install fixed-purpose, root-owned helpers that let VirtualGlove ask the
 UNO Q to shut Linux down cleanly and recover its one UVC camera. A connected
 camera and parent hub are enrolled now; otherwise enrollment occurs on first
 use. The remote sudo command prompts for the UNO Q account password. No password

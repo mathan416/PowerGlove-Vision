@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_gesture.py
 # Purpose: Verify calibration, hysteresis, safety release, menu poses, and supported gesture profiles.
 # Author: Iain Bennett
@@ -9,7 +9,7 @@
 #   2026-09-05 - Verified two-frame, motion-confirmed push and pull recognition.
 #   2026-09-05 - Verified Menu Guard easing remains isolated from general curls.
 #   2026-09-05 - Verified the eased thumb-only B pose remains distinct from Closed Hand.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Verified Program I throttle, brake, steering, turbo, and weapons.
 # Full history: docs/CHANGELOG.md and Git history.

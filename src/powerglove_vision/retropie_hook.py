@@ -1,17 +1,17 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/retropie_hook.py
-# Purpose: Translate RetroPie launch and exit events into authenticated PowerGlove profile requests.
+# Purpose: Translate RetroPie launch and exit events into authenticated VirtualGlove profile requests.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
 #   2026-09-05 - Renew registered-game sessions while RetroArch is running.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-04 - Repaired persistent profile transport and asynchronous queue acknowledgements.
 # Full history: docs/CHANGELOG.md and Git history.
 
-"""Translate RetroPie launch and exit events into authenticated PowerGlove profile requests."""
+"""Translate RetroPie launch and exit events into authenticated VirtualGlove profile requests."""
 
 from __future__ import annotations
 
@@ -177,7 +177,7 @@ def _run_session(args: argparse.Namespace, settings: dict, token: str, profile: 
 
 def build_parser() -> argparse.ArgumentParser:
     """Create the parser for RetroPie runcommand lifecycle arguments."""
-    parser = argparse.ArgumentParser(description="RetroPie PowerGlove launch hook")
+    parser = argparse.ArgumentParser(description="RetroPie VirtualGlove launch hook")
     parser.add_argument("action", choices=("start", "end", "session"))
     parser.add_argument("system", nargs="?", default="")
     parser.add_argument("emulator", nargs="?", default="")
@@ -217,7 +217,7 @@ def main() -> int:
             session_id = uuid.uuid4().hex
             _write_session(args.session_file, session_id)
             _start_session_process(args, session_id)
-            print(f"PowerGlove game session started: {profile}")
+            print(f"VirtualGlove game session started: {profile}")
             return 0
         _clear_session(args.session_file)
         ack = send_request(
@@ -226,13 +226,13 @@ def main() -> int:
         )
     except (OSError, TimeoutError, ValueError, KeyError, TypeError) as exc:
         # Never prevent a game from launching if the gesture controller is down.
-        print(f"PowerGlove unavailable: {exc}")
+        print(f"VirtualGlove unavailable: {exc}")
         return 0
     if ack.get("accepted") is True and ack.get("profile") == profile:
         state = "queued" if ack.get("queued") else "acknowledged"
-        print(f"PowerGlove profile {state}: {profile or 'off'}")
+        print(f"VirtualGlove profile {state}: {profile or 'off'}")
     else:
-        print(f"PowerGlove profile rejected: requested {profile or 'off'}; UNO Q reported {ack.get('profile') or 'off'}")
+        print(f"VirtualGlove profile rejected: requested {profile or 'off'}; UNO Q reported {ack.get('profile') or 'off'}")
     return 0
 
 

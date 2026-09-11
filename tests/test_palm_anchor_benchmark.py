@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_palm_anchor_benchmark.py
 # Purpose: Verify deterministic palm-anchor benchmark selection gates.
 # Author: Iain Bennett

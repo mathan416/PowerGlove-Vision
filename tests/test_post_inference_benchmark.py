@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_post_inference_benchmark.py
 # Purpose: Verify the camera-free post-inference load benchmark.
 # Author: Iain Bennett

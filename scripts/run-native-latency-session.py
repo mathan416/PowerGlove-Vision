@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/run-native-latency-session.py
 # Purpose: Guide repeatable stationary and movement windows with read-only status collection.
 # Author: Iain Bennett

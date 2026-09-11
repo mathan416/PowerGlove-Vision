@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/controller_protocol.py
 # Purpose: Authenticate current controller input with receiver-issued session challenges.
 # Author: Iain Bennett

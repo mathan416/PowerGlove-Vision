@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/measure-dot-input.py
 # Purpose: Measure read-only native-state validity and range for the dot core.
 # Author: Iain Bennett

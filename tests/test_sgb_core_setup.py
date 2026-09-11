@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_sgb_core_setup.py
 # Purpose: Verify reversible per-ROM native/FCEUmm selection.
 # Author: Iain Bennett

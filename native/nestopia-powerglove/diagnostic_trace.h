@@ -1,4 +1,4 @@
-/* Project: PowerGlove Vision
+/* Project: VirtualGlove
  * File: native/nestopia-powerglove/diagnostic_trace.h
  * Purpose: Buffer opt-in core consumption timestamps; export only after unload.
  * Author: Iain Bennett

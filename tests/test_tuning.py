@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_tuning.py
 # Purpose: Verify gesture sampling, preview leases, global overrides, and persistence safety.
 # Author: Iain Bennett

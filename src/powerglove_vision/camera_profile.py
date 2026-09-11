@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/camera_profile.py
 # Purpose: Build and score safe, image-free camera setting comparisons.
 # Author: Iain Bennett

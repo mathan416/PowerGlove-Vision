@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-diagnostic-overhead.py
 # Purpose: Measure local opt-in Python trace costs without camera or controller output.
 # Author: Iain Bennett

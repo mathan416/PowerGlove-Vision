@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-palm-anchors.py
 # Purpose: Compare pose stability and deliberate travel of MediaPipe palm anchors.
 # Author: Iain Bennett

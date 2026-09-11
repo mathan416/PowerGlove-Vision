@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_bsb_zap_setup.py
 # Purpose: Verify repeatable Glove Zap setup, option inheritance, and preflight failures.
 # Author: Iain Bennett

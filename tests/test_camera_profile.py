@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_camera_profile.py
 # Purpose: Verify safe, image-free camera setting recommendations.
 # Author: Iain Bennett

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_motion_matrix.py
 # Purpose: Verify controlled motion-trace matrix aggregation and caveats.
 # Author: Iain Bennett

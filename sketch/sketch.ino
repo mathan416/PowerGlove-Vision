@@ -1,4 +1,4 @@
-// Project: PowerGlove Vision
+// Project: VirtualGlove
 // File: sketch/sketch.ino
 // Purpose: Render protected status, pairing, and gesture-profile feedback on the UNO Q LED matrix.
 // Author: Iain Bennett
@@ -11,7 +11,7 @@
 //   2026-09-06 - Expose the compiled matrix source fingerprint through Router Bridge.
 //   2026-09-06 - Add an idle lightning flash, clearer fingers and cuff, and a softer glow.
 //   2026-09-04 - Share the scanning letter animation between Learn and Tune.
-//   2026-09-02 - Added to PowerGlove Vision.
+//   2026-09-02 - Added to VirtualGlove.
 //   2026-09-03 - Standardized source documentation and maintenance metadata.
 //   2026-09-03 - Added the gestures-idle Power Glove attract animation.
 //   2026-09-03 - Refined the attract animation with cuff travel, spark motion, and grayscale pulsing.

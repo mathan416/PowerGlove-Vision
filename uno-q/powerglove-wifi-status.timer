@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: uno-q/powerglove-wifi-status.timer
 # Purpose: Refresh independent Wi-Fi health outside the vision application.
 # Author: Iain Bennett
@@ -8,7 +8,7 @@
 # Change log:
 #   2026-09-06 - Sample host Wi-Fi carrier state every five seconds.
 [Unit]
-Description=PowerGlove Vision Wi-Fi status refresh
+Description=VirtualGlove Wi-Fi status refresh
 
 [Timer]
 OnBootSec=5

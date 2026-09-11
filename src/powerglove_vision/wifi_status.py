@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/wifi_status.py
 # Purpose: Read fresh, non-secret host Wi-Fi health from the shared application data directory.
 # Author: Iain Bennett

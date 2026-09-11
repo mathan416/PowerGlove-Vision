@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_native_state.py
 # Purpose: Verify the fixed latest-sample interface used by custom Nestopia.
 # Author: Iain Bennett

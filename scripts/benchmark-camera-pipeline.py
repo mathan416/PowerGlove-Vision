@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-camera-pipeline.py
 # Purpose: Measure an isolated Linux camera and recognition pipeline safely.
 # Author: Iain Bennett

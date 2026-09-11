@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/vision_app.py
 # Purpose: Run camera capture, hand tracking, gesture mapping, profile control, diagnostics, and network output.
 # Author: Iain Bennett
@@ -30,7 +30,7 @@
 #   2026-09-05 - Added latest-frame capture, timing telemetry, and async previews.
 #   2026-09-04 - Preloaded vision libraries while keeping idle capture off.
 #   2026-09-04 - Logged camera and first-frame startup stage durations.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added lazy vision activation and a persistent camera-free idle state.
 #   2026-09-03 - Added temporary Learn-page vision with automatic state restoration.
@@ -145,7 +145,7 @@ def _load_config(profile: str, path: Path | None) -> GestureConfig:
 
 def build_parser() -> argparse.ArgumentParser:
     """Create the vision worker command-line parser."""
-    parser = argparse.ArgumentParser(description="Camera-only Power Glove controller")
+    parser = argparse.ArgumentParser(description="Camera-only VirtualGlove controller")
     parser.add_argument("--receiver", required=True, help="Raspberry Pi hostname or address")
     parser.add_argument("--port", type=int, default=55355)
     tokens = parser.add_mutually_exclusive_group(required=True)
@@ -1102,7 +1102,7 @@ def main() -> int:
                 except Exception as exc:
                     vision_error = str(exc)
                     retry_at = time.monotonic() + 5.0
-                    print(f"PowerGlove Vision: {exc}", file=sys.stderr, flush=True)
+                    print(f"VirtualGlove: {exc}", file=sys.stderr, flush=True)
                 finally:
                     vision_job = None
                     vision_operation = None

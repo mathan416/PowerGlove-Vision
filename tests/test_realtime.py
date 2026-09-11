@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_realtime.py
 # Purpose: Verify newest-frame capture and non-blocking diagnostic preview work.
 # Author: Iain Bennett

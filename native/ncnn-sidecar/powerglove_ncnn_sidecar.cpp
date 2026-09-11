@@ -1,5 +1,5 @@
 /*
- * Project: PowerGlove Vision
+ * Project: VirtualGlove
  * File: native/ncnn-sidecar/powerglove_ncnn_sidecar.cpp
  * Purpose: Experimental persistent ncnn CPU inference worker.
  * Author: Iain Bennett

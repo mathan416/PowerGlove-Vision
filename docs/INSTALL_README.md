@@ -1,6 +1,6 @@
-# PowerGlove Vision Installation Guide
+# VirtualGlove Installation Guide
 
-Install PowerGlove Vision with one script on the **PowerGlove Vision Controller
+Install VirtualGlove with one script on the **VirtualGlove Controller
 (Arduino UNO Q)** and one on RetroPie.
 The scripts prepare the software and startup helpers; you finish by pairing the
 devices, positioning the camera, and testing a game.
@@ -19,7 +19,7 @@ and stop controller output, then run the matching command on each device. These
 explicit commands select the prerelease; the normal commands later in this guide
 continue to select the latest stable release.
 
-On the PowerGlove Vision Controller:
+On the VirtualGlove Controller:
 
 ```sh
 curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0-rc.4/install-uno-q.sh && bash install-uno-q.sh --development v0.4.0-rc.4
@@ -39,14 +39,14 @@ before replacing an older installation.
 
 ## 1. Prepare your devices
 
-You need a provisioned PowerGlove Vision Controller, a working RetroPie system, a UVC USB camera,
+You need a provisioned VirtualGlove Controller, a working RetroPie system, a UVC USB camera,
 a powered USB hub, and a physical controller for RetroArch setup. Put both devices
 on the same trusted local network with internet access. Supply your own games;
 no ROMs or BIOS files are included.
 
 For a new Controller, use Arduino App Lab to complete board setup and networking.
 Record both devices' hostnames. Connect the camera through the powered hub.
-You do not need to import PowerGlove Vision through App Lab or build a ZIP on
+You do not need to import VirtualGlove through App Lab or build a ZIP on
 your computer. The installer builds and uploads the Arduino sketch for you.
 
 Open a terminal on each device, either locally or over SSH. For the Controller:
@@ -67,7 +67,7 @@ if a new release appeared between runs, rerun the older installation.
 Development prereleases are available separately in the technical reference.
 The latest release must include the installer assets before these commands work.
 
-## 2. Run the PowerGlove Vision Controller installer
+## 2. Run the VirtualGlove Controller installer
 
 Run this single line in the Controller terminal:
 
@@ -147,7 +147,7 @@ not change the ROM's saved emulator: FCEUmm remains selected until you choose
 and leaves the tested joystick fallback unchanged. The build needs internet
 access and may take several minutes; no ROM is read or copied by the build.
 
-The installer separately offers **PowerGlove Calibration Test**. Accept it to
+The installer separately offers **VirtualGlove Calibration Test**. Accept it to
 build the small project-owned `lr-powerglove-dot` core and add a ROM-free entry
 to RetroPie's **Ports** list. This choice is optional and can be accepted on a
 later installer run. It does not select an emulator for any NES game.
@@ -232,16 +232,16 @@ RetroPie as well as the Controller application.
 
 1. On Dashboard, select a profile, wait for the camera, and show your hand. On first use, the app collects a neutral reference automatically. Use **Center hand** if your resting position produces unwanted movement or your camera/playing position changed. Hold a relaxed, open hand still at the intended center and distance until the button reports completion.
 2. Select **Start controller**. This allows controller packets to reach RetroPie and creates the virtual input device.
-3. On RetroPie, run `grep -A8 -B2 'PowerGlove Vision' /proc/bus/input/devices`. Look for the device name **PowerGlove Vision**. If it is missing, check pairing and the receiver service before changing emulator settings.
+3. On RetroPie, run `grep -A8 -B2 'VirtualGlove' /proc/bus/input/devices`. Look for the device name **VirtualGlove**. If it is missing, check pairing and the receiver service before changing emulator settings.
 
-For a visual calibration check, open **Ports → PowerGlove Calibration Test**.
+For a visual calibration check, open **Ports → VirtualGlove Calibration Test**.
 The utility selects native coordinate delivery only while it is open. The
 yellow dot should follow the hand; the green marker means the receiver has a
 fresh calibrated sample. A red X means tracking, calibration, pairing, or the
 sample's freshness is not ready. Adjust center or **Movement reach** on the
 Controller, then reopen or return to the test. Exit normally to release the
 test profile.
-4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **PowerGlove Vision**. Menu labels can vary with the RetroArch version.
+4. Use your physical controller to open RetroArch. Go to **Settings > Input > RetroPad Binds > Port 1 Controls** and select **VirtualGlove**. Menu labels can vary with the RetroArch version.
 5. Check the D-pad, A, B, Start, and Select assignments. The installer provides an automatic mapping; adjust bindings only if needed, then save the controller profile or RetroArch configuration.
 6. Test movement and buttons in a game. If your cabinet merges multiple controllers, also configure that merger to accept the virtual device.
 
@@ -322,7 +322,7 @@ saved personal tuning remains in `data/gesture-tuning.json`.
 For checks only, use the script you already downloaded:
 
 ```sh
-# On the PowerGlove Vision Controller:
+# On the VirtualGlove Controller:
 bash install-uno-q.sh --check
 # On RetroPie:
 bash install-retropie.sh --check
@@ -367,7 +367,7 @@ It also explains compatibility, package building, backups, and recovery.
   If it remains missing, reconnect or power-cycle the camera and check the powered
   hub and cable. A network-bearing hub is never reset as a unit.
 - **No controller in RetroArch:** finish pairing, select Start controller, and
-  select PowerGlove Vision for Port 1 using your physical controller.
+  select VirtualGlove for Port 1 using your physical controller.
 - **Partial installation:** correct the reported problem and rerun the same
   release. Keep the printed backup location for recovery.
 
@@ -380,7 +380,7 @@ For diagnostic commands or manual repair, use the
 | --- | --- | --- |
 | Arduino boot logo | <img src="images/matrix/Boot.jpg" alt="Boot matrix display" width="104"> | System startup, before the app display. |
 | System heart | <img src="images/matrix/Heart.jpg" alt="Heart matrix display" width="104"> | System startup is progressing. |
-| Pulsing hourglass | <img src="images/matrix/Hourglass.jpg" alt="Hourglass matrix display" width="104"> | PowerGlove Vision is starting. |
+| Pulsing hourglass | <img src="images/matrix/Hourglass.jpg" alt="Hourglass matrix display" width="104"> | VirtualGlove is starting. |
 | Lightning and animated glove | <img src="images/matrix/idle-glove.png" alt="Simulated glove matrix display" width="104"> | Gestures are off. The revised animation requires updated matrix firmware. |
 | Scanning `L` | <img src="images/matrix/L.jpg" alt="L matrix display" width="104"> | Play or Glove Academy practice is active; controller output is paused. |
 | Scanning `T` | <img src="images/matrix/T.jpg" alt="T matrix display" width="104"> | Tune gestures is active; controller output is paused. |
@@ -408,13 +408,14 @@ Add and manage players in **Setup → Players**. Choose the active player on Das
 sensitivity persist across restarts and normal upgrades. Selecting a player immediately loads their sensitivity, progress, and saved center. Use **Center hand** for a new player or after moving the camera or changing playing position. Restoring a hand-setup backup requires centering unless you explicitly
 reuse its calibration with the same camera and playing positions. Backups include
 name, center-box size, personal and effective gesture sensitivity, source software
-identity, and calibration. New exports use version 3; version-2 backups remain
-importable and version-1 sensitivity-only files are rejected. The web footer reports
+identity, and calibration. New exports use VirtualGlove backup version 4;
+legacy version-2 and version-3 backups remain importable, and version-1
+sensitivity-only files are rejected. The web footer reports
 exact software and running firmware identities; older firmware may report unavailable.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-virtualglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
@@ -433,7 +434,7 @@ excluded from the public package; the live cabinet page supplies local details.
 
 ## Play Checklist
 
-1. Power the RetroPie and PowerGlove Vision Controller; leave the camera connected to the powered hub.
+1. Power the RetroPie and VirtualGlove Controller; leave the camera connected to the powered hub.
 2. Open `http://UNO-Q-NAME.local:8088/dashboard`.
 3. Select the active profile on the Dashboard, then confirm the expected profile and a detected hand. The saved startup profile remains on Setup.
 4. On first use, or after changing your camera or playing position, select **Center hand** while holding a comfortable neutral pose. Otherwise reuse the saved calibration.
@@ -443,7 +444,7 @@ excluded from the public package; the live cabinet page supplies local details.
 7. Select **Stop controller** before adjusting the camera or leaving the cabinet.
 8. Read the shutdown limitation before disconnecting power. **Shutdown** requests a graceful halt, but the tested board restarts; an offline website is not proof that it is safe to unplug.
 
-PowerGlove Vision remembers the player's explicit **Start controller** or **Stop
+VirtualGlove remembers the player's explicit **Start controller** or **Stop
 controller** choice across Controller application and system restarts. A remembered
 Start means **armed**, not unconditional output: controls are sent only during a
 live registered RetroArch session or after an intentional manual Dashboard profile

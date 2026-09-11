@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/browser_dashboard_controls.py
 # Purpose: Verify Dashboard clicks remain reliable across live status refreshes.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/benchmark-post-inference.py
 # Purpose: Measure the production-shaped controller send and Dashboard housekeeping boundary.
 # Author: Iain Bennett

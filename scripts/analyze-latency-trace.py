@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/analyze-latency-trace.py
 # Purpose: Correlate finite diagnostic samples without subtracting clocks across hosts.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: uno-q/powerglove-wifi-status.py
 # Purpose: Publish read-only host Wi-Fi and Ethernet link health without network names or credentials.
 # Author: Iain Bennett

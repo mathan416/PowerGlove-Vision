@@ -1,7 +1,7 @@
 # Build your own: parts, cost, and difficulty
 
-PowerGlove Vision lets you use a camera-recognized hand to control games on
-RetroPie. The **PowerGlove Vision Controller (Arduino UNO Q)** handles the camera,
+VirtualGlove lets you use a camera-recognized hand to control games on
+RetroPie. The **VirtualGlove Controller (Arduino UNO Q)** handles the camera,
 recognition, and website. RetroPie runs the game. You do not need an original
 Power Glove or electronics attached to your hand.
 
@@ -13,7 +13,7 @@ Choose it if you enjoy experimenting and can work through a little Linux setup.
 
 | Part | What to look for | Evidence and limits |
 | --- | --- | --- |
-| PowerGlove Vision Controller | Arduino UNO Q, provisioned with Arduino App Lab | This is the project's supported Controller platform. Other Arduino UNO boards are not substitutes. This guide does not establish equivalent performance across RAM variants. |
+| VirtualGlove Controller | Arduino UNO Q, provisioned with Arduino App Lab | This is the project's supported Controller platform. Other Arduino UNO boards are not substitutes. This guide does not establish equivalent performance across RAM variants. |
 | USB camera | A Linux-compatible UVC webcam with a stable mount | Razer Kiyo Pro is the camera used in the recorded cabinet tests. Other UVC cameras need validation; sharing a USB connector does not guarantee the same formats or timing. |
 | Powered USB hub or dock | USB data connectivity for the camera and compatible Controller power arrangement | A powered hub is part of the documented setup. Ethernet through a USB dock is used on the project cabinet; a specific dock model has not been recorded as a universal recommendation. |
 | Power supplies and data cables | Supplies appropriate to the Controller, dock, and RetroPie computer | Check power delivery and upstream data roles before buying. A charge-only cable will not connect a camera. |

@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/matrix.py
 # Purpose: Drive UNO Q LED matrix status, pairing, and active-profile displays through Router Bridge.
 # Author: Iain Bennett
@@ -9,7 +9,7 @@
 #   2026-09-06 - Implement approved player and connectivity refinements.
 #   2026-09-06 - Add idle-only brightness and bounded background connection indicators.
 #   2026-09-06 - Read and cache the running matrix firmware source identity.
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Added a gestures-idle state distinct from system shutdown.
 #   2026-09-03 - Added a dedicated Learn-mode matrix state.

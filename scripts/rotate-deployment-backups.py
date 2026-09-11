@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/rotate-deployment-backups.py
 # Purpose: Bound routine UNO Q payload backups without touching named engineering evidence.
 # Author: Iain Bennett

@@ -1,6 +1,6 @@
 # Engineering journey: one week from camera to playable glove
 
-This document records how PowerGlove Vision was developed and validated. It is
+This document records how VirtualGlove was developed and validated. It is
 the project's technical journey: the hypotheses tried, measurements gathered,
 approaches retired, and lessons that made the system playable. For the system
 as it exists today, read [Architecture and flows](ARCHITECTURE.md). For exact
@@ -199,10 +199,10 @@ and landmark neural networks are nodes inside that graph. During continuous
 tracking, the landmark model uses the previous hand region. When that evidence
 fails, the graph runs the more expensive palm detector to reacquire the hand.
 
-PowerGlove Vision consumes the graph's 21 landmarks once per fresh result. The
+VirtualGlove consumes the graph's 21 landmarks once per fresh result. The
 five-point palm anchor and gesture calculations happen after MediaPipe has
 already calculated all landmarks; reducing the number of points averaged by
-PowerGlove Vision would therefore not reduce neural-network work.
+VirtualGlove would therefore not reduce neural-network work.
 
 ### MediaPipe 0.10.35 CPU promotion
 

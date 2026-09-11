@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_unoq_avahi.py
 # Purpose: Verify Controller mDNS is restricted to physical interfaces.
 # Author: Iain Bennett

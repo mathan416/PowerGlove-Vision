@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-help-images.py
 # Purpose: Generate compact gesture illustrations for Help and Glove Academy.
 # Author: Iain Bennett

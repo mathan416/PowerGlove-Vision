@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/compare-motion-matrix.py
 # Purpose: Compare controlled native-motion trace configurations.
 # Author: Iain Bennett

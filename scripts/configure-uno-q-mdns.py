@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/configure-uno-q-mdns.py
 # Purpose: Resolve .local names through the host Avahi socket inside App Lab containers.
 # Author: Iain Bennett

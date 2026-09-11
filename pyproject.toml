@@ -1,11 +1,11 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: pyproject.toml
 # Purpose: Define Python packaging metadata, dependencies, console commands, and source layout.
 # Author: Iain Bennett
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
-#   2026-09-02 - Added to PowerGlove Vision.
+#   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "powerglove-vision"
 version = "0.4.0"
-description = "Camera-only Power Glove-inspired controller for UNO Q and RetroPie"
+description = "Camera-only hand controller for UNO Q and RetroPie"
 license = {file = "LICENSE"}
 requires-python = ">=3.7"
 classifiers = ["License :: OSI Approved :: MIT License"]

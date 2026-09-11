@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_engineering_package.py
 # Purpose: Keep research tools separate from ordinary release installers.
 # Author: Iain Bennett
@@ -28,7 +28,7 @@ class EngineeringPackageTests(unittest.TestCase):
             BUILDER["build"]("0.4.0-test", output)
             with zipfile.ZipFile(output) as archive:
                 names = set(archive.namelist())
-                prefix = "PowerGlove-Vision-Engineering-Tools/"
+                prefix = "VirtualGlove-Engineering-Tools/"
                 manifest = json.loads(archive.read(prefix + "engineering-tools.json"))
                 self.assertIn("scripts/benchmark-vision-replay.py", manifest["tool_files"])
                 self.assertIn(prefix + "scripts/benchmark-vision-replay.py", names)

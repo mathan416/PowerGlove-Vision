@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/install-uno-q-camera-recovery-helper.sh
 # Purpose: Install only the fixed-purpose UNO Q USB camera recovery helper.
 # Author: Iain Bennett
@@ -28,7 +28,7 @@ Usage: scripts/install-uno-q-camera-recovery-helper.sh [user@uno-q-host]
 
 Install the fixed-purpose, root-owned recovery helper for one UVC camera. A
 connected camera and its parent hub are enrolled now; otherwise enrollment is
-deferred until PowerGlove Vision first sees the camera.
+deferred until VirtualGlove first sees the camera.
 The remote sudo command prompts for the UNO Q account password. No password is
 read or stored by this script.
 USAGE

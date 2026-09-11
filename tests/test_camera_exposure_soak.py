@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_camera_exposure_soak.py
 # Purpose: Verify lab-only exposure control safety and aggregate calculations.
 # Author: Iain Bennett

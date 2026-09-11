@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/analyze-motion-samples.py
 # Purpose: Analyze saved native-motion samples and smoothing step response.
 # Author: Iain Bennett

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/build-matrix-letter-images.py
 # Purpose: Render documentation diagrams from the sketch's program glyphs.
 # Author: Iain Bennett

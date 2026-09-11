@@ -1,9 +1,31 @@
 # Changelog
 
-This file records user-visible PowerGlove Vision changes. The project follows
+This file records user-visible VirtualGlove changes. The project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) categories and uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Git remains the
 authoritative record for line-level and file-level history.
+
+## [Unreleased]
+
+### Changed
+
+- Renamed the project and all user-facing product identity from **PowerGlove
+  Vision** to **VirtualGlove**, including the application, website, virtual
+  controller, documentation, public PDFs, installer packages, screenshots, and
+  release artifacts.
+- Reworked the existing hand, camera, framing, and target logo into a single
+  **VIRTUALGLOVE** wordmark. The Dashboard intentionally retains the quotation
+  “I love the Power Glove. It’s so bad.” while its product description now says
+  “your camera-only VirtualGlove.”
+- Retained compatibility identifiers needed by installed systems and native
+  emulation, including the `powerglove_vision` Python namespace, existing
+  `/opt/powerglove` and `/etc/powerglove` paths, service/script filenames,
+  protocol version, and `lr-nestopia-powerglove` core name. These identifiers
+  continue to upgrade in place and are not presented as the product name.
+- Renamed new portable hand-setup exports to
+  `<player>-virtualglove-hand-setup.json` with format
+  `virtualglove-hand-setup` version 4. Existing `powerglove-hand-setup`
+  version-2 and version-3 files remain importable.
 
 ## [0.4.0-rc.4] - 2026-09-10
 
@@ -136,11 +158,11 @@ authoritative record for line-level and file-level history.
 
 ### Added
 
-- Added a separate, version-matched PowerGlove Vision Engineering Tools source
+- Added a separate, version-matched VirtualGlove Engineering Tools source
   archive for protocol traces, replay analysis, benchmarks, GPU experiments,
   soak tests, and maintainer build tools. It contains no ROMs, recordings,
   credentials, device data, cached models, or compiled cores.
-- Added an optional, ROM-free **PowerGlove Calibration Test** to RetroPie's
+- Added an optional, ROM-free **VirtualGlove Calibration Test** to RetroPie's
   Ports list. Its separately built `lr-powerglove-dot` core displays the same
   guarded native X/Y used by Super Glove Ball, automatically holds and releases
   a native test profile, and gives players a simple center, reach, edge,
@@ -557,7 +579,7 @@ project base version remains 0.3.2. This is a prerelease.
   plus `native_xy_mode` diagnostics for `bounded` and `latest`. Both modes retain
   the normal MediaPipe landmark preview.
 
-- Synchronized the architecture, installation, security, troubleshooting, command reference, built-in Help, README and PDF editions with the asynchronous movement path, comfortable reach, Kiyo capture candidate, per-player joystick dead zone, motion-analysis tools and post-pairing token verification. Standardized new user-facing diagnostic titles on **PowerGlove Vision Controller** while retaining literal UNO Q filenames and hardware references.
+- Synchronized the architecture, installation, security, troubleshooting, command reference, built-in Help, README and PDF editions with the asynchronous movement path, comfortable reach, Kiyo capture candidate, per-player joystick dead zone, motion-analysis tools and post-pairing token verification. Standardized new user-facing diagnostic titles on **VirtualGlove Controller** while retaining literal UNO Q filenames and hardware references.
 
 - Added an optional experimental-only X/Y smoothing boost override. The UNO medium-jump trial uses 8 instead of 4, lowering the per-axis immediate-response threshold from roughly .075 to .0375 camera units without changing synchronous tracking or reach calibration.
 
@@ -711,7 +733,7 @@ recorded by the release tag and installer manifests.
 - Updated native compatibility test assertions to match the already documented
   completed-game confirmation and deliberately neutral unused packet fields.
 - Corrected relay-test mock argument access for Python 3.7 compatibility.
-- Adopted **PowerGlove Vision Controller** as the user-facing name for the
+- Adopted **VirtualGlove Controller** as the user-facing name for the
   Arduino UNO Q device throughout current guides, while retaining literal
   `uno-q` commands, filenames, host placeholders, and hardware-specific notes.
 
@@ -905,7 +927,7 @@ the completed illustrated documentation set.
   check that prevents the Nestopia revision or patch digest from drifting away
   from the published notices.
 - Preserved Nestopia's original source copyright and GPL header verbatim,
-  added a separate file-by-file PowerGlove Vision modification ledger, made
+  added a separate file-by-file VirtualGlove modification ledger, made
   the native-core build reject header changes, and installed that ledger beside
   the optional core and its upstream `COPYING` file.
 - Centered gesture, profile, and matrix artwork in Help and printable table
@@ -1046,7 +1068,7 @@ profile selection, and refreshed illustrated manuals.
 - Replaced generic Program A–I labels on Dashboard and Setup with the program letter and its intended game or use, while retaining the existing profile IDs.
 - Standardized the reader-facing game name “Gun Smoke” throughout Help and the public guides; exact `Gun.Smoke` ROM basenames remain unchanged for matching.
 - Made leaving Learn restore the selected profile, camera state, and controller state. Loading or refreshing the Dashboard now clears abandoned Learn sessions, prevents their old heartbeats from reactivating vision, and reapplies the selected mode.
-- Made Wi-Fi deployments preserve PowerGlove Vision as the UNO Q default startup app so the dashboard returns after a board reboot.
+- Made Wi-Fi deployments preserve VirtualGlove as the UNO Q default startup app so the dashboard returns after a board reboot.
 - Made Wi-Fi deployments restore the shutdown readiness marker when the installed host watcher is active.
 - Extended deployment health verification to tolerate a three-minute cold App Lab runtime startup.
 - Made deployment verification use the UNO Q address from the active SSH connection instead of accidentally selecting a Docker bridge interface.

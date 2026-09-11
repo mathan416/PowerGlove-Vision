@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: tests/test_dot_input.py
 # Purpose: Verify read-only native-state measurement for the diagnostic dot core.
 # Author: Iain Bennett

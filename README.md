@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/powerglove-vision-logo.png" alt="PowerGlove Vision" width="760">
+  <img src="assets/virtualglove-logo.png" alt="VirtualGlove" width="760">
 </p>
 
-# PowerGlove Vision
+# VirtualGlove
 
 **Current project version: 0.4.0; public candidate: v0.4.0-rc.4.** This candidate completes the tested
 MediaPipe CPU pipeline: newest-frame capture, four inference threads, a `0.35`
@@ -13,12 +13,12 @@ latency and exposure choices remain available without changing the compatible
 defaults. Update the
 Controller and RetroPie together using the [installation guide](docs/INSTALL_README.md).
 
-PowerGlove Vision lets you play RetroPie games by moving your hand in front of
-a camera connected to the **PowerGlove Vision Controller**, built on an Arduino
+VirtualGlove lets you play RetroPie games by moving your hand in front of
+a camera connected to the **VirtualGlove Controller**, built on an Arduino
 UNO Q. Use your bare hand or a plain glove; there are no glove electronics to
-build. The PowerGlove Vision Controller tracks your movements and
+build. The VirtualGlove Controller tracks your movements and
 sends controller input to a Raspberry Pi, where RetroArch sees a virtual
-gamepad named **PowerGlove Vision**.
+gamepad named **VirtualGlove**.
 
 The project includes eleven profiles: nine reusable Programs A–I and dedicated
 controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
@@ -101,7 +101,7 @@ On Dashboard, **Center hand** saves the resting reference for the selected playe
 
 | You want to… | Read… |
 | --- | --- |
-| Get the complete project at a glance | [Project overview PDF](output/pdf/PowerGlove-Vision-Overview.pdf) |
+| Get the complete project at a glance | [Project overview PDF](output/pdf/VirtualGlove-Overview.pdf) |
 | Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
 | Understand joystick versus native glove input | [Native emulation explained](docs/NATIVE_EMULATION_EXPLAINED.md) |
 | Review Super Glove Ball packet and gameplay evidence | [Native compatibility record](docs/super-glove-ball-native.md) |
@@ -129,12 +129,12 @@ because it is far too funny to fix.
 
 The web footer shows exact software and running matrix firmware identities.
 Glove Academy supports twelve player presets, saved lesson progress, and portable
-version-3 hand-setup backups containing name, center-box size, personal and effective gesture sensitivity, software identity, and per-player calibration. Version-2 backups remain importable and migrate their largest directional activation value into the center box. Selecting a player immediately loads their settings, progress, and saved center, with output paused. Use **Center hand** for new players or after changing the physical setup. Version-1 portable backups are no longer accepted. Navigation
+version-4 VirtualGlove hand-setup backups containing name, center-box size, personal and effective gesture sensitivity, software identity, and per-player calibration. Legacy version-2 and version-3 backups remain importable; version 2 migrates its largest directional activation value into the center box. Selecting a player immediately loads their settings, progress, and saved center, with output paused. Use **Center hand** for new players or after changing the physical setup. Version-1 portable backups are no longer accepted. Navigation
 and controls adapt to phone and tablet widths.
 
 ## Quick start
 
-Prepare the PowerGlove Vision Controller with Arduino App Lab and use an existing RetroPie installation.
+Prepare the VirtualGlove Controller with Arduino App Lab and use an existing RetroPie installation.
 Connect both to the same trusted network and attach the camera through a powered
 USB hub. Keep a physical controller available for RetroArch setup.
 
@@ -192,9 +192,9 @@ Ordinary release installers contain the production application plus a compact
 end-user support toolkit for calibration, status checks, camera recovery, and
 emulator setup. The full trace, replay, benchmark, GPU experiment, soak-test,
 and documentation-build suite remains in Git and is also available as a separate
-version-matched **PowerGlove Vision Engineering Tools** source archive. Development
+version-matched **VirtualGlove Engineering Tools** source archive. Development
 deployments retain those tools; normal users do not need them to install, play,
-calibrate, maintain, or update PowerGlove Vision.
+calibrate, maintain, or update VirtualGlove.
 
 ## Controls
 
@@ -309,7 +309,7 @@ Its temporary mirrored live view and centre/edge guides make hand placement
 visible during the hold, corner-sweep, and edge-return steps.
 The same one- or two-buffer choice is available directly in Setup for manual
 testing and camera-specific maintenance.
-The optional [PowerGlove Calibration Test](docs/direction-response-benchmark.md#direct-output-dot-test)
+The optional [VirtualGlove Calibration Test](docs/direction-response-benchmark.md#direct-output-dot-test)
 appears as a ROM-free game in RetroPie's **Ports** list when selected during
 installation. Its separate `lr-powerglove-dot` core displays the receiver's
 native X/Y publication without Super Glove Ball's movement logic. This makes
@@ -432,7 +432,7 @@ the camera connected. On the first healthy sighting it records the camera and it
 actual parent USB hub in a root-owned allowlist, disables autosuspend for both,
 and automatically updates that association if the camera is later moved to a
 different hub. If the camera remains missing for 15 seconds while vision is
-requested, PowerGlove Vision makes one guarded recovery attempt for that outage
+requested, VirtualGlove makes one guarded recovery attempt for that outage
 with the narrowest proven action. If `uhubctl` confirms that the enrolled hub
 supports per-port power switching, only the camera's recorded port is power
 cycled. Otherwise the helper falls back to rebinding the identity-checked parent
@@ -466,7 +466,7 @@ during learning mode, with cabinet input paused.
 
 Choose each player in turn and select **Back up hand setup** to download a
 separate file named for that player, such as
-`alex-powerglove-hand-setup.json`. Your browser saves it on the computer, phone,
+`alex-virtualglove-hand-setup.json`. Your browser saves it on the computer, phone,
 or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
 the player you want to update, choose **Restore hand setup**, and pick that
 player's saved file from your device. Review it before confirming; restore
@@ -518,7 +518,7 @@ their owning guide, and third-party licensing, provenance, asset origins, and
 native-core modifications share one notice. Regenerate PDFs only after the
 Markdown review is complete.
 
-PowerGlove Vision is an independent project licensed under the [MIT License](LICENSE).
+VirtualGlove is an independent project licensed under the [MIT License](LICENSE).
 The modified Nestopia core is GPLv2 software and is documented separately from
 the MIT application; see its [distribution and license record](THIRD_PARTY_NOTICES.md#modified-nestopia-libretro-core).
 Nintendo, NES, Power Glove, and the named games belong to their respective

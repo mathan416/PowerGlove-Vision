@@ -1,4 +1,4 @@
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: src/powerglove_vision/versioning.py
 # Purpose: Identify the release version and source branch in checkouts and deployed builds.
 # Author: Iain Bennett

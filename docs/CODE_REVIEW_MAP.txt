@@ -1,4 +1,4 @@
-POWERGLOVE VISION - FILE HIERARCHY AND CODE REVIEW MAP
+VIRTUALGLOVE - FILE HIERARCHY AND CODE REVIEW MAP
 ===================================================
 Updated: September 10, 2026 (America/Toronto)
 Source: /Users/mathan/Developer/PowerGlove
@@ -9,11 +9,11 @@ This is a reading aid, not a claim of a completed code/security audit.
 
 CURRENT SYSTEM
 --------------
-The PowerGlove Vision Controller (Arduino UNO Q) captures the newest camera
+The VirtualGlove Controller (Arduino UNO Q) captures the newest camera
 frame, runs MediaPipe Hands with the selected four-thread CPU baseline, applies
 player calibration and gesture settings,
 and transmits authenticated controller state. RetroPie publishes a virtual
-PowerGlove Vision gamepad and the latest native state. Neither path queues old
+VirtualGlove gamepad and the latest native state. Neither path queues old
 movement samples. Latest coordinate is the native X/Y default and guards only
 one contradictory or unusually distant non-forward result after a brief loss;
 ordinary tracking and strongly aligned forward recovery remain direct. FCEUmm handles standard mappings and remains the explicit
@@ -107,8 +107,8 @@ COMPLETE SOURCE INVENTORY
 |   |-- apple-touch-icon.png
 |   |-- favicon-32.png
 |   |-- favicon.ico
-|   |-- powerglove-vision-icon.png
-|   `-- powerglove-vision-logo.png
+|   |-- virtualglove-icon.png
+|   `-- virtualglove-logo.png
 |-- bricks
 |   `-- local
 |       |-- avahi_resolver
@@ -311,27 +311,27 @@ COMPLETE SOURCE INVENTORY
 |       `-- nestopia-powerglove.patch
 |-- output
 |   |-- app-lab
-|   |   `-- PowerGlove-Vision-Uno-Q.zip.sha256
+|   |   `-- VirtualGlove-Uno-Q.zip.sha256
 |   `-- pdf
-|       |-- PowerGlove-Vision-Architecture.pdf
-|       |-- PowerGlove-Vision-Build-Your-Own.pdf
-|       |-- PowerGlove-Vision-Camera-Guide.pdf
-|       |-- PowerGlove-Vision-Changelog.pdf
-|       |-- PowerGlove-Vision-Configuration-Reference.pdf
-|       |-- PowerGlove-Vision-Contributing.pdf
-|       |-- PowerGlove-Vision-Direction-Response.pdf
-|       |-- PowerGlove-Vision-Engineering-Journey.pdf
-|       |-- PowerGlove-Vision-Gameplay-Guide.pdf
-|       |-- PowerGlove-Vision-Guide.pdf
-|       |-- PowerGlove-Vision-Input-Audit.pdf
-|       |-- PowerGlove-Vision-Matrix-Guide.pdf
-|       |-- PowerGlove-Vision-Native-Emulation.pdf
-|       |-- PowerGlove-Vision-Overview.pdf
-|       |-- PowerGlove-Vision-Quick-Reference.pdf
-|       |-- PowerGlove-Vision-Security.pdf
-|       |-- PowerGlove-Vision-Super-Glove-Ball-Native.pdf
-|       |-- PowerGlove-Vision-Third-Party-Notices.pdf
-|       `-- PowerGlove-Vision-Troubleshooting.pdf
+|       |-- VirtualGlove-Architecture.pdf
+|       |-- VirtualGlove-Build-Your-Own.pdf
+|       |-- VirtualGlove-Camera-Guide.pdf
+|       |-- VirtualGlove-Changelog.pdf
+|       |-- VirtualGlove-Configuration-Reference.pdf
+|       |-- VirtualGlove-Contributing.pdf
+|       |-- VirtualGlove-Direction-Response.pdf
+|       |-- VirtualGlove-Engineering-Journey.pdf
+|       |-- VirtualGlove-Gameplay-Guide.pdf
+|       |-- VirtualGlove-Guide.pdf
+|       |-- VirtualGlove-Input-Audit.pdf
+|       |-- VirtualGlove-Matrix-Guide.pdf
+|       |-- VirtualGlove-Native-Emulation.pdf
+|       |-- VirtualGlove-Overview.pdf
+|       |-- VirtualGlove-Quick-Reference.pdf
+|       |-- VirtualGlove-Security.pdf
+|       |-- VirtualGlove-Super-Glove-Ball-Native.pdf
+|       |-- VirtualGlove-Third-Party-Notices.pdf
+|       `-- VirtualGlove-Troubleshooting.pdf
 |-- pyproject.toml
 |-- python
 |   |-- main.py
@@ -350,7 +350,7 @@ COMPLETE SOURCE INVENTORY
 |   |-- powerglove-receiver.service
 |   |-- powerglove-receiver.timer
 |   |-- retroarch
-|   |   `-- PowerGlove Vision.cfg
+|   |   `-- VirtualGlove.cfg
 |   |-- runcommand-onend-powerglove.sh
 |   `-- runcommand-onstart-powerglove.sh
 |-- scripts

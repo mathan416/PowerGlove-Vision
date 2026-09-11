@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Project: PowerGlove Vision
+# Project: VirtualGlove
 # File: scripts/setup-machine.py
 # Purpose: Install or check UNO Q and RetroPie integration without replacing private settings.
 # Author: Iain Bennett
@@ -81,7 +81,7 @@ def hook_content(text, action):
     if text.startswith("#!") and not re.match(r"^#!.*(?:/| )(?:ba|da)?sh(?:\s|$)", text.splitlines()[0]):
         raise ValueError("Existing runcommand hook is not a supported shell script")
     command = executable + (' "$1" "$2" "$3" "$4"' if action == "start" else "")
-    block = "# PowerGlove Vision managed launch hook\n" + command + " || true\n"
+    block = "# VirtualGlove managed launch hook\n" + command + " || true\n"
     if text.startswith("#!"):
         first, _, rest = text.partition("\n")
         return first + "\n" + block + rest
@@ -144,7 +144,7 @@ def install_retropie(peer):
     os.chown(str(token), 0, grp.getgrnam("input").gr_gid)
     for unit in ("powerglove-receiver.service", "powerglove-receiver.timer", "powerglove-games.service"):
         write_file(Path("/etc/systemd/system") / unit, (SOURCE / "retropie" / unit).read_bytes())
-    profile = "PowerGlove Vision.cfg"
+    profile = "VirtualGlove.cfg"
     write_file(base / "retroarch/autoconfig" / profile, (SOURCE / "retropie/retroarch" / profile).read_bytes(), preserve=True)
     for path, content in hooks:
         write_file(path, content, 0o755)
@@ -331,7 +331,7 @@ def configure_games(confirm):
     install_dot = dot.is_file()
     if not install_dot:
         install_dot = confirm(
-            "Install the optional PowerGlove Calibration Test in RetroPie's Ports menu? "
+            "Install the optional VirtualGlove Calibration Test in RetroPie's Ports menu? "
             "It needs no ROM and displays native hand position as a dot"
         )
         if install_dot:
@@ -343,10 +343,10 @@ def configure_games(confirm):
         user_name = os.environ.get("SUDO_USER", "")
         if user_name:
             account = pwd.getpwnam(user_name)
-            port = Path(account.pw_dir) / "RetroPie/roms/ports/PowerGlove Calibration Test.sh"
+            port = Path(account.pw_dir) / "RetroPie/roms/ports/VirtualGlove Calibration Test.sh"
             write_file(port, '#!/bin/sh\nexec /opt/powerglove/bin/powerglove-dot\n', 0o755)
             os.chown(str(port), account.pw_uid, account.pw_gid)
-            print("PASS  PowerGlove Calibration Test is available in Ports.")
+            print("PASS  VirtualGlove Calibration Test is available in Ports.")
         else:
             print("ACTION  Add /opt/powerglove/bin/powerglove-dot to the intended user's Ports menu.")
 
@@ -468,9 +468,9 @@ def check_retropie(report):
     if dot.is_file():
         user_name = os.environ.get("SUDO_USER", "")
         account = pwd.getpwnam(user_name) if user_name else None
-        launcher = (Path(account.pw_dir) / "RetroPie/roms/ports/PowerGlove Calibration Test.sh"
+        launcher = (Path(account.pw_dir) / "RetroPie/roms/ports/VirtualGlove Calibration Test.sh"
                     if account else None)
-        report.check("Optional PowerGlove Calibration Test installed",
+        report.check("Optional VirtualGlove Calibration Test installed",
                      launcher is not None and launcher.is_file())
     try:
         roms = registered_roms()
@@ -502,9 +502,9 @@ def check_unoq(report):
         if os.geteuid() == 0:
             args = ["runuser", "-u", "arduino", "--"] + args
         result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, check=True)
-        report.check("PowerGlove Vision is the startup app", json.loads(result.stdout)["app"]["FullPath"] == str(SOURCE))
+        report.check("VirtualGlove is the startup app", json.loads(result.stdout)["app"]["FullPath"] == str(SOURCE))
     except (OSError, ValueError, KeyError, subprocess.SubprocessError):
-        report.check("PowerGlove Vision is the startup app", False)
+        report.check("VirtualGlove is the startup app", False)
 
     report.command("Arduino user starts at boot", ["test", "-f", "/var/lib/systemd/linger/arduino"])
     report.command("Early-start helper enabled", user_systemctl("is-enabled", "--quiet", "powerglove-early-start.service"))
