@@ -61,7 +61,7 @@ All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#co
 
 ```sh
 git clone --branch main https://github.com/mathan416/VirtualGlove.git
-cd PowerGlove-Vision
+cd VirtualGlove
 scripts/build-app-lab-package.sh
 python3 scripts/verify-app-lab-package.py
 ```
@@ -104,7 +104,7 @@ sudo apt update
 sudo apt install -y git
 cd ~
 git clone --branch main https://github.com/mathan416/VirtualGlove.git
-cd PowerGlove-Vision
+cd VirtualGlove
 ```
 
 If you already have a checkout, open that directory instead of cloning again.
@@ -210,7 +210,7 @@ status readings should show the following while your hand is visible:
 ```
 
 With **Gestures off**, an inactive camera is normal. Select a profile on
-Dashboard or open Learn to check tracking.
+Dashboard or open Glove Academy to check tracking.
 
 Run these checks **on RetroPie**:
 
@@ -586,7 +586,7 @@ is confidence in that identification, not confidence in a movement command.
 Keep one VirtualGlove installation active in App Lab and set it as the
 default startup app. OpenCV and MediaPipe preload in the background while the
 website is available. **Gestures off** keeps the camera closed; select an active
-profile or open Learn to begin capture. An early request waits for preloading
+profile or open Glove Academy to begin capture. An early request waits for preloading
 to finish. The last explicit Start/Stop choice is restored. An armed controller
 waits safely for a registered game or intentional manual profile; select **Start
 controller** when ready to play or **Stop controller** to keep it disarmed.

@@ -204,16 +204,17 @@ output active for the whole session. The V sign sends Start in both modes.
 | Close hand and push forward | <img src="images/gestures/actions/close-all-fingers.png" alt="Six-digit glove closing into a fist" width="68"> <img src="images/gestures/actions/push-toward-camera.png" alt="Push toward the camera" width="68"> | Nestopia (VirtualGlove): Power Punch. |
 
 **Play smart:** Pick one wall and finish it, then follow the revealed arrow.
-With FCEUmm, use Select to take the exit. Do not rely on Select in
-Nestopia (VirtualGlove); that action remains unconfirmed. **Latest coordinate** is
-the native movement default. It follows each newest valid palm point directly
+With FCEUmm, use Select to take the exit. Native gameplay has been completed
+without Select; although the core can transmit its native button bit, no required
+in-game action has been identified for it. **Latest coordinate** is the native
+movement default. It follows each newest valid palm point directly
 during continuous tracking and waits one fresh result only for a contradictory
 or unusually distant non-forward reacquisition. Continuous native movement is
 playable and has been
 substantially tightened, although synchronized physical latency measurement is
 still pending. The
 [native compatibility record](super-glove-ball-native.md) contains the test
-evidence and current limitations.
+evidence and details about additional packet fields.
 
 **First round:**
 

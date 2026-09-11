@@ -2157,12 +2157,12 @@ unless you intend to shut down the VirtualGlove Controller.
 ### RetroPie updates
 
 1. On RetroPie, back up customized files under `/etc/powerglove/`, especially `games.json` and `launcher.json`, using your normal private backup method.
-2. Open the original source checkout, normally `~/PowerGlove-Vision`. The installed copy under `/opt/powerglove-src` is not a Git checkout.
+2. Open the original source checkout, normally `~/VirtualGlove`. The installed copy under `/opt/powerglove-src` is not a Git checkout.
 3. Run the commands below. Review `git status --short` before pulling; if Git reports a conflict, resolve it before running the installer.
 4. Resolve any **FAIL** in the installer report, then launch a registered game and check its profile and controls. The installer preserves existing settings and tokens.
 
 ```sh
-cd ~/PowerGlove-Vision
+cd ~/VirtualGlove
 git status --short
 git pull --ff-only
 sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local

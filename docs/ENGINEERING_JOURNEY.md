@@ -53,8 +53,9 @@ The process worked because each uncertain part was separated and tested:
   and quick first-fresh-coordinate recovery reduced backward jumps without
   adding prediction or overshoot.
 - **Reliability became part of responsiveness.** Signed latest-only transport,
-  emulator-aware native/joystick switching, camera recovery, and optional USB
-  port power cycling prevented stale state and shortened recovery from faults.
+  emulator-aware native/joystick switching, standard camera recovery, and
+  capability-gated USB port power cycling prevented stale state and shortened
+  recovery from faults.
 
 ## What the team learned
 

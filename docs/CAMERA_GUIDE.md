@@ -151,9 +151,11 @@ tracked hand region. Good framing and lighting help avoid that recovery path.
 ## Reconnection and recovery
 
 The Controller looks for the saved camera whenever tracking starts. Supported
-camera settings are reapplied after a reconnect. The optional UNO Q recovery
-helper can recover a stream that remains wedged even though the camera is still
-visible to USB. It uses `uhubctl` only when that tool lists the exact enrolled
+camera settings are reapplied after a reconnect. The standard Controller
+installation includes the recovery helper and `uhubctl`; there is no separate
+camera-recovery choice during installation. The helper can recover a stream that
+remains wedged even though the camera is still visible to USB. It uses `uhubctl`
+only when that tool lists the exact enrolled
 hub as supporting per-port power control. In that case, it cycles only the
 camera's saved port. It never forces an unsupported hub. When port switching is
 unavailable, an identity-checked whole-hub rebind is allowed only if that hub

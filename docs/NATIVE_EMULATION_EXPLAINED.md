@@ -100,12 +100,14 @@ These findings include a successfully completed game. They apply to the exact
 ROM and implementation documented in the [native compatibility record](super-glove-ball-native.md).
 They are not a claim about every Power Glove-compatible game or ROM revision.
 
-## What stays deliberately neutral
+## Additional native fields
 
-Wrist rotation and other unmapped packet controls remain neutral. No confirmed
-Super Glove Ball action in the completed session required them. Bytes 7–8 stay
-at Nestopia's fixed `$00` initialization. Their gameplay purpose is not
-established; successful play at zero does not prove the ROM ignores them.
+Every implemented action required to complete Super Glove Ball has been
+confirmed in live play. Wrist rotation is still recognized by VirtualGlove, but
+it and the remaining unused native packet fields stay neutral because no
+required in-game action has been identified for them. Bytes 7–8 remain at
+Nestopia's fixed `$00` initialization. Successful play at zero does not prove
+that every ROM ignores those fields.
 
 A field should only be enabled when a repeatable game behavior and a controlled
 test justify it. Guessing from a packet diagram can introduce unintended actions.

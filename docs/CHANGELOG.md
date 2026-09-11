@@ -13,6 +13,12 @@ authoritative record for line-level and file-level history.
   `VirtualGlove` and updated documentation and installer download sources to
   use the new canonical address. GitHub's old repository links remain usable
   as redirects.
+- Clarified that guarded camera recovery and the `uhubctl` package are installed
+  automatically by the standard Controller installer. The standalone recovery
+  script is retained only for repair and development deployment.
+- Simplified the first-time installation language, standardized Glove Academy
+  naming, corrected post-rename checkout paths, and clarified that every native
+  action required to complete Super Glove Ball has been confirmed in live play.
 
 ## [0.4.0-rc.5] - 2026-09-11
 

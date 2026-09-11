@@ -4,14 +4,13 @@
 
 # VirtualGlove
 
-**Current project version: 0.4.0; public candidate: v0.4.0-rc.5.** This candidate completes the tested
-MediaPipe CPU pipeline: newest-frame capture, four inference threads, a `0.35`
-landmark-tracking gate, a `0.45` palm-detection gate, 30-fps-first camera
-negotiation, off-thread lightweight preview rendering, and Latest-coordinate
-native movement with guarded reacquisition. Optional, capability-checked camera
-latency and exposure choices remain available without changing the compatible
-defaults. Update the
-Controller and RetroPie together using the [installation guide](docs/INSTALL_README.md).
+**Current project version: 0.4.0; public candidate: v0.4.0-rc.5.** VirtualGlove
+turns hand movement and gestures into responsive RetroPie controls using a
+camera and the VirtualGlove Controller. This candidate includes the validated
+low-latency tracking path, reliable camera reconnection, and native Super Glove
+Ball support. Advanced camera timing and exposure choices remain optional.
+Update the Controller and RetroPie together using the
+[installation guide](docs/INSTALL_README.md).
 
 VirtualGlove lets you play RetroPie games by moving your hand in front of
 a camera connected to the **VirtualGlove Controller**, built on an Arduino
@@ -22,12 +21,12 @@ gamepad named **VirtualGlove**.
 
 The project includes eleven profiles: nine reusable Programs A–I and dedicated
 controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
-profile automatically when you launch a registered game. Glove Academy teaches
-hand movements and gestures through sixteen guided lessons, with camera feedback,
-saved progress for each player, and a **Glove Master** award for completing them all.
-Learning mode lets you practise without sending input to the cabinet. Its optional Pixel Pal-guided
-personalization wizard adjusts recognition to a player's hand without retraining
-the model, changing game mappings, or exposing raw thresholds during normal use.
+profile automatically when you launch a registered game. Glove Academy lets you
+practise without sending input to the cabinet. Its sixteen guided lessons include
+camera feedback, saved progress for each player, and a **Glove Master** award.
+An optional Pixel Pal-guided personalization wizard adjusts recognition to a
+player's hand without retraining the model, changing game mappings, or exposing
+raw thresholds during normal use.
 The local Play page adds a camera-controlled Rock Paper Scissors match against
 Pixel Pal without requiring RetroPie.
 
@@ -146,6 +145,9 @@ on the Controller and the second on RetroPie as your normal login user. Each ver
 its package and requests sudo access when needed. The UNO installer includes
 the Arduino sketch, early-start helper, shutdown helper, and guarded USB-camera
 recovery helper; no separate App Lab import or helper installation is needed.
+The installer adds `uhubctl` automatically rather than presenting camera
+recovery as an optional component. The camera may be connected later; enrollment
+begins after its first healthy frame.
 
 Follow the [Installation Guide](docs/INSTALL_README.md) for copyable commands,
 pairing, calibration, and your first game. Both scripts also support `--check`

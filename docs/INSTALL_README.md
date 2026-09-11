@@ -75,27 +75,33 @@ Run this single line in the Controller terminal:
 curl -fLO https://github.com/mathan416/VirtualGlove/releases/latest/download/install-uno-q.sh && bash install-uno-q.sh
 ```
 
-The script verifies its download, installs the app and sketch, and configures
-automatic startup. It includes the early-start hourglass helper and the Shutdown
-button's system helper. No separate helper commands are needed. Existing pairing,
-calibration, and personal tuning are preserved when updating. The supplied
-`config/profiles.json` baseline is backed up and replaced so current shared
-recognition defaults take effect. That baseline includes the tested movement
-hysteresis, native full-field mapping, and low-lag stabilization. The installer
-does not copy a maintainer's neutral-hand coordinates: those measurements depend
-on each camera, distance, and playing position.
+The script verifies its download, installs VirtualGlove, and configures automatic
+startup. It also installs:
+
+- the Arduino sketch and early-start hourglass;
+- the Shutdown button's system helper;
+- guarded camera recovery;
+- `uhubctl` for hubs that advertise safe per-port power control.
+
+Camera recovery is standard and is not presented as an optional prompt. The
+camera may be connected after installation, and no separate helper command is
+needed. Updates preserve pairing, calibration, and personal tuning. They back up
+and replace the supplied `config/profiles.json` baseline so current shared
+recognition defaults take effect. The installer never copies a maintainer's
+neutral-hand coordinates because those measurements depend on the player's
+camera, distance, and position.
 
 If the script reports a failure, stop and follow its message. If `curl` is missing,
 install it with `sudo apt-get install curl ca-certificates`, then retry. The
 installer checks compatibility before changing the application.
 
-The ordinary installer includes the tools useful during first setup and later
-maintenance: camera recovery, pairing and health checks, the optional calibration
-dot, a read-only dot report, aggregate vision-status reporting, movement-reach
-support, and emulator configuration. Research replays, protocol traces, soak
-tests, GPU experiments, and benchmark drivers are available from the source
-repository or the separate Engineering Tools download; they are not required to
-install, calibrate, play, back up a hand setup, or update the system.
+The ordinary installer also includes first-setup and maintenance support:
+camera recovery, pairing and health checks, the optional calibration dot and its
+read-only report, aggregate vision status, movement-reach tools, and emulator
+configuration. Research replays, protocol traces, soak tests, GPU experiments,
+and benchmark drivers remain in the source repository and separate Engineering
+Tools download. They are not needed to install, calibrate, play, back up a hand
+setup, or update the system.
 
 **Checkpoint:** Open `http://UNO-Q-NAME.local:8088/dashboard` in your browser.
 Dashboard should load. With gestures off, a closed camera is normal. Open
