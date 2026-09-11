@@ -6,10 +6,13 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Deferred annotations for Python 3.7 runtime compatibility.
 #   2026-09-10 - Added conservative post-deployment payload-backup rotation.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Retain recent routine payload backups and preserve every specially named backup."""
+
+from __future__ import annotations
 
 import argparse
 from pathlib import Path

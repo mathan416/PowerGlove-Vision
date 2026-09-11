@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Kept camera-profile marker cleanup compatible with Python 3.7.
 #   2026-09-11 - Add a privacy-safe downloadable system report.
 #   2026-09-10 - Added Pixel Pal's safe camera-settings profiler.
 #   2026-09-09 - Exposed direction-aware tracking as an independent experimental setting.
@@ -502,7 +503,10 @@ class ControlState:
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             # Never guess at private settings from a malformed restore marker.
             return
-        marker.unlink(missing_ok=True)
+        try:
+            marker.unlink()
+        except FileNotFoundError:
+            pass
 
     def camera_profile_snapshot(self) -> dict[str, Any]:
         """Return image-free progress for Pixel Pal's camera wizard."""
@@ -599,7 +603,10 @@ class ControlState:
                         "The original camera settings could not be verified; restart the Controller before testing again."
                     ) from exc
                 self._restore_camera_profile_config(original)
-                marker.unlink(missing_ok=True)
+                try:
+                    marker.unlink()
+                except FileNotFoundError:
+                    pass
             else:
                 with self.lock:
                     self.worker_status = {}
@@ -747,7 +754,10 @@ class ControlState:
             )
             try:
                 self._restore_camera_profile_config(original)
-                self._camera_profile_marker.unlink(missing_ok=True)
+                try:
+                    self._camera_profile_marker.unlink()
+                except FileNotFoundError:
+                    pass
             except Exception as exc:
                 error = error or f"Camera settings could not be restored: {exc}"
             recommendation = recommend_camera_profile(results)

@@ -44,8 +44,10 @@ No changes are pending after the refreshed release candidate.
   visual audit found one more six-digit glove in the opening Rock, Paper,
   Scissors table. The documentation check now also rejects six-digit artwork
   that is labelled for accessibility but missing from the hunt manifest.
-- Kept the documentation audit and camera-recovery tests parseable under
-  RetroPie's supported Python 3.7 validation job.
+- Restored complete Python 3.7 release validation: camera-profile recovery and
+  backup rotation now use compatible runtime APIs, and affected tests avoid
+  newer mock-call conveniences. The release gate now runs the full suite on
+  both Python 3.7 and Python 3.12 before packaging.
 
 ## [0.4.0-rc.6] - 2026-09-11
 

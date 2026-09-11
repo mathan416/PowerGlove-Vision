@@ -97,7 +97,7 @@ class TransportTests(unittest.TestCase):
         sender._hello_at = 0.0
 
         self.assertTrue(sender.send(ControllerState.released(1, 1.0, "off", True)))
-        kinds = [decode_message(call.args[0], "secret")["kind"]
+        kinds = [decode_message(call[0][0], "secret")["kind"]
                  for call in udp_socket.sendto.call_args_list]
         self.assertEqual(kinds, ["state", "hello"])
 
@@ -115,10 +115,10 @@ class TransportTests(unittest.TestCase):
 
         state = ControllerState.released(1, 1.0, "off", True)
         self.assertFalse(sender.send(state))
-        destinations = [call.args[1] for call in udp_socket.sendto.call_args_list]
+        destinations = [call[0][1] for call in udp_socket.sendto.call_args_list]
         self.assertIn(("192.0.2.10", 55355), destinations)
         self.assertIn((DISCOVERY_ADDRESS, 55355), destinations)
-        self.assertTrue(all(decode_message(call.args[0], "secret")["kind"] == "hello"
+        self.assertTrue(all(decode_message(call[0][0], "secret")["kind"] == "hello"
                             for call in udp_socket.sendto.call_args_list))
 
         reply = encode_message(
@@ -130,7 +130,7 @@ class TransportTests(unittest.TestCase):
             (reply, ("192.0.2.44", 55355)), BlockingIOError(),
         ]
         self.assertTrue(sender.send(ControllerState.released(2, 1.0, "off", True)))
-        sent = [(decode_message(call.args[0], "secret")["kind"], call.args[1])
+        sent = [(decode_message(call[0][0], "secret")["kind"], call[0][1])
                 for call in udp_socket.sendto.call_args_list]
         self.assertIn(("state", ("192.0.2.44", 55355)), sent)
         self.assertEqual(sender._peer, ("192.0.2.44", 55355))
@@ -146,7 +146,7 @@ class TransportTests(unittest.TestCase):
         sender.address.current.return_value = (None, "name unavailable")
 
         self.assertFalse(sender.send(ControllerState.released(1, 1.0, "off", True)))
-        payload, destination = udp_socket.sendto.call_args.args
+        payload, destination = udp_socket.sendto.call_args[0]
         self.assertEqual(destination, (DISCOVERY_ADDRESS, 55355))
         self.assertEqual(decode_message(payload, "secret")["kind"], "hello")
         self.assertIn("Looking for", sender.last_error)
