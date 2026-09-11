@@ -721,6 +721,7 @@ class ControlStateTests(unittest.TestCase):
                 ("/help-pdf/build-your-own.pdf", "application/pdf"),
                 ("/help-pdf/native-emulation.pdf", "application/pdf"),
                 ("/help-pdf/troubleshooting.pdf", "application/pdf"),
+                ("/help-pdf/engineering-toolkit.pdf", "application/pdf"),
                 ("/help/cabinet", "text/html"),
                 ("/help/gameplay", "text/html"),
                 ("/help/gameplay.md", "text/markdown"),

@@ -16,7 +16,7 @@ VirtualGlove recognizes the pose, sends authenticated controller input across
 your local network, and lets RetroArch see a virtual gamepad or a native
 Power Glove controller.
 
-**Current project version: 0.4.0 · Public candidate: [v0.4.0-rc.6](https://github.com/mathan416/VirtualGlove/releases/tag/v0.4.0-rc.6)**
+**Current project version: 0.4.0 · Public candidate: [v0.4.0-rc.7](https://github.com/mathan416/VirtualGlove/releases/tag/v0.4.0-rc.7)**
 
 ## Why VirtualGlove?
 
@@ -69,8 +69,8 @@ Open a terminal on the UNO Q and run:
 
 ```sh
 curl -fLO \
-  https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.6/install-uno-q.sh
-bash install-uno-q.sh --development v0.4.0-rc.6
+  https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.7/install-uno-q.sh
+bash install-uno-q.sh --development v0.4.0-rc.7
 ```
 
 ### 3. Check the Controller
@@ -85,8 +85,8 @@ Open a terminal on the Raspberry Pi and run:
 
 ```sh
 curl -fLO \
-  https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.6/install-retropie.sh
-bash install-retropie.sh --development v0.4.0-rc.6
+  https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.7/install-retropie.sh
+bash install-retropie.sh --development v0.4.0-rc.7
 ```
 
 ### 5. Pair the devices

@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Verify the Engineering Toolkit guide and PDF during deployment.
 #   2026-09-10 - Rotate routine payload backups while preserving named engineering evidence.
 #   2026-09-06 - Avoid reinstalling an identical enabled Wi-Fi sampler during updates.
 #   2026-09-06 - Implement approved player and connectivity refinements.
@@ -162,11 +163,11 @@ curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/learn" >/dev/null
 curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
   "http://${UNO_HEALTH_AUTHORITY}:8088/help" >/dev/null
-for HELP_SLUG in build-your-own native-emulation troubleshooting cabinet installation gameplay camera configuration security components contributing changelog input-audit native-super-glove-ball direction-response engineering-journey; do
+for HELP_SLUG in build-your-own native-emulation troubleshooting cabinet installation gameplay camera configuration security components contributing changelog input-audit native-super-glove-ball direction-response engineering-journey engineering-toolkit; do
   curl --location --max-redirs 3 --fail --silent --show-error --max-time 5 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help/${HELP_SLUG}" >/dev/null
 done
-for PDF_SLUG in build-your-own native-emulation troubleshooting overview installation gameplay camera configuration security components contributing changelog input-audit native-super-glove-ball direction-response engineering-journey; do
+for PDF_SLUG in build-your-own native-emulation troubleshooting overview installation gameplay camera configuration security components contributing changelog input-audit native-super-glove-ball direction-response engineering-journey engineering-toolkit; do
   curl --location --max-redirs 3 --fail --silent --show-error --max-time 15 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help-pdf/${PDF_SLUG}.pdf" >/dev/null
 done

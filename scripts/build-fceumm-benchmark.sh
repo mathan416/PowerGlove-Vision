@@ -6,9 +6,31 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added side-effect-free command help for the public toolkit.
 #   2026-09-04 - Added an isolated pinned FCEUmm benchmark build.
 # Full history: docs/CHANGELOG.md and Git history.
 set -eu
+
+usage() {
+  cat <<'EOF'
+Usage: sh scripts/build-fceumm-benchmark.sh [DESTINATION]
+
+Fetch and build the pinned stock FCEUmm core used by the deterministic response
+benchmark. DESTINATION defaults to build/fceumm-benchmark.
+EOF
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  -*)
+    echo "error: unsupported option: $1" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
 
 revision=236ccdfc911e84c60fea6b9d0699c2d440a8de14
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Kept zero-noise engineering simulations finite and deterministic.
 #   2026-09-10 - Bridged one extra native X/Y inference gap without extending actions.
 #   2026-09-07 - Made bounded native X/Y coherent, edge-clamped, and noise-aware.
 #   2026-09-07 - Corrected native smoothing cadence and saturated legacy jitter handling.
@@ -532,9 +533,9 @@ class GestureEngine:
             scale_noise_x = 0.0
         if scale_noise_y >= 1.0:
             scale_noise_y = 0.0
-        noise_x = max(cfg.motion_noise_floor,
+        noise_x = max(1e-9, cfg.motion_noise_floor,
                       scale_noise_x * reference.palm_scale * cfg.motion_noise_multiplier)
-        noise_y = max(cfg.motion_noise_floor,
+        noise_y = max(1e-9, cfg.motion_noise_floor,
                       scale_noise_y * reference.palm_scale * cfg.motion_noise_multiplier)
         delta_x, delta_y = x - raw[0], y - raw[1]
         anchor_x, anchor_y = x - anchor[0], y - anchor[1]

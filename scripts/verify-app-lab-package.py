@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Required the Engineering Toolkit PDF exposed by Controller Help.
 #   2026-09-09 - Required validated MediaPipe 0.10.35 as the sole runtime wheel.
 #   2026-09-07 - Aligned packaged PDFs with the consolidated documentation set.
 #   2026-09-06 - Implement approved player and connectivity refinements.
@@ -45,6 +46,7 @@ PUBLIC_PDF_NAMES = {
     "VirtualGlove-Troubleshooting.pdf",
     "VirtualGlove-Camera-Guide.pdf",
     "VirtualGlove-Engineering-Journey.pdf",
+    "VirtualGlove-Engineering-Toolkit.pdf",
 
     "VirtualGlove-Matrix-Guide.pdf",
     "VirtualGlove-Architecture.pdf",

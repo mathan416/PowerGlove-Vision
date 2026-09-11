@@ -49,6 +49,7 @@ In commands and examples, replace these placeholders:
 | Change the VirtualGlove Controller destination on RetroPie | [RetroPie connection settings](#retropie-connection-settings) |
 | Make a game select a profile | [Register games and select profiles](#register-games-and-select-profiles) |
 | Adjust gesture sensitivity | [Tune gesture sensitivity](#tune-gesture-sensitivity) |
+| Install or check engineering tools | [Engineering Toolkit command reference](#engineering-toolkit-command-reference) |
 | Understand an option or command | [Command-line reference](#command-line-reference) |
 
 ## VirtualGlove Controller settings
@@ -2489,6 +2490,43 @@ A failed firmware update may require rerunning the previous release through
 App Lab's normal sketch upload; restoring Linux files alone does not restore
 firmware. Never restore backup files wholesale over the filesystem root.
 
+### Engineering Toolkit command reference
+
+The optional Engineering Toolkit is a workstation archive for repeatable
+analysis, camera experiments, live tracing, and native-emulation research. It
+is not installed by the Controller or RetroPie installer and is not needed for
+ordinary calibration or play. Begin with the dedicated
+[Engineering Toolkit guide](ENGINEERING_TOOLKIT.md) for safety boundaries,
+workflows, and examples.
+
+Download the toolkit and checksum from the same GitHub release as the installed
+devices. After verification and extraction, run the dependency-free self-check:
+
+```sh
+python3 scripts/check-engineering-toolkit.py
+```
+
+Create the ordinary offline/video-analysis environment with Python 3.10 or
+newer:
+
+```sh
+python3 scripts/setup-engineering-tools.py
+```
+
+Add the validated MediaPipe comparison dependencies only with Python 3.12:
+
+```sh
+python3.12 scripts/setup-engineering-tools.py --with-mediapipe
+```
+
+Both modes create `.venv-engineering` and record their resolved packages in
+`virtualglove-engineering-environment.json` inside that environment. Add
+`--check` to verify its release, mode, Python, and exact package identity without
+changing it. Repository
+maintenance commands for releases, deployment, documentation generation,
+firmware stamping, and package construction are deliberately not included in
+the Engineering Toolkit ZIP; use a complete Git checkout for those tasks.
+
 ### Build and publish installation assets
 
 Generate the public PDFs and App Lab ZIP, then build the release assets:
@@ -2500,7 +2538,7 @@ python3 scripts/build-install-packages.py --version dev-COMMIT
 ```
 
 `output/install/` contains the Controller and RetroPie ZIPs, the optional
-Engineering Tools ZIP, the two entry scripts, their shared package installer,
+Engineering Toolkit ZIP, the two entry scripts, their shared package installer,
 checksum companions, and `SHA256SUMS`. Package identity and safe paths are
 validated at build time and installation time. Private runtime files are
 excluded.

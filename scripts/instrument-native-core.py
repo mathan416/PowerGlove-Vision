@@ -6,11 +6,12 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added a documented command-line interface for toolkit validation.
 #   2026-09-06 - Add bounded core-consumption evidence without altering the production patch.
 # Full history: docs/CHANGELOG.md and Git history.
 
 """Apply exact diagnostic hooks to the pinned, already patched research source."""
-import sys
+import argparse
 from pathlib import Path
 
 
@@ -35,6 +36,14 @@ def instrument(source):
     return source
 
 
-if __name__ == '__main__':
-    path = Path(sys.argv[1])
+def main() -> None:
+    """Instrument the explicitly selected isolated libretro source file."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source", type=Path, help="patched research libretro.cpp file")
+    args = parser.parse_args()
+    path = args.source
     path.write_text(instrument(path.read_text()))
+
+
+if __name__ == '__main__':
+    main()

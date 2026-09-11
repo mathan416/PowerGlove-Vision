@@ -5,6 +5,8 @@ the project's technical journey: the hypotheses tried, measurements gathered,
 approaches retired, and lessons that made the system playable. For the system
 as it exists today, read [Architecture and flows](ARCHITECTURE.md). For exact
 performance evidence, read [Native movement response and validation](direction-response-benchmark.md).
+To reproduce supported measurements, use the version-matched
+[Engineering Toolkit](ENGINEERING_TOOLKIT.md).
 
 ## The short version
 

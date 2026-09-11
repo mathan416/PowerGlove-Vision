@@ -11,9 +11,9 @@ displays, T, L, or gesture recognition. The setting saves without a tracker rest
 
 For an existing installation, this update changes controller transport on both computers. Stop controller output, update both to matching software, then start and test input. Mixed old/new versions do not deliver input with the default settings. See [signed controller transport and upgrades](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades) for staged upgrades and rollback.
 
-## Try release candidate v0.4.0-rc.6
+## Try release candidate v0.4.0-rc.7
 
-Release candidate **v0.4.0-rc.6** is intended for users who want to try the new
+Release candidate **v0.4.0-rc.7** is intended for users who want to try the new
 low-latency camera and native movement work before the final release. Close games
 and stop controller output, then run the matching command on each device. These
 explicit commands select the prerelease; the normal commands later in this guide
@@ -22,16 +22,16 @@ continue to select the latest stable release.
 On the VirtualGlove Controller:
 
 ```sh
-curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.6/install-uno-q.sh && bash install-uno-q.sh --development v0.4.0-rc.6
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.7/install-uno-q.sh && bash install-uno-q.sh --development v0.4.0-rc.7
 ```
 
 On RetroPie:
 
 ```sh
-curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.6/install-retropie.sh && bash install-retropie.sh --development v0.4.0-rc.6
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.7/install-retropie.sh && bash install-retropie.sh --development v0.4.0-rc.7
 ```
 
-Verify both report `v0.4.0-rc.6`, then follow the pairing/first-game checks below.
+Verify both report `v0.4.0-rc.7`, then follow the pairing/first-game checks below.
 Existing hand settings and pairing files are preserved. The Controller installer
 also updates the matrix firmware. Review [coordinated transport upgrades and
 rollback](CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades)

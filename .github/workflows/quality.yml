@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added an extracted Engineering Toolkit setup and workflow smoke test.
 #   2026-09-09 - Installed the image-array dependencies required by pipeline tests.
 #   2026-09-03 - Added automated tests, audits, syntax checks, and package verification.
 #   2026-09-03 - Aligned the test matrix with the declared Python 3.7 minimum.
@@ -95,6 +96,18 @@ jobs:
           scripts/verify-app-lab-package.py
           python scripts/build-installer-scripts.py --check
           python scripts/build-install-packages.py --version "dev-${GITHUB_SHA}"
+      - name: Smoke-test extracted Engineering Toolkit
+        run: |
+          mkdir -p "$RUNNER_TEMP/virtualglove-toolkit"
+          unzip -q output/install/VirtualGlove-Engineering-Tools.zip -d "$RUNNER_TEMP/virtualglove-toolkit"
+          cd "$RUNNER_TEMP/virtualglove-toolkit/VirtualGlove-Engineering-Tools"
+          python scripts/setup-engineering-tools.py
+          mkdir smoke-input
+          .venv-engineering/bin/python scripts/analyze-motion-samples.py \
+            --samples-dir smoke-input --output smoke-output.json
+          .venv-engineering/bin/python -c \
+            "import json; assert len(json.load(open('smoke-output.json'))['simulation']) == 10"
+          python scripts/setup-engineering-tools.py --check
       - name: Publish verified App Lab installation ZIP
         uses: actions/upload-artifact@v4
         with:

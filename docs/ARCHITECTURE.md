@@ -7,6 +7,9 @@ This guide describes the current implementation reviewed on September 10, 2026.
 It is a map of production responsibilities, data flows, interfaces, and failure
 behavior—not a chronology of experiments. The decisions and discarded paths
 that led here are recorded in the [Engineering Journey](ENGINEERING_JOURNEY.md).
+Supported replay, tracing, and measurement commands are documented separately
+in the [Engineering Toolkit](ENGINEERING_TOOLKIT.md); release and deployment
+maintenance remains in the complete Git checkout.
 
 ## Read this first
 

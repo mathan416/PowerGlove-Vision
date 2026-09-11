@@ -7,6 +7,27 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+## [0.4.0-rc.7] - 2026-09-11
+
+### Added
+
+- Rebuilt the optional Engineering Toolkit as a curated, self-checking release
+  archive with a dedicated technical guide, repeatable environment setup,
+  categorized commands, clean-extraction validation, and resolved-package
+  records.
+
+### Changed
+
+- Removed release building, deployment, documentation generation, firmware
+  stamping, and other incomplete repository-maintenance workflows from the
+  Engineering Toolkit archive. Added missing direct helpers and kept normal
+  installation and calibration documentation free of engineering setup steps.
+- Made Toolkit archives reproducible, required side-effect-free help from shell
+  tools, verified recorded environment identity, included the Toolkit PDF in
+  Controller packages, and added an extracted-package CI workflow smoke test.
+- Made zero-jitter motion simulations safe and changed the Toolkit's
+  unsmoothed comparison to exercise the real latest-coordinate path.
+
 ## [0.4.0-rc.6] - 2026-09-11
 
 ### Changed

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Required an extracted Engineering Toolkit setup and workflow smoke test.
 #   2026-09-09 - Installed the image-array dependencies required by pipeline tests.
 #   2026-09-04 - Made dev the default source for release-candidate builds.
 #   2026-09-04 - Added versioned two-machine release packaging.
@@ -61,6 +62,16 @@ jobs:
           bash scripts/build-app-lab-package.sh
           python scripts/build-installer-scripts.py --check
           python scripts/build-install-packages.py --version "$RELEASE_VERSION"
+          mkdir -p "$RUNNER_TEMP/virtualglove-toolkit"
+          unzip -q output/install/VirtualGlove-Engineering-Tools.zip -d "$RUNNER_TEMP/virtualglove-toolkit"
+          cd "$RUNNER_TEMP/virtualglove-toolkit/VirtualGlove-Engineering-Tools"
+          python scripts/setup-engineering-tools.py
+          mkdir smoke-input
+          .venv-engineering/bin/python scripts/analyze-motion-samples.py \
+            --samples-dir smoke-input --output smoke-output.json
+          .venv-engineering/bin/python -c \
+            "import json; assert len(json.load(open('smoke-output.json'))['simulation']) == 10"
+          python scripts/setup-engineering-tools.py --check
       - uses: actions/upload-artifact@v4
         with:
           name: installation-packages

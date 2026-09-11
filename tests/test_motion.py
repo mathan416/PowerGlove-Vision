@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Covered zero-noise bounded engineering simulations.
 #   2026-09-10 - Verified complete supervised worker-group termination.
 #   2026-09-09 - Required MediaPipe 0.10.35 as the sole worker runtime.
 #   2026-09-09 - Required conditional-search activity in native traces.
@@ -17,6 +18,7 @@
 
 from dataclasses import replace
 from pathlib import Path
+import math
 import signal
 import runpy
 import subprocess
@@ -25,7 +27,7 @@ import threading
 import unittest
 from unittest import mock
 
-from powerglove_vision.gesture import GestureEngine
+from powerglove_vision.gesture import GestureConfig, GestureEngine
 from powerglove_vision.model import Calibration, HandObservation
 from powerglove_vision.tracker import TrackingResult
 from powerglove_vision.vision_app import (
@@ -76,6 +78,18 @@ class NativeMotionTests(unittest.TestCase):
         engine.update_native_motion(target, target)
         self.assertGreater(engine._filtered_palm_x, self.pose.palm_x)
         self.assertLess(engine._filtered_palm_x, target.palm_x)
+
+    def test_zero_noise_engineering_simulation_remains_finite(self):
+        config = GestureConfig(motion_noise_multiplier=0.0, motion_noise_floor=0.0)
+        engine = GestureEngine(
+            'super_glove_ball', config=config,
+            calibration=Calibration(.5, .5, .2, 0),
+        )
+        engine.update_native_motion(self.pose, self.pose)
+        target = replace(self.pose, timestamp=10.1, palm_x=.51)
+        engine.update_native_motion(target, target)
+        self.assertTrue(math.isfinite(engine._filtered_palm_x))
+        self.assertTrue(math.isfinite(engine._filtered_palm_y))
 
     def test_native_source_and_activation_are_explicit(self):
         self.assertTrue(_native_xy_active(

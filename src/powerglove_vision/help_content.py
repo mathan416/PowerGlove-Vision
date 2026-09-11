@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Added the curated Engineering Toolkit guide and PDF.
 #   2026-09-10 - Consolidated Programs into Gameplay and added the Engineering Journey.
 #   2026-09-07 - Added PDFs for the remaining public technical guides.
 #   2026-09-06 - Made Rock Paper Scissors and live native validation discoverable in Help.
@@ -51,6 +52,7 @@ HELP_GUIDES = (
     {'slug': 'input-audit', 'title': 'Power Glove game input audit', 'file': 'power-glove-rom-input-audit.md', 'description': 'ROM-level evidence separating native Power Glove input from standard controller mappings.', 'group': 'Technical documentation'},
     {'slug': 'direction-response', 'title': 'Native movement validation', 'file': 'direction-response-benchmark.md', 'description': 'Native latency, jitter, dot-core isolation, software traces, video evidence, and headless measurements.', 'group': 'Technical documentation'},
     {'slug': 'engineering-journey', 'title': 'Engineering journey', 'file': 'ENGINEERING_JOURNEY.md', 'description': 'How one week of hypotheses, measurements, experiments, and play tests produced the current system.', 'group': 'Technical documentation'},
+    {'slug': 'engineering-toolkit', 'title': 'Engineering Toolkit', 'file': 'ENGINEERING_TOOLKIT.md', 'description': 'Install and safely use the version-matched trace, replay, camera, latency, and native-research tools.', 'group': 'Technical documentation'},
     {'slug': 'security', 'title': 'Security and privacy', 'file': 'SECURITY.md', 'description': 'Pairing boundaries, safe network use, shutdown permissions, and reporting.', 'group': 'Technical documentation'},
     {'slug': 'components', 'title': 'Third-party notices', 'file': '../THIRD_PARTY_NOTICES.md', 'description': 'MediaPipe, model, emulator, license, checksum, modification, and runtime provenance.', 'group': 'Technical documentation'},
     {'slug': 'contributing', 'title': 'Contributing', 'file': 'CONTRIBUTING.md', 'description': 'Source formatting, tests, documentation, packaging, and review expectations.', 'group': 'Technical documentation'},
@@ -79,6 +81,7 @@ HELP_PDFS = {
     "native-super-glove-ball": "VirtualGlove-Super-Glove-Ball-Native.pdf",
     "direction-response": "VirtualGlove-Direction-Response.pdf",
     "engineering-journey": "VirtualGlove-Engineering-Journey.pdf",
+    "engineering-toolkit": "VirtualGlove-Engineering-Toolkit.pdf",
     "overview": "VirtualGlove-Overview.pdf",
     "installation": "VirtualGlove-Guide.pdf",
     "gameplay": "VirtualGlove-Gameplay-Guide.pdf",

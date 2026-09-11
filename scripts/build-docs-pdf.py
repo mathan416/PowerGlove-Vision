@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Added the Engineering Toolkit PDF edition.
 #   2026-09-08 - Treat the advanced camera panel as a full-width interface image.
 #   2026-09-07 - Consolidated the PDF plan around 19 owning Markdown documents.
 #   2026-09-06 - Keep expanded player settings readable in manual screenshots.
@@ -682,7 +683,9 @@ def main():
           "VirtualGlove Camera Guide", "Choose, tune, and troubleshoot a camera without changing gesture recognition.", "User guide")
     build(docs / "ENGINEERING_JOURNEY.md", OUTPUT / "VirtualGlove-Engineering-Journey.pdf",
           "VirtualGlove Engineering Journey", "One week of hypotheses, measurements, experiments, and play tests.", "Engineering history")
-    print(f"Built 19 PDF guides on {date.today().isoformat()}")
+    build(docs / "ENGINEERING_TOOLKIT.md", OUTPUT / "VirtualGlove-Engineering-Toolkit.pdf",
+          "VirtualGlove Engineering Toolkit", "Repeatable analysis, camera, tracing, and native-research workflows.", "Engineering guide")
+    print(f"Built 20 PDF guides on {date.today().isoformat()}")
 
 
 if __name__ == "__main__":

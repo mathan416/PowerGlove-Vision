@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Exercised the real latest-coordinate lane in unsmoothed simulations.
 #   2026-09-07 - Updated ideal steps for the bounded native speed curve.
 #   2026-09-06 - Added offline motion-sample analysis for latency tuning.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -30,11 +31,11 @@ def step_response(distance, hz=60, unsmoothed=False):
     engine = GestureEngine('super_glove_ball', config=config,
                            calibration=Calibration(.5, .5, .2, 0))
     initial = HandObservation(10., True, .95, .5, .5, .2)
-    engine.update_native_motion(initial, initial)
+    engine.update_native_motion(initial, initial, bounded=not unsmoothed)
     rows = []
     for i in range(1, int(hz) + 1):
         pose = replace(initial, timestamp=10+i/hz, palm_x=.5+distance)
-        engine.update_native_motion(pose, pose)
+        engine.update_native_motion(pose, pose, bounded=not unsmoothed)
         rows.append({'ms_after_first_step_sample': (i-1)*1000/hz,
                      'selected_x': pose.palm_x, 'filtered_x': engine._filtered_palm_x})
     settled = next((r['ms_after_first_step_sample'] for r in rows

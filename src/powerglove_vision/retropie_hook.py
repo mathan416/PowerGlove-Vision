@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Made absent process filesystems safe before lazy iteration.
 #   2026-09-05 - Renew registered-game sessions while RetroArch is running.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -83,7 +84,7 @@ def _clear_session(path: Path, session_id: str | None = None) -> None:
 def _retroarch_running(proc_root: Path = Path("/proc")) -> bool:
     """Check for the RetroArch process used by every supported NES core."""
     try:
-        entries = proc_root.iterdir()
+        entries = tuple(proc_root.iterdir())
     except OSError:
         return False
     for entry in entries:
@@ -101,7 +102,7 @@ def _running_retroarch_emulator(proc_root: Path = Path("/proc")) -> str:
     """Identify the newest running supported core; unknown cores safely mean joystick."""
     candidates: list[tuple[int, str]] = []
     try:
-        entries = proc_root.iterdir()
+        entries = tuple(proc_root.iterdir())
     except OSError:
         return ""
     for entry in entries:

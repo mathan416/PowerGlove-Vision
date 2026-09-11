@@ -1,5 +1,10 @@
 # Contributing to VirtualGlove
 
+Use the [Engineering Toolkit](ENGINEERING_TOOLKIT.md) for supported trace,
+replay, camera, and latency workflows from a release archive. Use a complete
+Git checkout for source changes, tests, documentation generation, deployment,
+and release packaging.
+
 Thank you for helping improve VirtualGlove. Keep changes focused, readable,
 and safe for a project that combines camera input, local networking, virtual
 Linux devices, and a privileged shutdown helper.
