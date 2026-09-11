@@ -119,12 +119,13 @@ def check_extra_digit_hunt(errors: list[str]) -> None:
         calculated = 0
         tags = re.findall(r"<img\s+[^>]+>", source, re.IGNORECASE)
         listed_images = set(images)
-        described_images = {
-            match.group(1)
-            for tag in tags
-            if "six-digit" in tag.lower()
-            if (match := re.search(r'src="([^"]+)"', tag, re.IGNORECASE))
-        }
+        described_images = set()
+        for tag in tags:
+            if "six-digit" not in tag.lower():
+                continue
+            match = re.search(r'src="([^"]+)"', tag, re.IGNORECASE)
+            if match:
+                described_images.add(match.group(1))
         for image in sorted(described_images - listed_images):
             errors.append(
                 f"Extra-Digit Hunt image is described as six-digit but is not in the manifest: "
