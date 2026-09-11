@@ -46,8 +46,8 @@ class BackgroundTests(unittest.TestCase):
                 self.assertLess(time.monotonic()-started,.1)
                 self.assertEqual(factory.return_value.sendto.call_count, 1)
                 discovery = factory.return_value.sendto.call_args
-                self.assertEqual(discovery.args[1], ('255.255.255.255', 55355))
-                self.assertEqual(decode_message(discovery.args[0], 'test-token')['kind'], 'hello')
+                self.assertEqual(discovery[0][1], ('255.255.255.255', 55355))
+                self.assertEqual(decode_message(discovery[0][0], 'test-token')['kind'], 'hello')
                 release.set()
                 deadline=time.monotonic()+1
                 while sender.address.current()[0] is None and time.monotonic()<deadline:time.sleep(.005)

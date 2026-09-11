@@ -215,7 +215,7 @@ class KiyoTests(unittest.TestCase):
             selected=namespace['prefer_retained_worker_cache'](environment)
         self.assertEqual(selected['UV_OFFLINE'], '1')
         self.assertNotIn('UV_OFFLINE', environment)
-        self.assertEqual(probe.call_args.kwargs['env']['UV_OFFLINE'], '1')
+        self.assertEqual(probe.call_args[1]['env']['UV_OFFLINE'], '1')
 
     def test_incomplete_worker_cache_preserves_online_fallback(self):
         root=Path(__file__).resolve().parents[1]

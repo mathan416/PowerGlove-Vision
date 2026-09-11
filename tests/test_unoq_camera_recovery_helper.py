@@ -220,7 +220,7 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         with patch.object(helper.subprocess, "run", return_value=supported) as run:
             self.assertTrue(helper._uhubctl_supports_port("/usr/sbin/uhubctl", "2-1", "4"))
         self.assertEqual(
-            run.call_args.args[0],
+            run.call_args[0][0],
             ["/usr/sbin/uhubctl", "-l", "2-1", "-p", "4", "-e", "-N"],
         )
         unsupported = SimpleNamespace(returncode=0, stdout="No compatible hubs detected", stderr="")
@@ -237,7 +237,7 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
                 patch.object(helper.subprocess, "run", return_value=completed) as run:
             self.assertTrue(helper._power_cycle_camera_port(config, hub))
         self.assertEqual(
-            run.call_args.args[0],
+            run.call_args[0][0],
             [
                 "/usr/sbin/uhubctl", "-l", "2-1", "-p", "4", "-e", "-N",
                 "-a", "cycle", "-d", "2",

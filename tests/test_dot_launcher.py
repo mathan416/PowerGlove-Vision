@@ -52,9 +52,9 @@ class DotLauncherTests(unittest.TestCase):
                  patch.object(dot_launcher, "send_request") as send:
                 self.assertEqual(dot_launcher.main(), 0)
             self.assertEqual(send.call_count, 2)
-            self.assertEqual(send.call_args_list[0].args[3], "super_glove_ball")
-            self.assertEqual(send.call_args_list[0].kwargs["emulator"], "lr-powerglove-dot")
-            self.assertIsNone(send.call_args_list[1].args[3])
+            self.assertEqual(send.call_args_list[0][0][3], "super_glove_ball")
+            self.assertEqual(send.call_args_list[0][1]["emulator"], "lr-powerglove-dot")
+            self.assertIsNone(send.call_args_list[1][0][3])
 
 
 if __name__ == "__main__":
