@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Prevented the verified setup loader from writing cache files into release staging.
 #   2026-09-05 - Required the complete renewable game-session implementation.
 #   2026-09-04 - Added versioned two-machine installation.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -31,10 +32,15 @@ APP = Path("/home/arduino/ArduinoApps/powerglove-vision")
 
 
 def load_setup(source):
-    """Load the shared host installer from validated release contents."""
+    """Load the verified host installer without mutating its release staging tree."""
     spec = importlib.util.spec_from_file_location("setup_machine", source / "scripts/setup-machine.py")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    previous = sys.dont_write_bytecode
+    try:
+        sys.dont_write_bytecode = True
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = previous
     return module
 
 

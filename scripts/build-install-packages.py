@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Exercised the setup loader against each extracted release before publishing.
 #   2026-09-09 - Added a separate Engineering Tools release asset.
 #   2026-09-04 - Added versioned two-machine installation packages.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -63,7 +64,14 @@ def build(version, destination):
                 package.writestr("VirtualGlove/install-release.json", json.dumps(
                     {"format": 1, "machine": machine, "version": version}) + "\n")
             with tempfile.TemporaryDirectory() as directory:
-                load_installer().unpack(output, Path(directory), machine, version)
+                installer = load_installer()
+                source = installer.unpack(output, Path(directory), machine, version)
+                before = {path.relative_to(source) for path in source.rglob("*")}
+                installer.load_setup(source)
+                after = {path.relative_to(source) for path in source.rglob("*")}
+                if after != before:
+                    generated = ", ".join(sorted(str(path) for path in after - before))
+                    raise ValueError("Installer setup loading mutated release staging: " + generated)
             assets.append(output)
     for name in ("install-uno-q.sh", "install-retropie.sh", "install-package.py"):
         target = destination / name

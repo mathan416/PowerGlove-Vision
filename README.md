@@ -68,6 +68,7 @@ installation.
 Open a terminal on the UNO Q and run:
 
 ```sh
+cd /home/arduino
 curl -fLO \
   https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.7/install-uno-q.sh
 bash install-uno-q.sh --development v0.4.0-rc.7

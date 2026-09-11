@@ -7,12 +7,7 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
-### Fixed
-
-- Corrected Pixel Pal's Extra-Digit Hunt answer from 14 to 15 after a complete
-  visual audit found one more six-digit glove in the opening Rock, Paper,
-  Scissors table. The documentation check now also rejects six-digit artwork
-  that is labelled for accessibility but missing from the hunt manifest.
+No changes are pending after the refreshed release candidate.
 
 ## [0.4.0-rc.7] - 2026-09-11
 
@@ -34,6 +29,21 @@ authoritative record for line-level and file-level history.
   Controller packages, and added an extracted-package CI workflow smoke test.
 - Made zero-jitter motion simulations safe and changed the Toolkit's
   unsmoothed comparison to exercise the real latest-coordinate path.
+
+### Fixed
+
+- Prevented the release installer from generating a Python bytecode cache inside
+  its verified staging tree before applying the installation manifest. RC.7's
+  archive was clean, but this runtime cache caused a clean UNO Q installation to
+  reject the installer's own generated path. Release packaging now exercises
+  setup loading against each extracted package and rejects any staging mutation.
+- Made every primary UNO Q download command enter `/home/arduino` before
+  saving the installer. This prevents first-time installation from failing when
+  the Controller terminal opens in the non-writable `/` directory.
+- Corrected Pixel Pal's Extra-Digit Hunt answer from 14 to 15 after a complete
+  visual audit found one more six-digit glove in the opening Rock, Paper,
+  Scissors table. The documentation check now also rejects six-digit artwork
+  that is labelled for accessibility but missing from the hunt manifest.
 
 ## [0.4.0-rc.6] - 2026-09-11
 
