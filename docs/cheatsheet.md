@@ -41,7 +41,7 @@ Open these pages on a computer or phone connected to the same trusted network.
 | Secure Setup: pairing | [Open secure Setup](https://UNO-Q-NAME.local:8443/setup) |
 | Status: diagnostic readings | [Open status](http://UNO-Q-NAME.local:8088/status) |
 | Camera stream | [Open camera stream](http://UNO-Q-NAME.local:8088/stream) |
-| Project repository | [VirtualGlove on GitHub](https://github.com/mathan416/PowerGlove-Vision) |
+| Project repository | [VirtualGlove on GitHub](https://github.com/mathan416/VirtualGlove) |
 
 The links above contain example hostnames. Replace them in the browser's address
 bar. The live **Help > This console** page builds links using the VirtualGlove Controller address
@@ -60,7 +60,7 @@ All flags are explained in the [command reference](CONFIGURATION_REFERENCE.md#co
 3. Confirm that verification reports **App Lab installation ZIP verified**.
 
 ```sh
-git clone --branch main https://github.com/mathan416/PowerGlove-Vision.git
+git clone --branch main https://github.com/mathan416/VirtualGlove.git
 cd PowerGlove-Vision
 scripts/build-app-lab-package.sh
 python3 scripts/verify-app-lab-package.py
@@ -103,7 +103,7 @@ For a new installation, download the same `main` branch used on the VirtualGlove
 sudo apt update
 sudo apt install -y git
 cd ~
-git clone --branch main https://github.com/mathan416/PowerGlove-Vision.git
+git clone --branch main https://github.com/mathan416/VirtualGlove.git
 cd PowerGlove-Vision
 ```
 

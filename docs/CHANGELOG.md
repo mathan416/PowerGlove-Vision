@@ -7,6 +7,13 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed the public GitHub repository from `PowerGlove-Vision` to
+  `VirtualGlove` and updated documentation and installer download sources to
+  use the new canonical address. GitHub's old repository links remain usable
+  as redirects.
+
 ## [0.4.0-rc.5] - 2026-09-11
 
 ### Changed

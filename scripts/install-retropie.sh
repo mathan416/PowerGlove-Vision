@@ -41,11 +41,11 @@ try:
                     break
                 output.write(block)
     if tag is None:
-        with urllib.request.urlopen("https://api.github.com/repos/mathan416/PowerGlove-Vision/releases/latest", timeout=30) as response:
+        with urllib.request.urlopen("https://api.github.com/repos/mathan416/VirtualGlove/releases/latest", timeout=30) as response:
             tag = json.load(response)["tag_name"]
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", tag):
         raise ValueError("Use a published release tag, not a branch, URL, or path")
-    base = "https://github.com/mathan416/PowerGlove-Vision/releases/download/" + tag + "/"
+    base = "https://github.com/mathan416/VirtualGlove/releases/download/" + tag + "/"
     with tempfile.TemporaryDirectory(prefix="powerglove-download-") as temporary:
         directory = pathlib.Path(temporary)
         download(base + "SHA256SUMS", directory / "SHA256SUMS")

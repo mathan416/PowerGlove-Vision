@@ -141,7 +141,7 @@ USB hub. Keep a physical controller available for RetroArch setup.
 The commands in the Installation Guide select the latest published stable release.
 Use the same release on both devices. Download `install-uno-q.sh` and
 `install-retropie.sh` from that published
-[release](https://github.com/mathan416/PowerGlove-Vision/releases). Run the first
+[release](https://github.com/mathan416/VirtualGlove/releases). Run the first
 on the Controller and the second on RetroPie as your normal login user. Each verifies
 its package and requests sudo access when needed. The UNO installer includes
 the Arduino sketch, early-start helper, shutdown helper, and guarded USB-camera

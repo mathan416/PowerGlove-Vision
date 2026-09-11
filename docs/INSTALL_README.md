@@ -22,13 +22,13 @@ continue to select the latest stable release.
 On the VirtualGlove Controller:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0-rc.5/install-uno-q.sh && bash install-uno-q.sh --development v0.4.0-rc.5
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.5/install-uno-q.sh && bash install-uno-q.sh --development v0.4.0-rc.5
 ```
 
 On RetroPie:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/download/v0.4.0-rc.5/install-retropie.sh && bash install-retropie.sh --development v0.4.0-rc.5
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.5/install-retropie.sh && bash install-retropie.sh --development v0.4.0-rc.5
 ```
 
 Verify both report `v0.4.0-rc.5`, then follow the pairing/first-game checks below.
@@ -72,7 +72,7 @@ The latest release must include the installer assets before these commands work.
 Run this single line in the Controller terminal:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/latest/download/install-uno-q.sh && bash install-uno-q.sh
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/latest/download/install-uno-q.sh && bash install-uno-q.sh
 ```
 
 The script verifies its download, installs the app and sketch, and configures
@@ -122,7 +122,7 @@ change in plain language and how to stop or recover a camera test safely.
 Run this single line in the RetroPie terminal:
 
 ```sh
-curl -fLO https://github.com/mathan416/PowerGlove-Vision/releases/latest/download/install-retropie.sh && bash install-retropie.sh
+curl -fLO https://github.com/mathan416/VirtualGlove/releases/latest/download/install-retropie.sh && bash install-retropie.sh
 ```
 
 For a new installation, the script asks for your Controller hostname or IP address.
