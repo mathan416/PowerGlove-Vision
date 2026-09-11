@@ -7,6 +7,8 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+## [0.4.0-rc.5] - 2026-09-11
+
 ### Changed
 
 - Renamed the project and all user-facing product identity from **PowerGlove

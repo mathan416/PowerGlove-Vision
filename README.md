@@ -4,7 +4,7 @@
 
 # VirtualGlove
 
-**Current project version: 0.4.0; public candidate: v0.4.0-rc.4.** This candidate completes the tested
+**Current project version: 0.4.0; public candidate: v0.4.0-rc.5.** This candidate completes the tested
 MediaPipe CPU pipeline: newest-frame capture, four inference threads, a `0.35`
 landmark-tracking gate, a `0.45` palm-detection gate, 30-fps-first camera
 negotiation, off-thread lightweight preview rendering, and Latest-coordinate
