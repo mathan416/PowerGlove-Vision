@@ -4,538 +4,222 @@
 
 # VirtualGlove
 
-**Current project version: 0.4.0; public candidate: v0.4.0-rc.5.** VirtualGlove
-turns hand movement and gestures into responsive RetroPie controls using a
-camera and the VirtualGlove Controller. This candidate includes the validated
-low-latency tracking path, reliable camera reconnection, and native Super Glove
-Ball support. Advanced camera timing and exposure choices remain optional.
-Update the Controller and RetroPie together using the
-[installation guide](docs/INSTALL_README.md).
+**Move your hand. Play the game.**
 
-VirtualGlove lets you play RetroPie games by moving your hand in front of
-a camera connected to the **VirtualGlove Controller**, built on an Arduino
-UNO Q. Use your bare hand or a plain glove; there are no glove electronics to
-build. The VirtualGlove Controller tracks your movements and
-sends controller input to a Raspberry Pi, where RetroArch sees a virtual
-gamepad named **VirtualGlove**.
+VirtualGlove turns hand movement and gestures into responsive RetroPie controls
+using an ordinary USB camera and a **VirtualGlove Controller** built on the
+Arduino UNO Q. Wear a plain glove or use your bare hand—there are no sensors,
+wires, or electronics to add to it.
 
-The project includes eleven profiles: nine reusable Programs A–I and dedicated
-controls for Bad Street Brawler and Super Glove Ball. RetroPie can select a
-profile automatically when you launch a registered game. Glove Academy lets you
-practise without sending input to the cabinet. Its sixteen guided lessons include
-camera feedback, saved progress for each player, and a **Glove Master** award.
-An optional Pixel Pal-guided personalization wizard adjusts recognition to a
-player's hand without retraining the model, changing game mappings, or exposing
-raw thresholds during normal use.
-The local Play page adds a camera-controlled Rock Paper Scissors match against
-Pixel Pal without requiring RetroPie.
+Move to steer. Curl fingers for buttons. Roll, push, pull, grab, throw, and punch.
+VirtualGlove recognizes the pose, sends authenticated controller input across
+your local network, and lets RetroArch see a virtual gamepad or a native
+Power Glove controller.
 
-The Dashboard's **Start controller** choice is retained across Controller application
-and system restarts as an armed preference. Armed does not mean that controls are
-always being sent: a registered RetroPie launch maintains a short renewable game
-session only while RetroArch is running. Controller delivery resumes after a Controller
-restart when that session is still live, then returns to neutral when the game ends,
-the session becomes stale, or an unregistered game is launched. **Stop controller**
-remains sticky until the player explicitly starts it again. Manual Dashboard profile
-selection remains available for testing outside the registered-game flow.
+**Current project version: 0.4.0 · Public candidate: [v0.4.0-rc.5](https://github.com/mathan416/VirtualGlove/releases/tag/v0.4.0-rc.5)**
 
-Pairing identifies the console by its private shared key rather than by one IP
-address. If DHCP changes a saved address or `.local` resolution is temporarily
-unavailable, the Controller can locate the same paired RetroPie on the local
-network with a signed handshake and resume without pairing again. It never
-broadcasts controller states.
+## Why VirtualGlove?
 
-The cabinet supports two Super Glove Ball paths. `lr-fceumm` is the complete,
-standard-joystick fallback and remains the safe default. The separately named
-`lr-nestopia-powerglove` core supplies native absolute X/Y and Z coordinates plus
-open-hand, closed-hand/fist, and index-point states. Exact-ROM traces and
-deterministic headless tests confirm their packet bytes alongside detection,
-Start, eight-direction joystick classification, small continuous movement, and safe
-neutralization. Live cabinet play now confirms every implemented Super Glove
-Ball action: native Start, open-hand release/throw, closed-hand grab/catch,
-index-point Robo-Bullet fire, and fist-plus-forward Power Punch. Corrected Y
-orientation and full-field X/Y movement are also playable. Movement still has
-noticeable latency to refine. Native wrist rotation and the remaining unused
-packet button fields stay neutral until exact-ROM testing gives them a purpose;
-they are not missing from the game actions confirmed in the completed session.
+- **Camera-only play:** use a standard UVC camera rather than modifying a glove.
+- **Two styles of NES control:** ordinary joystick output through FCEUmm and
+  continuous native movement for Super Glove Ball through
+  `lr-nestopia-powerglove`.
+- **Fast, direct tracking:** MediaPipe Hands processes the newest camera frame
+  and sends the latest valid hand coordinate without a settling tail.
+- **Family-friendly learning:** Pixel Pal guides players through 16 Glove
+  Academy lessons without sending accidental input to a game.
+- **Personal setup:** each player can save a hand centre, movement reach,
+  joystick centre box, gesture sensitivity, and Academy progress.
+- **Game-aware and safe:** registered games select their profile automatically;
+  stale, lost, or unauthenticated input returns to neutral.
+- **Local by design:** video stays on the Controller. Pairing and controller
+  traffic are authenticated between your own devices.
 
-Choose **Setup → Matrix attract mode** to keep the idle animation On, Dim it,
-or turn it Off except for faint connection pixels. This does not change game
-displays, T, L, or gesture recognition. The setting saves without a tracker restart. Off mode has separate app, console-service, authenticated-console, and Networking pixels; the fourth reports a physical Wi-Fi or Ethernet link, including USB dock Ethernet. Setup distinguishes unavailable telemetry from disconnection. Updating the host sampler enables Ethernet detection without a new matrix firmware format.
+![VirtualGlove Dashboard with camera and controller status](docs/images/debug-dashboard.png)
 
-Setup starts with four labelled status markers matching the Off-mode pixels: Controller app, console service, authenticated response, and Networking. Green means confirmed, red means disconnected or not confirmed, and grey means unknown. Tracking, controller output, and the saved console appear alongside them. Both pairing methods require the approval PIN displayed on the Controller matrix.
+## What you need
 
-Setup places **Players** below Controller status, followed by **Matrix attract
-mode**, **Connection and startup**, guided pairing, Games, and the optional
-statistics preference. Select **Save settings**
-before pairing; the three steps use the saved console address: choose a method,
-confirm the Controller certificate and matrix PIN, then enter the RetroPie code
-or SSH credentials. Both methods remain available. After selecting **Pair with RetroPie**,
-a visible **Pairing in progress** panel leads to **Pairing complete** or an actionable error. Expiry and submitted failures
-require fresh confirmation. Controller Start/Stop and shutdown are on Dashboard.
-**Check console address** tests name resolution; use a running game to verify delivery.
+- An Arduino UNO Q provisioned through Arduino App Lab
+- A Raspberry Pi with a working RetroPie installation
+- A UVC-compatible USB camera and powered USB hub
+- A physical controller for RetroArch setup and recovery
+- Both devices on the same trusted local network with internet access during
+  installation
+- Your own legally obtained games—VirtualGlove includes no ROMs or BIOS files
 
-When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
+New to the hardware? Start with [Build your own](docs/BUILD_YOUR_OWN.md) for the
+parts, expected cost, and difficulty.
 
-The [Changelog](docs/CHANGELOG.md) retains the completed Setup review and release
-evidence instead of maintaining a second history. Player calibration, complete
-backups, background hostname refresh, independent Networking indication, signed
-controller sessions, and web-module cleanup are implemented. Controller transport
-requires matching version-2 software on both computers; follow the
-[coordinated upgrade instructions](docs/CONFIGURATION_REFERENCE.md#signed-controller-transport-and-upgrades).
+## Install VirtualGlove
 
-Manage players and backups in **Setup → Players**. Select the active player on Dashboard or in Glove Academy; that selection applies to both practice and gameplay. Dashboard combines the game name and session status in one Game card.
+These steps install the current public release candidate. Install the **same
+version on both devices** and close any running RetroArch game first. The scripts
+verify their downloads, ask for administrator access when needed, and preserve
+existing pairing and player settings during an update.
 
-On Dashboard, **Center hand** saves the resting reference for the selected player. If that player needs centering, guidance appears beside the controls before you can start controller output.
+### 1. Prepare the Controller
 
-## Choose a guide
+Finish the UNO Q's App Lab setup, connect it to your network, and attach the
+camera through the powered hub. The camera may also be connected after
+installation.
 
-### User manuals
+### 2. Install the Controller software
+
+Open a terminal on the UNO Q and run:
+
+```sh
+curl -fLO \
+  https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.5/install-uno-q.sh
+bash install-uno-q.sh --development v0.4.0-rc.5
+```
+
+### 3. Check the Controller
+
+Open `http://YOUR-UNO-Q-NAME.local:8088/dashboard`. The installer configures
+automatic startup, the matrix display, guarded camera recovery, and its required
+host helpers.
+
+### 4. Install the RetroPie software
+
+Open a terminal on the Raspberry Pi and run:
+
+```sh
+curl -fLO \
+  https://github.com/mathan416/VirtualGlove/releases/download/v0.4.0-rc.5/install-retropie.sh
+bash install-retropie.sh --development v0.4.0-rc.5
+```
+
+### 5. Pair the devices
+
+Open `https://YOUR-UNO-Q-NAME.local:8443/setup`, save the RetroPie address, and
+choose **Pair with RetroPie**. The guided one-time-code method is recommended.
+
+### 6. Set up a player
+
+Choose a player, position the camera, and use **Center hand**. Open **Glove
+Academy** to learn the gestures and adjust movement reach or sensitivity only if
+needed.
+
+### 7. Play
+
+Select **Start controller**, launch a registered game, and confirm the expected
+profile. FCEUmm uses joystick mode; Super Glove Ball can also use the optional
+native core selected from RetroPie's per-ROM launch menu.
+
+The complete [Installation Guide](docs/INSTALL_README.md) has first-install
+checkpoints, illustrated pairing, camera advice, native-core setup, updates,
+backups, and troubleshooting. Use it as the authoritative setup reference.
+
+## What can you play?
+
+VirtualGlove includes nine reusable Programs A–I plus dedicated mappings for
+Bad Street Brawler and Super Glove Ball. The same recognition settings follow
+the player across games; profiles change only what the recognized movements and
+gestures send to the console.
+
+| Path | What it provides |
+| --- | --- |
+| FCEUmm | A nine-region joystick layout: centre stop, four directions, four diagonals, plus mapped A/B and special gestures. |
+| Super Glove Ball with FCEUmm | A complete joystick-mode fallback that can always be selected for testing or play. |
+| Super Glove Ball with `lr-nestopia-powerglove` | Continuous native X/Y and Z, Start, grab/catch, release/throw, Robo-Bullet fire, and Power Punch. |
+
+The [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) shows every gesture, Program, game
+mapping, objective, and practice challenge. The
+[Native Emulation guide](docs/NATIVE_EMULATION_EXPLAINED.md) explains why the
+two emulator paths feel different.
+
+## How it works
+
+![End-to-end VirtualGlove flow from camera to game](docs/images/architecture/end-to-end.png)
+
+1. The camera delivers its newest frame to the VirtualGlove Controller.
+2. MediaPipe Hands finds the palm, wrist, and finger landmarks.
+3. Shared recognition turns those landmarks into position, fingers, rolls,
+   depth motion, and menu poses.
+4. The Controller sends the newest authenticated state to RetroPie.
+5. RetroPie publishes either virtual gamepad input or native glove state for
+   the selected emulator core.
+
+Pairing is tied to a private shared key rather than one permanent IP address.
+If DHCP changes an address or `.local` resolution temporarily fails, the paired
+devices can rediscover one another on the local network without broadcasting
+controller states or requiring a new pairing.
+
+## Meet Pixel Pal
+
+Pixel Pal helps players learn, personalize, test, and troubleshoot without
+turning setup into an engineering exercise.
+
+- **Glove Academy** teaches all 16 movements and gestures while game output is
+  paused.
+- **Tune gestures** records guided examples and previews a conservative
+  adjustment before saving it.
+- **Find the best camera settings** compares only choices supported by the
+  attached camera and changes nothing until the player accepts a recommendation.
+- **Rock Paper Scissors** provides a camera-controlled practice game that does
+  not require RetroPie.
+
+## Controller pages
+
+| Page | Purpose |
+| --- | --- |
+| Dashboard · `/dashboard` | See the camera, selected game profile, tracking state, and generated controls. |
+| Play · `/play` | Challenge Pixel Pal to Rock Paper Scissors. |
+| Glove Academy · `/learn` | Learn gestures, set movement reach, and personalize recognition safely. |
+| Setup · `/setup` | Manage players, camera choices, console pairing, games, backups, and display preferences. |
+| Help · `/help` | Read the complete manuals and printable PDFs directly on the Controller. |
+
+## Documentation
+
+### Start here
 
 | You want to… | Read… |
 | --- | --- |
-| Install both devices and play your first game | [Installation Guide](docs/INSTALL_README.md) |
-| Choose a camera, frame rate, or exposure setting | [Camera Guide](docs/CAMERA_GUIDE.md) |
-| Find a command or connection reminder | [Quick Reference](docs/cheatsheet.md) |
-| Learn a game's gestures and try a short challenge | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) |
-| Choose or experiment with Programs A–I | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md#programs-a-i) |
-| Join Pixel Pal's suspiciously well-fingered scavenger hunt | [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) |
-| Recognize matrix animations and letters | [Matrix display guide](docs/MATRIX_GUIDE.md) |
+| Install, pair, and play your first game | [Installation Guide](docs/INSTALL_README.md) |
+| Learn gestures, Programs, and game controls | [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) |
+| Choose or troubleshoot a camera | [Camera Guide](docs/CAMERA_GUIDE.md) |
+| Recognize matrix animations and messages | [Matrix Display Guide](docs/MATRIX_GUIDE.md) |
+| Find a quick command or status reminder | [Quick Reference](docs/cheatsheet.md) |
+| Solve a problem by symptom | [Troubleshooting](docs/TROUBLESHOOTING.md) |
 
-### Technical documentation
+### Go deeper
 
 | You want to… | Read… |
 | --- | --- |
-| Get the complete project at a glance | [Project overview PDF](output/pdf/VirtualGlove-Overview.pdf) |
-| Understand components and data flows | [Architecture](docs/ARCHITECTURE.md) |
-| Understand joystick versus native glove input | [Native emulation explained](docs/NATIVE_EMULATION_EXPLAINED.md) |
-| Review Super Glove Ball packet and gameplay evidence | [Native compatibility record](docs/super-glove-ball-native.md) |
-| Change settings or look up command flags | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
-| Review measured native and FCEUmm direction response | [Direction-response benchmark](docs/direction-response-benchmark.md) |
-| Review how the system was developed and measured | [Engineering Journey](docs/ENGINEERING_JOURNEY.md) |
-| Measure native X/Y or isolate it from Super Glove Ball behavior | [Native movement validation](docs/direction-response-benchmark.md#direct-output-dot-test) |
-| Understand network and pairing boundaries | [Security policy](docs/SECURITY.md) |
-| Change the project or its documentation | [Contributing guide](docs/CONTRIBUTING.md) |
-| Check dependency provenance or release history | [Third-party notices](THIRD_PARTY_NOTICES.md) and [Changelog](docs/CHANGELOG.md) |
+| See the current components and data flow | [Architecture](docs/ARCHITECTURE.md) |
+| Understand joystick and native emulation | [Native Emulation Explained](docs/NATIVE_EMULATION_EXPLAINED.md) |
+| Review proven Super Glove Ball behavior | [Native Compatibility Record](docs/super-glove-ball-native.md) |
+| Look up every setting and command | [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) |
+| Follow the one-week engineering process and experiments | [Engineering Journey](docs/ENGINEERING_JOURNEY.md) |
+| Review security and pairing boundaries | [Security Policy](docs/SECURITY.md) |
+| Check dependencies and third-party terms | [Third-party Notices](THIRD_PARTY_NOTICES.md) |
+| Contribute code or documentation | [Contributing Guide](docs/CONTRIBUTING.md) |
 
-### Pixel Pal's Extra-Digit Hunt
+Printable editions of all maintained guides are available in
+[`output/pdf/`](output/pdf/). The Controller serves the same documentation from
+its local Help page.
 
-Pixel Pal has discovered that a few illustrated gloves left the art department
-with a generous interpretation of hand anatomy. Naturally, this is now a game.
+## Project status
 
-Count every illustrated hand showing five fingers plus a thumb. Count each
-appearance, even when the same artwork returns. Pixel Pal has tucked the answers
-at the back of the two illustrated guides and behind a reveal in built-in Help,
-so there are no spoilers here.
+Version 0.4.0 freezes the proven CPU MediaPipe Hands path after extensive
+camera, tracking, reacquisition, network, emulator, and gameplay testing. The
+current candidate is ready for people who want to try VirtualGlove on their own
+UNO Q and RetroPie hardware. Different cameras, rooms, players, and Raspberry Pi
+installations remain valuable real-world tests.
 
-An automated documentation check keeps the answers synchronized with the art.
-The art itself remains untouched in the interests of arcade archaeology - and
-because it is far too funny to fix.
+Use Setup's **Download system report** when asking for help. It records useful
+software, camera, controller, and connection health without including video,
+pairing keys, player calibration, ROM names, or network addresses.
 
-The web footer shows exact software and running matrix firmware identities.
-Glove Academy supports twelve player presets, saved lesson progress, and portable
-version-4 VirtualGlove hand-setup backups containing name, center-box size, personal and effective gesture sensitivity, software identity, and per-player calibration. Legacy version-2 and version-3 backups remain importable; version 2 migrates its largest directional activation value into the center box. Selecting a player immediately loads their settings, progress, and saved center, with output paused. Use **Center hand** for new players or after changing the physical setup. Version-1 portable backups are no longer accepted. Navigation
-and controls adapt to phone and tablet widths.
+## Contributing and licensing
 
-## Quick start
+Issues, careful test reports, documentation improvements, and code contributions
+are welcome. Please read the [Contributing Guide](docs/CONTRIBUTING.md) before
+opening a change. Release history is kept in the [Changelog](docs/CHANGELOG.md).
 
-Prepare the VirtualGlove Controller with Arduino App Lab and use an existing RetroPie installation.
-Connect both to the same trusted network and attach the camera through a powered
-USB hub. Keep a physical controller available for RetroArch setup.
-
-The commands in the Installation Guide select the latest published stable release.
-Use the same release on both devices. Download `install-uno-q.sh` and
-`install-retropie.sh` from that published
-[release](https://github.com/mathan416/VirtualGlove/releases). Run the first
-on the Controller and the second on RetroPie as your normal login user. Each verifies
-its package and requests sudo access when needed. The UNO installer includes
-the Arduino sketch, early-start helper, shutdown helper, and guarded USB-camera
-recovery helper; no separate App Lab import or helper installation is needed.
-The installer adds `uhubctl` automatically rather than presenting camera
-recovery as an optional component. The camera may be connected later; enrollment
-begins after its first healthy frame.
-
-Follow the [Installation Guide](docs/INSTALL_README.md) for copyable commands,
-pairing, calibration, and your first game. Both scripts also support `--check`
-and repeatable updates while preserving personal settings. The release-owned
-`config/profiles.json` baseline is backed up and replaced, while calibration and
-personal tuning under `data/` remain in place. Installer assets
-must be published before the release download commands become available.
-
-When gestures are off, the matrix plays a lightning-and-glove animation with
-curling fingers, a travelling spark, and a soft grayscale glow. See the
-[Matrix display guide](docs/MATRIX_GUIDE.md); the revised loop requires updated
-matrix firmware.
-
-The tested shared baseline includes responsive `0.28` activation and `0.14`
-release thresholds, calibrated native X/Y reach with an 8% edge margin, and
-**Latest coordinate** as the native movement default. It sends each newest
-valid, reach-clamped palm position directly during continuous tracking. After a
-brief MediaPipe dropout, one contradictory or unusually distant reacquisition
-may be held for the next fresh result; strongly aligned forward movement remains
-immediate. This guard does not predict, smooth, or overshoot. Latest coordinate
-is the only live native X/Y behavior. The selected camera frame's capture time
-and MediaPipe Hands remain authoritative for palm landmarks, finger curls, and
-gestures. The earlier bounded and optical-flow experiments are archived in the
-source tree for research and are no longer live movement options. These are
-suitable starting values for
-every installation. A neutral calibration is different: it records
-the palm center, apparent hand size, wrist angle, and resting jitter for one
-camera and playing position, so the installer never substitutes another
-person’s recorded coordinates for yours.
-
-Install the same release on the Controller and RetroPie. Automatic game-session resume
-depends on the current Controller worker and current RetroPie launch hook being present
-together; mixed old/new installations continue to fail safe but cannot provide the
-renewable session behavior. The paired devices can recover in both directions when a
-saved DHCP address becomes stale or `.local` resolution is temporarily unavailable.
-Only signed discovery messages are broadcast; controller states and game-profile
-commands resume by unicast after the existing pairing key authenticates the peer.
-
-When a registered Super Glove Ball ROM is present, the RetroPie installer offers
-to build the optional native core locally from pinned GPLv2 Nestopia source. If
-you decline, nothing changes and FCEUmm remains available. If you accept, both
-cores appear in RetroPie's per-ROM launch menu; FCEUmm stays selected until you
-choose the native entry. The project does not distribute ROMs or a compiled
-Nestopia core in its ordinary installation archive.
-
-Ordinary release installers contain the production application plus a compact
-end-user support toolkit for calibration, status checks, camera recovery, and
-emulator setup. The full trace, replay, benchmark, GPU experiment, soak-test,
-and documentation-build suite remains in Git and is also available as a separate
-version-matched **VirtualGlove Engineering Tools** source archive. Development
-deployments retain those tools; normal users do not need them to install, play,
-calibrate, maintain, or update VirtualGlove.
-
-## Controls
-
-Calibration records the resting hand position that the app treats as the
-centre of movement. FCEUmm positional control divides the space into nine regions:
-the center box stops movement, four sides give cardinal directions, and four corners
-give diagonals. Every fresh hand position is classified independently, so returning
-to or touching the box releases positional movement immediately. Recalibrate after
-moving the camera or changing your playing position. The per-player box is measured
-in calibrated palm sizes and enlarges automatically only when neutral jitter requires
-more resting room. Some profiles replace ordinary hand movement
-with wrist steering or other controls, as shown below.
-
-Calibration accepts 24 geometrically valid hand observations. MediaPipe Hands'
-reported score identifies handedness certainty, not landmark or position
-confidence, so it is shown diagnostically but is not used as a false quality
-gate. The whole hand must still be detected with usable palm geometry.
-Holding the same neutral pose at the same distance should reproduce a very
-similar reference, but ordinary tracking variation means the saved numbers will
-not be identical. A completed calibration is saved atomically and reused across
-games and restarts; an incomplete attempt does not replace the previous file.
-
-Across the profiles, hold a **V sign** steadily for half a second to send Start and
-a **thumbs-up with the other fingers closed** to send Select. These poses
-suppress A/B attacks; some profiles can still generate directional or auxiliary
-input, so keep your hand near its resting position while using them. Start sends
-only one press and must see a clearly non-V pose for 0.30 seconds before it can
-trigger again.
-
-### Programs A–I
-
-These reusable mappings produce ordinary NES controls. You do not need to
-launch Bad Street Brawler first. The table describes controller output; its
-effect depends on the game. A pulsed button repeatedly presses and releases.
-
-| Program | Movement | Actions and special gestures |
-| --- | --- | --- |
-| A — Pinball | Ordinary movement is disabled. | Index curl sends A; thumb curl sends Up; wrist roll sends B. Pulling back toggles combined flippers. |
-| B — Joust | Move your hand left or right. | Index or middle curl pulses A; thumb curl holds B. |
-| C — Gyruss | Roll your wrist left or right. | A straight index finger holds A; pulling back sends B. Use the game's Attack Control B mode. |
-| D — Challenge | All four hand-movement directions are reversed. | Thumb curl sends A; index curl sends B. |
-| E — Defender II | Move your hand in four directions. | Thumb curl sends A; wrist roll sends B; ring-finger curl rapidly alternates left and right. |
-| F — Sesame Street | Ordinary directional output is disabled. | Moving an open hand away from centre sends A; closing all fingers sends B. |
-| G — Gun Smoke | Move your hand in four directions; wrist roll adds left or right. | Index curl sends A; pushing forward sends B. Combine them for A+B. Menu guard suppresses all ordinary controller output. |
-| H — General | Move your hand in four directions. | Index curl pulses A; thumb curl pulses B. |
-| I — Knight Rider | Roll your wrist to steer; lower your hand to brake. | Index curl sends Up for acceleration; pushing sends Up+A for turbo; thumb curl sends B. |
-
-Programs A, D, and H have no default ROM assignment. Choose one on Dashboard
-to try it, then register the exact game filename if you want automatic
-selection. The [Gameplay Guide](docs/GAMEPLAY_GUIDE.md#programs-a-i) includes
-illustrations; the [Game and gesture guide](docs/GAMEPLAY_GUIDE.md) adds objectives and tips.
-
-### Bad Street Brawler
-
-| Gesture | Controller output |
-| --- | --- |
-| Move your hand left, right, up, or down | Corresponding D-pad direction |
-| Curl your thumb | Pulsed B |
-| Curl your middle finger | A+B |
-| Roll your wrist left or right | A plus that direction |
-| Push toward the camera | Glove Zap: short simultaneous Left + Right pulse |
-
-Push toward the camera for Glove Zap, then return to your starting distance
-before trying again. A push or pull must cross its threshold on two consecutive
-fresh observations and travel at least 0.10 palm-scale units in the intended
-direction within 250 ms. This rejects a one-frame scale jump and a stationary
-hand that merely begins near or far from the camera. Bad Street Brawler needs its game-specific emulator setting;
-see the [configuration reference](docs/CONFIGURATION_REFERENCE.md#bad-street-brawler-glove-zap).
-
-### Super Glove Ball
-
-| Gesture | Controller output |
-| --- | --- |
-| Move your hand left, right, up, or down | Corresponding D-pad direction |
-| Curl your index finger | A |
-| Curl your thumb | B |
-
-The same responsive mapping remains the explicit FCEUmm fallback. Headless tests
-using the same exact ROM show that both paths visibly activate and release every
-direction by frame 3. Their semantics differ: FCEUmm supplies held digital
-directions, while the native core supplies an absolute target position. The
-RetroPie launch hook reports the core that actually started on every signed
-profile heartbeat. Native input is selected only for the exact pairing of
-`super_glove_ball` and `lr-nestopia-powerglove`; choosing FCEUmm from the
-per-ROM launch menu keeps that entire session in joystick mode. Any other or
-unknown core also falls back safely to joystick output.
-
-The native path has passed exact-ROM detection, Start, continuous X/Y, absolute Z,
-open/fist/index packet, and safe-neutralization tests. Live full-game play
-confirms grab/throw, index fire, and fist-plus-forward Power Punch. Native
-movement uses per-player reach calibration and MediaPipe Latest coordinate. A
-brief missed observation holds only the last X/Y coordinate for up to
-180 ms, while actions release immediately on their original safety timing. On recovery, Latest accepts the new
-measurement immediately unless it contradicts established motion or is an
-unusually distant non-forward jump; only that questionable result waits for one
-fresh confirmation. A longer loss neutralizes the native sample. Wrist rotation
-and remaining unused native packet fields stay neutral. See the
-[native compatibility record](docs/super-glove-ball-native.md).
-
-The eight-ROM [input audit](docs/power-glove-rom-input-audit.md) confirms that the
-other listed games consume standard NES controller bits. They continue to use
-FCEUmm and the same global recognition settings.
-
-For movement-latency investigation, the [baseline procedure](docs/direction-response-benchmark.md#collect-a-live-status-baseline)
-collects fresh timing observations without changing camera settings or controls.
-It keeps Controller software timing separate from network, emulator, and display delay.
-Setup also provides Pixel Pal's **Find the best camera settings** wizard for a
-new or changed camera. It compares only capability-supported reader, frame-rate,
-buffer, and exposure choices, protects hand continuity when ranking latency,
-retains no images, and changes nothing until the player accepts its recommendation.
-Its temporary mirrored live view and centre/edge guides make hand placement
-visible during the hold, corner-sweep, and edge-return steps.
-The same one- or two-buffer choice is available directly in Setup for manual
-testing and camera-specific maintenance.
-Setup's **Controller status** distinguishes the saved console name from the active
-authenticated input address. **Download system report** creates a privacy-safe JSON
-snapshot for troubleshooting without video, pairing credentials, personal calibration,
-ROM names, or network addresses.
-The optional [VirtualGlove Calibration Test](docs/direction-response-benchmark.md#direct-output-dot-test)
-appears as a ROM-free game in RetroPie's **Ports** list when selected during
-installation. Its separate `lr-powerglove-dot` core displays the receiver's
-native X/Y publication without Super Glove Ball's movement logic. This makes
-center, reach, edges, tracking loss, and recovery easier to see before playing.
-
-The [native latency session tools](docs/direction-response-benchmark.md#native-latency-and-stationary-jitter-session)
-guide stationary/movement windows, optionally correlate software traces, and
-extract annotated evidence from an original hand-and-screen recording. They are
-disabled during normal play. A privacy-safe preflight records the exact two-device
-test state without changing it; smoke mode checks framing before the full session,
-and the reversible trace helper restores production services before exporting its
-bounded evidence. Historical trace tools can compare recognized,
-optical-flow, selected, and filtered coordinates without recording video; the
-current live path reports the newest valid MediaPipe coordinate directly.
-Physical hand-to-screen latency still requires synchronized recording.
-
-The production Controller runs the validated CPU MediaPipe Hands 0.10.35 path at 640×480,
-with four explicitly selected inference threads, a `0.35` tracking-confidence
-threshold, and a `2.25` next-frame hand search area. The larger search area
-recovered five of nine previously missed fast-sweep frames in repeatable replay
-without a material latency or false-activation cost. Direction-aware fast-sweep
-search is standard: after two aligned
-fast observations it gently translates only MediaPipe's next search input,
-then maps the landmarks back before publishing the direct Latest coordinate.
-It does not predict or smooth the robo-glove position.
-Camera rate defaults to Automatic, which tries the measured 30 fps
-path before safely accepting the driver's supported rate. An isolated Adreno GPU probe
-successfully created a delegate but the first MediaPipe Tasks graph was much
-slower than the CPU path, so GPU execution remains research. MediaPipe 0.10.35
-is the only recognition runtime shipped by the installer. Matched replay
-preserved 97.96% continuity while 0.10.35 reduced inference p95
-from 60.18 ms to 46.60 ms; a ten-minute Controller soak completed without an
-error or thermal throttling.
-
-## Use the web interface
-
-Setup includes **Joystick dead zone**, saved separately for each player. Small
-requires less hand movement to press a direction; Large gives more room around
-center. **Use standard size** selects a center-box half-width of 0.28 calibrated
-palm sizes; select **Save dead zone** to apply. Positions inside or exactly on the
-box stop movement, side regions give one direction, and corner regions give a
-diagonal. The page shows both chosen and effective sizes if jitter protection must
-enlarge the box. It does not change center or native Super Glove Ball reach. Live
-direction indicators work while tracking is active; gesture personalization no
-longer includes positional directions.
-
-The Controller website uses the logo’s hand-and-target emblem for browser tabs
-and saved home-screen shortcuts.
-
-| Page | What it does |
-| --- | --- |
-| Dashboard, `/dashboard` | Shows the camera and generated inputs; selects the current profile and starts or stops delivery. |
-| Play, `/play` | Runs a camera-controlled Rock Paper Scissors match against Pixel Pal, with cabinet input paused. |
-| Glove Academy, `/learn` | Provides sixteen mapping-independent practice lessons and guided gesture tuning, with game input paused. Player presets retain individual sensitivity, progress, and the Glove Master award across restarts. Select the same active player used for gameplay; manage players and hand-setting backups in Setup. |
-| Help, `/help` | Opens the local manuals and PDFs; **This console** shows current connection details. |
-| Setup, `/setup` | Saves connection, camera, and startup settings; its camera dropdown lists Automatic and discovered usable cameras. The Games section edits RetroPie mappings with backup and restore. Pairing requires HTTPS on port 8443. |
-
-With **Gestures off** selected, the camera stays closed. Choose an active profile,
-open Play, or open Glove Academy to begin. Wait for the camera view before
-practicing or playing; starting immediately after a reboot can take longer.
-
-The live camera preview is diagnostic rather than part of controller output. **Show
-statistics** is off by default and can be enabled on Dashboard or Setup; the
-browser remembers the choice. When it is off, the Dashboard does not render or
-retain the optional controller, axes, finger, performance, or event panels, and
-the worker skips their derived housekeeping. UI-visible control transitions are
-published immediately while routine detail refreshes at about 10 Hz through a
-latest-only status worker. Tuning locks are resolved before inference and no
-Dashboard lock is taken between completed inference and UDP transmission.
-Camera
-capture continuously keeps only the newest frame, and browser JPEG encoding
-runs on a separate latest-preview worker that may drop stale preview jobs.
-Preview mirroring, annotation, and encoding use a 320×240 copy during gameplay,
-while Academy and
-tuning keep the full preview. The preview remains capped at 5 fps. Closing Dashboard or Glove Academy while playing
-a RetroPie game still avoids optional drawing and encoding work; tracking and
-controller delivery continue.
-
-For repeatable engineering checks, `scripts/benchmark-post-inference.py` runs a
-camera-free signed-send and Dashboard-housekeeping soak. The saved-clip replay
-still measures MediaPipe recognition separately; neither headless tool claims
-physical hand-to-display latency.
-
-Strong light behind the player can leave the hand dark even when the room looks
-bright. Prefer light from the camera side or move bright windows out of the
-background. The project does not force hardware backlight compensation: on the
-tested Razer Kiyo Pro it made the measured backlit scene darker. A matched
-exposure-78/gain-96 capture improved overall detection from 98.73% to 99.57%
-when backlight was reduced, with fewer missing frames and reacquisitions;
-inference timing remained unchanged. Lighting improves recognition margin, not
-model execution speed.
-
-Setup also offers opt-in camera controls. **Engineering comparison — Direct V4L2**
-reads the newest Linux MJPEG driver buffer and automatically falls back to
-OpenCV if the camera or negotiated format is incompatible. **Razer Kiyo Pro —
-tested low latency** keeps automatic exposure, requests a fixed frame rate using
-advertised standard UVC controls, and also requests the Kiyo's volatile HDR-off
-mode. **Manual exposure and gain** is available only with Direct V4L2. The
-Controller first checks the camera's advertised controls and reports the values
-actually applied. Unsupported settings fall back visibly to automatic exposure.
-Automatic remains the portable installation default; this project's Kiyo Pro
-tested slightly more reliably at exposure `78` and gain `96`, without a measured
-latency difference. Manual controls are restored to automatic when the camera is
-closed, while the saved preference is reused the next time vision starts.
-
-The direct reader passed a live compatibility check on this project's Kiyo Pro
-and exposed valid driver sequence numbers and monotonic timestamps. Explicit
-OpenCV/threaded live play was smoother and more responsive, so it is the
-production default; Direct V4L2 and process isolation remain engineering
-comparisons. A matched lean MediaPipe output test did
-not produce a meaningful end-to-end improvement, so the complete proven graph
-remains selected. Final detector-context measurements found ordinary landmark
-tracking near 37 ms median, while palm detection and reacquisition remained near
-105 ms median. Camera delivery, scheduling, post-inference work, and controller
-transport were not responsible for those detector tails, so 0.4.0 freezes the
-proven CPU path instead of adding speculative filtering or parallel inference.
-
-The Controller host helper supports one UVC camera. Installation works with or without
-the camera connected. On the first healthy sighting it records the camera and its
-actual parent USB hub in a root-owned allowlist, disables autosuspend for both,
-and automatically updates that association if the camera is later moved to a
-different hub. If the camera remains missing for 15 seconds while vision is
-requested, VirtualGlove makes one guarded recovery attempt for that outage
-with the narrowest proven action. If `uhubctl` confirms that the enrolled hub
-supports per-port power switching, only the camera's recorded port is power
-cycled. Otherwise the helper falls back to rebinding the identity-checked parent
-hub only when that hub does not carry networking. A network-bearing hub fails
-safely instead of disconnecting the Controller. USB
-reappearance means only that the host action finished. Recovery is confirmed
-only after the restarted vision worker reads a camera frame. If a camera has
-never been seen—or does not produce a frame after that attempt—reconnect or
-power-cycle it and check the hub and cable rather than repeatedly resetting it.
-
-**Stop controller** pauses delivery while leaving active tracking available.
-**Gestures off** closes the camera. **Shutdown** requests a Linux halt, but
-the tested Arduino UNO Q hardware restarts afterward. A disappearing website is not proof that
-it is safe to remove power. See the installation guide before using Shutdown.
-
-![Dashboard showing the selected profile and controller readings](docs/images/debug-dashboard.png)
-
-The screenshots below show the current interface with isolated sample data. Camera imagery is
-replaced with a labelled placeholder for privacy.
-
-![Glove Academy with Pixel Pal guiding the personalization choices](docs/images/tune-page.png)
-
-**Learn and practise:** open **Glove Academy** and choose your player to work
-through sixteen lessons, from showing and centering your hand to movement and
-gesture control. Follow the illustrated instructions and camera feedback, practise
-one movement at a time, and return later to your saved progress. Complete every
-lesson to earn **Glove Master**. Lessons teach the gestures independently of the
-selected game mapping; use the [Gameplay Guide](docs/GAMEPLAY_GUIDE.md) to see
-what those gestures do in each game. The Controller displays a scanning **L**
-during learning mode, with cabinet input paused.
-
-Choose each player in turn and select **Back up hand setup** to download a
-separate file named for that player, such as
-`alex-virtualglove-hand-setup.json`. Your browser saves it on the computer, phone,
-or tablet you are using, usually in **Downloads** or the folder you choose. To restore, select
-the player you want to update, choose **Restore hand setup**, and pick that
-player's saved file from your device. Review it before confirming; restore
-updates the selected player, rather than adding a new one.
-
-**Personalize recognition:** switch on **Tune gestures** when recognition needs
-adjustment for your hand. This optional mode displays a scanning **T** and also
-pauses cabinet input.
-
-Pixel Pal first asks what feels wrong, then presents one instruction at a time.
-Recording starts only after the whole hand has been tracked clearly and steadily;
-the user presses **I'm ready** and sees a countdown. The wizard previews a
-conservative adjustment, requires two successful uses and releases plus three
-neutral seconds, and enables Save only after that check passes. Saved recognition
-settings apply across profiles. Numerical thresholds, selective reset, manual
-preview, and the private diagnostic capture live under **Advanced**. Diagnostic
-video remains on the Controller, is deleted after analysis or cancellation, and its
-downloadable aggregate report contains no pictures or per-frame hand data.
-
-The separate **Movement reach** section exposes the selected player's left,
-right, up, and down spans. These are normalized distances from the saved center;
-smaller values require less physical travel. Its summary shows the resulting
-tracking-area dimensions and aspect ratio. **Save reach values** changes only
-those four spans, while **Restore full camera field** returns all four to the
-camera-boundary default without changing center or gesture thresholds.
-
-![Games editor in the lower part of Setup](docs/images/games-section.png)
-
-Scroll down **Setup** to **Games** to map exact ROM filenames to profiles.
-Saving affects the next game launch, not the game already running.
-
-New builders can start with [Build your own: parts, cost, and difficulty](docs/BUILD_YOUR_OWN.md).
-For the game-input background, read [How native Power Glove emulation works](docs/NATIVE_EMULATION_EXPLAINED.md).
-When something fails, use [Troubleshooting by symptom](docs/TROUBLESHOOTING.md).
-All three are available in Controller Help and as printable PDFs. Help orders
-user manuals from console details through game controls, programs, matrix
-displays, building, installation, and troubleshooting. Technical documentation starts with the
-project overview and architecture before configuration and detailed evidence.
-
-## Maintain or extend the project
-
-Use the [Installation Guide's maintenance section](docs/INSTALL_README.md#updates-and-checks)
-for updates, and the [Configuration Reference](docs/CONFIGURATION_REFERENCE.md)
-for settings and all command options. The [Contributing guide](docs/CONTRIBUTING.md)
-covers tests, documentation, package verification, and releases. Printable
-editions are stored in [output/pdf/](output/pdf/). The maintained Markdown set
-is intentionally consolidated into 19 documents: operational details live with
-their owning guide, and third-party licensing, provenance, asset origins, and
-native-core modifications share one notice. Regenerate PDFs only after the
-Markdown review is complete.
-
-VirtualGlove is an independent project licensed under the [MIT License](LICENSE).
-The modified Nestopia core is GPLv2 software and is documented separately from
-the MIT application; see its [distribution and license record](THIRD_PARTY_NOTICES.md#modified-nestopia-libretro-core).
-Nintendo, NES, Power Glove, and the named games belong to their respective
-owners. Third-party software and models retain their own terms, documented in
-[Third-party notices](THIRD_PARTY_NOTICES.md).
+VirtualGlove is maintained by **Iain Bennett** and is licensed under the
+[MIT License](LICENSE). The modified Nestopia core is GPLv2 software and remains
+separate from the MIT application. Nintendo, NES, Power Glove, and the named
+games belong to their respective owners. See
+[Third-party Notices](THIRD_PARTY_NOTICES.md) for dependency, model, asset, and
+native-core licensing details.
