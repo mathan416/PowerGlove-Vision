@@ -39,6 +39,12 @@ the session becomes stale, or an unregistered game is launched. **Stop controlle
 remains sticky until the player explicitly starts it again. Manual Dashboard profile
 selection remains available for testing outside the registered-game flow.
 
+Pairing identifies the console by its private shared key rather than by one IP
+address. If DHCP changes a saved address or `.local` resolution is temporarily
+unavailable, the Controller can locate the same paired RetroPie on the local
+network with a signed handshake and resume without pairing again. It never
+broadcasts controller states.
+
 The cabinet supports two Super Glove Ball paths. `lr-fceumm` is the complete,
 standard-joystick fallback and remains the safe default. The separately named
 `lr-nestopia-powerglove` core supplies native absolute X/Y and Z coordinates plus
@@ -181,7 +187,10 @@ person’s recorded coordinates for yours.
 Install the same release on the Controller and RetroPie. Automatic game-session resume
 depends on the current Controller worker and current RetroPie launch hook being present
 together; mixed old/new installations continue to fail safe but cannot provide the
-renewable session behavior.
+renewable session behavior. The paired devices can recover in both directions when a
+saved DHCP address becomes stale or `.local` resolution is temporarily unavailable.
+Only signed discovery messages are broadcast; controller states and game-profile
+commands resume by unicast after the existing pairing key authenticates the peer.
 
 When a registered Super Glove Ball ROM is present, the RetroPie installer offers
 to build the optional native core locally from pinned GPLv2 Nestopia source. If
@@ -311,6 +320,10 @@ Its temporary mirrored live view and centre/edge guides make hand placement
 visible during the hold, corner-sweep, and edge-return steps.
 The same one- or two-buffer choice is available directly in Setup for manual
 testing and camera-specific maintenance.
+Setup's **Controller status** distinguishes the saved console name from the active
+authenticated input address. **Download system report** creates a privacy-safe JSON
+snapshot for troubleshooting without video, pairing credentials, personal calibration,
+ROM names, or network addresses.
 The optional [VirtualGlove Calibration Test](docs/direction-response-benchmark.md#direct-output-dot-test)
 appears as a ROM-free game in RetroPie's **Ports** list when selected during
 installation. Its separate `lr-powerglove-dot` core displays the receiver's

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Cover authenticated reverse discovery and cached profile delivery.
 #   2026-09-05 - Covered renewable game-session validation and expiry.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -80,6 +81,43 @@ class ProfileTests(unittest.TestCase):
             self.assertEqual(request.session_id, "a" * 32)
             self.assertEqual(request.lease_seconds, 6.0)
             self.assertEqual(request.emulator, "lr-fceumm")
+        finally:
+            server.close()
+
+    def test_stale_controller_address_discovers_and_caches_authenticated_peer(self):
+        token = "profile-discovery-test-token"
+        server = ProfileCommandServer("127.0.0.1", 0, token)
+        port = server.socket.getsockname()[1]
+        try:
+            ack = send_request(
+                "127.0.0.2", port, token, "program_h", "nes", "Example.7z", 0.05,
+                discovery_addresses=lambda: ("127.0.0.1",),
+            )
+            self.assertTrue(ack["accepted"])
+            self.assertEqual(server.take().profile, "program_h")
+
+            def discovery_must_not_run():
+                raise AssertionError("authenticated address cache was not used")
+
+            ack = send_request(
+                "127.0.0.2", port, token, "program_g", "nes", "Second.7z", 0.05,
+                discovery_addresses=discovery_must_not_run,
+            )
+            self.assertTrue(ack["accepted"])
+            self.assertEqual(server.take().profile, "program_g")
+        finally:
+            server.close()
+
+    def test_discovery_never_accepts_a_controller_with_the_wrong_pairing_key(self):
+        server = ProfileCommandServer("127.0.0.1", 0, "correct-profile-token")
+        try:
+            with self.assertRaises(TimeoutError):
+                send_request(
+                    "127.0.0.2", server.socket.getsockname()[1],
+                    "different-profile-token", "program_h", "nes", "Example.7z", 0.03,
+                    discovery_addresses=lambda: ("127.0.0.1",),
+                )
+            self.assertIsNone(server.take())
         finally:
             server.close()
 

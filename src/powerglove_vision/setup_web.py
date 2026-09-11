@@ -27,7 +27,8 @@ SETUP_CONTENT = """<style>main a{color:var(--cyan)}#players{margin-bottom:14px}#
 <li id=status-tracking data-state=unknown><span class=check-dot aria-hidden=true></span><div><span class=check-label>Tracking</span><strong>Checking…</strong></div></li>
 <li id=status-output data-state=unknown><span class=check-dot aria-hidden=true></span><div><span class=check-label>Controller output</span><strong>Checking…</strong></div></li></ul>
 <p class=setup-status-note>Saved console: <strong id=status-destination>Loading…</strong></p>
-<p class=setup-status-note id=connection-status-note>Connection checks do not confirm that a game received input.</p></section>
+<p class=setup-status-note>Active controller link: <strong id=status-active-destination>Not active</strong></p>
+<p class=setup-status-note id=connection-status-note>Connection checks do not confirm that a game received input.</p><div class=controls><button type=button class=secondary id=support-report>Download system report</button></div><p class=setup-status-note id=support-report-note>A privacy-safe report contains no video, pairing key, player calibration, ROM name, or network address.</p></section>
 {{PLAYER_CONTENT}}
 <section class=card style="margin-bottom:14px"><h2>Matrix attract mode</h2><form id=attract-form><label>Idle display<select id=matrix-attract><option value=on>On — full animation</option><option value=dim>Dim — gentle animation</option><option value=off>Off — connection pixels only</option></select></label><button type=submit>Save attract mode</button></form><p>Changes only the idle glove animation. Game displays, T, L, startup, errors, and pairing keep their normal brightness. Saves without restarting tracking.</p><details><summary>What the connection pixels mean</summary><p>In Off mode, four faint bottom-left pixels show: app running, console service reachable, authenticated RetroPie response, and a Wi-Fi or Ethernet link connected. The Networking pixel comes from the Controller’s physical network links, including Ethernet through a USB dock, independently of RetroPie. It does not confirm an IP address or Internet access. These indicators do not prove that a game received input.</p></details><p id=attract-notice role=status></p></section>
 <form id=form><section id=connection-section class=card style="margin-bottom:14px"><h2>Connection and startup</h2><p id=paired role=status>Loading saved settings…</p><fieldset id=connection-fields disabled style='border:0;padding:0;margin:0;min-width:0'><div class=formgrid>
@@ -136,6 +137,7 @@ async function refreshStatus(){
   }
   if(worker.status==='fulfilled'){
     const w=worker.value;
+    $('status-active-destination').textContent=w.receiver_available===true&&w.receiver_active_address?`Authenticated at ${w.receiver_active_address}`:w.controller_enabled&&w.controller_context_active?'Searching for the paired console':'Not active';
     const trackingLabel=({active:'Active',starting:'Starting',idle:'Idle',error:'Needs attention'}[w.vision_state]||(w.worker_running?'Starting':'Unavailable'));
     indicator('status-tracking',w.vision_state==='active'?'good':w.vision_state==='error'||!w.worker_running?'bad':'unknown',trackingLabel);
     const output=controllerOutputStatus(w);
@@ -145,9 +147,10 @@ async function refreshStatus(){
     let exposure;if(w.camera_exposure_mode==='manual'||w.camera_exposure_mode==='manual-test')exposure=w.camera_exposure_applied?`manual exposure ${w.camera_manual_exposure}, gain ${w.camera_manual_gain} applied`:`manual settings unavailable; automatic fallback${w.camera_control_error?` (${w.camera_control_error})`:''}`;else exposure=w.camera_exposure_mode==='auto'?'automatic exposure':w.camera_exposure_applied?'automatic fixed-rate exposure applied':'automatic fixed-rate exposure unavailable';
     const buffers=Number(w.camera_buffers_requested),bufferText=Number.isFinite(buffers)?` Buffers: ${buffers}.`:'';
     $('camera-rate-status').textContent=(Number.isFinite(actual)&&actual>0?(requested!=='auto'&&Number(requested)!==actual?`Requested ${requested} fps; this camera is delivering ${actual} fps.`:`Camera is delivering ${actual} fps.`):'Camera rate is unavailable.')+bufferText+` Reader: ${backend}; ${exposure}.`+fallback;
-  }else{indicator('status-tracking','bad','Unavailable');indicator('status-output','bad','Unavailable')}
+  }else{$('status-active-destination').textContent='Unavailable';indicator('status-tracking','bad','Unavailable');indicator('status-output','bad','Unavailable')}
 }
 async function statusLoop(){try{await refreshStatus()}finally{setTimeout(statusLoop,5000)}}statusLoop();
+$('support-report').onclick=async()=>{const button=$('support-report');button.disabled=true;$('support-report-note').textContent='Preparing system report…';try{const report=await api('/api/support-report',undefined,5000),blob=new Blob([JSON.stringify(report,null,2)+'\n'],{type:'application/json'}),link=document.createElement('a'),day=new Date().toISOString().slice(0,10);link.href=URL.createObjectURL(blob);link.download=`virtualglove-system-report-${day}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000);$('support-report-note').textContent='System report downloaded. It contains no video, secrets, personal hand data, ROM name, or network address.'}catch(e){$('support-report-note').textContent='Could not prepare the report. '+e.message}finally{button.disabled=false}};
 function method(){return document.querySelector('input[name="pair-method"]:checked').value}
 function methodLabel(){return method()==='ssh'?'SSH password':'One-time code'}
 function dirtySettings(){return !savedConfig||settingsFields.some(k=>String($(k).value).trim()!==String(savedConfig[k]))||$('rotate_token').checked}

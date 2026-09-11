@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Add a privacy-safe downloadable system report.
 #   2026-09-10 - Added Pixel Pal's safe camera-settings profiler.
 #   2026-09-09 - Exposed direction-aware tracking as an independent experimental setting.
 #   2026-09-08 - Listed discovered cameras in Setup while preserving Automatic selection.
@@ -943,6 +944,70 @@ class ControlState:
                 "console_service": None, "console_authenticated": None,
                 "wifi": read_wifi_status(), "networking": read_network_status(), "checked_seconds_ago": None}
 
+    def support_report(self) -> dict[str, Any]:
+        """Return useful installation health without secrets or personal hand data."""
+        status = self.snapshot()
+        connection = self.connection_status()
+        config = self.public_config()
+        build = status.get("build", {}) if isinstance(status.get("build"), dict) else {}
+        firmware = status.get("firmware", {}) if isinstance(status.get("firmware"), dict) else {}
+        active_link = bool(status.get("receiver_available"))
+        context_active = bool(status.get("controller_context_active"))
+        return {
+            "format": "virtualglove-system-report",
+            "version": 1,
+            "generated_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "privacy": {
+                "contains_frames": False,
+                "contains_pairing_key": False,
+                "contains_player_or_calibration_data": False,
+                "contains_rom_name": False,
+                "contains_network_addresses": False,
+            },
+            "software": {
+                "version": status.get("version"),
+                "release": build.get("release"),
+                "commit": build.get("commit"),
+                "modified_source": bool(build.get("dirty")),
+                "uptime_seconds": status.get("uptime_seconds"),
+                "firmware_state": firmware.get("state"),
+            },
+            "camera": {
+                "selection": "automatic" if config.get("camera") == "auto" else "named",
+                "available": bool(status.get("camera_available")),
+                "vision_state": status.get("vision_state"),
+                "worker_running": bool(status.get("worker_running")),
+                "reader": status.get("capture_backend"),
+                "reader_fallback": bool(status.get("capture_backend_fallback")),
+                "requested_fps": status.get("camera_fps_requested"),
+                "delivered_fps": status.get("camera_fps"),
+                "requested_buffers": status.get("camera_buffers_requested"),
+                "exposure_mode": status.get("camera_exposure_mode"),
+                "exposure_applied": bool(status.get("camera_exposure_applied")),
+            },
+            "controller": {
+                "armed": bool(status.get("controller_enabled")),
+                "request_pending": bool(status.get("controller_request_pending")),
+                "game_context_active": context_active,
+                "active_profile": status.get("active_profile", status.get("profile", "off")),
+                "emulator": status.get("emulator") or "unknown",
+                "input_mode": status.get("input_mode") or "inactive",
+                "authenticated_input_link": active_link,
+                "input_link_check": (
+                    "passed" if active_link else
+                    "waiting" if status.get("controller_enabled") and not context_active else
+                    "not-run"
+                ),
+            },
+            "connection": {
+                "saved_destination_configured": bool(connection.get("console_configured")),
+                "console_service_reachable": connection.get("console_service"),
+                "console_registry_authenticated": connection.get("console_authenticated"),
+                "physical_network": connection.get("networking"),
+                "console_check_age_seconds": connection.get("checked_seconds_ago"),
+            },
+        }
+
     def update_firmware(self, identity):
         """Publish only the identity read from the running sketch."""
         with self.lock:
@@ -1103,6 +1168,8 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 _send(self, 200, json.dumps(state.snapshot()).encode(), "application/json")
             elif path == "/api/connection-status":
                 _send(self, 200, json.dumps(state.connection_status()).encode(), "application/json")
+            elif path == "/api/support-report":
+                _send(self, 200, json.dumps(state.support_report(), indent=2).encode(), "application/json")
             elif path == "/api/config":
                 _send(self, 200, json.dumps(state.public_config()).encode(), "application/json")
             elif path == "/api/camera-profile":

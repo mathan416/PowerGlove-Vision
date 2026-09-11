@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Verify privacy-safe system reports omit secrets and personal data.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Verified Help discovery for Rock Paper Scissors and native validation.
 #   2026-09-05 - Verified persistent armed state and clearer delivery status.
@@ -214,6 +215,30 @@ class ControlStateTests(unittest.TestCase):
         public = self.state.public_config()
         self.assertNotIn("token", public)
         self.assertTrue(public["paired"])
+
+    def test_system_report_is_useful_without_private_configuration(self):
+        self.state.connection_probe = lambda _settings, refresh: {
+            "app": True, "console_configured": True,
+            "console_service": True, "console_authenticated": True,
+            "networking": "connected", "checked_seconds_ago": 2.0,
+        }
+        self.state.update_worker({
+            "camera_available": True, "vision_state": "active",
+            "capture_backend": "opencv", "camera_fps": 30.0,
+            "controller_enabled": True, "controller_context_active": True,
+            "receiver_available": True, "receiver_active_address": "10.0.2.44",
+            "active_profile": "program_h", "emulator": "lr-fceumm",
+            "input_mode": "joystick", "palm_position": {"x": 0.4, "y": 0.6},
+            "game": "Private Game Name.nes",
+        })
+        report = self.state.support_report()
+        serialized = json.dumps(report)
+        self.assertEqual(report["format"], "virtualglove-system-report")
+        self.assertTrue(report["controller"]["authenticated_input_link"])
+        self.assertEqual(report["connection"]["console_registry_authenticated"], True)
+        for private in ("private-token", "retropieconsole.local", "10.0.2.44",
+                        "Private Game Name.nes", "palm_position"):
+            self.assertNotIn(private, serialized)
 
     def test_setup_contains_guided_camera_profiler_with_unsaved_live_view(self):
         self.assertIn(b"Find the best camera settings", SETUP)

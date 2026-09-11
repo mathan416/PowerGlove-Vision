@@ -893,12 +893,14 @@ to restore personal adjustments with the installed defaults. Independently,
 check **My camera position and playing position match this backup** to reuse
 calibration. Otherwise set a fresh center. Controls stay paused until Start.
 
-Version 3 is the current portable backup format. Existing version-2 files remain
-supported: the largest of their four directional activation values becomes the
-single center-box size and their obsolete directional release values are discarded.
-Version-2 files without `effective_thresholds` or `source` still restore their
-personal adjustments and calibration. Version-1 `powerglove-hand-settings` exports are
-rejected without changing anything. Cancel closes the review without changes.
+Version 4 is the current portable backup format. Legacy version-3 files remain
+importable with their saved single center-box size. Existing version-2 files are
+also supported: the largest of their four directional activation values becomes
+the single center-box size and their obsolete directional release values are
+discarded. Version-2 files without `effective_thresholds` or `source` still
+restore their personal adjustments and calibration. Version-1
+`powerglove-hand-settings` exports are rejected without changing anything.
+Cancel closes the review without changes.
 
 ![Review before restoring a complete hand setup](images/hand-setup-restore.png)
 
@@ -1441,6 +1443,38 @@ expire after five seconds, so DHCP changes do not require editing an address. Or
 use the system resolver. Generic container `getent` is not the app's mDNS test;
 use Connection's hostname test or the setup command's check mode.
 
+The host network sampler also publishes fresh directed-broadcast addresses for
+connected physical Wi-Fi and Ethernet links; it excludes loopback, Docker
+bridges, virtual interfaces, disconnected links, and addresses older than 15
+seconds. The sender's one-second signed challenge maintenance doubles as a
+liveness check. After three seconds without a valid receiver reply, or while no
+configured address is available, it sends only the signed hello on those local
+broadcasts every two seconds. A request-matched HMAC challenge from the holder
+of the existing pairing key becomes the current unicast destination. No input
+state is broadcast or queued, and no configuration or pairing key is rewritten.
+The limited broadcast address is used only when fresh host link metadata is not
+available.
+
+Address recovery is bidirectional. If the RetroPie launch hook cannot reach its
+saved Controller destination, it sends a signed `discover` request containing no
+ROM or profile on each physical IPv4 broadcast address. Only a signed,
+request-matched `discover_ack` made with the pairing key is accepted. The actual
+profile command then travels by unicast, and the authenticated source address is
+cached in memory for 30 seconds. The cache is limited to 16 destinations, expires
+automatically, and never rewrites `/etc/powerglove/launcher.json`. A Controller or
+RetroPie reboot simply begins a fresh authenticated exchange.
+
+The default timing values are deliberate and serve separate purposes. The
+250-millisecond receiver timeout releases stale controls; it does not delay a
+healthy packet. One-second handshake maintenance detects a restarted receiver,
+the three-second liveness boundary starts address discovery, and two-second
+profile renewals preserve the active game under a six-second lease. See
+[Connection cadence, safety, and load](ARCHITECTURE.md#connection-cadence-safety-and-load)
+for the complete timing, recovery, and representative traffic table. Do not
+increase these values merely to reduce network traffic: their steady-state load
+is already negligible beside camera processing, and longer safety/recovery
+windows would make failures slower to clear.
+
 ## Independent Networking status
 
 The fourth Setup marker and Off-mode pixel report the Controller's physical
@@ -1458,10 +1492,11 @@ Tracking, controller output, and saved console appear below the markers.
 
 The existing `powerglove-wifi-status.timer` runs every five seconds and invokes
 `powerglove-wifi-status.service`. The unprivileged helper publishes
-`data/wifi-status.json` with version 1, `observed_at`, wireless-only `state`, and
-aggregate `networking`. These literal filenames and the old wireless field are
-retained for upgrade compatibility. No credentials, interface names, SSIDs, or
-addresses are recorded. Reports expire after fifteen seconds; malformed,
+`data/wifi-status.json` with version 2, `observed_at`, wireless-only `state`,
+aggregate `networking`, and a bounded list of physical-link subnet broadcast
+addresses. Version-1 reports, the literal filenames, and the old wireless field
+remain readable for upgrade compatibility. No credentials, interface names,
+SSIDs, or host unicast addresses are recorded. Reports expire after fifteen seconds; malformed,
 missing, or future-dated data is unavailable. An older report without
 `networking` can confirm connected Wi-Fi, but disconnected Wi-Fi cannot rule out
 Ethernet and therefore yields unknown aggregate status.
@@ -1471,6 +1506,15 @@ Setup pages poll without overlap every five seconds with a 3.5-second request
 timeout. Console checks run in one background thread at most every ten seconds
 and expire after thirty; changes to destination or token invalidate them.
 Setup can request checks in any attract mode; idle Off also refreshes them.
+
+The Setup status card shows **Saved console** and **Active controller link** as
+different facts. The former is the user-managed hostname/IP; the latter appears
+only while an authenticated UDP input session is actively delivering. A recovered
+address can therefore be visible without silently changing the saved preference.
+`GET /api/support-report` returns an allowlisted version-1 JSON diagnostic containing
+software/firmware identity, non-personal camera runtime choices, controller/profile
+state, and cached connection checks. It never returns frames, the pairing key,
+player or calibration data, ROM names, or network addresses.
 
 Normal installation and `scripts/deploy-uno-q-wifi.sh` update the sampler.
 Repair it separately with `sudo python3 scripts/setup-machine.py uno-q --wifi-status-only`.
@@ -2282,6 +2326,12 @@ its archive extension, if the selected profile is **off**.
 - Match the exact ROM basename in `/etc/powerglove/games.json`.
 
 ### FAQ: What if the console name cannot be resolved?
+
+An already-paired Controller first attempts authenticated LAN recovery. This can
+also repair a stale literal DHCP address without changing Setup. It normally
+needs no user action when both devices remain on the same broadcast-enabled
+network. The checks below apply when automatic recovery cannot cross the network
+boundary or when you need to diagnose the saved name.
 
 1. In **Connection**, enter your console's actual hostname, such as `RETROPIE-NAME.local`, then select **Check console address**. Use a hostname or IPv4 address, not `http://`, a port, or a page path. This tests resolution from the VirtualGlove Controller app; successful lookup on your laptop alone is not sufficient.
 2. Confirm the RetroPie console is powered on and connected to your LAN. On its terminal, run `hostname` and `hostname -I` to confirm its name and current addresses. Do not assume an old DHCP address is still correct.

@@ -9,6 +9,30 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- Added automatic paired-console recovery when a saved IP becomes stale or
+  `.local` resolution is unavailable. The Controller now detects missing
+  authenticated receiver replies, broadcasts only a signed handshake on each
+  connected physical LAN, and resumes with the responder that proves possession
+  of the existing pairing key. Controller states are never broadcast, and the
+  recovery does not replace or expose the saved key.
+- Added the reverse recovery path for RetroPie's registered-game profile renewals.
+  A failed saved Controller destination triggers a ROM-free signed discovery
+  request; only the paired Controller's request-matched response is accepted before
+  the real profile command resumes by unicast. The authenticated address cache is
+  bounded, lasts 30 seconds, and never rewrites saved configuration.
+- Setup now distinguishes its saved console destination from the active
+  authenticated controller link and can download a field-allowlisted system report.
+  The report includes useful version, camera, controller, profile, and connection
+  health while excluding frames, secrets, player/calibration data, ROM names, and
+  network addresses.
+- Added a fresh-hardware acceptance checklist covering clean installation, pairing,
+  persistence, receiver restart, DHCP/name recovery, camera reconnect, coordinated
+  upgrade, and final FCEUmm/native play confirmation.
+- Consolidated controller-state cadence, signed handshake maintenance,
+  paired-console discovery, registered-game leases, Setup health checks, host
+  link sampling, recovery windows, and representative LAN traffic in one
+  technical architecture table. The configuration and security references now
+  link to that common operational explanation.
 - Renamed the public GitHub repository from `PowerGlove-Vision` to
   `VirtualGlove` and updated documentation and installer download sources to
   use the new canonical address. GitHub's old repository links remain usable
