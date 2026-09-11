@@ -201,10 +201,9 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         discovery = self.discovery(camera, hub)
         helper._write_config(discovery)
         self.request.write_text("recover\n")
-        with (
-            patch.object(helper, "_discover_cameras", side_effect=[[discovery], [discovery]]),
-            patch.object(helper, "_power_cycle_camera_port", return_value=True) as cycle,
-        ):
+        with patch.object(
+                helper, "_discover_cameras", side_effect=[[discovery], [discovery]]), \
+                patch.object(helper, "_power_cycle_camera_port", return_value=True) as cycle:
             self.assertEqual(helper.main([]), 0)
         cycle.assert_called_once()
         self.assertEqual((self.driver / "unbind").read_text(), "")
@@ -233,11 +232,9 @@ class UnoQCameraRecoveryHelperTests(unittest.TestCase):
         camera = self.device("2-1.4")
         config = helper._public_config(self.discovery(camera, hub))
         completed = SimpleNamespace(returncode=0, stdout="", stderr="")
-        with (
-            patch.object(helper.shutil, "which", return_value="/usr/sbin/uhubctl"),
-            patch.object(helper, "_uhubctl_supports_port", return_value=True),
-            patch.object(helper.subprocess, "run", return_value=completed) as run,
-        ):
+        with patch.object(helper.shutil, "which", return_value="/usr/sbin/uhubctl"), \
+                patch.object(helper, "_uhubctl_supports_port", return_value=True), \
+                patch.object(helper.subprocess, "run", return_value=completed) as run:
             self.assertTrue(helper._power_cycle_camera_port(config, hub))
         self.assertEqual(
             run.call_args.args[0],

@@ -44,6 +44,8 @@ No changes are pending after the refreshed release candidate.
   visual audit found one more six-digit glove in the opening Rock, Paper,
   Scissors table. The documentation check now also rejects six-digit artwork
   that is labelled for accessibility but missing from the hunt manifest.
+- Kept the documentation audit and camera-recovery tests parseable under
+  RetroPie's supported Python 3.7 validation job.
 
 ## [0.4.0-rc.6] - 2026-09-11
 
