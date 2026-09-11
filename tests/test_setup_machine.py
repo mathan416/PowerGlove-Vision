@@ -128,3 +128,7 @@ class SetupTests(unittest.TestCase):
                 "/usr/local/libexec/powerglove-camera-recovery", "--configure-if-present"
             )
             command.assert_any_call("systemctl", "enable", "--now", "powerglove-camera-recovery.path")
+            command.assert_any_call(
+                "env", "APP_HOME=/home/arduino/ArduinoApps/powerglove-vision",
+                "docker", "compose", "-f", compose, "up", "-d", "--force-recreate"
+            )

@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Preserve the App Lab root during release-install Compose recreation.
 #   2026-09-09 - Added the optional ROM-free RetroPie calibration test.
 #   2026-09-09 - Install uhubctl for capability-gated camera-port power cycling.
 #   2026-09-06 - Implement approved player and connectivity refinements.
@@ -226,7 +227,11 @@ def install_unoq(peer):
     os.chown(str(compose), user.pw_uid, user.pw_gid)
     # App Lab properties belong to the non-root desktop account.
     run("runuser", "-u", "arduino", "--", "arduino-app-cli", "properties", "set", "default", app)
-    run("docker", "compose", "-f", compose, "up", "-d", "--force-recreate")
+    # App Lab's generated Compose file expands brick bind mounts from APP_HOME.
+    # setup-machine runs under sudo, outside the App Lab CLI environment, so pass
+    # it explicitly or Compose resolves those mounts from filesystem root.
+    run("env", "APP_HOME=" + str(app), "docker", "compose", "-f", compose,
+        "up", "-d", "--force-recreate")
     install_early_start()
     install_wifi_status()
     if peer:
