@@ -248,6 +248,8 @@ class AuditRegressionTests(unittest.TestCase):
         self.assertIn('scripts/measure-dot-input.py', selected)
         self.assertIn('scripts/measure-vision-status.py', selected)
         self.assertIn('scripts/calibrate-reach.py', selected)
+        self.assertIn('docs/ENGINEERING_TOOLKIT.md', selected)
+        self.assertIn('output/pdf/VirtualGlove-Engineering-Toolkit.pdf', selected)
         self.assertNotIn('scripts/benchmark-vision-replay.py', selected)
         self.assertNotIn('scripts/run-nestopia-powerglove-trace.py', selected)
         development=module['selected_files'](ROOT, include_engineering=True)

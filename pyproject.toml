@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added supported Engineering Toolkit dependency groups.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -28,6 +29,19 @@ vision = [
   "opencv-python-headless>=4.8",
 ]
 receiver = ["evdev>=1.7"]
+engineering-analysis = [
+  "av==16.1.0",
+  "numpy==1.26.4",
+  "opencv-python-headless==4.11.0.86",
+  "Pillow==12.3.0",
+]
+engineering = [
+  "av==16.1.0",
+  "mediapipe==0.10.35",
+  "numpy==1.26.4",
+  "opencv-python-headless==4.11.0.86",
+  "Pillow==12.3.0",
+]
 dev = []
 
 [project.scripts]

@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Audit new nonignored source files before their first commit.
 #   2026-09-03 - Added the repository source-documentation audit.
 #   2026-09-03 - Added the GitHub Actions workflow to audited configuration.
 #   2026-09-04 - Preserved upstream headers in accepted third-party source trees.
@@ -44,9 +45,9 @@ THIRD_PARTY_PREFIXES = ("third_party/", "vendor/")
 
 
 def tracked_source_files() -> list[Path]:
-    """Return tracked, comment-capable code and runtime configuration files."""
+    """Return present tracked and new source/configuration files."""
     output = subprocess.check_output(
-        ["git", "ls-files", "-z"], cwd=ROOT
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"], cwd=ROOT
     ).decode().split("\0")
     files = []
     for name in output:

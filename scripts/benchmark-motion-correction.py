@@ -5,13 +5,13 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Delayed optional imports so clean-package help works before setup.
 #   2026-09-06 - Added a deterministic before/after correction benchmark.
 # Full history: docs/CHANGELOG.md and Git history.
 """Synthetic frames and delayed recognition only: no camera, packets or game input."""
 import argparse,hashlib,importlib.util,json,time,math,sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-import cv2,numpy as np
 from powerglove_vision.model import HandObservation
 from powerglove_vision.tracker import TrackingResult
 parser=argparse.ArgumentParser(description=__doc__)
@@ -19,6 +19,7 @@ parser.add_argument('--before',type=Path,required=True)
 parser.add_argument('--after',type=Path,default=Path(__file__).resolve().parents[1]/'src/powerglove_vision/motion.py')
 parser.add_argument('--output',type=Path,required=True)
 args=parser.parse_args()
+import cv2,numpy as np
 if args.output.exists():parser.error('Choose a new output file')
 files={'before':args.before,'after':args.after}
 rng=np.random.default_rng(10)

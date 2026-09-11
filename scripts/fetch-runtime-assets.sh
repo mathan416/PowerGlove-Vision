@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added side-effect-free command help for the public toolkit.
 #   2026-09-03 - Added with standardized source documentation.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -17,6 +18,28 @@ readonly MODEL_DIR="${PROJECT_DIR}/data/models"
 readonly MODEL_PATH="${MODEL_DIR}/hand_landmarker.task"
 readonly MODEL_URL="https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 readonly MODEL_SHA256="fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1"
+
+usage() {
+  cat <<'EOF'
+Usage: bash scripts/fetch-runtime-assets.sh
+
+Install the checksum-verified Hand Landmarker model into data/models. The
+bundled model is preferred; otherwise the official Google asset is downloaded.
+EOF
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  "") ;;
+  *)
+    echo "error: unsupported argument: $1" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
 
 # Print the SHA-256 digest of one file without loading the asset into memory.
 sha256_file() {

@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Registered the Engineering Toolkit manual and PDF.
 #   2026-09-10 - Consolidated Programs into Gameplay and registered the Engineering Journey.
 #   2026-09-05 - Kept Pixel Pal's Extra-Digit Hunt counts synchronized with guide art.
 #   2026-09-04 - Guarded the Nestopia revision and patch digest in third-party records.
@@ -57,6 +58,7 @@ PDF_EDITIONS = {
     "docs/TROUBLESHOOTING.md": "VirtualGlove-Troubleshooting.pdf",
     "docs/CAMERA_GUIDE.md": "VirtualGlove-Camera-Guide.pdf",
     "docs/ENGINEERING_JOURNEY.md": "VirtualGlove-Engineering-Journey.pdf",
+    "docs/ENGINEERING_TOOLKIT.md": "VirtualGlove-Engineering-Toolkit.pdf",
 
     "docs/MATRIX_GUIDE.md": "VirtualGlove-Matrix-Guide.pdf",
     "docs/ARCHITECTURE.md": "VirtualGlove-Architecture.pdf",
