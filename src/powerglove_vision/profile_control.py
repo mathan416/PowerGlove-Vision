@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Add authenticated Controller discovery for stale RetroPie destinations.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-05 - Added renewable active-game leases for safe restart recovery.
 #   2026-09-02 - Added to VirtualGlove.
@@ -19,10 +20,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import hmac
+import ipaddress
 import json
 import queue
 import socket
+import struct
 import threading
+import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,6 +37,10 @@ from .gesture import SUPPORTED_PROFILES
 
 PROTOCOL = "powerglove-profile/1"
 MAX_PACKET_BYTES = 4096
+DISCOVERY_ADDRESS = "255.255.255.255"
+DISCOVERY_CACHE_SECONDS = 30.0
+_destination_cache: dict[tuple[str, int, bytes], tuple[str, float]] = {}
+_destination_cache_lock = threading.Lock()
 
 
 def _canonical(data: dict[str, Any]) -> bytes:
@@ -164,10 +172,31 @@ class ProfileCommandServer:
                 if len(payload) > MAX_PACKET_BYTES:
                     raise ValueError("packet too large")
                 data = json.loads(payload)
-                if (data.get("protocol") != PROTOCOL or data.get("kind") != "set_profile"
-                        or not verify_message(data, self.token)):
+                if data.get("protocol") != PROTOCOL or not verify_message(data, self.token):
                     raise ValueError("invalid request")
                 request_id = str(data["request_id"])
+                if data.get("kind") == "discover":
+                    if (len(request_id) != 32 or
+                            any(character not in "0123456789abcdef" for character in request_id)):
+                        raise ValueError("invalid discovery request identifier")
+                    if set(data) != {"protocol", "kind", "request_id", "signature"}:
+                        raise ValueError("invalid discovery request")
+                    reply = sign_message({
+                        "protocol": PROTOCOL,
+                        "kind": "discover_ack",
+                        "request_id": request_id,
+                    }, self.token)
+                    try:
+                        self.socket.sendto(
+                            json.dumps(reply, separators=(",", ":")).encode(), peer
+                        )
+                    except OSError:
+                        pass
+                    continue
+                if data.get("kind") != "set_profile":
+                    raise ValueError("invalid request kind")
+                if (not request_id.isascii() or not 1 <= len(request_id) <= 128):
+                    raise ValueError("invalid request identifier")
                 if request_id in self._seen:
                     ack = self._acks.get(request_id)
                     if ack is not None:
@@ -270,11 +299,134 @@ def select_profile(registry: dict[str, str], system: str, rom: str) -> str | Non
     return registry.get(Path(rom).name.casefold())
 
 
+def local_broadcast_addresses() -> tuple[str, ...]:
+    """Return physical IPv4 broadcast targets without shelling out or scanning."""
+    try:
+        import fcntl
+    except ImportError:
+        return (DISCOVERY_ADDRESS,)
+    targets: list[str] = []
+    sysfs = Path("/sys/class/net")
+    try:
+        interfaces = socket.if_nameindex()
+    except OSError:
+        return (DISCOVERY_ADDRESS,)
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        for _index, name in interfaces:
+            if name == "lo" or name.startswith(("docker", "veth", "br-")):
+                continue
+            device = sysfs / name / "device"
+            if sysfs.exists() and not device.exists():
+                continue
+            carrier = sysfs / name / "carrier"
+            try:
+                if carrier.exists() and carrier.read_text().strip() != "1":
+                    continue
+                request = struct.pack("256s", name[:15].encode())
+                address = socket.inet_ntoa(
+                    fcntl.ioctl(probe.fileno(), 0x8915, request)[20:24]
+                )
+                netmask = socket.inet_ntoa(
+                    fcntl.ioctl(probe.fileno(), 0x891B, request)[20:24]
+                )
+                interface = ipaddress.IPv4Interface(address + "/" + netmask)
+                if (interface.ip.is_loopback or interface.ip.is_link_local or
+                        interface.network.prefixlen >= 31):
+                    continue
+                target = str(interface.network.broadcast_address)
+                if target not in targets:
+                    targets.append(target)
+            except (OSError, ValueError):
+                continue
+    return tuple(targets) or (DISCOVERY_ADDRESS,)
+
+
+def _cache_key(host: str, port: int, token: str) -> tuple[str, int, bytes]:
+    return host, port, hashlib.sha256(token.encode()).digest()
+
+
+def _cached_destination(key: tuple[str, int, bytes], now: float) -> str | None:
+    with _destination_cache_lock:
+        item = _destination_cache.get(key)
+        if item is None:
+            return None
+        address, expires_at = item
+        if now >= expires_at:
+            _destination_cache.pop(key, None)
+            return None
+        return address
+
+
+def _remember_destination(
+    key: tuple[str, int, bytes], address: str, now: float
+) -> None:
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        return
+    if not isinstance(parsed, ipaddress.IPv4Address) or parsed.is_unspecified:
+        return
+    with _destination_cache_lock:
+        expired = [item_key for item_key, item in _destination_cache.items()
+                   if now >= item[1]]
+        for item_key in expired:
+            _destination_cache.pop(item_key, None)
+        if key not in _destination_cache and len(_destination_cache) >= 16:
+            oldest = min(_destination_cache, key=lambda item_key: _destination_cache[item_key][1])
+            _destination_cache.pop(oldest, None)
+        _destination_cache[key] = (address, now + DISCOVERY_CACHE_SECONDS)
+
+
+def _receive_reply(
+    sock: socket.socket, token: str, request_id: str, kind: str
+) -> tuple[dict[str, Any], tuple[str, int]] | None:
+    """Accept only a signed, request-matched reply and return its UDP peer."""
+    timeout = sock.gettimeout()
+    deadline = time.monotonic() + (float(timeout) if timeout is not None else 0.0)
+    while True:
+        try:
+            if timeout is not None:
+                sock.settimeout(max(0.001, deadline - time.monotonic()))
+            response, peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
+            if len(response) > MAX_PACKET_BYTES:
+                continue
+            ack = json.loads(response)
+            if (not isinstance(ack, dict) or ack.get("protocol") != PROTOCOL or
+                    ack.get("kind") != kind or ack.get("request_id") != request_id or
+                    not verify_message(ack, token)):
+                continue
+            sock.settimeout(timeout)
+            return ack, peer
+        except (json.JSONDecodeError, TypeError, ValueError, RecursionError):
+            continue
+        except OSError:
+            try:
+                sock.settimeout(timeout)
+            except OSError:
+                pass
+            return None
+
+
+def _exchange(
+    sock: socket.socket, payload: bytes, destination: tuple[str, int], token: str,
+    request_id: str, kind: str, attempts: int
+) -> tuple[dict[str, Any], tuple[str, int]] | None:
+    for _attempt in range(attempts):
+        try:
+            sock.sendto(payload, destination)
+        except OSError:
+            return None
+        reply = _receive_reply(sock, token, request_id, kind)
+        if reply is not None:
+            return reply
+    return None
+
+
 def send_request(host: str, port: int, token: str, profile: str | None,
                  system: str, rom: str, timeout: float, *,
                  session_id: str | None = None, lease_seconds: float = 0.0,
-                 emulator: str = "") -> dict[str, Any]:
-    """Send a signed profile request with bounded retries and require a valid acknowledgement."""
+                 emulator: str = "", discovery_addresses=None) -> dict[str, Any]:
+    """Send a signed profile request, discovering the paired Controller if needed."""
     request_id = uuid.uuid4().hex
     message = {
         "protocol": PROTOCOL,
@@ -290,18 +442,52 @@ def send_request(host: str, port: int, token: str, profile: str | None,
         message["lease_seconds"] = lease_seconds
     message = sign_message(message, token)
     payload = json.dumps(message, separators=(",", ":")).encode()
+    key = _cache_key(host, port, token)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
         sock.settimeout(timeout)
-        for _attempt in range(3):
-            sock.sendto(payload, (host, port))
+        cached = _cached_destination(key, time.monotonic())
+        if cached is not None:
+            result = _exchange(
+                sock, payload, (cached, port), token, request_id, "ack", 1
+            )
+            if result is not None:
+                ack, peer = result
+                _remember_destination(key, peer[0], time.monotonic())
+                return ack
+        result = _exchange(sock, payload, (host, port), token, request_id, "ack", 3)
+        if result is not None:
+            ack, peer = result
+            _remember_destination(key, peer[0], time.monotonic())
+            return ack
+
+        discover_id = uuid.uuid4().hex
+        discover = sign_message({
+            "protocol": PROTOCOL,
+            "kind": "discover",
+            "request_id": discover_id,
+        }, token)
+        discover_payload = json.dumps(discover, separators=(",", ":")).encode()
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        targets = (
+            tuple(discovery_addresses()) if discovery_addresses is not None
+            else local_broadcast_addresses()
+        )
+        for target in targets[:8]:
             try:
-                response, _peer = sock.recvfrom(MAX_PACKET_BYTES + 1)
-                ack = json.loads(response)
-                if (ack.get("protocol") == PROTOCOL and ack.get("kind") == "ack"
-                        and ack.get("request_id") == request_id and verify_message(ack, token)):
-                    return ack
-            except socket.timeout:
+                sock.sendto(discover_payload, (target, port))
+            except OSError:
                 continue
+        discovered = _receive_reply(sock, token, discover_id, "discover_ack")
+        if discovered is not None:
+            _discovery_ack, peer = discovered
+            _remember_destination(key, peer[0], time.monotonic())
+            result = _exchange(
+                sock, payload, (peer[0], port), token, request_id, "ack", 3
+            )
+            if result is not None:
+                ack, response_peer = result
+                _remember_destination(key, response_peer[0], time.monotonic())
+                return ack
     raise TimeoutError("UNO Q did not acknowledge the profile change")
 
 

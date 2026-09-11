@@ -227,6 +227,14 @@ Port, camera, and pairing-key replacement are under **Advanced connection settin
 fields. Controller Start/Stop and shutdown are on **Dashboard**; Setup keeps
 the read-only tracking and output status indicators.
 
+Use your console's `.local` name when possible. If that name stops resolving—or
+if DHCP changes a saved numeric address—VirtualGlove can look for the already
+paired console on the same local network. Only the secure greeting is broadcast;
+hand movements and button states are not. The console must prove that it has the
+existing pairing key before delivery resumes. Networks that isolate devices,
+separate them into VLANs, or block local broadcasts still require a working name,
+a current address, or a router DHCP reservation.
+
 Connection saves restart tracking. The separate **Save attract mode** action
 changes only the idle matrix display. Hand setup, players, and backups are in
 **Glove Academy**. Existing private settings and calibration remain preserved
@@ -464,6 +472,38 @@ worker and RetroPie launch hook.
 Vision and the dashboard keep running while output is unarmed or waiting for a game,
 so setup never generates surprise game inputs.
 **Shutdown** is different: it halts Linux on the Controller. The tested board automatically restarts; remaining halted is not guaranteed.
+
+## Fresh hardware acceptance test
+
+Use this checklist for a new Controller and a newly imaged RetroPie. It deliberately
+starts without relying on settings from the development machines.
+
+1. Install the same release on both devices. The Controller camera may be absent
+   during installation; connect it afterward if needed.
+2. Run each installer's final checks. Confirm the Controller website opens and
+   RetroPie's receiver timer and game-profile hook are installed.
+3. Pair once from Setup. Confirm **Saved console**, **Console service**, and
+   **Authenticated response**, then download the privacy-safe system report.
+4. Create or rename Player 1, center the hand, set movement reach if desired, and
+   complete a few Academy lessons. Restart the Controller and confirm those choices
+   remain while controller output stays safely gated.
+5. Launch one registered FCEUmm game and Super Glove Ball with the native core.
+   Confirm Setup shows an active authenticated link; game play remains the final proof.
+6. Restart the RetroPie receiver while the devices remain paired. Confirm the input
+   link repairs without pairing again and stale input releases during the gap.
+7. Change one device's DHCP address, or temporarily make its saved name unavailable,
+   while both remain on the same ordinary LAN. Confirm signed discovery restores both
+   controller delivery and the registered-game profile without changing the saved name.
+8. Disconnect and reconnect the camera. Confirm the helper declares recovery only
+   after the worker receives a frame; USB enumeration alone is insufficient.
+9. Upgrade both devices with the same release again. Confirm the player, center,
+   reach, personalization, camera choices, Academy progress, pairing, and game registry
+   remain. Keep the printed installation backup until the next play session succeeds.
+
+Setup's **Download system report** contains versions, camera/runtime choices,
+controller/profile state, and connection-check results. It contains no video,
+pairing key, player calibration, ROM name, or network address, so it is the preferred
+starting attachment when asking for help.
 
 ## Optional latency diagnostics
 

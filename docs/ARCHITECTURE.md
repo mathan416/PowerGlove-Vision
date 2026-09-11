@@ -88,17 +88,61 @@ sockets. These functions are kept separate from camera inference.
    tracker validates finite, non-collapsed palm geometry and produces a
    `HandObservation` using the selected frame's capture timestamp. MediaPipe's
    score is labelled as handedness certainty rather than position confidence.
+
 3. The gesture engine compares that observation with the saved neutral calibration and effective thresholds. Directions are relative to the calibrated palm; apparent hand-size change supplies forward/backward movement.
+
 4. Shared activation/release states and held menu poses feed the selected profile's mapping. The result is a `ControllerState`, including buttons, D-pad, axes, finger values, events, sequence, and tracking/calibration metadata.
+
 5. The worker sends the state only if controller delivery is armed, a live
    registered-game lease or intentional manual Dashboard context exists, and neither
    practice nor tuning is active.
+
 6. The sender establishes a receiver-issued challenge, then sends bounded HMAC-SHA256 controller datagrams over UDP 55355. Packets contain session and sequence identifiers, never the shared token.
+
 7. The receiver checks the message HMAC, live challenge, peer, and increasing
    sequence. For Super Glove Ball it publishes native state before updating the
    unrelated virtual gamepad; other profiles preserve virtual-gamepad behavior.
    It creates the real virtual controller when the first accepted packet arrives.
+
 8. Linux `uinput` exposes the virtual gamepad to RetroArch, which applies its configured input mapping before the game consumes it.
+
+One-second maintenance challenges provide receiver liveness. After three seconds
+without an authenticated reply—or immediately when the saved hostname has no
+usable address—the sender broadcasts only a signed hello to fresh physical-link
+broadcast addresses supplied by the host sampler. A valid challenge identifies
+the paired receiver's current IP; controller state remains unicast and
+newest-sample-only.
+
+### Connection cadence, safety, and load
+
+The recurring network work is intentionally split between the time-critical
+controller path and slower recovery or status paths. None of the background
+checks waits inside MediaPipe inference. An established sender publishes the
+newest controller state before it performs handshake maintenance.
+
+| Activity | Normal cadence | Failure or recovery boundary | Gameplay effect and representative load |
+| --- | --- | --- | --- |
+| Controller state, Controller to RetroPie UDP 55355 | Every fresh inference result, normally 15-30 Hz | RetroPie neutralizes gamepad and native state after 250 ms without a valid packet | Time-critical path. A representative signed state is about 610 bytes, or about 18 KiB/s at 30 Hz. The timeout adds no normal-play delay. |
+| Signed controller handshake, UDP 55355 | Every 250 ms until challenged; every 1 second after establishment | Three seconds without an authenticated reply starts paired-console discovery; discovery repeats every 2 seconds until a valid challenge arrives | Runs after the current state when established. A representative signed hello is about 212 bytes; no controller state is broadcast or replayed. |
+| Registered-game profile renewal, RetroPie to Controller UDP 55356 | Every 2 seconds while RetroArch and the session marker remain active | Each renewal carries a 6-second lease. A request may try up to three 0.4-second acknowledgement waits, outside game launch. If the saved destination fails, a signed discovery request finds and briefly caches the paired Controller's current address. | Keeps the correct ROM/core mapping active and lets the Controller recover after a restart or DHCP change. A representative renewal is about 365 bytes every 2 seconds. |
+| Setup console check, Controller to RetroPie TCP 55358 | Visible Setup polls every 5 seconds; the Controller starts at most one real probe every 10 seconds | A result becomes stale after 30 seconds; destination or key changes invalidate it immediately | Status only. It does not confirm that an emulator consumed input and does not run in the inference path. |
+| Physical-link sampler, Controller host | Every 5 seconds | Its small record expires after 15 seconds | Supplies Wi-Fi/Ethernet status and safe directed-broadcast addresses. It does not scan networks, send controller data, or affect inference. |
+
+These defaults make normal traffic small: controller states account for almost
+all of it, at roughly 18 KiB/s at 30 Hz, while handshake and profile maintenance
+add well under 1 KiB/s in steady play. A state packet is never held for a
+heartbeat. The 250 ms receiver timeout is a stale-input safety limit, the
+one-second handshake is receiver-restart detection, and the two-second profile
+renewal is game-context ownership; they solve different problems and should not
+be added together as movement latency.
+
+With an unchanged address, a restarted receiver normally re-establishes its
+challenge on the next one-second maintenance exchange. With a DHCP address
+change or failed `.local` resolution, authenticated discovery begins after about
+three seconds; a lost discovery exchange can add the two-second retry interval.
+The next registered-game renewal can restore game context within two seconds,
+followed by the existing one-second initialization guard. These are recovery
+windows after a failure, not steady-state input delay.
 
 Native Super Glove Ball performs MediaPipe landmark recognition synchronously.
 The Dashboard retains the normal hand skeleton and landmark annotation. Each
@@ -387,6 +431,15 @@ the bytes to the worker; the worker authenticates them and treats repeated renew
 as lease refreshes rather than profile transitions. The acknowledgement travels back
 through the relay. The relay has no shared token and cannot declare a profile applied.
 
+If RetroPie's saved Controller address is stale or cannot be resolved, the profile
+sender broadcasts a signed, ROM-free discovery request to the physical IPv4 LANs.
+The Controller returns a signed, request-matched discovery acknowledgement. RetroPie
+then sends the actual profile renewal by unicast and caches that authenticated address
+for 30 seconds. The cache is bounded and process-local; it neither changes
+`launcher.json` nor replaces pairing. A wrong key, malformed reply, or unrelated
+Controller cannot claim the session. This is the reverse-direction counterpart to
+the Controller's authenticated discovery of RetroPie on UDP 55355.
+
 The first live renewal changes profile once and starts a one-second initialization
 guard. A VirtualGlove Controller application restart can therefore rediscover an already-running
 registered game from the next renewal without exposing the runcommand menu to hand
@@ -510,6 +563,13 @@ A successful UDP send means the local networking call succeeded. It does not
 prove the receiver applied a state or the game accepted it. Diagnose in stages:
 hand detected, measured values, recognized/held action, delivery gate, sender
 error, receiver/gamepad state, then emulator/game mapping.
+
+Setup reports the configured console name separately from the active authenticated
+input address. Its downloadable version-1 `virtualglove-system-report` is deliberately
+allowlisted rather than a dump of internal state. It includes software/firmware
+identity, camera reader and rate, controller/profile state, and connection-check
+results. It excludes frames, pairing keys, player/calibration data, ROM names, and
+network addresses.
 
 ## Build and deployment
 

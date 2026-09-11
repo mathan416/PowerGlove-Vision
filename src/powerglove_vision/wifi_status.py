@@ -6,10 +6,12 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Read fresh physical-link broadcasts for authenticated console discovery.
 #   2026-09-06 - Reject stale, missing, and malformed host connectivity telemetry.
 
 """A missing sampler is unknown, not evidence that Wi-Fi is disconnected."""
 import json
+import ipaddress
 import math
 import time
 from pathlib import Path
@@ -22,7 +24,7 @@ def _read_status(path, field):
     try:
         with path.open() as stream:
             value = json.loads(stream.read(1025))
-        if not isinstance(value,dict) or value.get('version') != 1:
+        if not isinstance(value,dict) or value.get('version') not in (1,2):
             return 'unavailable'
         stamp = value.get('observed_at')
         if type(stamp) not in (int,float) or not math.isfinite(stamp) or not 0 <= time.time()-stamp <= 15:
@@ -44,3 +46,32 @@ def read_wifi_status(path=STATUS_PATH):
 def read_network_status(path=STATUS_PATH):
     """Read aggregate physical Wi-Fi/Ethernet health; stale data is unknown."""
     return _read_status(path, 'networking')
+
+
+def read_discovery_addresses(path=STATUS_PATH):
+    """Return fresh, bounded host-LAN broadcasts for paired-console discovery."""
+    try:
+        with path.open() as stream:
+            value = json.loads(stream.read(2049))
+        if not isinstance(value, dict) or value.get('version') != 2:
+            return ()
+        stamp = value.get('observed_at')
+        if (type(stamp) not in (int, float) or not math.isfinite(stamp)
+                or not 0 <= time.time() - stamp <= 15):
+            return ()
+        broadcasts = value.get('broadcasts')
+        if not isinstance(broadcasts, list) or len(broadcasts) > 8:
+            return ()
+        result = []
+        for raw in broadcasts:
+            if not isinstance(raw, str):
+                return ()
+            address = ipaddress.IPv4Address(raw)
+            if address.is_loopback or address.is_link_local or address.is_multicast or address.is_unspecified:
+                return ()
+            text = str(address)
+            if text not in result:
+                result.append(text)
+        return tuple(result[:4])
+    except (OSError, ValueError, TypeError, RecursionError):
+        return ()

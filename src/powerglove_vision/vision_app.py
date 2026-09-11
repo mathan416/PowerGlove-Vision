@@ -1445,6 +1445,7 @@ def main() -> int:
             status["emulator"] = current_emulator
             status["input_mode"] = _input_mode(current_profile, current_emulator)
             status["receiver_available"] = receiver_available
+            status["receiver_active_address"] = getattr(sender, "active_address", None)
             status["receiver_error"] = (
                 "Practice mode; controller transmission is paused"
                 if practice_mode

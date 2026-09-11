@@ -84,6 +84,7 @@ async def main():
                 return await r.fulfill(json=state)
             if path=='/api/attract':config['matrix_attract']=r.request.post_data_json['mode'];return await r.fulfill(json=config)
             if path=='/api/connection-status':return await r.fulfill(json=dict(app=True,console_configured=True,console_service=True,console_authenticated=True,networking='connected',checked_seconds_ago=1))
+            if path=='/api/support-report':return await r.fulfill(json=dict(format='virtualglove-system-report',version=1,privacy=dict(contains_frames=False,contains_pairing_key=False)))
             if path=='/status':return await r.fulfill(json=worker_status)
             if path=='/stream':return await r.fulfill(body="<svg xmlns='http://www.w3.org/2000/svg' width='640' height='480'/>",content_type='image/svg+xml')
             if path=='/api/games':return await r.fulfill(json={'document':'{"games": {}}','revision':'test','profiles':['off'],'has_backup':False})
@@ -163,6 +164,12 @@ async def main():
         await expect(page.locator('#connection-status-note')).to_contain_text('Console checked 1 seconds ago')
         await expect(page.locator('#connection-status-note')).to_contain_text('do not confirm that a game received input')
         await expect(page.locator('#connection-status-note')).not_to_contain_text('Green:')
+        await expect(page.locator('#status-active-destination')).to_have_text('Not active')
+        async with page.expect_download() as report_download:
+            await page.locator('#support-report').click()
+        report=await report_download.value
+        assert re.match(r'virtualglove-system-report-\d{4}-\d{2}-\d{2}\.json',report.suggested_filename)
+        await expect(page.locator('#support-report-note')).to_contain_text('contains no video')
         await expect(page.locator('#status-tracking')).to_have_attribute('data-state','unknown')
         await expect(page.locator('#status-output')).to_have_attribute('data-state','unknown')
         worker_status.update(controller_enabled=True,controller_context_active=False,
@@ -171,11 +178,16 @@ async def main():
         await expect(page.locator('#status-output')).to_have_attribute('data-state','good')
         await expect(page.locator('#status-output strong')).to_have_text('Armed — waiting for game')
         worker_status.update(profile='super_glove_ball',vision_profile='super_glove_ball',
-                             controller_context_active=True)
+                             controller_context_active=True,receiver_active_address=None)
         await page.reload()
         await expect(page.locator('#status-output')).to_have_attribute('data-state','bad')
         await expect(page.locator('#status-output strong')).to_have_text('Receiver unavailable')
+        await expect(page.locator('#status-active-destination')).to_have_text('Searching for the paired console')
+        worker_status.update(receiver_available=True,receiver_active_address='10.0.2.44')
+        await page.reload()
+        await expect(page.locator('#status-active-destination')).to_have_text('Authenticated at 10.0.2.44')
         worker_status.update(controller_enabled=False,controller_context_active=False,
+                             receiver_available=False,receiver_active_address=None,
                              profile='off',vision_profile='off')
         await page.reload()
         await expect(page.locator('#connection-section')).to_be_visible()

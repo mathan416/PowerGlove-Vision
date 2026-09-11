@@ -103,6 +103,12 @@ When a submitted pairing attempt finishes, the matrix releases the approval PIN 
 Use the [pairing walkthrough](INSTALL_README.md#4-pair-the-devices); never paste
 pairing tokens, passwords, or live approval PINs into a public support report.
 
+If a saved DHCP address changes or `.local` is briefly unavailable, leave the
+pairing key in place. Both controller input and game-profile delivery can discover
+the paired peer on the same ordinary LAN and resume by authenticated unicast. Guest
+isolation, VLANs, or blocked local broadcasts can prevent discovery; enter a current
+address or repair local name resolution in that case rather than pairing repeatedly.
+
 ## Movement drifts or feels reversed
 
 Check the selected game profile and centre before changing sensitivity. Hold a
@@ -168,6 +174,10 @@ size and effective gesture sensitivity; version-2 backups are migrated on import
 See [backup locations and restore choices](CONFIGURATION_REFERENCE.md#where-player-settings-and-backup-files-live).
 
 ## What to include when asking for help
+
+Start with **Setup → Download system report**. It records the relevant versions,
+camera/runtime choices, active profile/input mode, and connection-check results but
+omits video, secrets, personal hand data, ROM names, and network addresses.
 
 Record the exact software commit and matrix firmware from the page footer,
 Controller board variant, camera/dock models, connection type, selected player

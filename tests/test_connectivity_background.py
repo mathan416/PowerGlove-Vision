@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Cover physical broadcasts and discovery during resolver failure.
 #   2026-09-06 - Cover slow DNS, newest-state sends, stale answers, and Wi-Fi independence.
 
 """Exercise connectivity behavior without depending on a physical wireless device."""
@@ -21,7 +22,9 @@ from powerglove_vision.resolver import BackgroundAddress
 from powerglove_vision.transport import UdpSender,decode_state
 from powerglove_vision.controller_protocol import decode_message
 from powerglove_vision.model import ControllerState
-from powerglove_vision.wifi_status import read_wifi_status, read_network_status
+from powerglove_vision.wifi_status import (
+    read_discovery_addresses, read_network_status, read_wifi_status,
+)
 from powerglove_vision.matrix import UnoQMatrix
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -35,12 +38,16 @@ class BackgroundTests(unittest.TestCase):
         with patch('powerglove_vision.transport.resolve_ipv4',side_effect=slow),patch('powerglove_vision.transport.socket.socket') as factory:
             sender=UdpSender('cabinet.local',55355,'test-token')
             try:
+                factory.return_value.recvfrom.side_effect = BlockingIOError
                 self.assertTrue(entered.wait(1))
                 started=time.monotonic()
                 for n in range(100):
                     self.assertFalse(sender.send(ControllerState.released(n,1,'off',True)))
                 self.assertLess(time.monotonic()-started,.1)
-                factory.return_value.sendto.assert_not_called()
+                self.assertEqual(factory.return_value.sendto.call_count, 1)
+                discovery = factory.return_value.sendto.call_args
+                self.assertEqual(discovery.args[1], ('255.255.255.255', 55355))
+                self.assertEqual(decode_message(discovery.args[0], 'test-token')['kind'], 'hello')
                 release.set()
                 deadline=time.monotonic()+1
                 while sender.address.current()[0] is None and time.monotonic()<deadline:time.sleep(.005)
@@ -52,7 +59,7 @@ class BackgroundTests(unittest.TestCase):
                 sent=factory.return_value.sendto.call_args[0]
                 self.assertEqual(decode_message(sent[0],'test-token')['state']['sequence'],100)
                 self.assertEqual(sent[1],('192.0.2.4',55355))
-                self.assertEqual(factory.return_value.sendto.call_count,1)
+                self.assertEqual(factory.return_value.sendto.call_count,2)
             finally:release.set();sender.close()
 
     def test_refresh_changes_address_and_stale_failure_expires(self):
@@ -121,6 +128,19 @@ class WifiTests(unittest.TestCase):
             (wifi/'carrier').unlink();(wifi/'operstate').write_text('down')
             self.assertEqual(read(root),'disconnected')
 
+    def test_host_reports_broadcasts_only_for_connected_physical_links(self):
+        broadcasts=runpy.run_path(str(ROOT/'uno-q/powerglove-wifi-status.py'))['broadcast_addresses']
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            wifi=root/'wlan0';wifi.mkdir();(wifi/'wireless').mkdir();(wifi/'carrier').write_text('1')
+            ethernet=root/'enx1';ethernet.mkdir();(ethernet/'device').mkdir();(ethernet/'type').write_text('1');(ethernet/'carrier').write_text('1')
+            bridge=root/'docker0';bridge.mkdir();(bridge/'carrier').write_text('1')
+            lookup=lambda name:{'wlan0':('10.0.2.96','255.255.255.0'),
+                                'enx1':('192.168.50.4','255.255.255.0')}[name]
+            self.assertEqual(broadcasts(root,lookup),['10.0.2.255','192.168.50.255'])
+            (ethernet/'carrier').write_text('0')
+            self.assertEqual(broadcasts(root,lookup),['10.0.2.255'])
+
     def test_app_rejects_stale_future_and_missing_telemetry(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'wifi.json'
@@ -129,6 +149,20 @@ class WifiTests(unittest.TestCase):
                 path.write_text(json.dumps({'version':1,'state':'connected','observed_at':100+delta}))
                 with patch('powerglove_vision.wifi_status.time.time',return_value=100):
                     self.assertEqual(read_wifi_status(path),expected)
+
+    def test_app_accepts_only_fresh_bounded_discovery_addresses(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'status.json'
+            with patch('powerglove_vision.wifi_status.time.time',return_value=100):
+                path.write_text(json.dumps({'version':2,'observed_at':100,
+                    'broadcasts':['10.0.2.255','192.168.50.255','10.0.2.255']}))
+                self.assertEqual(read_discovery_addresses(path),('10.0.2.255','192.168.50.255'))
+                path.write_text(json.dumps({'version':2,'observed_at':80,
+                    'broadcasts':['10.0.2.255']}))
+                self.assertEqual(read_discovery_addresses(path),())
+                path.write_text(json.dumps({'version':2,'observed_at':100,
+                    'broadcasts':['224.0.0.1']}))
+                self.assertEqual(read_discovery_addresses(path),())
 
     def test_network_pixel_does_not_depend_on_console(self):
         calls=[];matrix=UnoQMatrix(call=lambda *args:calls.append(args))

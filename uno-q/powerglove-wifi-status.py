@@ -7,13 +7,18 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Publish physical-link broadcasts for authenticated console discovery.
 #   2026-09-06 - Add an unprivileged, bounded host Wi-Fi status sampler.
 
 """Read Linux physical network carrier state; never configure a network interface."""
 import json
+import ipaddress
 import os
+import socket
+import struct
 import tempfile
 import time
+import fcntl
 from pathlib import Path
 
 OUTPUT = Path('/home/arduino/ArduinoApps/powerglove-vision/data/wifi-status.json')
@@ -52,11 +57,52 @@ def wifi_state(root=Path('/sys/class/net')):
     return link_state(root, wireless_only=True)
 
 
+def _interface_ipv4(name):
+    """Read one interface address and netmask without changing host networking."""
+    request = struct.pack('256s', name.encode('ascii')[:15])
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        address = socket.inet_ntoa(fcntl.ioctl(probe.fileno(), 0x8915, request)[20:24])
+        netmask = socket.inet_ntoa(fcntl.ioctl(probe.fileno(), 0x891b, request)[20:24])
+    return address, netmask
+
+
+def broadcast_addresses(root=Path('/sys/class/net'), lookup=_interface_ipv4):
+    """Return directed broadcasts for connected physical Wi-Fi/Ethernet links."""
+    addresses = set()
+    try:
+        interfaces = tuple(root.iterdir())
+    except OSError:
+        return []
+    for interface in interfaces:
+        wireless = (interface/'wireless').exists() or (interface/'phy80211').exists()
+        if not wireless:
+            if not (interface/'device').exists():
+                continue
+            try:
+                if (interface/'type').read_text().strip() != '1':
+                    continue
+            except OSError:
+                continue
+        try:
+            if (interface/'carrier').read_text().strip() != '1':
+                continue
+            address, netmask = lookup(interface.name)
+            network = ipaddress.IPv4Network((address, netmask), strict=False)
+            host = ipaddress.IPv4Address(address)
+            if (network.prefixlen <= 30 and not host.is_loopback
+                    and not host.is_link_local and not host.is_unspecified):
+                addresses.add(str(network.broadcast_address))
+        except (OSError, ValueError, UnicodeError):
+            continue
+    return sorted(addresses)
+
+
 def publish(path=OUTPUT):
     """Atomically replace a small public health record as the Arduino user."""
     if path.is_symlink():
         raise ValueError('Wi-Fi status path must not be a symlink')
-    payload = json.dumps({'version':1,'state':wifi_state(),'networking':link_state(),'observed_at':time.time()})+'\n'
+    payload = json.dumps({'version':2,'state':wifi_state(),'networking':link_state(),
+                          'broadcasts':broadcast_addresses(),'observed_at':time.time()})+'\n'
     fd, temporary = tempfile.mkstemp(prefix='.wifi-status-',dir=str(path.parent))
     try:
         with os.fdopen(fd,'w') as stream:

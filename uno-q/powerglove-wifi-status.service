@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Permit read-only IPv4 interface inspection for discovery metadata.
 #   2026-09-06 - Publish independent host Wi-Fi health for the idle matrix.
 [Unit]
 Description=VirtualGlove network link status
@@ -20,5 +21,5 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/home/arduino/ArduinoApps/powerglove-vision/data
-RestrictAddressFamilies=AF_UNIX
+RestrictAddressFamilies=AF_UNIX AF_INET
 TimeoutStartSec=5

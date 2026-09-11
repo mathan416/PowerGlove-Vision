@@ -246,9 +246,10 @@ required before release.
 
 ## Wi-Fi status sampler
 
-The Wi-Fi sampler runs as `arduino` and only reads host wireless carrier state.
-It publishes a small expiring record in `data/wifi-status.json`; it does not
-collect SSIDs, addresses, passwords, or scans, and cannot change network settings.
+The network sampler runs as `arduino` and reads physical-link carrier state plus
+the subnet broadcast address for each connected Wi-Fi/Ethernet interface. It
+publishes a small expiring record in `data/wifi-status.json`; it does not collect
+SSIDs, host unicast addresses, passwords, or scans, and cannot change network settings.
 The application retains no controller states while hostname resolution runs in
 the background. Controller version-2 messages use the signed sessions described below.
 
@@ -257,5 +258,34 @@ the background. Controller version-2 messages use the signed sessions described 
 Version-2 controller messages use HMAC-SHA256 with a controller-specific domain prefix, separate from profile and registry messages. The secret is never included in these datagrams. All message fields are authenticated; size limits and duplicate-key rejection bound parsing. A receiver-issued random challenge is required for input, is bound to the sender session and UDP peer, and is replaced on session activation or receiver restart. Strictly increasing sequences reject duplicates and reordering within the current session. Old handshakes cannot resurrect recorded state because a fresh challenge needs a fresh authenticated response. Pending challenges are bounded and expire; input states are never queued by the handshake.
 
 This protects message integrity and retired-session replay, not confidentiality or availability. A host holding the shared token can create valid input, and a network attacker can still drop traffic. Input fields remain readable on the LAN. The existing timeout neutralizes both gamepad and native state even under rejected traffic or repeated handshakes.
+
+Address recovery does not trust a hostname, DHCP lease, or responding IP as the
+console's identity. When directed delivery or name resolution stops producing
+authenticated maintenance replies, the Controller may send the signed `hello`
+message to the broadcast address of each connected physical LAN. It accepts a
+new address only from a correctly signed, request-matched challenge made with
+the existing pairing key. State messages are never broadcast. Discovery is
+limited to the local broadcast domain; routers, guest isolation, VLANs, and
+firewalls may prevent it, which is a safe availability failure rather than an
+authentication bypass. A copied pairing key can impersonate the console and
+must be rotated if exposed.
+
+The reverse profile path follows the same identity rule. When RetroPie cannot
+reach the configured Controller address, it broadcasts a signed discovery request
+that contains no ROM or requested profile. It accepts only a signed,
+request-matched acknowledgement, sends the profile command to that authenticated
+source by unicast, and retains the address only in a bounded 30-second process
+cache. Neither direction rewrites saved addresses automatically.
+
+The public system-report endpoint is field-allowlisted. It excludes network
+addresses as well as frames, secrets, ROM names, player identities, calibration,
+and gesture measurements; adding a new internal status field does not make that
+field appear in a report automatically.
+
+The [architecture timing table](ARCHITECTURE.md#connection-cadence-safety-and-load)
+distinguishes gameplay packets, liveness handshakes, profile leases, Setup
+health checks, and host-link sampling. In particular, handshake or rejected
+traffic cannot extend the receiver's 250-millisecond valid-state deadline, and
+background status checks do not run in the camera inference path.
 
 The receiver rejects version 1 by default. `--allow-legacy-controller` is an explicit temporary upgrade option with weaker protections: old packets contain the secret, and receiver restarts lose their legacy replay history. The option stops accepting legacy input once signed input arrives but reopens after a process restart; remove it after migration. Update both computers together and consider re-pairing if the previous token was exposed. The new sender never silently downgrades.

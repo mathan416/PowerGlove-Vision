@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Add paired-console liveness and authenticated LAN discovery.
 #   2026-09-09 - Prioritized state packets and bounded handshake maintenance work.
 #   2026-09-06 - Add opt-in correlated latency diagnostics without changing input formats.
 #   2026-09-06 - Implement signed controller sessions and separate maintained web modules.
@@ -27,9 +28,13 @@ import uuid
 from .diagnostic_trace import DiagnosticTrace, session_key
 from .model import ControllerState
 from .controller_protocol import encode_message, decode_message
+from .wifi_status import read_discovery_addresses
 
 
 MAX_PACKET_BYTES = 4096
+DISCOVERY_ADDRESS = "255.255.255.255"
+DISCOVERY_AFTER_SECONDS = 3.0
+DISCOVERY_INTERVAL_SECONDS = 2.0
 
 
 def encode_state(
@@ -103,11 +108,16 @@ class UdpSender:
         self.session = uuid.uuid4().hex
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setblocking(False)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.address = BackgroundAddress(host, resolve=resolve_ipv4)
         self.challenge = None
         self.request = None
         self._hello_at = 0.0
         self._peer = None
+        self._last_reply_at = 0.0
+        self._discovery_at = 0.0
+        self._started_at = time.monotonic()
+        self.discovery_addresses = read_discovery_addresses
         self.last_error: str | None = None
         self._retry_at = 0.0
 
@@ -124,17 +134,9 @@ class UdpSender:
         now = time.monotonic()
         if now < self._retry_at:
             return False
-        address, error = self.address.current()
-        if address is None:
-            self.last_error = error
-            return False
         if not self.token:
             self.last_error = "Pair with RetroPie before starting controls."
             return False
-        peer = (address, self.destination[1])
-        if peer != self._peer:
-            self._peer = peer
-            self.challenge, self.request, self._hello_at = None, None, 0.0
         try:
             # Drain only a bounded number of small handshake replies; input itself
             # is never queued. Accept replies only for our newest hello request.
@@ -145,7 +147,7 @@ class UdpSender:
                     break
                 # A multi-homed receiver may reply from its preferred interface.
                 # Its identity is the HMAC plus our fresh request/session, not IP.
-                if source[1] != peer[1]:
+                if source[1] != self.destination[1]:
                     continue
                 try:
                     reply = decode_message(payload, self.token)
@@ -154,25 +156,53 @@ class UdpSender:
                 if (reply["kind"] == "challenge" and reply["session"] == self.session
                         and reply["request"] == self.request):
                     self.challenge = reply["challenge"]
-            if self.challenge is None and now >= self._hello_at:
+                    self._peer = (source[0], self.destination[1])
+                    self._last_reply_at = now
+
+            address, error = self.address.current()
+            configured_peer = (address, self.destination[1]) if address is not None else None
+            if self._peer is None and configured_peer is not None:
+                self._peer = configured_peer
+
+            # A UDP send can succeed even when a saved literal address is stale.
+            # Maintenance challenges therefore act as the receiver liveness signal.
+            # If they stop, discard the unusable session and look for the holder of
+            # the same pairing key on the local broadcast domain.
+            reply_age = now - (self._last_reply_at or self._started_at)
+            discovery_due = address is None or reply_age >= DISCOVERY_AFTER_SECONDS
+            if self.challenge is not None and reply_age >= DISCOVERY_AFTER_SECONDS:
+                self.challenge = None
+
+            hello_due = now >= self._hello_at
+            broadcast_due = discovery_due and now >= self._discovery_at
+            if self.challenge is None and ((hello_due and self._peer is not None) or broadcast_due):
                 self.request = uuid.uuid4().hex
-                self.socket.sendto(encode_message("hello", self.token,
-                    session=self.session, request=self.request), peer)
-                self._hello_at = now + 0.25
+                hello = encode_message("hello", self.token,
+                    session=self.session, request=self.request)
+                if hello_due and self._peer is not None:
+                    self.socket.sendto(hello, self._peer)
+                    self._hello_at = now + (0.25 if self.challenge is None else 1.0)
+                if broadcast_due:
+                    targets = self.discovery_addresses() or (DISCOVERY_ADDRESS,)
+                    for target in targets:
+                        self.socket.sendto(hello, (target, self.destination[1]))
+                    self._discovery_at = now + DISCOVERY_INTERVAL_SECONDS
             if self.challenge is None:
-                self.last_error = "Waiting for the RetroPie controller handshake; update both computers if this persists."
+                self.last_error = ("Looking for the paired RetroPie console on this network…"
+                    if discovery_due else
+                    "Waiting for the RetroPie controller handshake; update both computers if this persists.")
                 return False
             send_started_ns = time.monotonic_ns() if self.trace and self.trace.enabled else 0
             data = state.to_transport_dict()
             self.socket.sendto(encode_message("state", self.token, session=self.session,
-                challenge=self.challenge, state=data), peer)
+                challenge=self.challenge, state=data), self._peer)
             # Renew an established handshake after publishing the time-critical
             # gameplay sample. The receiver can reject the old challenge after
             # a restart, while this maintenance hello obtains its replacement.
             if now >= self._hello_at:
                 self.request = uuid.uuid4().hex
                 self.socket.sendto(encode_message("hello", self.token,
-                    session=self.session, request=self.request), peer)
+                    session=self.session, request=self.request), self._peer)
                 self._hello_at = now + 1.0
             send_finished_ns = time.monotonic_ns() if send_started_ns else 0
             if send_started_ns:
@@ -190,6 +220,13 @@ class UdpSender:
         """Allow sequence numbers to restart after an atomic profile change."""
         self.session = uuid.uuid4().hex
         self.challenge, self.request, self._hello_at = None, None, 0.0
+        self._peer, self._last_reply_at, self._discovery_at = None, 0.0, 0.0
+        self._started_at = time.monotonic()
+
+    @property
+    def active_address(self) -> str | None:
+        """Return the current authenticated receiver address, never the pairing key."""
+        return self._peer[0] if self.challenge is not None and self._peer is not None else None
 
     def close(self) -> None:
         """Close the sender socket."""
