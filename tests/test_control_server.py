@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Require a transparent Controller-web logo.
 #   2026-09-11 - Covered the HTTPS-only public Controller-authority download.
 #   2026-09-11 - Verify privacy-safe system reports omit secrets and personal data.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
@@ -502,6 +503,9 @@ class ControlStateTests(unittest.TestCase):
 
     def test_logo_is_available_to_both_web_pages(self):
         self.assertTrue(LOGO_PATH.is_file())
+        logo = LOGO_PATH.read_bytes()
+        self.assertEqual(logo[:8], b"\x89PNG\r\n\x1a\n")
+        self.assertIn(logo[25], (4, 6), "Controller logo must carry an alpha channel")
         logo_url = b"/assets/virtualglove-logo.png"
         self.assertIn(logo_url, DASHBOARD)
         self.assertIn(logo_url, LEARN)

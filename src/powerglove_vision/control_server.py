@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Serve a transparent logo tailored to the dark Controller pages.
 #   2026-09-11 - Use the installer-recorded host identity for the HTTPS certificate.
 #   2026-09-11 - Served the public Controller trust certificate only over HTTPS.
 #   2026-09-11 - Kept camera-profile marker cleanup compatible with Python 3.7.
@@ -110,7 +111,7 @@ CAMERA_PROFILE_STAGES = (
     ("edge", 6.0, "Touch an edge, then return to the centre."),
 )
 CAMERA_PROFILE_MEASURE_SECONDS = sum(stage[1] for stage in CAMERA_PROFILE_STAGES)
-LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "virtualglove-logo.png"
+LOGO_PATH = Path(__file__).resolve().parents[2] / "assets" / "virtualglove-logo-web.png"
 PROFILES = {
     "bad_street_brawler", "super_glove_ball", "off",
     *(f"program_{letter}" for letter in "abcdefghi"),

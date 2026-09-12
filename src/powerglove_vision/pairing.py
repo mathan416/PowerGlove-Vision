@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Extended the single-use RetroPie pairing window to five minutes.
 #   2026-09-11 - Made certificate-name validation independent of OpenSSL exit-code differences.
 #   2026-09-11 - Added a persistent per-Controller authority for trusted local HTTPS.
 #   2026-09-02 - Added to VirtualGlove.
@@ -490,7 +491,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--listen", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=PAIRING_PORT)
     parser.add_argument("--token-file", type=Path, default=Path("/etc/powerglove/token"))
-    parser.add_argument("--timeout", type=int, default=120)
+    parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--receiver-service", default="powerglove-receiver.service")
     return parser
 

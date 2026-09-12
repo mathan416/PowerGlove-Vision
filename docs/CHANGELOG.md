@@ -7,7 +7,16 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
-No changes are pending after the refreshed release candidate.
+### Changed
+
+- Extended RetroPie's single-use pairing-code window from two minutes to five
+  minutes and clarified that the command must run on the exact console selected
+  in Setup when multiple RetroPie systems are online.
+
+### Fixed
+
+- Added a transparent web-specific VirtualGlove logo so the Controller header
+  blends with its page background while PDF covers retain the original artwork.
 
 ## [0.4.0-rc.7] - 2026-09-11
 
