@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Migrated App Lab containers to the virtualglove Compose project.
 #   2026-09-11 - Exposed the stable host name to the containerized HTTPS server.
 #   2026-09-11 - Verify the persistent local HTTPS authority and protected keys.
 #   2026-09-11 - Stop safely with repair guidance for retired Raspbian Buster repositories.
@@ -257,6 +258,11 @@ def install_unoq(peer):
     backup = BACKUPS / "uno-q-app-compose.yaml"
     backup.parent.mkdir(parents=True, exist_ok=True)
     backup.write_bytes(original)
+    # Older releases used App Lab's directory-derived powerglove-vision project.
+    # Stop it before changing the project name so an upgrade cannot leave a
+    # duplicate set of containers and port bindings behind.
+    run("env", "APP_HOME=" + str(app), "docker", "compose", "-p",
+        "powerglove-vision", "-f", compose, "down", "--remove-orphans")
     configure(compose)
     text = compose.read_text()
     if "- 8443:8443" not in text:
@@ -592,11 +598,11 @@ def check_unoq(report):
     except (OSError, ValueError):
         report.check("Application HTTP status", False)
     report.check("App-owned Avahi resolver configured", "local:avahi_resolver" in (SOURCE / "app.yaml").read_text() and (SOURCE / "bricks/local/avahi_resolver/brick_compose.yaml").is_file())
-    report.command("Profile UDP ingress published", ["docker", "port", "powerglove-vision-profile-relay-1", "55356/udp"])
+    report.command("Profile UDP ingress published", ["docker", "port", "virtualglove-profile-relay-1", "55356/udp"])
     code = ("import json; from pathlib import Path; from powerglove_vision.resolver import resolve_ipv4; "
             "d=json.loads(Path('/app/data/device.json').read_text()); resolve_ipv4(d['receiver'])")
     if status.get("connection_configured"):
-        report.command("Configured receiver resolves inside app", ["docker", "exec", "-e", "PYTHONPATH=/app/src", "powerglove-vision-main-1", "python3", "-c", code])
+        report.command("Configured receiver resolves inside app", ["docker", "exec", "-e", "PYTHONPATH=/app/src", "virtualglove-main-1", "python3", "-c", code])
     else:
         report.check("Configure your RetroPie destination in Connection", False, pending=True)
     for route in ("help", "help/installation", "help-pdf/installation.pdf"):

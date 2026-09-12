@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Verified the five-minute default one-time pairing window.
 #   2026-09-11 - Verified persistent Controller-authority issuance and renewal.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -23,6 +24,7 @@ from pathlib import Path
 from unittest import mock
 
 from powerglove_vision.pairing import (
+    build_parser,
     certificate_code,
     certificate_fingerprint,
     certificate_identity,
@@ -38,6 +40,9 @@ from powerglove_vision.pairing import (
 
 
 class PairingTests(unittest.TestCase):
+    def test_default_one_time_pairing_window_is_five_minutes(self):
+        self.assertEqual(build_parser().parse_args([]).timeout, 300)
+
     def test_code_round_trip(self):
         displayed = display_pairing_code("ABCDEFGHIJ", "234567ABCD")
         self.assertEqual(displayed, "ABCDE-FGHIJ-23456-7ABCD")

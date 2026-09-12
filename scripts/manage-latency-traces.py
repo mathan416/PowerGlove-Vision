@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Addressed the renamed virtualglove App Lab container.
 #   2026-09-08 - Added reversible two-device trace session management.
 #   2026-09-08 - Require an emulator-free start and flush receiver traces gracefully.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -51,7 +52,7 @@ command = ['docker','compose','--project-directory',str(base/'.cache'),
 compose_environment = dict(os.environ, APP_HOME=str(base))
 subprocess.run(command, check=True, stdout=subprocess.DEVNULL,
                env=compose_environment)
-inspect = subprocess.check_output(['docker','inspect','powerglove-vision-main-1',
+inspect = subprocess.check_output(['docker','inspect','virtualglove-main-1',
     '--format','{{json .Config.Env}}'], text=True)
 env = json.loads(inspect)
 expected = 'POWERGLOVE_DIAGNOSTIC_TRACE=/app/data/latency-traces/%s/controller' % session
@@ -133,7 +134,7 @@ subprocess.run(['docker','compose','--project-directory',str(base/'.cache'),
     '-f',str(base/'.cache/app-compose.yaml'),'-f',str(base/'.cache/app-compose-overrides.yaml'),
     'up','-d','--force-recreate','main'],check=True,stdout=subprocess.DEVNULL,
     env=dict(os.environ, APP_HOME=str(base)))
-inspect = subprocess.check_output(['docker','inspect','powerglove-vision-main-1',
+inspect = subprocess.check_output(['docker','inspect','virtualglove-main-1',
     '--format','{{json .Config.Env}}'],text=True)
 env = json.loads(inspect)
 expected = 'POWERGLOVE_DIAGNOSTIC_TRACE=/app/data/latency-traces/%s/controller' % session

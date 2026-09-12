@@ -148,6 +148,9 @@ If confirmation expires, select **Start a new confirmation**. The saved console
 and method stay fixed during the two-minute window; change them after it ends.
 A failed submitted request also requires fresh confirmation. Save console edits
 with **Save settings** before pairing.
+The separate RetroPie one-time code remains valid for five minutes. If more than
+one RetroPie is online, run `powerglove-pair` on the exact console named in Setup;
+a code displayed by a different console cannot open the intended listener.
 When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority. A completed attempt should not leave the old PIN scrolling for the rest of its two-minute window.
 
 Use the [pairing walkthrough](INSTALL_README.md#4-pair-the-devices); never paste

@@ -395,7 +395,7 @@ An earlier reported 13-14 second delay was not reproduced in the instrumented te
 To inspect startup stages on the VirtualGlove Controller:
 
 ```sh
-docker logs --since 10m powerglove-vision-main-1 2>&1 | grep 'Vision startup:'
+docker logs --since 10m virtualglove-main-1 2>&1 | grep 'Vision startup:'
 ```
 
 The default installation uses this container name; use `docker ps` to find it
@@ -834,7 +834,7 @@ The setup and Wi-Fi update helpers also add their includes to existing Compose
 configuration. On the VirtualGlove Controller, check the published port with:
 
 ```sh
-docker port powerglove-vision-profile-relay-1 55356/udp
+docker port virtualglove-profile-relay-1 55356/udp
 ```
 
 Expect a host binding for port `55356`. If it is missing, update the application
@@ -1644,7 +1644,7 @@ the receiver. Complete the browser steps while it is running.
 | `--listen ADDRESS` | `0.0.0.0` | Local IPv4 address for the temporary server. |
 | `--port NUMBER` | `55357` | Pairing server TCP port. The browser pairing client uses the standard port; keep the default for that workflow. |
 | `--token-file PATH` | `/etc/powerglove/token` | Destination for the paired token; keep it aligned with the receiver's token file. |
-| `--timeout SECONDS` | `120` | Lifetime of the pairing server. Use a positive value; the code is single use and attempts are limited. |
+| `--timeout SECONDS` | `300` | Lifetime of the pairing server. The five-minute default gives time to confirm the correct console; the code remains single use and attempts are limited. Use a positive value. |
 | `--receiver-service NAME` | `powerglove-receiver.service` | systemd service to restart after pairing succeeds. |
 | `-h`, `--help` | — | Prints usage and exits. |
 

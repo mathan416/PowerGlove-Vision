@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Included the transparent Controller-web logo.
 #   2026-09-11 - Added release staging for precompiled Matrix firmware.
 #   2026-09-09 - Excluded research tools from ordinary packages while retaining a development overlay.
 #   2026-09-06 - Reject stale generated matrix firmware identity before staging.
@@ -21,7 +22,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_ROOTS = {"src", "python", "scripts", "sketch", "config", "docs", "models", "licenses", "retropie", "native", "uno-q", "bricks"}
-PUBLIC_FILES = {"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "app.yaml", "assets/virtualglove-logo.png", "assets/virtualglove-icon.png", "assets/favicon-32.png",
+PUBLIC_FILES = {"README.md", "LICENSE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "app.yaml", "assets/virtualglove-logo.png", "assets/virtualglove-logo-web.png", "assets/virtualglove-icon.png", "assets/favicon-32.png",
     "assets/favicon.ico", "assets/apple-touch-icon.png"}
 
 

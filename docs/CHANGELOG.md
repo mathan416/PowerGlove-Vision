@@ -7,8 +7,6 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
-No changes are pending after the refreshed release candidate.
-
 ## [0.4.0-rc.7] - 2026-09-11
 
 ### Added
@@ -30,6 +28,13 @@ No changes are pending after the refreshed release candidate.
 
 ### Changed
 
+- Renamed the Controller's App Lab Compose project and running containers from
+  `powerglove-vision-*` to `virtualglove-*`. Upgrades stop and remove the legacy
+  project before starting the renamed containers, while established application
+  paths and protocol identifiers remain compatible.
+- Extended RetroPie's single-use pairing-code window from two minutes to five
+  minutes and clarified that the command must run on the exact console selected
+  in Setup when multiple RetroPie systems are online.
 - UNO Q release packages now carry checksum-described, precompiled Matrix
   firmware. Ordinary installations use the board's factory OpenOCD support and
   no longer download the Zephyr compiler toolchain. Source builds remain
@@ -49,6 +54,8 @@ No changes are pending after the refreshed release candidate.
 
 ### Fixed
 
+- Added a transparent web-specific VirtualGlove logo so the Controller header
+  blends with its page background while PDF covers retain the original artwork.
 - Fixed clean UNO Q release installation after App Lab startup by explicitly
   preserving the application root while recreating generated Compose services;
   brick mounts can no longer collapse to invalid root-level `/scripts` paths.
