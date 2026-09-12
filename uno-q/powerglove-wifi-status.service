@@ -10,7 +10,7 @@
 #   2026-09-06 - Publish independent host Wi-Fi health for the idle matrix.
 [Unit]
 Description=VirtualGlove network link status
-ConditionPathIsDirectory=/home/arduino/ArduinoApps/powerglove-vision/data
+ConditionPathIsDirectory=/home/arduino/ArduinoApps/virtualglove/data
 
 [Service]
 Type=oneshot
@@ -20,6 +20,6 @@ ExecStart=/usr/bin/python3 /usr/local/libexec/powerglove-wifi-status
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/arduino/ArduinoApps/powerglove-vision/data
+ReadWritePaths=/home/arduino/ArduinoApps/virtualglove/data
 RestrictAddressFamilies=AF_UNIX AF_INET
 TimeoutStartSec=5

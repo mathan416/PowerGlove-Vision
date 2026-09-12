@@ -94,7 +94,7 @@ result = {
 }
 
 if role == "controller":
-    base = Path("/home/arduino/ArduinoApps/powerglove-vision")
+    base = Path("/home/arduino/ArduinoApps/virtualglove")
     build = text(base / "src/powerglove_vision/_build_info.json")
     try:
         result["build"] = json.loads(build) if build else None

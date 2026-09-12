@@ -37,7 +37,7 @@ In commands and examples, replace these placeholders:
 | --- | --- |
 | `UNO-Q-NAME.local` | Your VirtualGlove Controller hostname or reserved IP address |
 | `RETROPIE-NAME.local` | Your RetroPie hostname or reserved IP address |
-| `/home/arduino/ArduinoApps/powerglove-vision` | Required directory for the supported VirtualGlove Controller installer and shutdown helper; do not substitute a different path |
+| `/home/arduino/ArduinoApps/virtualglove` | Required directory for the supported VirtualGlove Controller installer and host helpers; do not substitute a different path |
 
 ## Find the setting or command you need
 
@@ -523,7 +523,7 @@ profile” identifies an intentional Dashboard testing context.
 The Setup page maintains this private file inside the application:
 
 ```text
-/home/arduino/ArduinoApps/powerglove-vision/data/device.json
+/home/arduino/ArduinoApps/virtualglove/data/device.json
 ```
 
 A typical device configuration file contains the following fields:
@@ -867,7 +867,7 @@ output stays paused until you explicitly start it. Finish tuning and turn
 ### Where player settings and backup files live
 
 All players are saved automatically on the VirtualGlove Controller in
-`/home/arduino/ArduinoApps/powerglove-vision/data/gesture-tuning.json`. This single
+`/home/arduino/ArduinoApps/virtualglove/data/gesture-tuning.json`. This single
 store holds each player's sensitivity, calibration, and Academy progress; there
 is no separate automatic file for each player. The active working calibration
 is also mirrored in `data/calibration.json` in the same application directory.
@@ -1818,7 +1818,7 @@ maintainer's board and is not appropriate for other installations.
 | --- | --- | --- |
 | `scripts/deploy-uno-q-wifi.sh` | Optional positional `USER@HOST`; `-h` or `--help`; optional `UNO_Q_SSH_IDENTITY` private-key path | Transfers the Linux application, preserves `data/`, restarts the container, and checks web routes. Does not update RetroPie or flash the matrix sketch. |
 | `UNO_Q_SSH_TARGET` | Environment variable; overridden by a positional destination | Sets the SSH destination. Without either setting, deployment falls back to the maintainer's board. |
-| `UNO_Q_APP_DIR` | Environment variable; default `/home/arduino/ArduinoApps/powerglove-vision` | Remote deployment directory. Changing it does not change the shutdown helper's fixed path or the machine installer's path requirement. |
+| `UNO_Q_APP_DIR` | Environment variable; default `/home/arduino/ArduinoApps/virtualglove` | Remote deployment directory. Changing it does not change the host helpers' fixed path or the machine installer's path requirement. |
 | `scripts/install-uno-q-shutdown-helper.sh` | Optional positional `USER@HOST`; `-h` or `--help` | Installs the fixed shutdown watcher, service, and readiness rule. Uses the positional destination, then `UNO_Q_SSH_TARGET`, then the maintainer's fallback. The application directory is fixed. |
 
 Both scripts accept at most one destination. Deployment needs existing SSH
@@ -2244,7 +2244,7 @@ sudo python3 scripts/setup-machine.py retropie --peer UNO-Q-NAME.local
 ### Duplicate App Lab entries
 
 Importing a newer ZIP may create a timestamped copy. The supported host installer
-and shutdown helper require `/home/arduino/ArduinoApps/powerglove-vision`.
+and shutdown helper require `/home/arduino/ArduinoApps/virtualglove`.
 Keep the working application at that path; do not run host setup from a duplicate.
 Use the Wi-Fi update procedure for routine Linux application changes. Before
 removing any duplicate in App Lab, confirm which copy has your private settings
@@ -2399,7 +2399,7 @@ sudo systemctl disable --now powerglove-system-shutdown.path
 sudo rm /etc/systemd/system/powerglove-system-shutdown.path \
   /etc/systemd/system/powerglove-system-shutdown.service \
   /etc/tmpfiles.d/powerglove-system-shutdown.conf
-rm -f /home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled
+rm -f /home/arduino/ArduinoApps/virtualglove/data/.shutdown-enabled
 sudo systemctl daemon-reload
 ```
 
@@ -2440,7 +2440,7 @@ After a successful compile, use **Run** in App Lab to build and upload the sketc
 or restart the app through App Lab's command-line tool:
 
 ```sh
-arduino-app-cli app restart /home/arduino/ArduinoApps/powerglove-vision
+arduino-app-cli app restart /home/arduino/ArduinoApps/virtualglove
 ```
 
 The Wi-Fi deployment script updates Linux files and restarts containers; it does
@@ -2494,7 +2494,7 @@ the board OS or App Lab. Allow at least 3 GiB of free space in the Arduino home 
 `/var/tmp` (RetroPie), and 512 MiB on the system partition for package operations
 and backups. Larger updates may need more space.
 
-UNO installation stages files in `/home/arduino/ArduinoApps/powerglove-vision`,
+UNO installation stages files in `/home/arduino/ArduinoApps/virtualglove`,
 then uses `arduino-app-cli app start` as the Arduino user to build/upload the sketch
 and start the app. The root setup phase configures networking, shutdown, default
 startup, and the user early-start service. It enables Arduino user lingering;
@@ -2517,7 +2517,7 @@ changes cabinet input mergers, nor adds a new RetroPie shutdown mechanism;
 existing operating-system shutdown controls remain available.
 
 Updates replace managed files and save replaced versions under
-`/var/backups/powerglove-vision/TIMESTAMP/`, with a `RESTORE.txt`. Backups created
+`/var/backups/virtualglove/TIMESTAMP/`, with a `RESTORE.txt`. Backups created
 by the package installer are root-only. Resolve failures before continuing;
 the installer stops rather than claiming success. Rerunning is supported.
 A failed firmware update may require rerunning the previous release through
@@ -2612,7 +2612,7 @@ pairing, tuning, and cabinet settings remain in place.
 ### Installation ownership manifest
 
 `scripts/installation-manifest.py` manages the application payload in
-`/home/arduino/ArduinoApps/powerglove-vision` on VirtualGlove Controller and `/opt/powerglove-src`
+`/home/arduino/ArduinoApps/virtualglove` on VirtualGlove Controller and `/opt/powerglove-src`
 on RetroPie. Package installation and Wi-Fi deployment use the same implementation.
 Host service units, launch hooks, controller assignments, and system configuration
 remain under their existing installers; the payload manifest does not prune them.
@@ -2645,14 +2645,14 @@ The normal installer `--check` reports missing or modified managed files and an
 unfinished transaction without changing anything. For payload-only checks:
 
 ```sh
-python3 scripts/installation-manifest.py /home/arduino/ArduinoApps/powerglove-vision --check
+python3 scripts/installation-manifest.py /home/arduino/ArduinoApps/virtualglove --check
 ```
 
 For an interrupted update, stop the application, then use the script from a trusted
 release staging directory (the installed copy may have been interrupted):
 
 ```sh
-sudo python3 scripts/installation-manifest.py /home/arduino/ArduinoApps/powerglove-vision --recover
+sudo python3 scripts/installation-manifest.py /home/arduino/ArduinoApps/virtualglove --recover
 ```
 
 On RetroPie, use `/opt/powerglove-src` and run recovery with `sudo`. Restart and run

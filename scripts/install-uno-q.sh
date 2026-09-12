@@ -27,7 +27,7 @@ try:
     if sys.version_info < (3, 7) or sys.platform != "linux":
         raise ValueError("Run this installer on the target Linux device with Python 3.7 or newer")
     if a.check:
-        source = pathlib.Path("/home/arduino/ArduinoApps/powerglove-vision/scripts/setup-machine.py")
+        source = pathlib.Path("/home/arduino/ArduinoApps/virtualglove/scripts/setup-machine.py")
         if not source.is_file():
             raise ValueError("VirtualGlove is not installed at its standard location")
         cmd = ["python3", str(source), "uno-q", "--check"]

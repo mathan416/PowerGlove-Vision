@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Adopted the virtualglove App Lab directory with one-time local data migration.
 #   2026-09-11 - Migrated App Lab containers to the virtualglove Compose project.
 #   2026-09-11 - Verify the Engineering Toolkit guide and PDF during deployment.
 #   2026-09-10 - Rotate routine payload backups while preserving named engineering evidence.
@@ -30,7 +31,7 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 UNO_TARGET="${UNO_Q_SSH_TARGET:-arduino@arduiain.local}"
-REMOTE_APP_DIR="${UNO_Q_APP_DIR:-/home/arduino/ArduinoApps/powerglove-vision}"
+REMOTE_APP_DIR="${UNO_Q_APP_DIR:-/home/arduino/ArduinoApps/virtualglove}"
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   cat <<'USAGE'
@@ -71,7 +72,7 @@ fi
 readonly DEPLOY_BACKUPS_KEEP
 readonly UNO_HOST="${UNO_TARGET#*@}"
 readonly REMOTE_COMPOSE="${REMOTE_APP_DIR}/.cache/app-compose.yaml"
-readonly REMOTE_ARCHIVE="/tmp/powerglove-vision-deploy.tar"
+readonly REMOTE_ARCHIVE="/tmp/virtualglove-deploy.tar"
 readonly LOCAL_ARCHIVE="$(mktemp)"
 readonly LOCAL_METADATA_DIR="$(mktemp -d)"
 SSH_OPTIONS=(
@@ -114,15 +115,19 @@ python3 "${SCRIPT_DIR}/application-payload.py" "${LOCAL_METADATA_DIR}" --include
 COPYFILE_DISABLE=1 tar -C "${LOCAL_METADATA_DIR}" -cf "${LOCAL_ARCHIVE}" .
 scp "${SSH_OPTIONS[@]}" "${LOCAL_ARCHIVE}" "${UNO_TARGET}:${REMOTE_ARCHIVE}"
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "set -eu; stage=\$(mktemp -d /tmp/powerglove-payload.XXXXXX); trap 'rm -rf \"\$stage\"' EXIT; tar --warning=no-unknown-keyword -C \"\$stage\" -xf '${REMOTE_ARCHIVE}'; python3 \"\$stage/scripts/installation-manifest.py\" '${REMOTE_APP_DIR}' --source \"\$stage\" --backup \"\$HOME/powerglove-backups/payload-\$(date +%Y%m%d-%H%M%S)-\$\$\"; python3 \"\$stage/scripts/rotate-deployment-backups.py\" \"\$HOME/powerglove-backups\" --keep '${DEPLOY_BACKUPS_KEEP}' || echo 'warning: routine deployment-backup rotation did not complete' >&2; rm -f '${REMOTE_ARCHIVE}'"
+  "set -eu; legacy='/home/arduino/ArduinoApps/powerglove-vision'; if test ! -d '${REMOTE_APP_DIR}/data' && test -d \"\$legacy/data\"; then mkdir -p '${REMOTE_APP_DIR}'; cp -a \"\$legacy/data\" '${REMOTE_APP_DIR}/data'; fi; stage=\$(mktemp -d /tmp/virtualglove-payload.XXXXXX); trap 'rm -rf \"\$stage\"' EXIT; tar --warning=no-unknown-keyword -C \"\$stage\" -xf '${REMOTE_ARCHIVE}'; python3 \"\$stage/scripts/installation-manifest.py\" '${REMOTE_APP_DIR}' --source \"\$stage\" --backup \"\$HOME/powerglove-backups/payload-\$(date +%Y%m%d-%H%M%S)-\$\$\"; python3 \"\$stage/scripts/rotate-deployment-backups.py\" \"\$HOME/powerglove-backups\" --keep '${DEPLOY_BACKUPS_KEEP}' || echo 'warning: routine deployment-backup rotation did not complete' >&2; rm -f '${REMOTE_ARCHIVE}'"
+
+echo "Removing legacy Controller containers..."
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
+  "legacy='/home/arduino/ArduinoApps/powerglove-vision'; if test -f \"\$legacy/.cache/app-compose.yaml\"; then APP_HOME=\"\$legacy\" docker compose -p virtualglove -f \"\$legacy/.cache/app-compose.yaml\" down --remove-orphans; APP_HOME=\"\$legacy\" docker compose -p powerglove-vision -f \"\$legacy/.cache/app-compose.yaml\" down --remove-orphans; fi"
+
+echo "Preparing the VirtualGlove App Lab runtime..."
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
+  "if test ! -f '${REMOTE_COMPOSE}'; then arduino-app-cli app start '${REMOTE_APP_DIR}'; fi"
 
 echo "Ensuring the secure setup port is published..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "REMOTE_COMPOSE='${REMOTE_COMPOSE}' python3 -c \"import os, pathlib; p=pathlib.Path(os.environ['REMOTE_COMPOSE']); lines=p.read_text().splitlines(); found=any(line.strip() == '- 8443:8443' for line in lines); index=next((i for i, line in enumerate(lines) if line.strip() == '- 8088:8088'), None); assert found or index is not None, 'port 8088 is missing from App Lab compose file'; lines if found else lines.insert(index + 1, lines[index].replace('8088:8088', '8443:8443')); p.write_text('\\n'.join(lines) + '\\n')\""
-
-echo "Removing legacy Controller containers..."
-ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "APP_HOME='${REMOTE_APP_DIR}' docker compose -p powerglove-vision -f '${REMOTE_COMPOSE}' down --remove-orphans"
 
 echo "Configuring persistent local hostname resolution..."
 ssh "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
@@ -237,6 +242,10 @@ if [[ "${CONTAINERS}" == *"powerglove-vision-"* ]]; then
   echo "error: a legacy powerglove-vision container is still running" >&2
   exit 1
 fi
+
+# Retire the old directory only after the new app and every health check pass.
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
+  "legacy='/home/arduino/ArduinoApps/powerglove-vision'; if test -d \"\$legacy\"; then destination=\"\$HOME/powerglove-backups/retired-controller-application-\$(date +%Y%m%d-%H%M%S)-\$\$\"; mkdir -p \"\$HOME/powerglove-backups\"; mv \"\$legacy\" \"\$destination\"; echo 'Previous Controller application migrated to VirtualGlove'; fi"
 
 echo "Deployment complete."
 echo "  Play:   http://${UNO_HOST}:8088/play"

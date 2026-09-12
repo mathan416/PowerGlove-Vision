@@ -12,7 +12,7 @@
 Description=Watch for a VirtualGlove camera recovery request
 
 [Path]
-PathExists=/home/arduino/ArduinoApps/powerglove-vision/data/camera-recovery-request
+PathExists=/home/arduino/ArduinoApps/virtualglove/data/camera-recovery-request
 Unit=powerglove-camera-recovery.service
 
 [Install]

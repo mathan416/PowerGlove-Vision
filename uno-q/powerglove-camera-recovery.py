@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 
-APP_DATA = Path("/home/arduino/ArduinoApps/powerglove-vision/data")
+APP_DATA = Path("/home/arduino/ArduinoApps/virtualglove/data")
 REQUEST = APP_DATA / "camera-recovery-request"
 RESULT = APP_DATA / "camera-recovery-result"
 USB_DEVICES = Path("/sys/bus/usb/devices")

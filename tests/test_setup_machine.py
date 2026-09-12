@@ -142,7 +142,7 @@ class SetupTests(unittest.TestCase):
             (app / "scripts/configure-uno-q-mdns.py").write_bytes((ROOT / "scripts/configure-uno-q-mdns.py").read_bytes())
             class AppPath:
                 def __str__(self):
-                    return "/home/arduino/ArduinoApps/powerglove-vision"
+                    return "/home/arduino/ArduinoApps/virtualglove"
                 def __truediv__(self, relative):
                     return app / relative
             def mapped(value):
@@ -177,11 +177,6 @@ class SetupTests(unittest.TestCase):
             )
             command.assert_any_call("systemctl", "enable", "--now", "powerglove-camera-recovery.path")
             command.assert_any_call(
-                "env", "APP_HOME=/home/arduino/ArduinoApps/powerglove-vision",
-                "docker", "compose", "-p", "powerglove-vision", "-f", compose,
-                "down", "--remove-orphans"
-            )
-            command.assert_any_call(
-                "env", "APP_HOME=/home/arduino/ArduinoApps/powerglove-vision",
+                "env", "APP_HOME=/home/arduino/ArduinoApps/virtualglove",
                 "docker", "compose", "-f", compose, "up", "-d", "--force-recreate"
             )

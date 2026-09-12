@@ -14,5 +14,5 @@ Description=Shut down the UNO Q for VirtualGlove
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/rm -f /home/arduino/ArduinoApps/powerglove-vision/data/shutdown-request
+ExecStart=/usr/bin/rm -f /home/arduino/ArduinoApps/virtualglove/data/shutdown-request
 ExecStart=/usr/bin/systemctl --no-block halt

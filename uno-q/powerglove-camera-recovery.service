@@ -11,7 +11,7 @@
 
 [Unit]
 Description=Recover the VirtualGlove USB camera
-ConditionPathExists=/home/arduino/ArduinoApps/powerglove-vision/data/.camera-recovery-enabled
+ConditionPathExists=/home/arduino/ArduinoApps/virtualglove/data/.camera-recovery-enabled
 
 [Service]
 Type=oneshot

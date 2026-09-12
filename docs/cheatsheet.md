@@ -18,7 +18,7 @@ on which to run it. Keep passwords and pairing tokens out of this document.
 | VirtualGlove Controller network address | `UNO-Q-NAME.local` |
 | RetroPie network address | `RETROPIE-NAME.local` |
 | VirtualGlove Controller App Lab application | VirtualGlove |
-| VirtualGlove Controller application directory | `/home/arduino/ArduinoApps/powerglove-vision` |
+| VirtualGlove Controller application directory | `/home/arduino/ArduinoApps/virtualglove` |
 | Camera | UVC-compatible USB camera; select **Automatic — choose the connected camera** in Setup |
 | Startup profile | Choose in Setup |
 
@@ -81,7 +81,7 @@ ssh arduino@UNO-Q-NAME.local
 Run these commands **on the VirtualGlove Controller** after importing and running the app once:
 
 ```sh
-cd /home/arduino/ArduinoApps/powerglove-vision
+cd /home/arduino/ArduinoApps/virtualglove
 sudo python3 scripts/setup-machine.py uno-q
 ```
 
@@ -529,7 +529,7 @@ for the recording recipes, neutral calibration, image-quality advice, and shared
 | Receiver startup timer | `powerglove-receiver.timer`; starts 45 seconds after boot |
 | VirtualGlove Controller shutdown watcher | `powerglove-system-shutdown.path` |
 | VirtualGlove Controller shutdown action | `powerglove-system-shutdown.service`; requests a Linux halt |
-| VirtualGlove Controller readiness marker | `/home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled` |
+| VirtualGlove Controller readiness marker | `/home/arduino/ArduinoApps/virtualglove/data/.shutdown-enabled` |
 | VirtualGlove Controller boot rule that creates the marker | `/etc/tmpfiles.d/powerglove-system-shutdown.conf`; installed from `uno-q/powerglove-system-shutdown.conf` |
 | VirtualGlove Controller camera recovery watcher | `powerglove-camera-recovery.path` |
 | VirtualGlove Controller camera recovery action | `powerglove-camera-recovery.service`; power-cycles the enrolled camera port on a capability-confirmed hub, otherwise rebinds the allowlisted hub only when it does not carry networking |
@@ -549,7 +549,7 @@ systemctl is-enabled powerglove-system-shutdown.path
 systemctl is-active powerglove-system-shutdown.path
 systemctl is-enabled powerglove-camera-recovery.path
 systemctl is-active powerglove-camera-recovery.path
-ls -l /home/arduino/ArduinoApps/powerglove-vision/data/.shutdown-enabled
+ls -l /home/arduino/ArduinoApps/virtualglove/data/.shutdown-enabled
 ```
 
 Expect `enabled`, `active`, and an existing marker file. On RetroPie, keep the

@@ -18,7 +18,7 @@ import subprocess
 import tempfile
 import time
 
-APP = Path('/home/arduino/ArduinoApps/powerglove-vision')
+APP = Path('/home/arduino/ArduinoApps/virtualglove')
 OPENOCD = '/opt/openocd/bin/openocd'
 
 
