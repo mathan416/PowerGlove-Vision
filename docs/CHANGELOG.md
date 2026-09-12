@@ -54,6 +54,11 @@ authoritative record for line-level and file-level history.
 
 ### Fixed
 
+- Prevented release upgrades from starting App Lab's regenerated legacy
+  `powerglove-vision` Compose project while the renamed `virtualglove` project
+  still owns its published ports. The installer now stops both possible project
+  identities before regeneration, then completes the existing one-stack
+  migration to `virtualglove-*`.
 - Added a transparent web-specific VirtualGlove logo so the Controller header
   blends with its page background while PDF covers retain the original artwork.
 - Fixed clean UNO Q release installation after App Lab startup by explicitly

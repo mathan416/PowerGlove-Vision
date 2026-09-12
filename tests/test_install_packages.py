@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Verified upgrades stop both possible App Lab Compose projects.
 #   2026-09-11 - Covered first-install Controller naming, conflicts, and upgrade preservation.
 #   2026-09-11 - Covered hostname and LAN-IP URLs in UNO Q completion output.
 #   2026-09-11 - Covered cache-free loading from an extracted release tree.
@@ -311,6 +312,17 @@ class ArchiveTests(unittest.TestCase):
                 self.assertEqual((app / 'data/gesture-tuning.json').read_text(), 'private-gesture-thresholds')
                 self.assertEqual((app / 'docs/cheatsheet.md').read_text(), 'local cabinet')
                 command.assert_any_call('runuser', '-u', 'arduino', '--', 'arduino-app-cli', 'app', 'start', app)
+                calls = [item.args for item in command.call_args_list]
+                upgrade_start = [index for index, item in enumerate(calls)
+                                 if item == ('runuser', '-u', 'arduino', '--',
+                                             'arduino-app-cli', 'app', 'start', app)][1]
+                for project in ('virtualglove', 'powerglove-vision'):
+                    expected = (
+                        'env', 'APP_HOME=' + str(app), 'docker', 'compose', '-p',
+                        project, '-f', app / '.cache/app-compose.yaml',
+                        'down', '--remove-orphans')
+                    command.assert_any_call(*expected)
+                    self.assertLess(calls.index(expected), upgrade_start)
                 self.assertTrue(list((root / 'backups').rglob('app.yaml')))
 
     def test_unmanaged_old_sketch_files_are_not_silently_deleted(self):
