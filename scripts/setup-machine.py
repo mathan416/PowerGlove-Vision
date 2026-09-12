@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Adopted the virtualglove App Lab directory and conditional legacy repair.
 #   2026-09-11 - Migrated App Lab containers to the virtualglove Compose project.
 #   2026-09-11 - Exposed the stable host name to the containerized HTTPS server.
 #   2026-09-11 - Verify the persistent local HTTPS authority and protected keys.
@@ -37,7 +38,9 @@ import urllib.request
 from pathlib import Path
 
 SOURCE = Path(__file__).resolve().parents[1]
-BACKUPS = Path("/var/backups/powerglove-vision") / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+UNOQ_APP = "/home/arduino/ArduinoApps/virtualglove"
+LEGACY_UNOQ_APP = "/home/arduino/ArduinoApps/powerglove-vision"
+BACKUPS = Path("/var/backups/virtualglove") / datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
 
 
 def installation_manifest():
@@ -200,7 +203,7 @@ def install_retropie(peer):
 
 def install_wifi_status():
     """Install the same unprivileged Wi-Fi sampler during setup and application updates."""
-    if str(SOURCE) != "/home/arduino/ArduinoApps/powerglove-vision":
+    if str(SOURCE) != UNOQ_APP:
         raise ValueError("Wi-Fi sampler requires the standard App Lab installation path")
     write_file("/usr/local/libexec/powerglove-wifi-status",
                (SOURCE / "uno-q/powerglove-wifi-status.py").read_bytes(), 0o755)
@@ -215,8 +218,8 @@ def install_wifi_status():
 def install_unoq(peer):
     """Complete the CLI-started app with networking, shutdown and early startup."""
     app = SOURCE
-    if str(app) != "/home/arduino/ArduinoApps/powerglove-vision":
-        raise ValueError("UNO Q setup currently requires App Lab path /home/arduino/ArduinoApps/powerglove-vision")
+    if str(app) != UNOQ_APP:
+        raise ValueError("UNO Q setup currently requires App Lab path " + UNOQ_APP)
     compose = app / ".cache/app-compose.yaml"
     if not compose.exists():
         raise ValueError("Start the app with install-uno-q.sh before completing host setup")
@@ -258,11 +261,13 @@ def install_unoq(peer):
     backup = BACKUPS / "uno-q-app-compose.yaml"
     backup.parent.mkdir(parents=True, exist_ok=True)
     backup.write_bytes(original)
-    # Older releases used App Lab's directory-derived powerglove-vision project.
-    # Stop it before changing the project name so an upgrade cannot leave a
-    # duplicate set of containers and port bindings behind.
-    run("env", "APP_HOME=" + str(app), "docker", "compose", "-p",
-        "powerglove-vision", "-f", compose, "down", "--remove-orphans")
+    # Keep a conditional repair for an interrupted old upgrade. Clean installs
+    # neither invoke nor display the retired Compose project.
+    legacy_compose = Path(LEGACY_UNOQ_APP) / ".cache/app-compose.yaml"
+    if legacy_compose.exists():
+        for project in ("virtualglove", "powerglove-vision"):
+            run("env", "APP_HOME=" + LEGACY_UNOQ_APP, "docker", "compose", "-p",
+                project, "-f", legacy_compose, "down", "--remove-orphans")
     configure(compose)
     text = compose.read_text()
     if "- 8443:8443" not in text:
@@ -547,7 +552,7 @@ def check_retropie(report):
 
 def check_unoq(report):
     """Check boot persistence, the app-owned resolver and public application health."""
-    check_inventory(report, Path("/home/arduino/ArduinoApps/powerglove-vision"))
+    check_inventory(report, Path(UNOQ_APP))
     report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
     report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
     report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])

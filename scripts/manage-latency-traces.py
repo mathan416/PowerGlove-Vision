@@ -32,7 +32,7 @@ from pathlib import Path
 session, duration = sys.argv[1], int(sys.argv[2])
 if not __import__('re').fullmatch(r'[0-9a-f]{32}', session) or not 30 <= duration <= 600:
     raise SystemExit('invalid session or duration')
-base = Path('/home/arduino/ArduinoApps/powerglove-vision')
+base = Path('/home/arduino/ArduinoApps/virtualglove')
 def controller_enabled():
     try:
         with urllib.request.urlopen('http://127.0.0.1:8088/status', timeout=2) as response:
@@ -121,7 +121,7 @@ CONTROLLER_STOP = r'''
 import base64, hashlib, json, os, subprocess, sys, time, urllib.request
 from pathlib import Path
 session = sys.argv[1]
-base = Path('/home/arduino/ArduinoApps/powerglove-vision')
+base = Path('/home/arduino/ArduinoApps/virtualglove')
 def controller_enabled():
     try:
         with urllib.request.urlopen('http://127.0.0.1:8088/status', timeout=2) as response:

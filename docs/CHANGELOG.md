@@ -28,10 +28,15 @@ authoritative record for line-level and file-level history.
 
 ### Changed
 
+- New Controller installations now use `/home/arduino/ArduinoApps/virtualglove`,
+  so App Lab creates only `virtualglove-*` containers and networks. An existing
+  pre-rebrand installation is stopped without relaunching, has its private data
+  copied safely, and is moved into the installer recovery backup only after
+  VirtualGlove starts successfully.
 - Renamed the Controller's App Lab Compose project and running containers from
   `powerglove-vision-*` to `virtualglove-*`. Upgrades stop and remove the legacy
-  project before starting the renamed containers, while established application
-  paths and protocol identifiers remain compatible.
+  project before starting the renamed containers, while protocol identifiers
+  remain compatible.
 - Extended RetroPie's single-use pairing-code window from two minutes to five
   minutes and clarified that the command must run on the exact console selected
   in Setup when multiple RetroPie systems are online.

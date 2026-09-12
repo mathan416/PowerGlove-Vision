@@ -21,7 +21,7 @@ import time
 import fcntl
 from pathlib import Path
 
-OUTPUT = Path('/home/arduino/ArduinoApps/powerglove-vision/data/wifi-status.json')
+OUTPUT = Path('/home/arduino/ArduinoApps/virtualglove/data/wifi-status.json')
 
 
 def link_state(root=Path('/sys/class/net'), wireless_only=False):

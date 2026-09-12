@@ -15,7 +15,7 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly UNO_TARGET="${1:-${UNO_Q_SSH_TARGET:-arduino@arduiain.local}}"
-readonly REMOTE_APP_DIR="/home/arduino/ArduinoApps/powerglove-vision"
+readonly REMOTE_APP_DIR="/home/arduino/ArduinoApps/virtualglove"
 readonly REMOTE_PATH_UNIT="/tmp/powerglove-camera-recovery.path"
 readonly REMOTE_SERVICE_UNIT="/tmp/powerglove-camera-recovery.service"
 readonly REMOTE_HELPER="/tmp/powerglove-camera-recovery"

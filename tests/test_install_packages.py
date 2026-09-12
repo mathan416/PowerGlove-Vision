@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Covered the canonical virtualglove directory and recoverable legacy migration.
 #   2026-09-11 - Verified upgrades stop both possible App Lab Compose projects.
 #   2026-09-11 - Covered first-install Controller naming, conflicts, and upgrade preservation.
 #   2026-09-11 - Covered hostname and LAN-IP URLs in UNO Q completion output.
@@ -245,9 +246,11 @@ class ArchiveTests(unittest.TestCase):
 
             module = installer.load_setup(source)
             module.BACKUPS = root / 'backups'
-            app = root / 'home/ArduinoApps/powerglove-vision'
+            app = root / 'home/ArduinoApps/virtualglove'
+            legacy = root / 'home/ArduinoApps/powerglove-vision'
             account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
             with patch.object(installer, 'APP', app), \
+                 patch.object(installer, 'LEGACY_APP', legacy), \
                  patch.object(installer.pwd, 'getpwnam', return_value=account), \
                  patch.object(installer.os, 'chown'), patch.object(module, 'run'):
                 installer.stage_unoq(source, module)
@@ -286,11 +289,12 @@ class ArchiveTests(unittest.TestCase):
             source = root / 'source'
             source.mkdir()
             (source / 'app.yaml').write_text('new application')
-            app = root / 'home/ArduinoApps/powerglove-vision'
+            app = root / 'home/ArduinoApps/virtualglove'
+            legacy = root / 'home/ArduinoApps/powerglove-vision'
             setup = installer.load_setup(ROOT)
             setup.BACKUPS = root / 'backups'
             account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
-            with patch.object(installer, 'APP', app), patch.object(installer.pwd, 'getpwnam', return_value=account), \
+            with patch.object(installer, 'APP', app), patch.object(installer, 'LEGACY_APP', legacy), patch.object(installer.pwd, 'getpwnam', return_value=account), \
                  patch.object(installer.os, 'chown'), patch.object(setup, 'run') as command:
                 installer.stage_unoq(source, setup)
                 self.assertEqual((app / 'app.yaml').read_text(), 'new application')
@@ -316,14 +320,56 @@ class ArchiveTests(unittest.TestCase):
                 upgrade_start = [index for index, item in enumerate(calls)
                                  if item == ('runuser', '-u', 'arduino', '--',
                                              'arduino-app-cli', 'app', 'start', app)][1]
-                for project in ('virtualglove', 'powerglove-vision'):
-                    expected = (
-                        'env', 'APP_HOME=' + str(app), 'docker', 'compose', '-p',
-                        project, '-f', app / '.cache/app-compose.yaml',
-                        'down', '--remove-orphans')
-                    command.assert_any_call(*expected)
-                    self.assertLess(calls.index(expected), upgrade_start)
+                expected = (
+                    'env', 'APP_HOME=' + str(app), 'docker', 'compose', '-p',
+                    'virtualglove', '-f', app / '.cache/app-compose.yaml',
+                    'down', '--remove-orphans')
+                command.assert_any_call(*expected)
+                self.assertLess(calls.index(expected), upgrade_start)
+                self.assertFalse(any('powerglove-vision' in str(part)
+                                     for call in calls for part in call))
                 self.assertTrue(list((root / 'backups').rglob('app.yaml')))
+
+    def test_legacy_unoq_app_migrates_private_data_without_starting_old_project(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / 'source'
+            source.mkdir()
+            (source / 'app.yaml').write_text('VirtualGlove')
+            app = root / 'home/ArduinoApps/virtualglove'
+            legacy = root / 'home/ArduinoApps/powerglove-vision'
+            (legacy / 'data').mkdir(parents=True)
+            (legacy / 'data/device.json').write_text('private-controller-state')
+            (legacy / '.cache').mkdir()
+            (legacy / '.cache/app-compose.yaml').write_text('services: {}\n')
+            setup = installer.load_setup(ROOT)
+            setup.BACKUPS = root / 'backups'
+            account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
+            with patch.object(installer, 'APP', app), \
+                    patch.object(installer, 'LEGACY_APP', legacy), \
+                    patch.object(installer.pwd, 'getpwnam', return_value=account), \
+                    patch.object(installer.os, 'chown'), \
+                    patch.object(setup, 'run') as command:
+                installer.stage_unoq(source, setup)
+                self.assertEqual((app / 'data/device.json').read_text(),
+                                 'private-controller-state')
+                installer.retire_legacy_unoq_app(setup)
+            calls = [item.args for item in command.call_args_list]
+            self.assertIn(('runuser', '-u', 'arduino', '--', 'arduino-app-cli',
+                           'app', 'stop', legacy), calls)
+            for project in ('virtualglove', 'powerglove-vision'):
+                self.assertIn((
+                    'env', 'APP_HOME=' + str(legacy), 'docker', 'compose', '-p',
+                    project, '-f', legacy / '.cache/app-compose.yaml',
+                    'down', '--remove-orphans'), calls)
+            self.assertNotIn(('runuser', '-u', 'arduino', '--', 'arduino-app-cli',
+                              'app', 'start', legacy), calls)
+            self.assertIn(('runuser', '-u', 'arduino', '--', 'arduino-app-cli',
+                           'app', 'start', app), calls)
+            self.assertFalse(legacy.exists())
+            self.assertEqual(
+                (setup.BACKUPS / 'retired-controller-application/data/device.json').read_text(),
+                'private-controller-state')
 
     def test_unmanaged_old_sketch_files_are_not_silently_deleted(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -338,6 +384,7 @@ class ArchiveTests(unittest.TestCase):
             setup.BACKUPS = root / 'backups'
             account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
             with patch.object(installer, 'APP', app), \
+                    patch.object(installer, 'LEGACY_APP', root / 'legacy'), \
                     patch.object(installer.pwd, 'getpwnam', return_value=account), \
                     patch.object(installer.os, 'chown'), patch.object(setup, 'run'):
                 with self.assertRaisesRegex(ValueError, 'Unmanaged files remain'):
