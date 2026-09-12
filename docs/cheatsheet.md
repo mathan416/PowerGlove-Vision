@@ -175,8 +175,8 @@ limitation below.
 
 Complete both machine installations above, then use the one-time-code method:
 
-1. Open `https://UNO-Q-NAME.local:8443/setup`. Enter the console address in **Connection and startup** and select **Save settings**.
-2. In **Pair with RetroPie**, choose **One-time code (recommended)** and select **Continue**. Pairing uses the saved console address.
+1. Open `https://UNO-Q-NAME.local:8443/setup`. In **Connect to RetroPie**, enter the console address and select **Save connection**.
+2. Continue to **Pair this Controller** in the same card, choose **One-time code (recommended)**, and select **Continue**. Pairing uses the saved console address.
 3. Compare the matrix `ID` with the beginning of the browser certificate's SHA-256 fingerprint. If they match, check the confirmation box, enter the six-digit **Controller approval PIN**, and select **Continue**.
 4. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character **RetroPie one-time code**, then select **Pair with RetroPie**. This is not the Controller PIN.
 5. Wait for **Pairing complete**. This includes a signed receiver-token check. Check `sudo systemctl status powerglove-receiver.service` on RetroPie; open Dashboard for controller Start/Stop and shutdown.

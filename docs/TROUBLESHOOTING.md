@@ -177,8 +177,11 @@ For FCEUmm digital directions, Setup's **Joystick dead zone** adjusts how far
 the selected player moves beyond the square center box. Inside or on its boundary,
 all positional directions release; beyond a side is a cardinal direction and beyond
 a corner is a diagonal. Start with **Use standard size**, then save one small change
-at a time while watching the live direction indicators. If neutral jitter needs a
-larger safe box, Setup shows both the chosen and effective sizes. This setting does not
+at a time while watching the live direction indicators. The box is anchored to
+the hand center saved by **Center hand**, and its effective width and height are
+at least 1.5 times the saved hand size. Near an edge it moves inward intact.
+Live hand size and resting jitter do not make it change. Slider changes preview immediately; Save applies them to
+gameplay. This setting does not
 change native Super Glove Ball X/Y travel or cure processing latency. Use reach
 controls under **Glove Academy → Tune gestures → Movement reach** for native
 screen coverage and the latency procedure below for delay. Smaller reach values

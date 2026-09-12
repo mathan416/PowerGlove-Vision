@@ -177,10 +177,12 @@ holds the last reliable point until the next fresh measurement confirms the
 location. The guard never invents a forward coordinate or smooths normal motion.
 Longer tracking loss or stale input neutralizes the native sample and clears the
 coordinate history. Digital FCEUmm directions instead classify every fresh hand
-position in a 3×3 grid around the calibrated center. The center square releases
+position in a 3×3 grid anchored to the saved calibrated neutral palm position. The center square releases
 all positional directions, its four side regions produce cardinals, and its four
 corner regions produce diagonals. Setup's **Joystick dead zone** saves the square's
-half-width per player; measured neutral jitter may enlarge the effective square.
+chosen full-frame width and height per player. Its effective size is at least
+1.5 times the saved calibrated palm size. The full square translates inward at
+camera edges rather than clipping; live hand size and neutral jitter do not change it.
 It does not alter native reach, finger gestures, or game mappings. Re-centering clears
 saved reach spans because they belong to the old center.
 

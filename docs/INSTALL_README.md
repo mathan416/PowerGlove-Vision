@@ -204,8 +204,8 @@ Both pairing methods below require the six-digit approval PIN shown on the Contr
 Pairing gives both devices the same private token. Use the recommended
 one-time-code method after both installers finish.
 
-1. Open the secure Setup address printed by the Controller installer, normally `https://virtualglove.local:8443/setup`. Under **Connection and startup**, enter your console address and select **Save settings**. Pairing uses this saved address; unsaved edits must be saved first.
-2. Under **Pair with RetroPie**, choose **One-time code (recommended)** and select **Continue**. Use **Change** beside the saved console to edit its address before starting.
+1. Open the secure Setup address printed by the Controller installer, normally `https://virtualglove.local:8443/setup`. Under **Connect to RetroPie**, enter your console address and select **Save connection**. Pairing uses this saved address; unsaved edits must be saved first.
+2. Continue to **Pair this Controller** in the same card, choose **One-time code (recommended)**, and select **Continue**. Use **Change** beside the saved console to edit its address before starting.
 3. In **Confirm your Controller**, compare the `ID` on the physical matrix with the beginning of the browser certificate's SHA-256 fingerprint. Expand **How to compare the certificate** for guidance. If they differ, stop pairing.
 4. If they match, check the confirmation box, enter the six-digit **Controller approval PIN** shown after `PN` on the matrix, and select **Continue**.
 5. On the RetroPie console shown in Setup, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character code in **RetroPie one-time code**, then select **Pair with RetroPie** within five minutes. This single-use code is separate from the Controller approval PIN. If you have more than one RetroPie, confirm the terminal prompt belongs to the console named in Setup.
@@ -248,7 +248,7 @@ needed; neither credential has an unlimited lifetime.
 Use this route only if RetroPie accepts SSH password login and your account
 can run `sudo` with that password.
 
-1. Save the console address in **Connection and startup**.
+1. Save the console address in **Connect to RetroPie**.
 2. In **Choose a pairing method**, select **SSH password**, then **Continue**.
 3. Complete the same certificate comparison and Controller approval PIN step.
 4. In **Pair with RetroPie**, enter your RetroPie username and password, then select **Pair with RetroPie**.
@@ -262,9 +262,21 @@ clears it. If neither route works, use the
 
 When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
 
+### Optional first-game check
+
+Select **Get ready to play** on Setup or Dashboard. The guide helps you confirm
+the active player and console, practice safely, center the hand, and try the ten
+essential controls before launching a registered game. It saves progress per
+player without changing Glove Academy lessons. Each visit checks live readiness
+again. Finish practice explicitly before enabling game controls; **Ready to play**
+confirms the reported connection and game mode, not game-side input receipt.
+If you close the guide early, reopen it to resume or use **Leave guide — keep
+controls stopped** to exit the output pause explicitly.
+
 ### Connection settings and recovery
 
-**Connection and startup** saves the console address and startup game profile.
+**Connect to RetroPie** saves the console address and startup game profile, then
+continues directly into secure pairing.
 Port, camera, and pairing-key replacement are under **Advanced connection settings**.
 **Check console address** only checks name resolution. If loading fails, use
 **Reload saved settings**; if a save fails, correct or retry it without losing

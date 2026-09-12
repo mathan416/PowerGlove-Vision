@@ -98,8 +98,10 @@ tracks your bare hand.
 | Move down | <img src="images/gestures/v2/move-down.png" alt="Move down" width="88"> | Lower your whole hand. |
 
 With an ordinary FCEUmm joystick profile, combine horizontal and vertical movement
-for diagonals. Your saved center box is the ninth region: inside it—or exactly on
-its boundary—all positional directions stop immediately. Change its size in Setup.
+for diagonals. Your box is anchored to the hand center you saved during calibration;
+inside it—or exactly on its boundary—all positional directions stop immediately.
+Its effective size is never less than 1.5 times your saved hand size. Change its
+chosen size in Setup.
 
 ### Wrist and depth movements
 

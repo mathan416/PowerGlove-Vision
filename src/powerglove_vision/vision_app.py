@@ -57,7 +57,8 @@ from pathlib import Path
 from .tuning import TuningManager
 from .camera import CameraUnavailableError, camera_candidates
 from .debug_server import SharedDebugState, start_debug_server
-from .gesture import GestureConfig, GestureEngine, load_calibration, save_calibration
+from .gesture import (GestureConfig, GestureEngine, joystick_deadzone_bounds,
+                      load_calibration, save_calibration)
 from .matrix import MatrixStatus, UnoQMatrix
 from .diagnostic_trace import session_key
 from .model import ControllerState
@@ -738,6 +739,35 @@ def _native_xy_source(active: bool) -> str:
     return "mediapipe"
 
 
+def _joystick_grid_status(engine, practice_mode: bool, needs_center: bool = False):
+    """Expose read-only bounds in the same normalized coordinates as the preview."""
+    if not practice_mode or needs_center or engine is None or not engine.calibrated:
+        return None
+    reference = engine.calibration
+    if reference is None:
+        return None
+    values = (reference.palm_x, reference.palm_y, reference.palm_scale,
+              reference.noise_x, reference.noise_y, reference.roll)
+    if (any(type(value) not in (int, float) or not math.isfinite(value) for value in values)
+            or not 0 <= reference.palm_x <= 1 or not 0 <= reference.palm_y <= 1
+            or not 0 < reference.palm_scale <= 2
+            or not 0 <= reference.noise_x <= 1 or not 0 <= reference.noise_y <= 1
+            or not -math.pi <= reference.roll <= math.pi
+            or not reference.valid_reach()):
+        return None
+    bounds = joystick_deadzone_bounds(engine.config, reference)
+    size = bounds["half_size"] * 2
+    minimum_size = min(1.0, 1.5 * reference.palm_scale)
+    if not all(math.isfinite(value) for value in (*bounds.values(), minimum_size)):
+        return None
+    return {
+        "anchor": {"x": reference.palm_x, "y": reference.palm_y},
+        "center": {"x": bounds["center_x"], "y": bounds["center_y"]},
+        "half_size": size / 2,
+        "minimum_size": minimum_size,
+    }
+
+
 def _input_mode(profile: str | None, emulator: str) -> str:
     """Select native input only for a supported native core/profile pair."""
     return (
@@ -1395,6 +1425,9 @@ def main() -> int:
                     {"x": result.observation.palm_x, "y": result.observation.palm_y}
                     if result.observation.detected else None
                 )
+            grid = _joystick_grid_status(engine, practice_mode, needs_center or bool(calibration_save_error))
+            if grid is not None:
+                status["joystick_grid"] = grid
             status["inference_ms"] = round(inference_ms, 1)
             status["send_ms"] = round(send_ms, 1)
             status["sample_age_ms"] = round(sample_age_ms, 1)

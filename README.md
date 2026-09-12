@@ -16,7 +16,7 @@ VirtualGlove recognizes the pose, sends authenticated controller input across
 your local network, and lets RetroArch see a virtual gamepad or a native
 Power Glove controller.
 
-**Current project version: 0.4.0 · Public candidate: [v0.4.0-rc.7](https://github.com/mathan416/VirtualGlove/releases/tag/v0.4.0-rc.7)**
+**Current project version: 0.4.1 · Public candidate: [v0.4.0-rc.7](https://github.com/mathan416/VirtualGlove/releases/tag/v0.4.0-rc.7)**
 
 ## Why VirtualGlove?
 
@@ -104,8 +104,13 @@ repositories.
 ### 5. Pair the devices
 
 Open the secure Setup address printed by the installer—normally
-`https://virtualglove.local:8443/setup`—save the RetroPie address, and
-choose **Pair with RetroPie**. The guided one-time-code method is recommended.
+`https://virtualglove.local:8443/setup`—open **Connect to RetroPie**, save the
+RetroPie address, and continue into **Pair this Controller**. The guided
+one-time-code method is recommended.
+For an optional, resumable first-game walkthrough, select **Get ready to play**
+on Setup or Dashboard. It checks your player, connection, camera, center, and
+essential gestures in safe practice before you explicitly enable game controls.
+
 After confirming the browser certificate against the physical Matrix ID, the
 optional **Trust this Controller** step removes future privacy warnings on that
 phone or computer.

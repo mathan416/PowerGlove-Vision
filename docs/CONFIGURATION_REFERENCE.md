@@ -75,12 +75,152 @@ authority private key never leaves the Controller. During pairing, continue to
 compare the current website-certificate fingerprint with the identifier shown
 on the physical matrix before entering the one-time PIN.
 
+### Joystick dead-zone camera test
+
+In **Setup → Joystick dead zone**, the chosen percentage is the nominal width
+and height of the center region as a fraction of the full camera frame. The box
+is anchored to the neutral palm center saved by **Center hand** and never follows
+the live hand. Its effective width and height are at least 1.5 times the saved
+calibrated palm size. If that full square would cross a camera edge, VirtualGlove
+translates it inward rather than clipping or shrinking it. The remaining space
+on each axis becomes the directional side and corner regions. The allowed slider
+range is 10–100%. Resting jitter and live hand-size changes do not move or resize
+the box. Native Super Glove Ball X/Y calibration, noise filtering, and reach
+remain separate and unchanged.
+
+The **Turn on camera** and **Center hand** buttons follow **Use standard size**
+in the slider's controls row. The panel starts off with its camera hidden.
+**Center hand** becomes available only after this panel owns an active practice
+lease and its preview is live. Centering keeps controller output paused, samples
+the selected player's relaxed hand, and redraws the grid from the newly saved
+center and hand size without discarding an unsaved slider preview. The mirrored stream
+shows a label-free 3×3 grid. Moving the slider immediately redraws the lines,
+highlight, and direction pills from the live palm position without another
+request. This is an **unsaved preview**: gameplay changes only after **Save dead
+zone**. Turning the camera off and on retains the draft; changing players
+discards it. After saving, feedback waits for the worker's saved bounds before
+returning to its authoritative D-pad directions.
+
+Gameplay positional directions use the same absolute palm coordinates and
+saved-center bounds. Exact boundaries count as center. Tracking loss and
+menu/start/select suppression clear preview directions and highlights; missing
+calibration or a stopped camera or owned lease hides the grid. The camera
+toggle never saves settings. Existing player dead-zone numbers and all other
+player/calibration data are retained; those numbers now denote frame fractions.
+
+The Joystick dead-zone card appears directly below **Players** in Setup. The
+panel owns a unique existing Academy practice lease, renewed every two
+seconds. Practice pauses controller delivery and starts tracking. Its image and
+directions become active only after its own lease is acknowledged and status
+reports active practice vision.
+
+Practice `/status` includes a read-only `joystick_grid` only while valid active
+calibration is available. `anchor` is the saved neutral palm position, `center`
+is the possibly edge-translated box center, `half_size` is the saved effective
+half-size, and `minimum_size` is the 1.5-hand floor needed to derive an exact
+draft preview. Coordinates match the mirrored preview and are not flipped again.
+The field is omitted outside practice,
+during centering, or while a required/failed calibration is pending. It is never
+persisted. Player snapshots retain the chosen `deadzone`, report the possibly
+enlarged `effective_deadzone`, `hand_size_minimum`, and `hand_size_protected`,
+and retain `jitter_protected: false` for compatibility.
+
+The practice response includes `session_active` as well as aggregate
+`practice_mode`, so another tab cannot stand in for this
+panel's lease. A reset/rejected lease stops this panel's test; network or stream
+failures clear feedback and retry safely.
+
+**Turn off camera** removes the image source, hides the view, clears directions,
+and releases only this panel's lease. Leaving the page also releases it. If a
+release cannot be confirmed, the panel reports that fact and retries; abandoned
+leases expire after six seconds. Another practice tab can keep the shared camera
+running. Existing controller behavior resumes only as the practice mechanism
+allows; this panel never sends a controller-start request.
+
+### Optional Get ready to play guide
+
+Open **Get ready to play** from Dashboard or Setup, or visit `/ready`. The guide
+is optional and resumes the active player's completed essential checks; Academy
+lessons stay independent. Every visit stops controller output before enabling
+player selection and rechecks the saved console, authenticated pairing, camera,
+center, and active registered game. A previous completion never bypasses these
+live checks.
+
+Confirm the player, check the saved console, then start safe practice. Center the
+hand if required or if the camera/playing position moved. The essentials are
+neutral, Left, Right, Up, Down, A, B, Start, Select, and Menu Guard. Each action
+starts from neutral, requires a steady hold, and finishes by releasing to neutral.
+Missing tracking, stale samples, or incomplete calibration cancel the current
+hold; completed checks remain saved. A failed save can be retried without
+changing Academy progress or calibration.
+
+Select **End practice and enable registered-game controls**, then wait for all
+practice/tuning sessions to stop. Launch a game registered in Games on RetroPie.
+If needed, select **Check game and enable controls**. Ready requires fresh camera
+and calibration status, a registered supported profile, matching native/joystick
+mode, and an authenticated receiver link. It does not prove that the ROM consumed
+input, that uinput was created, or that a native core consumed shared state.
+
+Guide progress stores only course version 1, the ten bounded check identifiers,
+and an optional UTC completion time. The players API rejects unknown checks,
+stale course/player generations, extra fields, and malformed timestamps. It
+merges completed checks without losing earlier progress. Version-5 migration
+adds an empty independent guide record to every player and retains the old file
+as `gesture-tuning-v5-backup.json` before the first write. Names, saved centers,
+thresholds, dead zones, and Academy progress are preserved.
+
+`POST /api/ready` uses the same-origin browser safeguard and
+`X-VirtualGlove-Action: ready`. A visit's opaque session owns the persistent
+`data/ready-guide-inhibit` marker. While it exists, manual and automatic starts
+are rejected and a restart remains disarmed. Only that visit can explicitly
+release practice or leave the guide; older tabs cannot unlock a newer visit.
+The guide uses its own existing Academy practice lease and never resets another
+tab's lease. Guide arming revalidates the active player, completed checks, live
+camera/center/game status, and authenticated console health.
+
+Closing the guide releases its practice lease but keeps output inhibited. Reopen
+the guide to resume, or select **Leave guide — keep controls stopped** to exit
+explicitly. This exit removes the guide inhibit and keeps the Controller
+disarmed; a later ordinary Start or registered-game launch follows the existing
+controller rules. No frames, landmarks, hand measurements, addresses, pairing
+material, ROM names, or diagnostic results are stored as guide progress.
+
+### Connection Doctor
+
+In **Setup → Pair with RetroPie**, select **Check connection** for a checklist
+and suggested next steps. Save address, port, or startup-profile edits first.
+The Doctor never saves settings, pairs devices, starts controller output, or
+changes player/calibration data. Existing save and pair controls remain explicit actions.
+
+The checks use the existing address-resolution endpoint, cached console checks
+(no older than 30 seconds), and the tracker status API. A reachable Games service
+is separate from the UDP controller receiver. An authenticated Games response
+confirms that service accepts the saved pairing key; a locally saved key alone
+is insufficient. A reported receiver handshake and packet send do not acknowledge
+individual input delivery. When output is inactive, the receiver check is **Not
+verified**, rather than a connection failure.
+
+For an active registered game, the Doctor compares the reported profile,
+emulator, and input mode using the current native-mode rules. This is a runtime
+consistency check, not inspection of installed core files or proof that the ROM
+matches its registry entry. The current protocol does not report virtual-gamepad
+creation, native-state consumption, or game-side input receipt. Those checks
+remain **Not verified** and require testing on RetroPie; the Doctor does not send
+input or create a virtual controller to test them.
+
+**Download connection report** exports only fixed checklist labels, results,
+and a timestamp. It excludes addresses, raw API responses, error details,
+credentials, pairing tokens, device configuration, player data, calibration, and
+hand measurements. Results are a snapshot; edits or a save/pair action on the
+page invalidate them. Run the check again after changing the console or game.
+
 ### Settings shown in the browser
 
 Setup groups **Controller status**, **Players**, **Matrix attract mode**,
-**Connection and startup**, **Camera**, **Trust this Controller**, **Pair with RetroPie**, **Games**, and
+**Connection and startup**, **Pair with RetroPie**, **Camera**,
+**Trust this Controller**, **Joystick dead zone**, **Games**, and
 **Show statistics**. Receiver port and key replacement are under **Advanced
-connection**. Camera selection, rate, reader, exposure, and diagnostic hand label
+connection**. The connection settings appear immediately before the secure pairing wizard. Camera selection, rate, reader, exposure, and diagnostic hand label
 are in their own action-first Camera section. The concise
 [Camera guide](CAMERA_GUIDE.md) explains compatibility, lighting, and recovery.
 Key replacement stops output and requires pairing again. A saved destination and
@@ -110,7 +250,7 @@ from camera frames and controller packets, which remain newest-state-only.
 
 ![Advanced camera settings showing the discovered-camera dropdown and exposure controls](images/setup-camera.png)
 
-Selecting **Save connection and startup** or **Save camera settings** validates
+Selecting **Save connection** or **Save camera settings** validates
 the complete configuration, writes it atomically with private permissions, and
 restarts the vision worker using the saved calibration.
 Recalibrate only if you have moved the camera, changed your playing position,
@@ -928,9 +1068,10 @@ device configuration files, and files larger than 8 KB are rejected. The API
 requires boolean `reuse_calibration: true` for backup calibration reuse and
 `use_effective_thresholds: true` for complete sensitivity restoration.
 
-`data/gesture-tuning.json` version 5 stores `version`, `active`, `generation`,
+`data/gesture-tuning.json` version 6 stores `version`, `active`, `generation`,
 `players`, and nullable `calibration_restore`. Each player has `name`,
-`thresholds`, one `joystick_deadzone`, `progress` (`course`, `completed`, `lesson`), `needs_center`, and
+`thresholds`, one `joystick_deadzone`, `progress` (`course`, `completed`, `lesson`),
+separate `ready_progress` (`course`, `completed`, `completed_at`), `needs_center`, and
 nullable `calibration`. Course version 1 uses sixteen zero-based lesson indices.
 Generations reject stale writes after switches/restores/resets. The active
 working reference is mirrored in `data/calibration.json`; individual references
@@ -943,16 +1084,16 @@ and centering gate. An interrupted restore resumes after restart; a failed write
 leaves output paused. Switching players cancels an unapplied reference. Export
 waits until a pending restore finishes.
 
-Internal store versions 1–4 migrate without losing names, sensitivity, or progress.
+Internal store versions 1–5 migrate without losing names, sensitivity, or progress.
 Version 4 directional activation values migrate using their largest value and
 directional release values are retired.
 Before the first write, `data/gesture-tuning-vN-backup.json` retains the old
 store, where N is its version. This internal recovery migration is separate from
 the unsupported version-1 portable export format. Files use mode `0600` and
-survive upgrades. Older apps cannot read version 5; stop the app and restore the
+survive upgrades. Older apps cannot read version 6; stop the app and restore the
 appropriate private store backup when deliberately rolling back.
 
-`POST /api/players` supports `read`, `progress`, `reset_progress`, `create`,
+`POST /api/players` supports `read`, `progress`, `ready_progress`, `reset_progress`, `create`,
 `select`, `rename`, `delete`, `export`, `restore`, and `reuse_calibration`.
 Non-read requests include `player` and `generation`. Saved-player reuse also
 requires `confirmed: true`. JSON bodies are limited to 8192 bytes and require
@@ -1041,7 +1182,7 @@ useful for understanding the defaults; personal tuning is managed through Glove 
 
 | Field | What it measures | Effect of lowering the value |
 | --- | --- | --- |
-| `joystick_deadzone` | Half-width of the per-player square center box, normalized by palm size | Positional directions begin closer to center |
+| `joystick_deadzone` | Chosen width and height of the saved-center region as a fraction of the full camera frame (0.10–1.00); effective size is at least 1.5 calibrated hands | Positional directions begin closer to the saved center unless the hand-size floor applies |
 | `move_on` / `move_off` | Legacy configuration compatibility fields | Imported only when `joystick_deadzone` is absent; `move_on` supplies the box size and `move_off` is ignored |
 | `coordinate_edge_margin` | Camera margin excluded from native X/Y travel | Native travel reaches its edge closer to the camera boundary |
 | `coordinate_smoothing_min` | Minimum weight assigned to the newest native coordinate | Small native movements respond more immediately but may show more jitter |
@@ -1074,7 +1215,7 @@ The supplied shared recognition defaults are:
 
 ```json
 {
-  "joystick_deadzone": 0.28,
+  "joystick_deadzone": 0.60,
   "coordinate_edge_margin": 0.08,
   "coordinate_smoothing_min": 0.70,
   "coordinate_smoothing_max": 1.00,

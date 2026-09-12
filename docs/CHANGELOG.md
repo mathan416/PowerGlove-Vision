@@ -7,6 +7,56 @@ authoritative record for line-level and file-level history.
 
 ## [Unreleased]
 
+### Added
+
+- Added **Center hand** directly to the Joystick dead-zone camera test. It is
+  available only while that panel owns an active safe-practice camera session,
+  keeps controller output paused, and redraws the grid from the newly saved
+  player center and hand size when centering finishes.
+
+- Added a 3×3 camera grid to the dead-zone test, using the saved calibrated hand
+  center and the same translated, full-size bounds as gameplay. A subtle live direction region highlight clears on
+  tracking loss or suppressed movement; no labels or palm marker are drawn.
+  Moved the camera toggle beside **Use standard size**.
+
+- Added an off-by-default camera test to **Setup → Joystick dead zone**, with its
+  own practice lease, mirrored preview, live direction feedback,
+  heartbeat/retry handling, and isolated cleanup on stop or page exit.
+
+- Added an optional, resumable **Get ready to play** guide at `/ready`, linked
+  from Setup and Dashboard. It rechecks live readiness and uses safe practice
+  for essential gestures before an explicit transition to registered-game controls.
+- Added separate versioned per-player guide progress, lossless version-5 store
+  migration, and a persistent output inhibit that survives interrupted visits.
+
+- Added a read-only Connection Doctor to **Connect to RetroPie**, with progress,
+  separate address/service/authentication and runtime checks, plain-language next
+  actions, and a sanitized downloadable checklist report. Unsupported game-side
+  readiness checks remain explicitly unverified.
+
+### Changed
+
+- Moved **Joystick dead zone** directly below **Players** in Setup so player
+  selection, centering, and movement-box adjustment stay together.
+
+- The joystick camera test now previews unsaved slider changes immediately in
+  its grid, highlight, and direction pills, using the saved hand center and
+  current live palm position. Camera toggles retain the draft; player changes discard
+  it. Saving is still required for gameplay, and feedback waits for updated
+  worker bounds before returning to saved D-pad output.
+
+- Ordered Setup with separate **Connection and startup** and **Pair with
+  RetroPie** sections. **Show statistics** remains at the very bottom, after
+  Games, and shares its default-off switch with Dashboard. Recent events is
+  retained because it reports recognized gestures such as Glove Zap.
+- Joystick dead-zone size now means a chosen width and height fraction of the
+  full camera frame, anchored to each player's saved neutral palm center in both
+  preview and gameplay. The effective square is at least 1.5 times the saved
+  calibrated hand size; near a frame edge it translates inward without clipping
+  or shrinking. Live hand size and jitter never make the box breathe. All existing
+  numeric choices and player/calibration data remain unchanged, as do native
+  Super Glove Ball X/Y calibration and reach.
+
 ## [0.4.0-rc.7] - 2026-09-11
 
 ### Added

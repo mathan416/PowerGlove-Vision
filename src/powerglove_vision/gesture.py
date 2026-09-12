@@ -84,7 +84,7 @@ RECOGNITION_PROFILES = SUPPORTED_PROFILES + ("practice",)
 @dataclass(frozen=True)
 class GestureConfig:
     """Hold movement, curl, roll, depth, pulse, and tracking-loss thresholds."""
-    # One half-width for the square joystick centre region. ``None`` keeps old
+    # Full-frame width and height of the centered joystick region. ``None`` keeps old
     # profile files working by migrating their movement activation value.
     joystick_deadzone: float | None = None
     move_on: float = 0.28
@@ -160,12 +160,28 @@ class GestureConfig:
         return self.move_on if self.joystick_deadzone is None else self.joystick_deadzone
 
     def effective_joystick_deadzone(self, calibration: Calibration) -> float:
-        """Enlarge the centre box only when measured neutral jitter requires it."""
+        """Return the frame fraction after the calibrated hand-size safety floor."""
         return min(1.0, max(
             self.chosen_joystick_deadzone(),
-            calibration.noise_x + 0.05,
-            calibration.noise_y + 0.05,
+            1.5 * calibration.palm_scale,
         ))
+
+
+def joystick_deadzone_bounds(config: GestureConfig, calibration: Calibration):
+    """Return one square centered on saved neutral, translated intact into frame."""
+    size = config.effective_joystick_deadzone(calibration)
+    half = size / 2
+    center_x = _clamp(calibration.palm_x, half, 1 - half)
+    center_y = _clamp(calibration.palm_y, half, 1 - half)
+    return {
+        "center_x": center_x,
+        "center_y": center_y,
+        "half_size": half,
+        "left": center_x - half,
+        "right": center_x + half,
+        "top": center_y - half,
+        "bottom": center_y + half,
+    }
 
 
 MENU_FINGERS = {
@@ -946,10 +962,7 @@ class GestureEngine:
 
         assert self.calibration is not None
         reference = self.calibration
-        # Normalize screen displacement by hand size so the thresholds feel
-        # similar at different distances from the camera.
-        dx = (observation.palm_x - reference.palm_x) / reference.palm_scale
-        dy = (observation.palm_y - reference.palm_y) / reference.palm_scale
+        # Depth and wrist gestures retain their calibrated references.
         depth = observation.palm_scale / reference.palm_scale - 1.0
         roll = _circular_delta(observation.roll, reference.roll) / (math.pi / 2)
 
@@ -976,13 +989,12 @@ class GestureEngine:
         # The original glove's joystick-compatible layout is a stateless 3x3
         # grid. The square boundary belongs to centre, so returning to it
         # releases positional directions on this very inference result.
-        deadzone = cfg.effective_joystick_deadzone(reference)
-        outside = deadzone + 1e-9
+        bounds = joystick_deadzone_bounds(cfg, reference)
         dpad = {
-            "left": dx < -outside,
-            "right": dx > outside,
-            "up": dy < -outside,
-            "down": dy > outside,
+            "left": observation.palm_x < bounds["left"],
+            "right": observation.palm_x > bounds["right"],
+            "up": observation.palm_y < bounds["top"],
+            "down": observation.palm_y > bounds["bottom"],
         }
         for name in ("left", "right", "up", "down"):
             self._switches[name].active = dpad[name]
