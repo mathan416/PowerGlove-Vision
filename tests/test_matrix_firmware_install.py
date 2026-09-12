@@ -85,7 +85,7 @@ class MatrixFirmwareInstallTests(unittest.TestCase):
             args = command.call_args[0][0]
             self.assertIn("openocd_gpiod.cfg", args)
             self.assertIn("set filename1 " + str(firmware / "virtualglove-matrix.elf-zsk.bin"), args)
-            self.assertEqual(command.call_args.kwargs["timeout"], 120)
+            self.assertEqual(command.call_args[1]["timeout"], 120)
 
 
 if __name__ == "__main__":
