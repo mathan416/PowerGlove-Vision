@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Migrated App Lab containers to the virtualglove Compose project.
 #   2026-09-11 - Verify the Engineering Toolkit guide and PDF during deployment.
 #   2026-09-10 - Rotate routine payload backups while preserving named engineering evidence.
 #   2026-09-06 - Avoid reinstalling an identical enabled Wi-Fi sampler during updates.
@@ -119,9 +120,13 @@ echo "Ensuring the secure setup port is published..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
   "REMOTE_COMPOSE='${REMOTE_COMPOSE}' python3 -c \"import os, pathlib; p=pathlib.Path(os.environ['REMOTE_COMPOSE']); lines=p.read_text().splitlines(); found=any(line.strip() == '- 8443:8443' for line in lines); index=next((i for i, line in enumerate(lines) if line.strip() == '- 8088:8088'), None); assert found or index is not None, 'port 8088 is missing from App Lab compose file'; lines if found else lines.insert(index + 1, lines[index].replace('8088:8088', '8443:8443')); p.write_text('\\n'.join(lines) + '\\n')\""
 
+echo "Removing legacy Controller containers..."
+ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
+  "APP_HOME='${REMOTE_APP_DIR}' docker compose -p powerglove-vision -f '${REMOTE_COMPOSE}' down --remove-orphans"
+
 echo "Configuring persistent local hostname resolution..."
 ssh "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
-  "test -S /run/avahi-daemon/socket && python3 '${REMOTE_APP_DIR}/scripts/configure-uno-q-mdns.py' '${REMOTE_COMPOSE}'"
+  "python3 '${REMOTE_APP_DIR}/scripts/configure-uno-q-mdns.py' '${REMOTE_COMPOSE}' --project-only && { test ! -S /run/avahi-daemon/socket || python3 '${REMOTE_APP_DIR}/scripts/configure-uno-q-mdns.py' '${REMOTE_COMPOSE}'; }"
 
 echo "Checking the host helpers..."
 ssh -tt "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
@@ -219,6 +224,19 @@ for PAL_IMAGE in pixel-pal-web.png pixel-pal-coach.png pixel-pal-ready.png pixel
   curl --location --max-redirs 3 --fail --silent --show-error --max-time 10 \
     "http://${UNO_HEALTH_AUTHORITY}:8088/help-assets/gestures/v2/${PAL_IMAGE}" >/dev/null
 done
+
+CONTAINERS="$(ssh "${SSH_OPTIONS[@]}" "${UNO_TARGET}" \
+  "docker ps --format '{{.Names}}'")"
+for EXPECTED_CONTAINER in virtualglove-main-1 virtualglove-profile-relay-1 virtualglove-avahi-resolver-1; do
+  if [[ "${CONTAINERS}" != *"${EXPECTED_CONTAINER}"* ]]; then
+    echo "error: expected container ${EXPECTED_CONTAINER} is not running" >&2
+    exit 1
+  fi
+done
+if [[ "${CONTAINERS}" == *"powerglove-vision-"* ]]; then
+  echo "error: a legacy powerglove-vision container is still running" >&2
+  exit 1
+fi
 
 echo "Deployment complete."
 echo "  Play:   http://${UNO_HOST}:8088/play"

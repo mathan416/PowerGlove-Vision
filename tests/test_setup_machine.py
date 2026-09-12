@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Verified the virtualglove Compose project-name migration.
 #   2026-09-11 - Verified that the host identity reaches the containerized website.
 #   2026-09-03 - Added isolated filesystem installation tests.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -21,9 +22,26 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("setup_machine", ROOT / "scripts/setup-machine.py")
 setup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(setup)
+compose_spec = importlib.util.spec_from_file_location(
+    "configure_uno_q_mdns", ROOT / "scripts/configure-uno-q-mdns.py")
+compose_config = importlib.util.module_from_spec(compose_spec)
+compose_spec.loader.exec_module(compose_config)
 
 
 class SetupTests(unittest.TestCase):
+    def test_compose_project_name_replaces_legacy_name_idempotently(self):
+        legacy = "name: powerglove-vision\nservices:\n  main:\n    image: example\n"
+        expected = "name: virtualglove\nservices:\n  main:\n    image: example\n"
+        self.assertEqual(compose_config.configure_project_name(legacy), expected)
+        self.assertEqual(compose_config.configure_project_name(expected), expected)
+        self.assertEqual(
+            compose_config.configure_project_name("services:\n  main:\n    image: example\n"),
+            expected,
+        )
+        with self.assertRaisesRegex(ValueError, "at most one"):
+            compose_config.configure_project_name(
+                "name: old\nname: duplicate\nservices:\n  main:\n    image: example\n")
+
     def test_retired_buster_source_is_detected_without_touching_pi_archive(self):
         sources = [
             ("/etc/apt/sources.list",
@@ -142,6 +160,8 @@ class SetupTests(unittest.TestCase):
             self.assertEqual(first.count("target: /run/avahi-daemon"), 1)
             self.assertEqual(first.count("- 8443:8443"), 1)
             self.assertEqual(first.count("bricks/local/profile_control/brick_compose.yaml"), 1)
+            self.assertTrue(first.startswith("name: virtualglove\n"))
+            self.assertNotIn("name: powerglove-vision", first)
             self.assertEqual((app / "data/device.json").read_text(), '{"token":"keep-this-private","profile":"off"}')
             self.assertEqual((app / "data/controller-hostname").read_text(), "virtualglove\n")
             self.assertTrue(mapped("/etc/systemd/system/powerglove-system-shutdown.path").exists())
@@ -156,6 +176,11 @@ class SetupTests(unittest.TestCase):
                 "/usr/local/libexec/powerglove-camera-recovery", "--configure-if-present"
             )
             command.assert_any_call("systemctl", "enable", "--now", "powerglove-camera-recovery.path")
+            command.assert_any_call(
+                "env", "APP_HOME=/home/arduino/ArduinoApps/powerglove-vision",
+                "docker", "compose", "-p", "powerglove-vision", "-f", compose,
+                "down", "--remove-orphans"
+            )
             command.assert_any_call(
                 "env", "APP_HOME=/home/arduino/ArduinoApps/powerglove-vision",
                 "docker", "compose", "-f", compose, "up", "-d", "--force-recreate"

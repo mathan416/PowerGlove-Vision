@@ -395,7 +395,7 @@ An earlier reported 13-14 second delay was not reproduced in the instrumented te
 To inspect startup stages on the VirtualGlove Controller:
 
 ```sh
-docker logs --since 10m powerglove-vision-main-1 2>&1 | grep 'Vision startup:'
+docker logs --since 10m virtualglove-main-1 2>&1 | grep 'Vision startup:'
 ```
 
 The default installation uses this container name; use `docker ps` to find it
@@ -834,7 +834,7 @@ The setup and Wi-Fi update helpers also add their includes to existing Compose
 configuration. On the VirtualGlove Controller, check the published port with:
 
 ```sh
-docker port powerglove-vision-profile-relay-1 55356/udp
+docker port virtualglove-profile-relay-1 55356/udp
 ```
 
 Expect a host binding for port `55356`. If it is missing, update the application
