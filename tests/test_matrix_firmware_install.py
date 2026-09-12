@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Kept mock-call inspection compatible with Python 3.7.
 #   2026-09-11 - Added precompiled firmware installer coverage.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -80,7 +81,8 @@ class MatrixFirmwareInstallTests(unittest.TestCase):
                     patch.object(FLASH, "OFFICIAL_HASHES", {}), \
                     patch.object(FLASH.subprocess, "run") as command:
                 FLASH.flash(firmware)
-            args = command.call_args.args[0]
+            # Tuple indexing also works with Python 3.7's mock implementation.
+            args = command.call_args[0][0]
             self.assertIn("openocd_gpiod.cfg", args)
             self.assertIn("set filename1 " + str(firmware / "virtualglove-matrix.elf-zsk.bin"), args)
             self.assertEqual(command.call_args.kwargs["timeout"], 120)

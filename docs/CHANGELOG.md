@@ -68,6 +68,10 @@ No changes are pending after the refreshed release candidate.
   backup rotation now use compatible runtime APIs, and affected tests avoid
   newer mock-call conveniences. The release gate now runs the full suite on
   both Python 3.7 and Python 3.12 before packaging.
+- Made local HTTPS certificate renewal independent of OpenSSL's version-specific
+  hostname-check exit behavior, so a changed Controller IP is always reflected
+  in the trusted certificate. Corrected the remaining Python 3.7 Matrix test
+  compatibility issue found by the release gate.
 
 ## [0.4.0-rc.6] - 2026-09-11
 

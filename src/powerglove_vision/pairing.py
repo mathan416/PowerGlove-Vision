@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Made certificate-name validation independent of OpenSSL exit-code differences.
 #   2026-09-11 - Added a persistent per-Controller authority for trusted local HTTPS.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -130,15 +131,21 @@ def _valid_server_certificate(
         ["openssl", "verify", "-CAfile", str(authority), str(certificate)],
         ["openssl", "x509", "-checkend", str(30 * 24 * 60 * 60), "-noout",
          "-in", str(certificate)],
-        ["openssl", "x509", "-checkhost", hostname, "-noout", "-in", str(certificate)],
     ]
-    commands.extend([
-        ["openssl", "x509", "-checkip", address, "-noout", "-in", str(certificate)]
-        for address in addresses
-    ])
-    return all(subprocess.run(command, stdout=subprocess.DEVNULL,
+    if not all(subprocess.run(command, stdout=subprocess.DEVNULL,
                               stderr=subprocess.DEVNULL).returncode == 0
-               for command in commands)
+               for command in commands):
+        return False
+    try:
+        decoded = ssl._ssl._test_decode_cert(str(certificate))
+        names = decoded.get("subjectAltName", ())
+        dns_names = {value.lower() for kind, value in names if kind == "DNS"}
+        ip_names = {ipaddress.ip_address(value) for kind, value in names
+                    if kind == "IP Address"}
+        required_addresses = {ipaddress.ip_address(value) for value in addresses}
+    except (OSError, ValueError, ssl.SSLError):
+        return False
+    return hostname.lower() in dns_names and required_addresses.issubset(ip_names)
 
 
 def _certificate_matches_key(certificate: Path, private_key: Path) -> bool:
