@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Verified persistent Controller-authority issuance and renewal.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 #   2026-09-03 - Kept mock-call inspection compatible with Python 3.7.
@@ -23,8 +24,10 @@ from unittest import mock
 
 from powerglove_vision.pairing import (
     certificate_code,
+    certificate_fingerprint,
     certificate_identity,
     display_pairing_code,
+    ensure_controller_authority,
     generate_certificate,
     install_token,
     normalize_pairing_code,
@@ -50,6 +53,50 @@ class PairingTests(unittest.TestCase):
             self.assertEqual(len(certificate_code(pem)), 10)
             self.assertEqual(certificate_code(pem), certificate_code(pem))
             self.assertRegex(certificate_identity(pem), r"^[0-9A-F]{7}$")
+            self.assertRegex(certificate_fingerprint(pem), r"^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$")
+
+    def test_controller_authority_is_persistent_and_signs_named_leaf(self):
+        with tempfile.TemporaryDirectory() as temporary_name:
+            directory = Path(temporary_name) / "tls"
+            certificate, key, pem, authority_pem = ensure_controller_authority(
+                directory, "virtualglove.local", ["10.0.2.96"])
+            first_authority = certificate_fingerprint(authority_pem)
+            completed = __import__('subprocess').run([
+                "openssl", "verify", "-CAfile", str(directory / "controller-ca-cert.pem"),
+                str(certificate),
+            ], capture_output=True)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            details = __import__('subprocess').check_output([
+                "openssl", "x509", "-in", str(certificate), "-noout", "-ext",
+                "subjectAltName",
+            ]).decode()
+            self.assertIn("DNS:virtualglove.local", details)
+            self.assertIn("IP Address:10.0.2.96", details)
+            self.assertEqual(key.stat().st_mode & 0o777, 0o600)
+            self.assertEqual((directory / "controller-ca-key.pem").stat().st_mode & 0o777, 0o600)
+
+            _certificate, _key, second_pem, second_authority = ensure_controller_authority(
+                directory, "virtualglove.local", ["10.0.2.96"])
+            self.assertEqual(first_authority, certificate_fingerprint(second_authority))
+            self.assertEqual(pem, second_pem)
+
+            key.write_bytes((directory / "controller-ca-key.pem").read_bytes())
+            _certificate, repaired_key, repaired_pem, repaired_authority = ensure_controller_authority(
+                directory, "virtualglove.local", ["10.0.2.96"])
+            self.assertEqual(first_authority, certificate_fingerprint(repaired_authority))
+            self.assertNotEqual(pem, repaired_pem)
+            self.assertNotEqual(repaired_key.read_bytes(),
+                                (directory / "controller-ca-key.pem").read_bytes())
+
+            _certificate, _key, renewed_pem, renewed_authority = ensure_controller_authority(
+                directory, "virtualglove.local", ["10.0.2.105"])
+            self.assertEqual(first_authority, certificate_fingerprint(renewed_authority))
+            self.assertNotEqual(pem, renewed_pem)
+            renewed = __import__('subprocess').check_output([
+                "openssl", "x509", "-in", str(certificate), "-noout", "-ext",
+                "subjectAltName",
+            ]).decode()
+            self.assertIn("IP Address:10.0.2.105", renewed)
 
     def test_token_is_written_with_restricted_permissions(self):
         with tempfile.TemporaryDirectory() as temporary_name:

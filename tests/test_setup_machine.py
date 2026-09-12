@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Verified that the host identity reaches the containerized website.
 #   2026-09-03 - Added isolated filesystem installation tests.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -23,6 +24,32 @@ spec.loader.exec_module(setup)
 
 
 class SetupTests(unittest.TestCase):
+    def test_retired_buster_source_is_detected_without_touching_pi_archive(self):
+        sources = [
+            ("/etc/apt/sources.list",
+             "deb http://raspbian.raspberrypi.org/raspbian buster main contrib\n"
+             "deb http://archive.raspberrypi.org/debian buster main\n"),
+            ("/etc/apt/sources.list.d/current.list",
+             "deb http://deb.debian.org/debian bookworm main\n"),
+        ]
+        self.assertEqual(setup.retired_buster_sources(sources), ["/etc/apt/sources.list"])
+        repaired = sources[0][1].replace(
+            "http://raspbian.raspberrypi.org/raspbian",
+            "https://legacy.raspbian.org/raspbian")
+        self.assertEqual(setup.retired_buster_sources([("repaired", repaired)]), [])
+
+    def test_unoq_startup_requires_matching_matrix_firmware(self):
+        import io
+        matched = io.BytesIO(b'{"firmware":{"state":"matched"}}')
+        with patch.object(setup.urllib.request, "urlopen", return_value=matched):
+            setup.wait_unoq()
+        unavailable = [io.BytesIO(b'{"firmware":{"state":"unavailable"}}')
+                       for _ in range(90)]
+        with patch.object(setup.urllib.request, "urlopen", side_effect=unavailable), \
+                patch.object(setup.time, "sleep"):
+            with self.assertRaisesRegex(ValueError, "startup validation failed"):
+                setup.wait_unoq()
+
     def test_hook_inserted_before_exit_and_is_idempotent(self):
         original = "#!/bin/bash\necho existing\nexit 0\n"
         updated = setup.hook_content(original, "start")
@@ -103,7 +130,7 @@ class SetupTests(unittest.TestCase):
             def mapped(value):
                 path = Path(value)
                 return root / str(path).lstrip("/") if str(path).startswith(("/etc/", "/usr/local/")) else path
-            with patch.object(setup, "SOURCE", AppPath()), patch.object(setup, "Path", side_effect=mapped), patch.object(setup, "BACKUPS", root / "backups"), patch.object(setup, "run") as command, patch.object(setup, "install_early_start") as early, patch.object(setup.os, "chown"), patch.object(setup.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)):
+            with patch.object(setup, "SOURCE", AppPath()), patch.object(setup, "Path", side_effect=mapped), patch.object(setup, "BACKUPS", root / "backups"), patch.object(setup, "run") as command, patch.object(setup, "install_early_start") as early, patch.object(setup.os, "chown"), patch.object(setup.socket, "gethostname", return_value="VirtualGlove"), patch.object(setup.pwd, "getpwnam", return_value=SimpleNamespace(pw_uid=1000, pw_gid=1000)):
                 setup.install_unoq(None)
                 first = compose.read_text()
                 setup.install_unoq(None)
@@ -116,6 +143,7 @@ class SetupTests(unittest.TestCase):
             self.assertEqual(first.count("- 8443:8443"), 1)
             self.assertEqual(first.count("bricks/local/profile_control/brick_compose.yaml"), 1)
             self.assertEqual((app / "data/device.json").read_text(), '{"token":"keep-this-private","profile":"off"}')
+            self.assertEqual((app / "data/controller-hostname").read_text(), "virtualglove\n")
             self.assertTrue(mapped("/etc/systemd/system/powerglove-system-shutdown.path").exists())
             service = mapped("/etc/systemd/system/powerglove-system-shutdown.service").read_text()
             self.assertIn("ExecStart=/usr/bin/systemctl --no-block halt", service)

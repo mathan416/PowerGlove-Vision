@@ -13,6 +13,16 @@ No changes are pending after the refreshed release candidate.
 
 ### Added
 
+- Added friendly first-install Controller naming with `virtualglove.local` as
+  the suggested address, custom-name validation, confirmation, visible LAN
+  conflict detection, an explicit unattended option, and upgrade-safe hostname
+  preservation. The containerized HTTPS server now uses the approved UNO Q host
+  identity rather than a transient App Lab container name.
+- Added a persistent per-Controller local certificate authority, HTTPS-only
+  public trust-certificate download, automatic named leaf renewal, and guided
+  one-time browser trust while retaining physical Matrix fingerprint pairing.
+- Added clear installation and troubleshooting guidance for RetroPie systems
+  whose Raspbian Buster package source has moved to the legacy archive.
 - Rebuilt the optional Engineering Toolkit as a curated, self-checking release
   archive with a dedicated technical guide, repeatable environment setup,
   categorized commands, clean-extraction validation, and resolved-package
@@ -20,6 +30,13 @@ No changes are pending after the refreshed release candidate.
 
 ### Changed
 
+- UNO Q release packages now carry checksum-described, precompiled Matrix
+  firmware. Ordinary installations use the board's factory OpenOCD support and
+  no longer download the Zephyr compiler toolchain. Source builds remain
+  available in the full repository.
+- RetroPie installation detects the obsolete Buster package host before making
+  VirtualGlove changes and tells the operator exactly which source file needs
+  repair without silently changing operating-system repositories.
 - Removed release building, deployment, documentation generation, firmware
   stamping, and other incomplete repository-maintenance workflows from the
   Engineering Toolkit archive. Added missing direct helpers and kept normal
@@ -51,6 +68,10 @@ No changes are pending after the refreshed release candidate.
   backup rotation now use compatible runtime APIs, and affected tests avoid
   newer mock-call conveniences. The release gate now runs the full suite on
   both Python 3.7 and Python 3.12 before packaging.
+- Made local HTTPS certificate renewal independent of OpenSSL's version-specific
+  hostname-check exit behavior, so a changed Controller IP is always reflected
+  in the trusted certificate. Corrected the remaining Python 3.7 Matrix test
+  compatibility issue found by the release gate.
 
 ## [0.4.0-rc.6] - 2026-09-11
 

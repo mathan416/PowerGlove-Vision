@@ -7,6 +7,7 @@ __pycache__/
 .pytest_cache/
 data/
 output/app-lab/*.zip
+output/matrix-firmware/
 src/powerglove_vision/_build_info.json
 
 # Local photo-crop exports; maintained images live in docs/images/matrix/.

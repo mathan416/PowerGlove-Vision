@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Use the installer-recorded host identity for the HTTPS certificate.
+#   2026-09-11 - Served the public Controller trust certificate only over HTTPS.
 #   2026-09-11 - Kept camera-profile marker cleanup compatible with Python 3.7.
 #   2026-09-11 - Add a privacy-safe downloadable system report.
 #   2026-09-10 - Added Pixel Pal's safe camera-settings profiler.
@@ -39,6 +41,7 @@ import json
 import hashlib
 import math
 import os
+import re
 import secrets
 import socket
 import ssl
@@ -76,10 +79,29 @@ from .help_content import (
     cabinet_reference_content, help_asset, help_document_content,
     help_index_content, guide_markdown, guide_pdf,
 )
-from .pairing import PAIRING_PORT, certificate_identity, generate_certificate, pair_over_ssh, pair_with_code
+from .pairing import (
+    PAIRING_PORT,
+    certificate_fingerprint,
+    certificate_identity,
+    ensure_controller_authority,
+    pair_over_ssh,
+    pair_with_code,
+)
 
 
 WORKER_URL = "http://127.0.0.1:8089"
+
+
+def controller_tls_hostname(config_path: Path) -> str:
+    """Return the stable UNO Q hostname instead of a transient container name."""
+    identity = config_path.parent / "controller-hostname"
+    try:
+        value = identity.read_text().strip().lower()
+    except OSError:
+        value = ""
+    if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", value):
+        value = socket.gethostname().split(".", 1)[0].lower()
+    return value + ".local"
 HTTPS_PORT = 8443
 CAMERA_PROFILE_READY_SECONDS = 3.0
 CAMERA_PROFILE_STAGES = (
@@ -219,6 +241,7 @@ class ControlState:
         self._pairing_display = pairing_display
         self._pairing_finished = pairing_finished
         self._pairing_identity = ""
+        self._controller_authority_pem = ""
         self._pairing_session: dict[str, Any] | None = None
         self._pairing_locked_until = 0.0
         self._shutdown_scheduled = False
@@ -251,6 +274,18 @@ class ControlState:
     def configure_pairing_identity(self, identity: str) -> None:
         """Publish the current certificate identity used for physical verification."""
         self._pairing_identity = identity
+
+    def configure_controller_authority(self, pem: str) -> None:
+        """Publish only the public Controller authority used by the trust download."""
+        ssl.PEM_cert_to_DER_cert(pem)
+        self._controller_authority_pem = pem
+
+    def controller_authority(self) -> tuple[bytes, str]:
+        """Return the public DER certificate and its complete fingerprint."""
+        if not self._controller_authority_pem:
+            raise ValueError("Controller trust certificate is unavailable.")
+        return (ssl.PEM_cert_to_DER_cert(self._controller_authority_pem),
+                certificate_fingerprint(self._controller_authority_pem))
 
     def begin_pairing(self, host: str, method: str) -> dict[str, Any]:
         """Create a short-lived physical authorization PIN for one host and pairing method."""
@@ -1079,13 +1114,18 @@ class ControlState:
                 self._auto_start_error = str(error)
 
 
-def _send(handler: BaseHTTPRequestHandler, status: int, body: bytes, content_type: str) -> None:
+def _send(
+    handler: BaseHTTPRequestHandler, status: int, body: bytes, content_type: str,
+    headers: dict[str, str] | None = None,
+) -> None:
     """Send one HTTP response with explicit content type and length."""
     handler.send_response(status)
     handler.send_header("Content-Type", content_type)
     handler.send_header("Content-Length", str(len(body)))
     handler.send_header("Cache-Control", "no-store")
     handler.send_header("X-Content-Type-Options", "nosniff")
+    for name, value in (headers or {}).items():
+        handler.send_header(name, value)
     handler.end_headers()
     handler.wfile.write(body)
 
@@ -1184,6 +1224,16 @@ def make_handler(state: ControlState) -> type[BaseHTTPRequestHandler]:
                 _send(self, 200, json.dumps(state.public_config()).encode(), "application/json")
             elif path == "/api/camera-profile":
                 _send(self, 200, json.dumps(state.camera_profile_snapshot()).encode(), "application/json")
+            elif path == "/controller-ca.cer":
+                if not isinstance(self.connection, ssl.SSLSocket):
+                    _send(self, 426, b"Open secure Setup before downloading the trust certificate.\n",
+                          "text/plain; charset=utf-8")
+                else:
+                    certificate, fingerprint = state.controller_authority()
+                    _send(self, 200, certificate, "application/pkix-cert", {
+                        "Content-Disposition": 'attachment; filename="virtualglove-controller-ca.cer"',
+                        "X-VirtualGlove-CA-SHA256": fingerprint,
+                    })
             elif path == "/stream":
                 self.proxy_stream()
             else:
@@ -1420,19 +1470,17 @@ def start_control_server(
     servers = [server]
     try:
         tls_directory = config_path.parent / "tls"
-        certificate = tls_directory / "pairing-cert.pem"
-        private_key = tls_directory / "pairing-key.pem"
-        if not certificate.exists() or not private_key.exists():
-            hostname = socket.gethostname().split(".", 1)[0] + ".local"
-            certificate, private_key, _pem = generate_certificate(tls_directory, hostname, days=3650)
-        pem = certificate.read_text()
+        hostname = controller_tls_hostname(config_path)
+        certificate, private_key, pem, authority_pem = ensure_controller_authority(
+            tls_directory, hostname, [])
         state.configure_pairing_identity(certificate_identity(pem))
+        state.configure_controller_authority(authority_pem)
         secure_server = ThreadingHTTPServer((host, https_port), make_handler(state))
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(certificate, private_key)
         secure_server.socket = context.wrap_socket(secure_server.socket, server_side=True)
         threading.Thread(target=secure_server.serve_forever, name="control-https", daemon=True).start()
         servers.append(secure_server)
-    except (OSError, subprocess.CalledProcessError, ssl.SSLError) as exc:
+    except (OSError, ValueError, subprocess.CalledProcessError, ssl.SSLError) as exc:
         print(f"VirtualGlove: secure setup unavailable: {exc}", flush=True)
     return ControlServerGroup(servers), state

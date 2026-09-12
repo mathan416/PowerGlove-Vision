@@ -44,6 +44,12 @@ or playing.
 The hourglass means startup is in progress. If it stays on the display, open
 Dashboard and check the startup or error message.
 
+Public releases include the Matrix firmware already compiled for the UNO Q.
+Installation verifies its checksum and the board model, then uses the board's
+factory flashing support. It does not download the large Zephyr compiler on the
+Controller. Developers can still rebuild the same pinned source through the
+repository engineering workflow.
+
 ## Attract brightness and connection pixels
 
 In **Setup → Matrix attract mode**, select **On**, **Dim**, or **Off** and choose

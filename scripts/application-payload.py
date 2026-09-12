@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added release staging for precompiled Matrix firmware.
 #   2026-09-09 - Excluded research tools from ordinary packages while retaining a development overlay.
 #   2026-09-06 - Reject stale generated matrix firmware identity before staging.
 #   2026-09-04 - Unified release and maintenance file selection.
@@ -53,16 +54,32 @@ def selected_files(root, include_engineering=False):
     return sorted(selected)
 
 
-def stage(root, destination, include_engineering=False):
+def stage(root, destination, include_engineering=False, precompiled_matrix=False):
     """Copy the selected files and stamp identity without exporting Git metadata."""
     subprocess.run(["python3", str(root / "scripts/stamp-firmware-version.py"), "--check"], check=True)
-    for name in selected_files(root, include_engineering=include_engineering):
+    names = selected_files(root, include_engineering=include_engineering)
+    if precompiled_matrix:
+        names = [name for name in names if not name.startswith("sketch/")]
+    for name in names:
         source = root / name
         if source.is_symlink():
             raise ValueError("Refusing a symbolic application source: " + name)
         target = destination / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(str(source), str(target))
+    if precompiled_matrix:
+        firmware = root / "output/matrix-firmware"
+        required = {
+            "manifest.json", "virtualglove-matrix.elf-zsk.bin",
+            "zephyr-arduino_uno_q_stm32u585xx.elf", "flash_sketch.cfg",
+        }
+        missing = sorted(name for name in required if not (firmware / name).is_file())
+        if missing:
+            raise ValueError("Build precompiled Matrix firmware first: " + ", ".join(missing))
+        target = destination / "firmware/matrix"
+        target.mkdir(parents=True, exist_ok=True)
+        for name in sorted(required):
+            shutil.copy2(str(firmware / name), str(target / name))
     subprocess.run(["python3", str(root / "scripts/stamp-build-version.py"),
                     str(destination / "src/powerglove_vision/_build_info.json")], check=True)
 
@@ -73,10 +90,13 @@ def main():
     parser.add_argument("destination", type=Path)
     parser.add_argument("--include-engineering", action="store_true",
                         help="retain repository research and maintainer tools for a development deployment")
+    parser.add_argument("--precompiled-matrix", action="store_true",
+                        help="replace sketch sources with verified, precompiled Matrix firmware")
     args = parser.parse_args()
     if args.destination.exists() and any(args.destination.iterdir()):
         parser.error("Use an empty staging directory")
-    stage(ROOT, args.destination, include_engineering=args.include_engineering)
+    stage(ROOT, args.destination, include_engineering=args.include_engineering,
+          precompiled_matrix=args.precompiled_matrix)
 
 
 if __name__ == "__main__":

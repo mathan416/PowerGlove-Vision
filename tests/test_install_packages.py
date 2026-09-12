@@ -5,6 +5,8 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Covered first-install Controller naming, conflicts, and upgrade preservation.
+#   2026-09-11 - Covered hostname and LAN-IP URLs in UNO Q completion output.
 #   2026-09-11 - Covered cache-free loading from an extracted release tree.
 #   2026-09-05 - Covered required renewable game-session package members.
 #   2026-09-05 - Required App Lab builds to refresh their checksum companion.
@@ -21,7 +23,7 @@ import stat
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,129 @@ spec.loader.exec_module(installer)
 
 
 class PackageContentTests(unittest.TestCase):
+    def test_controller_hostname_validation(self):
+        for value, expected in (("VirtualGlove", "virtualglove"),
+                                ("kids-room.local", "kids-room"),
+                                ("vg2", "vg2")):
+            self.assertEqual(installer.valid_controller_hostname(value), expected)
+        for value in ("", "-virtualglove", "virtualglove-", "two names", "10",
+                      "localhost", "local", "x" * 64):
+            with self.subTest(value=value), self.assertRaises(Exception):
+                installer.valid_controller_hostname(value)
+
+    def test_fresh_interactive_install_suggests_and_confirms_virtualglove(self):
+        with patch.object(installer.sys.stdin, 'isatty', return_value=True), \
+                patch('builtins.input', side_effect=['', '']) as prompt:
+            self.assertEqual(installer.select_controller_hostname(None, False), 'virtualglove')
+        self.assertEqual(prompt.call_count, 2)
+
+    def test_existing_install_is_never_renamed(self):
+        with patch('builtins.input') as prompt:
+            self.assertIsNone(installer.select_controller_hostname(None, True))
+            with self.assertRaisesRegex(ValueError, 'only for a first installation'):
+                installer.select_controller_hostname('another-name', True)
+        prompt.assert_not_called()
+
+    def test_noninteractive_fresh_install_preserves_existing_machine_name(self):
+        with patch.object(installer.sys.stdin, 'isatty', return_value=False), \
+                patch.object(installer.socket, 'gethostname', return_value='arduino'), \
+                patch('sys.stdout', new_callable=io.StringIO) as output:
+            self.assertIsNone(installer.select_controller_hostname(None, False))
+        self.assertIn('preserving Controller name arduino', output.getvalue())
+
+    def test_hostname_conflict_excludes_this_controllers_addresses(self):
+        response = b'10.0.2.96 STREAM virtualglove.local\n10.0.2.96 DGRAM\n'
+        with patch.object(installer.subprocess, 'check_output', return_value=response), \
+                patch.object(installer, 'local_ipv4_addresses', return_value={'10.0.2.96'}):
+            self.assertFalse(installer.hostname_conflicts('virtualglove'))
+        with patch.object(installer.subprocess, 'check_output', return_value=response), \
+                patch.object(installer, 'local_ipv4_addresses', return_value={'10.0.2.105'}):
+            self.assertTrue(installer.hostname_conflicts('virtualglove'))
+
+    def test_local_hosts_identity_is_changed_without_losing_aliases(self):
+        original = '127.0.0.1 localhost\n127.0.1.1 Arduino old-alias # board\n'
+        changed = installer.hosts_with_controller_name(original, 'Arduino', 'virtualglove')
+        self.assertIn('127.0.1.1\tvirtualglove old-alias # board', changed)
+        self.assertIn('127.0.0.1 localhost', changed)
+
+    def test_configure_hostname_backs_up_managed_identity_and_sets_runtime_name(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            hostname = root / 'hostname'
+            hosts = root / 'hosts'
+            hostname.write_text('Arduino\n')
+            hosts.write_text('127.0.1.1 Arduino\n')
+            setup = SimpleNamespace(write_file=Mock(), run=Mock())
+
+            def write_file(path, content):
+                target = hostname if str(path) == '/etc/hostname' else hosts
+                target.write_text(content)
+
+            setup.write_file.side_effect = write_file
+            real_path = installer.Path
+            with patch.object(installer.socket, 'gethostname', return_value='Arduino'), \
+                    patch.object(installer, 'hostname_conflicts', return_value=False), \
+                    patch.object(installer, 'Path', side_effect=lambda value: hosts if str(value) == '/etc/hosts' else real_path(value)):
+                self.assertEqual(installer.configure_controller_hostname(setup, 'virtualglove'),
+                                 'virtualglove')
+            self.assertEqual(hostname.read_text(), 'virtualglove\n')
+            self.assertIn('virtualglove', hosts.read_text())
+            setup.run.assert_called_once_with('hostnamectl', 'set-hostname', 'virtualglove')
+
+    def test_controller_urls_include_mdns_and_physical_ipv4_addresses(self):
+        interfaces = [
+            {"ifname": "lo", "addr_info": [
+                {"family": "inet", "scope": "host", "local": "127.0.0.1"}]},
+            {"ifname": "wlan0", "addr_info": [
+                {"family": "inet", "scope": "global", "local": "10.0.2.96"}]},
+            {"ifname": "end0", "addr_info": [
+                {"family": "inet", "scope": "global", "local": "192.168.1.42"}]},
+            {"ifname": "docker0", "addr_info": [
+                {"family": "inet", "scope": "global", "local": "172.17.0.1"}]},
+        ]
+        with patch.object(installer.socket, 'gethostname', return_value='VirtualGlove'), \
+                patch.object(installer.subprocess, 'check_output',
+                             return_value=json.dumps(interfaces).encode()), \
+                patch('sys.stdout', new_callable=io.StringIO) as output:
+            installer.print_controller_urls()
+        text = output.getvalue()
+        self.assertIn('http://VirtualGlove.local:8088/dashboard', text)
+        self.assertIn('https://10.0.2.96:8443/setup', text)
+        self.assertIn('http://192.168.1.42:8088/help', text)
+        self.assertNotIn('172.17.0.1', text)
+
+    def test_controller_urls_tolerate_address_discovery_failure(self):
+        with patch.object(installer.socket, 'gethostname', return_value='virtualglove.local'), \
+                patch.object(installer.subprocess, 'check_output', side_effect=OSError('no ip')), \
+                patch('sys.stdout', new_callable=io.StringIO) as output:
+            installer.print_controller_urls()
+        text = output.getvalue()
+        self.assertIn('http://virtualglove.local:8088/dashboard', text)
+        self.assertIn('IP address: not available yet', text)
+
+    def test_precompiled_staging_replaces_sketch_sources_with_firmware(self):
+        import runpy
+        module = runpy.run_path(str(ROOT / 'scripts/application-payload.py'))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'root'
+            destination = Path(directory) / 'destination'
+            (root / 'sketch').mkdir(parents=True)
+            (root / 'sketch/sketch.ino').write_text('source')
+            (root / 'app.yaml').write_text('name: test')
+            firmware = root / 'output/matrix-firmware'
+            firmware.mkdir(parents=True)
+            for name in ('manifest.json', 'virtualglove-matrix.elf-zsk.bin',
+                         'zephyr-arduino_uno_q_stm32u585xx.elf', 'flash_sketch.cfg'):
+                (firmware / name).write_text(name)
+            with patch.object(module['subprocess'], 'run'), \
+                    patch.dict(module['stage'].__globals__, {
+                        'selected_files': lambda *_args, **_kwargs:
+                            ['app.yaml', 'sketch/sketch.ino']
+                    }):
+                module['stage'](root, destination, precompiled_matrix=True)
+            self.assertTrue((destination / 'firmware/matrix/manifest.json').is_file())
+            self.assertFalse((destination / 'sketch/sketch.ino').exists())
+
     def test_app_lab_builder_refreshes_companion_checksum(self):
         builder = (ROOT / 'scripts/build-app-lab-package.sh').read_text()
         self.assertIn('readonly OUTPUT_SHA="${OUTPUT_ZIP}.sha256"', builder)
@@ -176,8 +301,10 @@ class ArchiveTests(unittest.TestCase):
                 (app / 'docs/cheatsheet.md').write_text('local cabinet')
                 (app / '.cache').mkdir()
                 (app / '.cache/app-compose.yaml').write_text('generated')
+                (app / 'sketch').mkdir()
                 (source / 'app.yaml').write_text('upgrade')
                 installer.stage_unoq(source, setup)
+                self.assertFalse((app / 'sketch').exists())
                 installer.stage_unoq(source, setup)
                 self.assertEqual((app / 'data/device.json').read_text(), 'private-pairing-and-tuning')
                 self.assertEqual((app / 'data/calibration.json').read_text(), 'private-neutral-reference')
@@ -185,6 +312,25 @@ class ArchiveTests(unittest.TestCase):
                 self.assertEqual((app / 'docs/cheatsheet.md').read_text(), 'local cabinet')
                 command.assert_any_call('runuser', '-u', 'arduino', '--', 'arduino-app-cli', 'app', 'start', app)
                 self.assertTrue(list((root / 'backups').rglob('app.yaml')))
+
+    def test_unmanaged_old_sketch_files_are_not_silently_deleted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / 'source'
+            source.mkdir()
+            (source / 'app.yaml').write_text('release')
+            app = root / 'app'
+            (app / 'sketch').mkdir(parents=True)
+            (app / 'sketch/local-note.txt').write_text('keep')
+            setup = installer.load_setup(ROOT)
+            setup.BACKUPS = root / 'backups'
+            account = SimpleNamespace(pw_uid=os.getuid(), pw_gid=os.getgid())
+            with patch.object(installer, 'APP', app), \
+                    patch.object(installer.pwd, 'getpwnam', return_value=account), \
+                    patch.object(installer.os, 'chown'), patch.object(setup, 'run'):
+                with self.assertRaisesRegex(ValueError, 'Unmanaged files remain'):
+                    installer.stage_unoq(source, setup)
+            self.assertEqual((app / 'sketch/local-note.txt').read_text(), 'keep')
 
 
 class BootstrapTests(unittest.TestCase):
@@ -227,6 +373,23 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn('dev-test', network.call_args[0][0])
         self.assertEqual(call.call_args[0][0][-2:], ['--peer', 'uno.local'])
+
+    def test_uno_bootstrap_forwards_first_install_hostname(self):
+        import hashlib
+        script = (ROOT / 'scripts/install-uno-q.sh').read_text()
+        code = script.split("exec python3 -c '\n", 1)[1].rsplit("' \"$@\"", 1)[0]
+        driver, package = b'driver', b'package'
+        sums = (hashlib.sha256(driver).hexdigest() + '  install-package.py\n' +
+                hashlib.sha256(package).hexdigest() + '  VirtualGlove-Uno-Q.zip\n').encode()
+        with patch('sys.argv', ['installer', '--development', 'dev-test',
+                                '--hostname', 'family-room']), \
+                patch('sys.platform', 'linux'), patch('os.geteuid', return_value=1000), \
+                patch('urllib.request.urlopen', side_effect=[io.BytesIO(sums), io.BytesIO(driver),
+                                                             io.BytesIO(package)]), \
+                patch('subprocess.call', return_value=0) as call:
+            with self.assertRaises(SystemExit):
+                exec(compile(code, 'bootstrap', 'exec'), {'__name__': '__main__'})
+        self.assertEqual(call.call_args[0][0][-2:], ['--hostname', 'family-room'])
 
     def test_latest_release_is_resolved_once_and_pinned_for_downloads(self):
         import hashlib

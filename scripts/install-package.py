@@ -6,6 +6,9 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added safe, optional first-install Controller naming.
+#   2026-09-11 - Printed hostname and LAN-IP Controller URLs after UNO Q installation.
+#   2026-09-11 - Install checksum-verified precompiled Matrix firmware without a compiler.
 #   2026-09-11 - Prevented the verified setup loader from writing cache files into release staging.
 #   2026-09-05 - Required the complete renewable game-session implementation.
 #   2026-09-04 - Added versioned two-machine installation.
@@ -14,6 +17,7 @@
 """Install a downloaded, checksum-verified package on its intended Linux host."""
 import argparse
 import importlib.util
+import ipaddress
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -29,6 +33,50 @@ import urllib.request
 import zipfile
 
 APP = Path("/home/arduino/ArduinoApps/powerglove-vision")
+
+
+def controller_addresses():
+    """Return the stable mDNS name and usable host IPv4 addresses."""
+    hostname = socket.gethostname().split(".", 1)[0] + ".local"
+    addresses = []
+    try:
+        result = subprocess.check_output(
+            ["ip", "-j", "-4", "address", "show", "up"], timeout=5)
+        interfaces = json.loads(result)
+        for interface in interfaces:
+            name = str(interface.get("ifname", "")).lower()
+            if (name == "lo" or name.startswith(("docker", "br-", "veth", "virbr"))):
+                continue
+            for address in interface.get("addr_info", []):
+                if address.get("family") != "inet" or address.get("scope") != "global":
+                    continue
+                try:
+                    value = ipaddress.ip_address(address.get("local", ""))
+                except ValueError:
+                    continue
+                if (value.version == 4 and not value.is_loopback and
+                        not value.is_link_local and not value.is_multicast and
+                        str(value) not in addresses):
+                    addresses.append(str(value))
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError,
+            json.JSONDecodeError):
+        pass
+    return hostname, addresses
+
+
+def print_controller_urls(controller_hostname=None):
+    """Show friendly entry points without making network discovery an install gate."""
+    hostname, addresses = controller_addresses()
+    if controller_hostname:
+        hostname = controller_hostname + ".local"
+    print("\nVirtualGlove Controller is ready. Open one of these addresses:")
+    for label, address in [("Hostname", hostname)] + [("IP address", value) for value in addresses]:
+        print("\n  " + label + ":")
+        print("    Dashboard  http://" + address + ":8088/dashboard")
+        print("    Setup      https://" + address + ":8443/setup")
+        print("    Help       http://" + address + ":8088/help")
+    if not addresses:
+        print("\n  IP address: not available yet; connect Ethernet or Wi-Fi and use the hostname above.")
 
 
 def load_setup(source):
@@ -79,7 +127,10 @@ def unpack(archive, destination, machine, version):
             "config/profiles.json",
             "THIRD_PARTY_NOTICES.md",
         ]
-        required += (["app.yaml", "sketch/sketch.yaml", "sketch/sketch.ino", "scripts/uno-q-early-start.py",
+        required += (["app.yaml", "scripts/flash-matrix-firmware.py",
+                      "firmware/matrix/manifest.json", "firmware/matrix/virtualglove-matrix.elf-zsk.bin",
+                      "firmware/matrix/zephyr-arduino_uno_q_stm32u585xx.elf",
+                      "firmware/matrix/flash_sketch.cfg", "scripts/uno-q-early-start.py",
                       "uno-q/powerglove-early-start.service", "uno-q/powerglove-system-shutdown.path"]
                      if machine == "uno-q" else [
                          "retropie/powerglove-receiver.service",
@@ -98,6 +149,13 @@ def unpack(archive, destination, machine, version):
         for relative in required:
             if "VirtualGlove/" + relative not in seen:
                 raise ValueError("Incomplete package: " + relative)
+        if machine == "uno-q":
+            firmware = json.loads(package.read("VirtualGlove/firmware/matrix/manifest.json"))
+            build = json.loads(package.read("VirtualGlove/src/powerglove_vision/_build_info.json"))
+            if not isinstance(firmware, dict) or not isinstance(build, dict):
+                raise ValueError("Invalid Matrix firmware or application identity")
+            if firmware.get("firmware_source_id") != build.get("firmware_expected"):
+                raise ValueError("Matrix firmware does not match the packaged application")
         package.extractall(str(destination))
         for item in package.infolist():
             if not item.is_dir():
@@ -112,11 +170,112 @@ def confirm(message):
     return input(message + " [y/N] ").strip().lower() in ("y", "yes")
 
 
+def valid_controller_hostname(value):
+    """Normalize one safe mDNS host label used only during a fresh installation."""
+    value = str(value).strip().lower()
+    if value.endswith(".local"):
+        value = value[:-6]
+    if (not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", value)
+            or value.isdigit() or value in ("local", "localhost", "broadcasthost")):
+        raise argparse.ArgumentTypeError(
+            "Use 1-63 letters, numbers, or internal hyphens, such as virtualglove")
+    return value
+
+
+def select_controller_hostname(requested, existing_install):
+    """Choose a hostname only for a first install; upgrades never rename the board."""
+    current = socket.gethostname().split(".", 1)[0].lower()
+    if existing_install:
+        if requested is not None:
+            raise ValueError(
+                "--hostname is only for a first installation; the existing Controller name was preserved")
+        return None
+    if requested is not None:
+        return valid_controller_hostname(requested)
+    if not sys.stdin.isatty():
+        print("ACTION  Non-interactive first install: preserving Controller name " + current + ".")
+        return None
+    print("\nName this VirtualGlove Controller.")
+    print("Its local address will be NAME.local. Press Enter for the recommended name.")
+    chosen = valid_controller_hostname(input("Controller name [virtualglove]: ").strip()
+                                       or "virtualglove")
+    answer = input("Use " + chosen + ".local? [Y/n] ").strip().lower()
+    if answer not in ("", "y", "yes"):
+        raise ValueError("No changes made; Controller name was not confirmed")
+    return chosen
+
+
+def local_ipv4_addresses():
+    """Return physical host IPv4 addresses for conflict comparison."""
+    return set(controller_addresses()[1])
+
+
+def hostname_conflicts(name):
+    """Report a visible mDNS name owned by a different LAN address."""
+    try:
+        result = subprocess.check_output(
+            ["getent", "ahostsv4", name + ".local"], timeout=4,
+            stderr=subprocess.DEVNULL).decode(errors="replace")
+    except subprocess.CalledProcessError:
+        return False
+    except (OSError, subprocess.TimeoutExpired):
+        print("ACTION  Could not check the LAN for a matching name; continuing with "
+              + name + ".local.")
+        return False
+    resolved = {line.split()[0] for line in result.splitlines() if line.split()}
+    return bool(resolved - local_ipv4_addresses())
+
+
+def hosts_with_controller_name(text, old_name, new_name):
+    """Update only the conventional local-host identity while preserving aliases/comments."""
+    lines = text.splitlines(True)
+    found = False
+    for index, line in enumerate(lines):
+        body, marker, comment = line.partition("#")
+        fields = body.split()
+        if fields and fields[0] == "127.0.1.1":
+            aliases = [new_name if item.lower() in
+                       (old_name.lower(), old_name.lower() + ".local") else item
+                       for item in fields[1:]]
+            if new_name not in [item.lower() for item in aliases]:
+                aliases.insert(0, new_name)
+            rebuilt = "127.0.1.1\t" + " ".join(aliases)
+            if marker:
+                rebuilt += " #" + comment.rstrip("\n")
+            lines[index] = rebuilt + "\n"
+            found = True
+            break
+    if not found:
+        if lines and not lines[-1].endswith("\n"):
+            lines[-1] += "\n"
+        lines.append("127.0.1.1\t" + new_name + "\n")
+    return "".join(lines)
+
+
+def configure_controller_hostname(setup, name):
+    """Persist a confirmed fresh-install hostname with recoverable file backups."""
+    if not name:
+        return None
+    old_name = socket.gethostname().split(".", 1)[0]
+    if name == old_name.lower():
+        return name
+    if hostname_conflicts(name):
+        raise ValueError(name + ".local is already in use on this network; choose another name")
+    setup.write_file("/etc/hostname", name + "\n")
+    hosts = Path("/etc/hosts")
+    if hosts.is_file() and not hosts.is_symlink():
+        setup.write_file(hosts, hosts_with_controller_name(hosts.read_text(), old_name, name))
+    setup.run("hostnamectl", "set-hostname", name)
+    print("ACTION  Controller name set to " + name + ".local.")
+    return name
+
+
 def preflight(machine):
     """Check target identity and supported prerequisites before any host changes."""
     if sys.platform != "linux" or os.geteuid() != 0 or sys.version_info < (3, 7):
         raise ValueError("Installation requires Linux, Python 3.7+, and sudo")
-    for command in ("apt-get", "systemctl"):
+    commands = ("apt-get", "systemctl", "hostnamectl") if machine == "uno-q" else ("apt-get", "systemctl")
+    for command in commands:
         if not shutil.which(command):
             raise ValueError("Missing system command: " + command)
     staging = pwd.getpwnam("arduino").pw_dir if machine == "uno-q" else "/var/tmp"
@@ -179,6 +338,12 @@ def stage_unoq(source, setup):
         setup.run("runuser", "-u", "arduino", "--", "arduino-app-cli", "app", "stop", APP)
     APP.mkdir(parents=True, exist_ok=True)
     setup.installation_manifest()["apply"](source, APP, setup.BACKUPS / "application-payload")
+    sketch_directory = APP / "sketch"
+    if sketch_directory.is_dir():
+        if any(sketch_directory.iterdir()):
+            raise ValueError("Unmanaged files remain in the retired sketch directory: "
+                             + str(sketch_directory))
+        sketch_directory.rmdir()
     for path in files:
         target = APP / path.relative_to(source)
         os.chown(str(target), user.pw_uid, user.pw_gid)
@@ -189,7 +354,9 @@ def stage_unoq(source, setup):
     for name in (".powerglove-install.json", ".powerglove-install.lock"):
         os.chown(str(APP / name), user.pw_uid, user.pw_gid)
     setup.SOURCE = APP
-    # Starting an app directory is supported by App Lab; no UI import is required.
+    # Flash through factory OpenOCD. The release carries no compiler or sketch source.
+    setup.run("python3", APP / "scripts/flash-matrix-firmware.py", APP / "firmware/matrix")
+    # Starting an app without sketch/ starts its Linux services without compiling.
     setup.run("runuser", "-u", "arduino", "--", "arduino-app-cli", "app", "start", APP)
 
 
@@ -200,9 +367,15 @@ def main(argv=None):
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--peer")
+    parser.add_argument("--hostname")
     args = parser.parse_args(argv)
     setup = None
     try:
+        if args.machine != "uno-q" and args.hostname is not None:
+            raise ValueError("--hostname applies only to the VirtualGlove Controller installer")
+        existing_install = APP.exists() if args.machine == "uno-q" else False
+        selected_hostname = (select_controller_hostname(args.hostname, existing_install)
+                             if args.machine == "uno-q" else None)
         preflight(args.machine)
         with tempfile.TemporaryDirectory(prefix="powerglove-install-",
                                          dir=pwd.getpwnam("arduino").pw_dir if args.machine == "uno-q" else "/var/tmp") as temporary:
@@ -223,6 +396,7 @@ def main(argv=None):
                 "Private settings were preserved in place. To recover code/firmware, rerun the previous release installer.\n"
                 "Then reload systemd and rerun the installer --check. Do not copy the entire backup over /.\n")
             if args.machine == "uno-q":
+                active_hostname = configure_controller_hostname(setup, selected_hostname)
                 stage_unoq(source, setup)
                 setup.install_unoq(args.peer)
                 setup.wait_unoq()
@@ -232,7 +406,7 @@ def main(argv=None):
             report = setup.Report()
             (setup.check_unoq if args.machine == "uno-q" else setup.check_retropie)(report)
             if args.machine == "uno-q":
-                print("NEXT  Open http://" + socket.gethostname().split(".")[0] + ".local:8088/help for pairing, calibration and gameplay checks.")
+                print_controller_urls(active_hostname)
             else:
                 token = Path("/etc/powerglove/token")
                 if not token.is_file() or len(token.read_text().strip()) < 16:
