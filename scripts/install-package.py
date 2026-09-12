@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Prevented renamed and legacy App Lab projects from overlapping on upgrade.
 #   2026-09-11 - Added safe, optional first-install Controller naming.
 #   2026-09-11 - Printed hostname and LAN-IP Controller URLs after UNO Q installation.
 #   2026-09-11 - Install checksum-verified precompiled Matrix firmware without a compiler.
@@ -334,8 +335,17 @@ def stage_unoq(source, setup):
     if cache.is_dir() and not (setup.BACKUPS / "previous-sketch-cache").exists():
         shutil.copytree(str(cache), str(setup.BACKUPS / "previous-sketch-cache"), symlinks=True)
     # Stop through App Lab so the sketch and containers share one lifecycle.
-    if (APP / ".cache/app-compose.yaml").exists():
+    compose = APP / ".cache/app-compose.yaml"
+    if compose.exists():
         setup.run("runuser", "-u", "arduino", "--", "arduino-app-cli", "app", "stop", APP)
+        # App Lab derives powerglove-vision from the established installation
+        # directory whenever it regenerates Compose. Releases rename the final
+        # project to virtualglove. Explicitly stop both identities before App
+        # Lab starts its generated intermediate stack, or an upgrade can leave
+        # the renamed relay holding UDP 55356 while the legacy relay starts.
+        for project in ("virtualglove", "powerglove-vision"):
+            setup.run("env", "APP_HOME=" + str(APP), "docker", "compose", "-p",
+                      project, "-f", compose, "down", "--remove-orphans")
     APP.mkdir(parents=True, exist_ok=True)
     setup.installation_manifest()["apply"](source, APP, setup.BACKUPS / "application-payload")
     sketch_directory = APP / "sketch"
