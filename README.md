@@ -74,9 +74,15 @@ curl -fLO \
 bash install-uno-q.sh --development v0.4.0-rc.7
 ```
 
+On a first installation, the installer suggests **virtualglove** as the
+Controller name, making its usual address `virtualglove.local`. Press Enter to
+accept it or type a different family-friendly name. Updates preserve the
+existing name.
+
 ### 3. Check the Controller
 
-Open `http://YOUR-UNO-Q-NAME.local:8088/dashboard`. The installer configures
+Open the Dashboard address printed by the installer—normally
+`http://virtualglove.local:8088/dashboard`. The installer configures
 automatic startup, the matrix display, guarded camera recovery, and its required
 host helpers.
 
@@ -90,10 +96,19 @@ curl -fLO \
 bash install-retropie.sh --development v0.4.0-rc.7
 ```
 
+If an older Buster-based RetroPie reports that its Raspbian repository has no
+Release file, stop and follow [Buster package source moved](docs/TROUBLESHOOTING.md#buster-package-source-moved),
+then rerun this step. The installer does not silently rewrite operating-system
+repositories.
+
 ### 5. Pair the devices
 
-Open `https://YOUR-UNO-Q-NAME.local:8443/setup`, save the RetroPie address, and
+Open the secure Setup address printed by the installer—normally
+`https://virtualglove.local:8443/setup`—save the RetroPie address, and
 choose **Pair with RetroPie**. The guided one-time-code method is recommended.
+After confirming the browser certificate against the physical Matrix ID, the
+optional **Trust this Controller** step removes future privacy warnings on that
+phone or computer.
 
 ### 6. Set up a player
 

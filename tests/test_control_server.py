@@ -6,6 +6,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Covered the HTTPS-only public Controller-authority download.
 #   2026-09-11 - Verify privacy-safe system reports omit secrets and personal data.
 #   2026-09-06 - Address Setup review reliability and private configuration findings.
 #   2026-09-06 - Verified Help discovery for Rock Paper Scissors and native validation.
@@ -28,6 +29,7 @@
 import json
 import http.client
 import os
+import socket
 import ssl
 import tempfile
 import time
@@ -853,6 +855,12 @@ class ControlStateTests(unittest.TestCase):
         self.assertIn(b"type=password autocomplete=off disabled", SETUP)
         self.assertIn(b"verified').checked", SETUP)
 
+    def test_setup_guides_one_time_controller_trust_without_private_keys(self):
+        self.assertIn(b"Trust this Controller", SETUP)
+        self.assertIn(b"href=/controller-ca.cer", SETUP)
+        self.assertIn(b"Certificate Trust Settings", SETUP)
+        self.assertNotIn(b"controller-ca-key.pem", SETUP)
+
     def test_pairing_methods_are_explicit(self):
         self.assertIn(b"SSH password", SETUP)
         self.assertIn(b"One-time code (recommended)", SETUP)
@@ -1141,6 +1149,46 @@ class ControlStateTests(unittest.TestCase):
             response.read()
             self.assertEqual(response.status, 426)
             connection.close()
+        finally:
+            servers.shutdown()
+
+    def test_controller_authority_download_requires_https(self):
+        (self.path.parent / "controller-hostname").write_text("virtualglove\n")
+        with mock.patch("powerglove_vision.control_server.socket.gethostname",
+                        return_value="transient-container-id"):
+            servers, _state = start_control_server(self.path, "127.0.0.1", 0, 0)
+        try:
+            plain_port = servers.servers[0].server_address[1]
+            connection = http.client.HTTPConnection("127.0.0.1", plain_port, timeout=2)
+            connection.request("GET", "/controller-ca.cer")
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 426)
+            connection.close()
+
+            secure_port = servers.servers[1].server_address[1]
+            connection = http.client.HTTPSConnection(
+                "127.0.0.1", secure_port, context=ssl._create_unverified_context())
+            connection.request("GET", "/controller-ca.cer")
+            response = connection.getresponse()
+            body = response.read()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.getheader("Content-Type"), "application/pkix-cert")
+            self.assertEqual(response.getheader("Content-Disposition"),
+                             'attachment; filename="virtualglove-controller-ca.cer"')
+            self.assertRegex(response.getheader("X-VirtualGlove-CA-SHA256"),
+                             r"^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$")
+            self.assertGreater(len(body), 500)
+            connection.close()
+
+            context = ssl.create_default_context(
+                cafile=str(self.path.parent / "tls/controller-ca-cert.pem"))
+            with socket.create_connection(("127.0.0.1", secure_port), timeout=2) as raw:
+                with context.wrap_socket(raw, server_hostname="virtualglove.local") as trusted:
+                    self.assertEqual(trusted.version()[:3], "TLS")
+                    trusted.sendall(
+                        b"GET /status HTTP/1.1\r\nHost: virtualglove.local\r\nConnection: close\r\n\r\n")
+                    self.assertIn(b" 200 ", trusted.recv(4096).splitlines()[0])
         finally:
             servers.shutdown()
 

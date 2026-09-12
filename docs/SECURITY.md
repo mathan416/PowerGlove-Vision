@@ -75,10 +75,30 @@ the RetroPie pairing server over pinned TLS. Password pairing uses authenticated
 establishes trust, subsequent connections verify the saved remote host key.
 The password is not placed on the process command line.
 
-Both browser pairing methods require you to open secure Setup, compare the
-browser certificate identity with the identifier on the VirtualGlove Controller matrix, and
-enter the single-use PIN shown on the matrix before the token is released. This is a local certificate-pinning ceremony, not
-validation by a public certificate authority.
+Each Controller owns a persistent private local certificate authority. It signs
+the HTTPS leaf for the Controller's stable `.local` name. Secure Setup can
+download only the public authority certificate;
+plain HTTP receives no certificate download. A user may explicitly trust that
+public certificate on each phone or computer to remove later browser warnings.
+The authority and website private keys remain mode `0600` in the Controller's
+private data directory and are never served.
+
+Both browser pairing methods still require the user to compare the current
+website certificate identity with the identifier on the physical VirtualGlove
+Controller matrix and enter its single-use PIN before a token is released. The
+first trust download should occur only after this physical comparison. Locally
+trusting the Controller authority improves repeat visits but does not replace
+the Matrix ceremony or turn the Controller into a public certificate authority.
+
+Fresh interactive installation proposes `virtualglove.local`, accepts a
+different validated single-label name, and checks whether that name visibly
+belongs to another LAN address before changing the host. Unattended installation
+requires an explicit `--hostname` to rename the board. Upgrades never accept a
+rename, preventing an update command from silently changing the trusted website
+identity. Hostname files are included in the installer's recovery backup.
+The installer also records that approved host label in private application data;
+the containerized website reads it instead of trusting its transient Docker
+hostname when issuing the HTTPS leaf.
 
 After installing the token, the Controller sends a signed controller hello and
 reports success only after RetroPie returns a valid matching challenge. This

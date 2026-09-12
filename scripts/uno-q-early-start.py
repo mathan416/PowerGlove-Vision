@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Read the release's precompiled Matrix image.
 #   2026-09-04 - Added an explicit, image-verified early-start experiment.
 # Full history: docs/CHANGELOG.md and Git history.
 
@@ -85,7 +86,14 @@ def main() -> None:
         if time.monotonic() >= deadline:
             raise SystemExit('Router is unavailable; leaving normal startup in control.')
         time.sleep(0.25)
-    image = (APP / '.cache/sketch/sketch.ino.elf-zsk.bin').read_bytes()
+    candidates = (
+        APP / 'firmware/matrix/virtualglove-matrix.elf-zsk.bin',
+        APP / '.cache/sketch/sketch.ino.elf-zsk.bin',
+    )
+    image_path = next((path for path in candidates if path.is_file()), None)
+    if image_path is None:
+        raise SystemExit('Installed sketch image is unavailable; leaving normal startup in control.')
+    image = image_path.read_bytes()
     if (len(image) < 16 or len(image) > 786432 or image[:4] != b'\x7fELF'
             or image[7] != 1 or image[12:14] != b'A#'
             or not image[14] & 8 or image[14] & 4):

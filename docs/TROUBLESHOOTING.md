@@ -10,6 +10,32 @@ The **VirtualGlove Controller (Arduino UNO Q)** hosts Setup, Glove Academy,
 and Help. Use **Help → This console** for addresses specific to your installation.
 The examples below use placeholders, not addresses that every build shares.
 
+## Buster package source moved
+
+An older RetroPie image may stop during installation with a message that
+`raspbian.raspberrypi.org/raspbian buster` has no Release file. Buster has moved
+to Raspbian's legacy archive. This is an operating-system package-source issue,
+not a VirtualGlove package failure. The installer detects it before changing
+the VirtualGlove payload.
+
+A newly imaged, supported RetroPie system is the best long-term fix. To keep an
+existing Buster cabinet running, back up its source list and replace only the
+retired Raspbian host:
+
+```sh
+sudo cp /etc/apt/sources.list /etc/apt/sources.list.before-virtualglove
+sudo sed -i \
+  's|http://raspbian.raspberrypi.org|https://legacy.raspbian.org|g' \
+  /etc/apt/sources.list
+sudo apt-get update
+```
+
+If the installer's message names a file under `/etc/apt/sources.list.d/`, back
+up and make the same host-only replacement in that file. **Do not replace
+`archive.raspberrypi.org/debian`**; it is a different Raspberry Pi repository.
+After `apt-get update` succeeds, rerun the same RetroPie installer. Existing
+pairing and settings remain intact.
+
 ## The website will not open
 
 1. Check power and give the Controller time to finish starting.
@@ -18,6 +44,30 @@ The examples below use placeholders, not addresses that every build shares.
 4. If the IP works but `.local` does not, investigate hostname resolution and guest-network/client isolation. With Wi-Fi and USB Ethernet connected, the Controller can have more than one address.
 
 Use the plain `/setup` address; no `?ui=2` suffix is needed. Old query-string bookmarks still open Setup.
+
+### The first installer says the Controller name is already in use
+
+Another device answered for the requested `.local` name. Rerun the installer
+and choose a distinct short name, such as `virtualglove-den`. Do not disconnect
+the other device merely to bypass the check: duplicate `.local` names can change
+automatically and break browser bookmarks or RetroPie delivery. Updates do not
+ask this question and never rename an installed Controller.
+
+### The secure page shows a privacy warning
+
+On the first visit, compare the website certificate with the ID on the physical
+Controller matrix. When they match, use **Trust this Controller** on secure Setup
+to download and install this Controller's public authority certificate. Trust
+must be enabled once on each phone or computer. The private authority key is
+never downloaded.
+
+If a previously trusted Controller starts warning after an ordinary upgrade,
+confirm that the browser is using the same hostname and inspect the certificate
+before proceeding. Do not casually reset trust. If the authority files are
+actually damaged, stop VirtualGlove, move `data/tls` to a specially named backup,
+and start VirtualGlove again. This deliberately creates a new Controller
+identity: compare its new Matrix ID and install its replacement authority on
+each browser device.
 
 Do not change pairing keys to fix an unreachable website. If SSH works, use the
 [configuration troubleshooting reference](CONFIGURATION_REFERENCE.md#setup-page-does-not-open)

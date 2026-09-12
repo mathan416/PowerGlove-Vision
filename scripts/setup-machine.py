@@ -7,6 +7,9 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Exposed the stable host name to the containerized HTTPS server.
+#   2026-09-11 - Verify the persistent local HTTPS authority and protected keys.
+#   2026-09-11 - Stop safely with repair guidance for retired Raspbian Buster repositories.
 #   2026-09-11 - Preserve the App Lab root during release-install Compose recreation.
 #   2026-09-09 - Added the optional ROM-free RetroPie calibration test.
 #   2026-09-09 - Install uhubctl for capability-gated camera-port power cycling.
@@ -96,6 +99,35 @@ def valid_host(value):
     return value
 
 
+def retired_buster_sources(entries):
+    """Identify only obsolete Raspbian Buster hosts; Raspberry Pi's archive is separate."""
+    obsolete = []
+    for path, text in entries:
+        if (re.search(r"(?im)^\s*deb(?:-src)?\s+[^\n#]*raspbian\.raspberrypi\.org/raspbian[^\n#]*\bbuster\b", text)
+                or re.search(r"(?ims)^URIs:\s*https?://raspbian\.raspberrypi\.org/raspbian\s*$.*?^Suites:\s*[^\n]*\bbuster\b", text)):
+            obsolete.append(str(path))
+    return obsolete
+
+
+def check_retropie_package_sources():
+    """Fail before apt changes when an EOL Buster source has moved to the legacy host."""
+    paths = [Path("/etc/apt/sources.list")]
+    directory = Path("/etc/apt/sources.list.d")
+    if directory.is_dir():
+        paths.extend(sorted(directory.glob("*.list")))
+        paths.extend(sorted(directory.glob("*.sources")))
+    entries = [(path, path.read_text(errors="replace")) for path in paths
+               if path.is_file() and not path.is_symlink()]
+    obsolete = retired_buster_sources(entries)
+    if obsolete:
+        raise ValueError(
+            "Raspberry Pi OS Buster's Raspbian repository moved to legacy.raspbian.org. "
+            "Back up and update only raspbian.raspberrypi.org/raspbian in "
+            + ", ".join(obsolete)
+            + "; do not change archive.raspberrypi.org. Then run sudo apt-get update and retry. "
+              "See docs/INSTALL_README.md or docs/TROUBLESHOOTING.md.")
+
+
 def install_retropie(peer):
     """Install the system-Python receiver and preserve cabinet-specific configuration."""
     base = Path("/opt/retropie/configs/all")
@@ -116,6 +148,7 @@ def install_retropie(peer):
             print("ACTION  Existing launcher destination preserved; edit launcher.json if changing machines.")
     if not launcher.exists() and not peer:
         raise ValueError("First installation requires --peer YOUR-UNO-Q.local")
+    check_retropie_package_sources()
     run("apt-get", "update")
     run("apt-get", "install", "-y", "python3", "python3-evdev", "openssl", "avahi-daemon", "libnss-mdns")
     run("systemctl", "enable", "--now", "avahi-daemon")
@@ -188,6 +221,13 @@ def install_unoq(peer):
         raise ValueError("Start the app with install-uno-q.sh before completing host setup")
     if (app / "data/shutdown-request").exists():
         raise ValueError("A pending shutdown request exists; remove it deliberately before setup")
+    controller_name = socket.gethostname().split(".", 1)[0].strip().lower()
+    if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?", controller_name):
+        raise ValueError("The UNO Q hostname is not safe for the Controller website")
+    identity = app / "data/controller-hostname"
+    write_file(identity, controller_name + "\n")
+    user = pwd.getpwnam("arduino")
+    os.chown(str(identity), user.pw_uid, user.pw_gid)
     run("apt-get", "update")
     run("apt-get", "install", "-y", "avahi-daemon", "libnss-mdns", "uhubctl")
     run("python3", str(app / "scripts/configure-uno-q-avahi.py"))
@@ -273,13 +313,21 @@ def install_early_start():
 
 
 def wait_unoq():
-    """Allow a cold application startup to finish before reporting health."""
+    """Require the app and exact release firmware after a cold startup."""
+    last = "Controller did not answer"
     for _ in range(90):
         try:
-            urllib.request.urlopen("http://127.0.0.1:8088/status", timeout=2).close()
-            return
-        except OSError:
+            with urllib.request.urlopen("http://127.0.0.1:8088/status", timeout=2) as response:
+                status = json.load(response)
+            state = status.get("firmware", {}).get("state")
+            if state == "matched":
+                return
+            last = "Matrix firmware status is " + str(state or "unavailable")
+        except (OSError, ValueError, AttributeError) as error:
+            last = str(error)
+        if _ < 89:
             time.sleep(2)
+    raise ValueError("Controller startup validation failed: " + last)
 
 
 def registered_roms():
@@ -497,6 +545,10 @@ def check_unoq(report):
     report.command("Avahi enabled at boot", ["systemctl", "is-enabled", "--quiet", "avahi-daemon"])
     report.command("mDNS hostname dependency installed", ["dpkg", "--verify", "libnss-mdns"])
     report.command("Avahi running", ["systemctl", "is-active", "--quiet", "avahi-daemon"])
+    identity = SOURCE / "data/controller-hostname"
+    report.check("Container website uses the UNO Q hostname",
+                 identity.is_file() and
+                 identity.read_text().strip().lower() == socket.gethostname().split(".", 1)[0].lower())
     report.command("Shutdown helper enabled", ["systemctl", "is-enabled", "--quiet", "powerglove-system-shutdown.path"])
     report.command("Shutdown helper running", ["systemctl", "is-active", "--quiet", "powerglove-system-shutdown.path"])
     report.check("Shutdown readiness marker", (SOURCE / "data/.shutdown-enabled").exists())
@@ -514,6 +566,24 @@ def check_unoq(report):
     report.command("Arduino user starts at boot", ["test", "-f", "/var/lib/systemd/linger/arduino"])
     report.command("Early-start helper enabled", user_systemctl("is-enabled", "--quiet", "powerglove-early-start.service"))
     report.check("Early-start helper installed", Path("/home/arduino/.local/lib/powerglove/uno-q-early-start.py").is_file())
+    tls = SOURCE / "data/tls"
+    authority = tls / "controller-ca-cert.pem"
+    authority_key = tls / "controller-ca-key.pem"
+    website = tls / "pairing-cert.pem"
+    website_key = tls / "pairing-key.pem"
+    report.check("Controller trust authority created",
+                 authority.is_file() and not authority.is_symlink())
+    report.check("Controller authority private key protected",
+                 authority_key.is_file() and not authority_key.is_symlink() and
+                 authority_key.stat().st_mode & 0o777 == 0o600)
+    report.check("HTTPS private key protected",
+                 website_key.is_file() and not website_key.is_symlink() and
+                 website_key.stat().st_mode & 0o777 == 0o600)
+    if authority.is_file() and website.is_file():
+        report.command("HTTPS certificate chains to this Controller",
+                       ["openssl", "verify", "-CAfile", str(authority), str(website)])
+    else:
+        report.check("HTTPS certificate chains to this Controller", False)
     status = {}
     try:
         with urllib.request.urlopen("http://127.0.0.1:8088/status", timeout=3) as response:

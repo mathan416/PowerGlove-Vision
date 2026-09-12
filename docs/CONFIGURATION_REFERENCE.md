@@ -66,14 +66,19 @@ Pairing uses the secure Setup page instead:
 https://UNO-Q-NAME.local:8443/setup
 ```
 
-The secure page uses a locally generated certificate. During pairing, compare
-the certificate fingerprint shown by the browser with the identifier shown on
-the VirtualGlove Controller matrix before entering the one-time PIN.
+Each Controller creates a persistent private local certificate authority and
+uses it to sign the website certificate for its stable `.local` name. Select
+**Trust this Controller** on secure Setup to download only the
+public authority certificate. After the one-time trust step on a phone or
+computer, that device can open secure Setup without a privacy warning. The
+authority private key never leaves the Controller. During pairing, continue to
+compare the current website-certificate fingerprint with the identifier shown
+on the physical matrix before entering the one-time PIN.
 
 ### Settings shown in the browser
 
 Setup groups **Controller status**, **Players**, **Matrix attract mode**,
-**Connection and startup**, **Camera**, **Pair with RetroPie**, **Games**, and
+**Connection and startup**, **Camera**, **Trust this Controller**, **Pair with RetroPie**, **Games**, and
 **Show statistics**. Receiver port and key replacement are under **Advanced
 connection**. Camera selection, rate, reader, exposure, and diagnostic hand label
 are in their own action-first Camera section. The concise
@@ -121,6 +126,18 @@ submitted request also requires confirmation again. Password entry is disabled
 until the certificate comparison and six-digit PIN step is complete. Ordinary
 HTTP shows only a link to secure Setup. Start/Stop and shutdown remain on Dashboard.
 See the [pairing walkthrough](INSTALL_README.md#4-pair-the-devices).
+
+The Controller authority is stable across ordinary upgrades and website-leaf
+renewals. The leaf is renewed before expiry and regenerated if the Controller
+hostname changes. The release installer offers a Controller name only on first
+installation, recommends `virtualglove`, and preserves that choice on every
+upgrade. Because a renamed leaf is signed by the same authority, an intentional
+later hostname change does not replace the trusted authority—but saved links
+and the RetroPie destination must use the new name. Trust must be installed once
+on each browser device. Do not distribute or copy
+`data/tls/controller-ca-key.pem`; it is a private Controller identity. The
+download route returns only `controller-ca-cert.pem`, only over HTTPS, as a DER
+`.cer` file.
 
 When a submitted pairing attempt finishes, the matrix releases the approval PIN and resumes its normal display. When idle, the glove animation follows your On, Dim, or Off attract setting; active game and status displays still take priority.
 
@@ -1291,6 +1308,10 @@ several complete loops is the preferred review artifact for later refinements.
 | `python/worker-wheels/` | Sole validated MediaPipe 0.10.35 ARM64 runtime supplied by the App Lab installation ZIP |
 | `data/models/hand_landmarker.task` | Checksum-verified cached model, installed from the bundle when vision is first activated |
 | `data/uv-cache/` and `data/uv-python/` | Generated private worker runtime and package cache |
+| `data/tls/controller-ca-cert.pem` | Public per-Controller authority offered by secure Setup for optional local trust |
+| `data/tls/controller-ca-key.pem` | Private authority key; mode `0600`, never downloadable, and never copyable between Controllers |
+| `data/tls/pairing-cert.pem` and `pairing-key.pem` | Automatically renewed HTTPS website leaf and its private key |
+| `data/controller-hostname` | Installer-managed host identity shared read-only in application data so the containerized HTTPS server never uses a transient container name |
 | `.cache/app-compose.yaml` | App Lab generated container configuration |
 | `data/.shutdown-enabled` | Readiness marker installed by the fixed-purpose shutdown helper included in standard setup |
 | `data/.camera-recovery-enabled` | Readiness marker for the fixed-purpose host USB-camera recovery helper |
@@ -1962,8 +1983,14 @@ the guided activation, release, and neutral check.
 `sketch/sketch.yaml` pins Arduino Zephyr **1.0.0** for `arduino:zephyr:unoq`,
 Arduino_RouterBridge **0.4.3**, Arduino_RPClite **0.3.0**, ArxContainer **0.7.0**,
 ArxTypeTraits **0.3.2**, DebugLog **0.8.4**, and MsgPack **0.4.2**. Keep this complete
-configuration synchronized with the installed app. Platform installation,
-compile-only validation, and firmware upload are separate operations; see
+configuration synchronized with the source tree. Release CI compiles the sketch
+once and ordinary Controller packages carry the resulting Wait-for-App image,
+the pinned Arduino Zephyr loader, the upstream flash recipe, and a checksum
+manifest under `firmware/matrix/`. The Controller verifies every byte and uses
+factory `/opt/openocd`; it does not install Arduino CLI, `arm-zephyr-eabi`, or a
+compiler. Source compilation remains a repository engineering workflow.
+Platform installation, compile-only validation, and firmware upload are
+separate operations; see
 [Build and install matrix firmware](CONFIGURATION_REFERENCE.md#build-and-install-matrix-firmware).
 
 ## Bad Street Brawler Glove Zap
@@ -2083,7 +2110,8 @@ have lingering enabled. Run `systemctl --user daemon-reload` and
 
 The service waits up to 30 seconds for the router and permits 20 seconds for the
 debug check and release. It verifies the VirtualGlove Controller, VirtualGlove startup app, Wait for
-App image header, and four 64-byte code samples. This is not a full integrity
+App image header, and four 64-byte code samples from
+`firmware/matrix/virtualglove-matrix.elf-zsk.bin`. This is not a full integrity
 check. If the image is unavailable or differs, or the debug pins are busy, it
 fails without releasing the sketch; normal App Lab startup continues. App Lab
 may subsequently reset the sketch during its ordinary upload.
@@ -2092,7 +2120,7 @@ Inspect `journalctl --user -b -u powerglove-early-start.service`; disable with
 `systemctl --user disable powerglove-early-start.service`. Review compatibility
 after platform updates: the tested loader is Arduino platform 1.0.0 with App Lab
 0.13.0. The helper writes only the startup release word `0xCAFFEEEE` at
-`0x40036400` after checking board identity, startup-app selection, the cached
+`0x40036400` after checking board identity, startup-app selection, the packaged
 Wait for App header, and four 64-byte samples of installed sketch memory. This
 is a bounded compatibility check, not complete firmware attestation. Do not run
 it during uploads or alongside another debugger.
@@ -2454,6 +2482,7 @@ RetroPie. No GitHub release is created by running an installer.
 | `--version TAG` | Use one exact published release on both machines. Without a tag, select the latest stable GitHub release. |
 | `--development TAG` | Explicitly use a published development prerelease, such as `dev-COMMIT`. This is a release tag, not a branch name. |
 | `--peer HOST` | VirtualGlove Controller hostname or IPv4 address for a new RetroPie installation; prompted if omitted in an interactive terminal. Existing destinations are preserved. |
+| `--hostname NAME` | UNO Q first installation only. Interactive setup suggests `virtualglove`; supply a different single DNS label if desired. The installer lowercases it, accepts an optional `.local` suffix, checks visible LAN ownership, updates the static and running host identity, and backs up the changed host files. It is rejected on RetroPie and on Controller upgrades. |
 | `--check` | Use the installed shared checker. No download, package installation, service restart, or helper release. Sudo may be needed to inspect protected settings. |
 | `--help` | Show the entry point options without installing. |
 

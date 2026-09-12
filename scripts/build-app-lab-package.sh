@@ -6,6 +6,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Build and package pinned precompiled Matrix firmware.
 #   2026-09-05 - Refreshed the tracked SHA-256 companion after every successful build.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
@@ -29,7 +30,8 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "${OUTPUT_DIR}" "${PACKAGE_TMP}/VirtualGlove"
-python3 "${SCRIPT_DIR}/application-payload.py" "${PACKAGE_TMP}/VirtualGlove"
+python3 "${SCRIPT_DIR}/build-matrix-firmware.py"
+python3 "${SCRIPT_DIR}/application-payload.py" "${PACKAGE_TMP}/VirtualGlove" --precompiled-matrix
 
 cd "${PACKAGE_TMP}"
 zip -qr "${PACKAGE_TMP}/verified-package.zip" VirtualGlove

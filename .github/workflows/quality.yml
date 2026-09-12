@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Build pinned Matrix firmware for the ordinary UNO Q package.
 #   2026-09-11 - Added an extracted Engineering Toolkit setup and workflow smoke test.
 #   2026-09-09 - Installed the image-array dependencies required by pipeline tests.
 #   2026-09-03 - Added automated tests, audits, syntax checks, and package verification.
@@ -61,7 +62,7 @@ jobs:
   documentation-and-package:
     name: Documentation and App Lab installation ZIP
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@v5
@@ -69,6 +70,10 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Set up pinned Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "1.5.0"
       - name: Install audit and build dependencies
         run: |
           sudo apt-get update

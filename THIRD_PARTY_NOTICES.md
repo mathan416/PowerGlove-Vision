@@ -122,6 +122,22 @@ dependency pins when synchronizing with App Lab; its shortened generated
 configuration is not a replacement for the project's complete configuration.
 Revalidate compilation and device operation before changing a pin.
 
+Ordinary UNO Q release archives redistribute two unmodified artifacts from the
+Arduino Zephyr platform 1.0.0: the UNO Q loader
+`zephyr-arduino_uno_q_stm32u585xx.elf` and
+`variants/arduino_uno_q_stm32u585xx/flash_sketch.cfg`. The latter retains its
+Arduino copyright and Apache-2.0 SPDX header. The platform source is
+<https://github.com/arduino/ArduinoCore-zephyr/tree/1.0.0>; its Apache 2.0
+license is included as `licenses/Apache-2.0.txt`. The adjacent release manifest
+records exact sizes and SHA-256 values. VirtualGlove's separately compiled
+Matrix sketch remains MIT-licensed project code; its linked Arduino libraries
+retain their upstream licenses.
+
+| Redistributed platform artifact | SHA-256 |
+| --- | --- |
+| `zephyr-arduino_uno_q_stm32u585xx.elf` | `39d4a4fd47241663323f6e04f94dd8f5a9f9ad6582cf1df37f9709b74026adcd` |
+| `flash_sketch.cfg` | `38706cee1f9ff2e53364a47129d1c1aea9bb9687ed26d7d70b4a9f9bc5bca60c` |
+
 ## Modified Nestopia libretro core
 
 The optional `lr-nestopia-powerglove` core is built from libretro Nestopia

@@ -7,6 +7,7 @@
 # SPDX-License-Identifier: MIT
 # Full history: docs/CHANGELOG.md and Git history.
 # Change log:
+#   2026-09-11 - Require verified precompiled Matrix firmware and exclude sketch sources.
 #   2026-09-11 - Required the Engineering Toolkit PDF exposed by Controller Help.
 #   2026-09-09 - Required validated MediaPipe 0.10.35 as the sole runtime wheel.
 #   2026-09-07 - Aligned packaged PDFs with the consolidated documentation set.
@@ -29,6 +30,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import runpy
 import stat
 from pathlib import Path, PurePosixPath
@@ -100,7 +102,11 @@ REQUIRED_FILES = {
     "VirtualGlove/docs/images/web/gestures/actions/v-sign.png",
     "VirtualGlove/scripts/uno-q-early-start.py",
     "VirtualGlove/uno-q/powerglove-early-start.service",
-    "VirtualGlove/sketch/sketch.yaml",
+    "VirtualGlove/scripts/flash-matrix-firmware.py",
+    "VirtualGlove/firmware/matrix/manifest.json",
+    "VirtualGlove/firmware/matrix/virtualglove-matrix.elf-zsk.bin",
+    "VirtualGlove/firmware/matrix/zephyr-arduino_uno_q_stm32u585xx.elf",
+    "VirtualGlove/firmware/matrix/flash_sketch.cfg",
     "VirtualGlove/docs/MATRIX_GUIDE.md",
     "VirtualGlove/src/powerglove_vision/_build_info.json",
     "VirtualGlove/src/powerglove_vision/versioning.py",
@@ -147,7 +153,6 @@ REQUIRED_FILES = {
     "VirtualGlove/docs/CONTRIBUTING.md",
     "VirtualGlove/docs/SECURITY.md",
     "VirtualGlove/python/main.py",
-    "VirtualGlove/sketch/sketch.ino",
     "VirtualGlove/scripts/install-uno-q-shutdown-helper.sh",
     "VirtualGlove/scripts/install-uno-q-camera-recovery-helper.sh",
     "VirtualGlove/src/powerglove_vision/runtime_assets.py",
@@ -179,6 +184,7 @@ def archive_errors(path: Path) -> list[str]:
     errors = []
     try:
         with ZipFile(path) as archive:
+            build_identity = {}
             bad_member = archive.testzip()
             if bad_member:
                 errors.append(f"corrupt member: {bad_member}")
@@ -218,14 +224,56 @@ def archive_errors(path: Path) -> list[str]:
             stamp = "VirtualGlove/src/powerglove_vision/_build_info.json"
             if stamp in names:
                 try:
-                    identity = json.loads(archive.read(stamp))
-                    if not identity.get("version") or not identity.get("branch") or identity["branch"] == "unknown":
+                    build_identity = json.loads(archive.read(stamp))
+                    if (not build_identity.get("version") or not build_identity.get("branch")
+                            or build_identity["branch"] == "unknown"):
                         errors.append("build version or branch is missing")
                 except (ValueError, AttributeError):
                     errors.append("invalid build identity")
             model = "VirtualGlove/models/hand_landmarker.task"
             if model in names and hashlib.sha256(archive.read(model)).hexdigest() != "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1":
                 errors.append("bundled Hand Landmarker checksum mismatch")
+            firmware_root = "VirtualGlove/firmware/matrix/"
+            firmware_manifest = firmware_root + "manifest.json"
+            if firmware_manifest in names:
+                try:
+                    firmware = json.loads(archive.read(firmware_manifest))
+                    expected = {"format": 1, "fqbn": "arduino:zephyr:unoq",
+                                "platform": "arduino:zephyr@1.0.0",
+                                "boot_mode": "wait_for_app"}
+                    if any(firmware.get(key) != value for key, value in expected.items()):
+                        errors.append("precompiled Matrix firmware identity is unsupported")
+                    if not re.fullmatch(r"[0-9a-f]{64}", firmware.get("firmware_source_id", "")):
+                        errors.append("precompiled Matrix source identity is invalid")
+                    if firmware.get("firmware_source_id") != build_identity.get("firmware_expected"):
+                        errors.append("precompiled Matrix firmware does not match the packaged application")
+                    expected_artifacts = {"virtualglove-matrix.elf-zsk.bin",
+                                          "zephyr-arduino_uno_q_stm32u585xx.elf",
+                                          "flash_sketch.cfg"}
+                    if set(firmware.get("artifacts", {})) != expected_artifacts:
+                        errors.append("precompiled Matrix manifest is incomplete")
+                    for artifact in expected_artifacts:
+                        member = firmware_root + artifact
+                        record = firmware.get("artifacts", {}).get(artifact, {})
+                        data = archive.read(member)
+                        if (record.get("size") != len(data) or
+                                record.get("sha256") != hashlib.sha256(data).hexdigest()):
+                            errors.append("precompiled Matrix artifact mismatch: " + artifact)
+                    official = {
+                        "zephyr-arduino_uno_q_stm32u585xx.elf":
+                            "39d4a4fd47241663323f6e04f94dd8f5a9f9ad6582cf1df37f9709b74026adcd",
+                        "flash_sketch.cfg":
+                            "38706cee1f9ff2e53364a47129d1c1aea9bb9687ed26d7d70b4a9f9bc5bca60c",
+                    }
+                    for artifact, checksum in official.items():
+                        if firmware.get("artifacts", {}).get(artifact, {}).get("sha256") != checksum:
+                            errors.append("unpinned Arduino firmware artifact: " + artifact)
+                except (ValueError, KeyError, AttributeError):
+                    errors.append("invalid precompiled Matrix firmware manifest")
+            for sketch_source in ("VirtualGlove/sketch/sketch.yaml",
+                                  "VirtualGlove/sketch/sketch.ino"):
+                if sketch_source in names:
+                    errors.append("source-build Matrix file included in ordinary package: " + sketch_source)
             license_path = "VirtualGlove/licenses/Apache-2.0.txt"
             if license_path in names and hashlib.sha256(archive.read(license_path)).hexdigest() != "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30":
                 errors.append("Apache 2.0 license text is missing or altered")

@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Build pinned Matrix firmware for compiler-free Controller installation.
 #   2026-09-11 - Required an extracted Engineering Toolkit setup and workflow smoke test.
 #   2026-09-09 - Installed the image-array dependencies required by pipeline tests.
 #   2026-09-04 - Made dev the default source for release-candidate builds.
@@ -45,6 +46,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+      - uses: arduino/setup-arduino-cli@v2
+        with:
+          version: '1.5.0'
       - name: Prepare build tools
         run: |
           sudo apt-get update

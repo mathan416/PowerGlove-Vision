@@ -77,6 +77,7 @@ MAINTAINER_FILES = frozenset({
     "scripts/build-install-packages.py",
     "scripts/build-installer-scripts.py",
     "scripts/build-matrix-animation-preview.py",
+    "scripts/build-matrix-firmware.py",
     "scripts/build-matrix-letter-images.py",
     "scripts/capture-guide-screenshots.py",
     "scripts/check-documentation.py",

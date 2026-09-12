@@ -5,6 +5,7 @@
 # Copyright (c) 2026 Iain Bennett
 # SPDX-License-Identifier: MIT
 # Change log:
+#   2026-09-11 - Added a persistent per-Controller authority for trusted local HTTPS.
 #   2026-09-02 - Added to VirtualGlove.
 #   2026-09-03 - Standardized source documentation and maintenance metadata.
 # Full history: docs/CHANGELOG.md and Git history.
@@ -18,6 +19,7 @@ import base64
 import hashlib
 import hmac
 import http.client
+import ipaddress
 import json
 import os
 import secrets
@@ -83,6 +85,155 @@ def certificate_identity(pem: str) -> str:
     """Short hexadecimal prefix users can compare with browser certificate details."""
     der = ssl.PEM_cert_to_DER_cert(pem)
     return hashlib.sha256(der).hexdigest()[:7].upper()
+
+
+def certificate_fingerprint(pem: str) -> str:
+    """Return a complete displayable SHA-256 certificate fingerprint."""
+    der = ssl.PEM_cert_to_DER_cert(pem)
+    digest = hashlib.sha256(der).hexdigest().upper()
+    return ":".join(digest[index:index + 2] for index in range(0, len(digest), 2))
+
+
+def local_ipv4_addresses() -> list[str]:
+    """Find physical-host IPv4 addresses suitable for certificate SAN entries."""
+    addresses: list[str] = []
+    try:
+        result = subprocess.check_output(
+            ["ip", "-j", "-4", "address", "show", "up"], timeout=5)
+        for interface in json.loads(result):
+            name = str(interface.get("ifname", "")).lower()
+            if name == "lo" or name.startswith(("docker", "br-", "veth", "virbr")):
+                continue
+            for item in interface.get("addr_info", []):
+                if item.get("family") != "inet" or item.get("scope") != "global":
+                    continue
+                try:
+                    address = ipaddress.ip_address(item.get("local", ""))
+                except ValueError:
+                    continue
+                value = str(address)
+                if (address.version == 4 and not address.is_loopback and
+                        not address.is_link_local and not address.is_multicast and
+                        value not in addresses):
+                    addresses.append(value)
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError,
+            json.JSONDecodeError):
+        pass
+    return addresses
+
+
+def _valid_server_certificate(
+    certificate: Path, authority: Path, hostname: str, addresses: list[str],
+) -> bool:
+    """Accept an unexpired leaf only when its chain and current names still match."""
+    commands = [
+        ["openssl", "verify", "-CAfile", str(authority), str(certificate)],
+        ["openssl", "x509", "-checkend", str(30 * 24 * 60 * 60), "-noout",
+         "-in", str(certificate)],
+        ["openssl", "x509", "-checkhost", hostname, "-noout", "-in", str(certificate)],
+    ]
+    commands.extend([
+        ["openssl", "x509", "-checkip", address, "-noout", "-in", str(certificate)]
+        for address in addresses
+    ])
+    return all(subprocess.run(command, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL).returncode == 0
+               for command in commands)
+
+
+def _certificate_matches_key(certificate: Path, private_key: Path) -> bool:
+    """Detect an interrupted leaf replacement before loading the TLS server."""
+    try:
+        certificate_public = subprocess.check_output([
+            "openssl", "x509", "-in", str(certificate), "-pubkey", "-noout",
+        ], stderr=subprocess.DEVNULL, timeout=5)
+        key_public = subprocess.check_output([
+            "openssl", "pkey", "-in", str(private_key), "-pubout",
+        ], stderr=subprocess.DEVNULL, timeout=5)
+        return hmac.compare_digest(certificate_public, key_public)
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def ensure_controller_authority(
+    directory: Path, hostname: str, addresses: Optional[list[str]] = None,
+) -> tuple[Path, Path, str, str]:
+    """Create or renew a leaf signed by one persistent private Controller authority."""
+    directory.mkdir(parents=True, exist_ok=True)
+    os.chmod(directory, 0o700)
+    if directory.is_symlink():
+        raise ValueError("refusing symbolic TLS directory")
+    authority = directory / "controller-ca-cert.pem"
+    authority_key = directory / "controller-ca-key.pem"
+    certificate = directory / "pairing-cert.pem"
+    private_key = directory / "pairing-key.pem"
+    if any(path.is_symlink() for path in
+           (authority, authority_key, certificate, private_key)):
+        raise ValueError("refusing symbolic TLS file")
+    addresses = list(addresses if addresses is not None else local_ipv4_addresses())
+
+    with tempfile.TemporaryDirectory(prefix="controller-tls-", dir=str(directory)) as name:
+        temporary = Path(name)
+        if not authority.is_file() or not authority_key.is_file():
+            new_authority = temporary / authority.name
+            new_authority_key = temporary / authority_key.name
+            subprocess.run([
+                "openssl", "req", "-x509", "-newkey", "rsa:3072", "-sha256", "-nodes",
+                "-days", "3650", "-subj", "/CN=VirtualGlove Controller Local Authority",
+                "-addext", "basicConstraints=critical,CA:TRUE,pathlen:0",
+                "-addext", "keyUsage=critical,keyCertSign,cRLSign",
+                "-addext", "subjectKeyIdentifier=hash",
+                "-keyout", str(new_authority_key), "-out", str(new_authority),
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(new_authority_key, 0o600)
+            os.chmod(new_authority, 0o644)
+            os.replace(new_authority_key, authority_key)
+            os.replace(new_authority, authority)
+        os.chmod(authority_key, 0o600)
+        os.chmod(authority, 0o644)
+
+        usable = (certificate.is_file() and private_key.is_file() and
+                  _valid_server_certificate(certificate, authority, hostname, addresses) and
+                  _certificate_matches_key(certificate, private_key))
+        if not usable:
+            new_certificate = temporary / certificate.name
+            new_private_key = temporary / private_key.name
+            request = temporary / "server.csr"
+            extensions = temporary / "server.ext"
+            alt_names = ["DNS.1 = " + hostname]
+            alt_names.extend("IP.%d = %s" % (index, value)
+                             for index, value in enumerate(addresses, 1))
+            extensions.write_text(
+                "[server_cert]\n"
+                "basicConstraints = critical,CA:FALSE\n"
+                "keyUsage = critical,digitalSignature,keyEncipherment\n"
+                "extendedKeyUsage = serverAuth\n"
+                "subjectKeyIdentifier = hash\n"
+                "authorityKeyIdentifier = keyid,issuer\n"
+                "subjectAltName = @alt_names\n"
+                "[alt_names]\n" + "\n".join(alt_names) + "\n")
+            subprocess.run([
+                "openssl", "req", "-new", "-newkey", "rsa:2048", "-sha256", "-nodes",
+                "-subj", "/CN=" + hostname, "-keyout", str(new_private_key),
+                "-out", str(request),
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run([
+                "openssl", "x509", "-req", "-sha256", "-days", "397",
+                "-in", str(request), "-CA", str(authority), "-CAkey", str(authority_key),
+                "-set_serial", str(secrets.randbits(127) + 1),
+                "-extfile", str(extensions), "-extensions", "server_cert",
+                "-out", str(new_certificate),
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.chmod(new_private_key, 0o600)
+            os.chmod(new_certificate, 0o644)
+            os.replace(new_private_key, private_key)
+            os.replace(new_certificate, certificate)
+        os.chmod(private_key, 0o600)
+        os.chmod(certificate, 0o644)
+
+    pem = certificate.read_text()
+    authority_pem = authority.read_text()
+    return certificate, private_key, pem, authority_pem
 
 
 def normalize_pairing_code(code: str) -> tuple[str, str]:

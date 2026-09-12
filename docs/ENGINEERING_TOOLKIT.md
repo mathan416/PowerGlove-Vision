@@ -98,7 +98,10 @@ models, compiled emulator cores, and private device data.
 
 Repository-only maintenance tools are excluded: release publishing, device
 deployment, firmware stamping, package construction, PDF and screenshot
-generation, and documentation audits.
+generation, and precompiled Matrix release building. The ordinary Controller
+package already carries the verified firmware; rebuilding it requires the
+pinned Arduino CLI, Zephyr platform, and libraries from `sketch/sketch.yaml` in
+the full Git repository.
 
 ## Start with offline evidence
 

@@ -47,9 +47,12 @@ on the same trusted local network with internet access. Supply your own games;
 no ROMs or BIOS files are included.
 
 For a new Controller, use Arduino App Lab to complete board setup and networking.
-Record both devices' hostnames. Connect the camera through the powered hub.
-You do not need to import VirtualGlove through App Lab or build a ZIP on
-your computer. The installer builds and uploads the Arduino sketch for you.
+Record the RetroPie's hostname and the UNO Q's current App Lab address. The
+VirtualGlove installer will offer the Controller's permanent friendly name.
+Connect the camera through the powered hub.
+You do not need to import VirtualGlove through App Lab, install Arduino build
+tools, or build a ZIP. The release contains a verified precompiled Matrix image;
+the installer checks it and loads it using the UNO Q's factory flashing tools.
 
 Open a terminal on each device, either locally or over SSH. For the Controller:
 
@@ -57,7 +60,8 @@ Open a terminal on each device, either locally or over SSH. For the Controller:
 ssh arduino@UNO-Q-NAME.local
 ```
 
-Replace the example hostnames with your actual names. Use your normal account;
+For this initial connection, use the UNO Q name or IP address shown by App Lab.
+It may still have its factory name. Use your normal account;
 the scripts request your sudo password when administrator access is needed.
 They do not store it. Close games before installing. Leave the devices powered
 and connected while installation runs; first setup can take several minutes.
@@ -86,10 +90,24 @@ installer can be downloaded safely.
 The script verifies its download, installs VirtualGlove, and configures automatic
 startup. It also installs:
 
-- the Arduino sketch and early-start hourglass;
+- the precompiled Matrix firmware and early-start hourglass;
 - the Shutdown button's system helper;
 - guarded camera recovery;
 - `uhubctl` for hubs that advertise safe per-port power control.
+
+On a fresh Controller, the installer shows the current board name and suggests
+**virtualglove**. Press Enter to use `virtualglove.local`, or enter a different
+short name such as `games-room`. Confirm the displayed `.local` address before
+installation continues. The installer checks for a visible name conflict on
+the current LAN and stops safely if another device is already using it.
+
+This question appears only for a first installation. An update never changes an
+established hostname. A non-interactive installation also keeps the existing
+board name unless `--hostname NAME` is supplied explicitly.
+
+The terminal connection used for installation can remain open after the rename.
+For future browser and SSH connections, use the chosen `.local` name or one of
+the IP addresses printed at the end of installation.
 
 Camera recovery is standard and is not presented as an optional prompt. The
 camera may be connected after installation, and no separate helper command is
@@ -111,7 +129,8 @@ and benchmark drivers remain in the source repository and separate Engineering
 Tools download. They are not needed to install, calibrate, play, back up a hand
 setup, or update the system.
 
-**Checkpoint:** Open `http://UNO-Q-NAME.local:8088/dashboard` in your browser.
+**Checkpoint:** Open the Dashboard address printed by the installer, normally
+`http://virtualglove.local:8088/dashboard`, in your browser.
 Dashboard should load. With gestures off, a closed camera is normal. Open
 **Play** or **Glove Academy** to check that your camera view and whole hand
 appear, then return to Dashboard with controller transmission stopped.
@@ -139,8 +158,15 @@ Run this single line in the RetroPie terminal:
 curl -fLO https://github.com/mathan416/VirtualGlove/releases/latest/download/install-retropie.sh && bash install-retropie.sh
 ```
 
-For a new installation, the script asks for your Controller hostname or IP address.
-There are no placeholders to replace in the command.
+**Older RetroPie images:** Raspberry Pi OS Buster's Raspbian packages moved to
+the legacy archive. The installer detects the obsolete repository and stops
+before changing VirtualGlove. Follow [Buster package source moved](TROUBLESHOOTING.md#buster-package-source-moved),
+run `sudo apt-get update`, then rerun the same installer. A current RetroPie
+image is preferable because Buster no longer receives normal security support.
+
+For a new installation, the script asks for your Controller hostname or IP
+address. Enter the `.local` name printed by the Controller installer—normally
+`virtualglove.local`. There are no placeholders to replace in the command.
 
 The script installs the receiver, controller mapping, game-launch integration,
 and automatic startup. Existing cabinet hooks and controller assignments remain.
@@ -173,17 +199,27 @@ Pairing and live gameplay checks will still be listed as actions.
 
 The **Controller status** panel at the top of Setup shows the four Off-mode checks in pixel order: app, console service, authenticated response, and Networking. Green means confirmed, red means disconnected or not confirmed, and grey means unknown. Networking reflects a physical Wi-Fi or Ethernet link, including USB dock Ethernet; it is independent of the console checks. These checks do not prove that the game received input.
 
-Both pairing methods below require the six-digit approval PIN shown on the Controller matrix and the certificate-ID comparison. The RetroPie one-time code or SSH password is an additional credential.
+Both pairing methods below require the six-digit approval PIN shown on the Controller matrix and the certificate-ID comparison. The RetroPie one-time code or SSH password is an additional credential. A first visit may show a privacy warning because this is a private local Controller, not a public website.
 
 Pairing gives both devices the same private token. Use the recommended
 one-time-code method after both installers finish.
 
-1. Open `https://UNO-Q-NAME.local:8443/setup`. Under **Connection and startup**, enter your console address and select **Save settings**. Pairing uses this saved address; unsaved edits must be saved first.
+1. Open the secure Setup address printed by the Controller installer, normally `https://virtualglove.local:8443/setup`. Under **Connection and startup**, enter your console address and select **Save settings**. Pairing uses this saved address; unsaved edits must be saved first.
 2. Under **Pair with RetroPie**, choose **One-time code (recommended)** and select **Continue**. Use **Change** beside the saved console to edit its address before starting.
 3. In **Confirm your Controller**, compare the `ID` on the physical matrix with the beginning of the browser certificate's SHA-256 fingerprint. Expand **How to compare the certificate** for guidance. If they differ, stop pairing.
 4. If they match, check the confirmation box, enter the six-digit **Controller approval PIN** shown after `PN` on the matrix, and select **Continue**.
 5. On RetroPie, run `sudo /opt/powerglove/bin/powerglove-pair` and leave it running. Enter its 20-character code in **RetroPie one-time code**, then select **Pair with RetroPie**. This code is separate from the Controller approval PIN.
 6. Selecting **Pair with RetroPie** brings **Pairing in progress** into view while the request runs, followed by **Pairing complete** or an error with retry instructions. On success, the receiver was restarted and answered an authenticated controller handshake using the newly installed token; you can open Dashboard when ready. On RetroPie, `sudo systemctl status powerglove-receiver.service` should report active. Pairing does not arm controller output or prove that a game received input.
+
+### Optional: remove the browser privacy warning
+
+After the Matrix ID matches the browser certificate, return to **Trust this
+Controller** and download the trust certificate. Install it as a trusted root on
+that phone or computer, then close and reopen the browser. This is required only
+once per browser device and survives ordinary VirtualGlove upgrades and website
+certificate renewals. Setup contains current instructions for Apple, Windows,
+and Android devices. Never install the certificate if the Matrix comparison
+does not match.
 
 After pairing, always complete the game check below. **Pairing complete** proves
 that the receiver accepted the shared key; the game check proves that your own
